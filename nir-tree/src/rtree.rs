@@ -1,40 +1,71 @@
 #![allow(non_snake_case)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
 
-// Structures to define the rtree nodes
-#[derive(Debug)]
-pub struct Point {
-	pub x: u64,
-	pub y: u64,
-}
+use crate::geometry::Point;
+use crate::geometry::Rectangle;
 
-pub struct Rectangle {
-	pub lowerLeft: Point,
-	pub upperRight: Point,
-}
 
-impl Rectangle {
-	pub fn containsPoint(&self, requestedPoint: &Point) -> bool {
-		let inXRange = self.lowerLeft.x <= requestedPoint.x && requestedPoint.x <= self.upperRight.x;
-		let inYRange = self.lowerLeft.y <= requestedPoint.y && requestedPoint.y <= self.upperRight.y;
-
-		return inXRange && inYRange;
-	}
-}
-
-pub struct Node {
+// Structure to define the R-Tree
+pub struct Node
+{
+	pub id: u64,
 	pub boundingPolygons: Vec<Rectangle>,
 	pub children: Vec<Node>
 }
 
-impl Node {
-	// TODO: update this function for box intersection
-	pub fn search(&self, requestedPoint: &Point) -> bool
+impl Node
+{
+	// Constructor
+	pub fn new(id: u64, boundingPolygons: Vec<Rectangle>, children: Vec<Node>) -> Node
+	{
+		return Node{id, boundingPolygons, children};
+	}
+
+	// Search. Recursively descend through the tree choosing subtrees if they contain the query or
+	// if they intersect the query. Return a vector of all the leaf nodes that match
+	pub fn searchRectangle(&self, requestedRectangle: &Rectangle) -> Vec<&Node>
+	{
+		// All the nodes in the R-Tree that match
+		let mut matchingNodes: Vec<&Node> = Vec::new();
+
+		// If we have no children then we have been selected by the node above us and therefore we
+		// match. Otherwise, we are the ones testing and recursively asking the nodes below us for
+		// matching nodes.
+		if self.children.len() == 0_usize
+		{
+			println!("[searchRectangle] Leaf child with id {} hit, adding ourself.", self.id);
+			matchingNodes.push(self);
+		}
+		else
+		{
+			for i in 0..self.children.len()
+			{
+				println!("[searchRectangle] Checking a child with id {}.", self.children[i].id);
+				let intersecting = self.boundingPolygons[i].containsRectangle(requestedRectangle);
+				println!("[searchRectangle] {:?}", intersecting);
+				if intersecting
+				{
+					println!("[searchRectangle] Child matched. Adding all valid leaves. Recursing.");
+					for node in &self.children[i].searchRectangle(requestedRectangle)
+					{
+						println!("[searchRectangle] Adding node {} to results at node {}", node.id, self.id);
+						matchingNodes.push(node);
+					}
+				}
+			}
+		}
+
+		return matchingNodes;
+	}
+
+	pub fn searchPoint(&self, requestedPoint: &Point) -> bool
 	{
 		// If we have no children then we have only to check our own bounding box
 		if self.children.len() == 0_usize
 		{
 			println!("Checking ourself.");
-			return self.boundingPolygons[0].containsPoint(requestedPoint); // TODO: update for box intersection
+			return self.boundingPolygons[0].containsPoint(requestedPoint);
 		}
 		else
 		{
@@ -42,10 +73,10 @@ impl Node {
 			for i in 0..self.children.len()
 			{
 				println!("Checking a child.");
-				if self.boundingPolygons[i].containsPoint(requestedPoint) // TODO: update for box intersection
+				if self.boundingPolygons[i].containsPoint(requestedPoint)
 				{
 					println!("Bounding polygon contained point. Recursing.");
-					return self.children[i].search(requestedPoint);
+					return self.children[i].searchPoint(requestedPoint);
 				}
 			}
 		}
@@ -55,6 +86,7 @@ impl Node {
 
 	pub fn chooseLeaf(&self, newPolygon: &Point) -> &Node
 	{
+		/*
 		// If we are a leaf then return ourselves
 		if self.children.len() == 0
 		{
@@ -67,10 +99,13 @@ impl Node {
 		{
 			unimplemented!();
 		}
+		*/
+		&self
 	}
 
 	pub fn insert(&self, newPolygon: &Point)
 	{
+		/*
 		// ChooseLeaf, we need to be given the starting node
 		let chosenLeaf = root.chooseLeaf(newPolygon);
 
@@ -82,15 +117,15 @@ impl Node {
 			// Couldn't fit newPolygon so call splitNode
 			let L = chosenLeaf.splitNode(newPolygon);
 		}
+		else
+		{
+			
+		}
+		*/
 	}
 }
 
 /*
-// Search
-// 1. Search subtrees. If T is not a leaf , check each node to determine if there is box overlap.
-// For all overlapping nodes recursively invoke search
-// 2. Search leaf. If T is a leaf, check each entry for overlap, return these as qualifying records.
-
 // Insert
 // 1. Find position for the new record. Call ChooseLeaf to select a leaf L in which to put E.
 // 2. Add record to the leaf node. If L has room for E then add it, otherwise call SplitNode to get
@@ -141,3 +176,42 @@ impl Node {
 // nodes must be placed higher in the tree, so that leaves of their dependent subtrees will be on
 // the same level as leaves of the main tree.
 */
+
+#[test]
+fn testSimpleSearch()
+{
+	// NOTE: This test does not describe a smallest-fitting-boxes R-Tree
+	// The leaf nodes which have no children
+	let leafRect1 = Rectangle::new(2, 2, 4, 5, 6);
+	let leafRect2 = Rectangle::new(10, 18, 12, 20, 4);
+	let leafRect3 = Rectangle::new(17, 5, 18, 18, 13);
+	let leaf1 = Node::new(0, vec![leafRect1], Vec::new());
+	let leaf2 = Node::new(1, vec![leafRect2], Vec::new());
+	let leaf3 = Node::new(2, vec![leafRect3], Vec::new());
+
+	// The node describing rectangles 1 and 2
+	let rect1 = Rectangle::new(2, 2, 4, 5, 6);
+	let rect2 = Rectangle::new(10, 18, 12, 20, 4);
+	let node1 = Node::new(3, vec![rect1, rect2], vec![leaf1, leaf2]);
+
+	// The node describing rectangle 3
+	let rect3 = Rectangle::new(17, 5, 18, 18, 13);
+	let node2 = Node::new(4, vec![rect3], vec![leaf3]);
+
+	// The linking (root) node describing node1 and node2
+	let rect4 = Rectangle::new(0, 0, 13, 21, 273);
+	let rect5 = Rectangle::new(15, 4, 21, 21, 102);
+	let root = Node::new(5, vec![rect4, rect5], vec![node1, node2]);
+
+	// The first query rectangle
+	let query1 = Rectangle::new(3, 3, 19, 19, 128);
+	// Test that the first query gives us back all three leaves
+	let queryResult1 = root.searchRectangle(&query1);
+	assert!(queryResult1.len() == 3);
+
+	// The second query rectangle
+	let query2 = Rectangle::new(16, 4, 19, 21, 51);
+	// Test that the second query gives us back only rectangle 3
+	let queryResult2 = root.searchRectangle(&query2);
+	assert!(queryResult2.len() == 1);
+}
