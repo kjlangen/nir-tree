@@ -1,20 +1,22 @@
+SXX = -std=c++11 	#Standard
 FLAGS = -g -Wall	#Flags
-
-OBJBTREE = btree.o rtree.o
-
-OBJECTS = ${OBJBTREE}
+OBJECTS = geometry.o btree.o rtree.o
 
 # Build btree
 btree.o:
-	g++ -c src/btree/btree.cpp
+	g++ ${SXX} -I src/include -c src/btree/btree.cpp
+
+# Build utils
+geometry.o:
+	g++ ${SXX} -I src/include -c src/util/geometry.cpp
 
 # Build rtree
 rtree.o:
-	g++ -c src/rtree/rtree.cpp
+	g++ ${SXX} -I src/include -c src/rtree/rtree.cpp
 
 # Build all together
 all: ${OBJECTS}
-	g++ src/main.cpp ${OBJECTS} -o bin/main
+	g++ ${SXX} src/main.cpp ${OBJECTS} -o bin/main -I src/include
 
 # Clean all together
 clean:
