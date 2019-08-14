@@ -6,7 +6,8 @@ use crate::geometry::Point;
 use crate::geometry::Rectangle;
 
 
-// Structure to define the R-Tree
+// Structure to define the R-Tree routing nodes
+#[derive(Debug)]
 pub struct Node
 {
 	pub id: u64,
@@ -22,54 +23,73 @@ impl Node
 		return Node{id, boundingPolygons, children};
 	}
 
-	// Search. Recursively descend through the tree choosing subtrees if they contain the query or
-	// if they intersect the query. Return a vector of all the leaf nodes that match
-	pub fn searchRectangle(&self, requestedRectangle: &Rectangle) -> Vec<&Node>
+	pub fn getId(&self) -> u64
+	{
+		return self.id;
+	}
+
+	// Search functions
+	pub fn searchRectangle(&self, requestedRectangle: &Rectangle) -> Vec<&Rectangle>
 	{
 		// All the nodes in the R-Tree that match
-		let mut matchingNodes: Vec<&Node> = Vec::new();
+		let mut matchingRectangles: Vec<&Rectangle> = Vec::new();
 
-		// If we have no children then we have been selected by the node above us and therefore we
-		// match. Otherwise, we are the ones testing and recursively asking the nodes below us for
-		// matching nodes.
-		if self.children.len() == 0_usize
+		if self.children.len() == 0
 		{
-			println!("[searchRectangle] Leaf child with id {} hit, adding ourself.", self.id);
-			matchingNodes.push(self);
-		}
-		else
-		{
-			for i in 0..self.children.len()
+			// We are a leaf so check our rectangles
+			for i in 0..self.boundingPolygons.len()
 			{
-				println!("[searchRectangle] Checking a child with id {}.", self.children[i].id);
-				let intersecting = self.boundingPolygons[i].containsRectangle(requestedRectangle);
+				println!("[searchRectangle] Checking rectangle {}.", i);
+				let intersecting = self.boundingPolygons[i].intersectsRectangle(requestedRectangle);
 				println!("[searchRectangle] {:?}", intersecting);
 				if intersecting
 				{
-					println!("[searchRectangle] Child matched. Adding all valid leaves. Recursing.");
-					for node in &self.children[i].searchRectangle(requestedRectangle)
+					println!("[searchRectangle] Leaf {} adding rectangle {}", self.id, i);
+					matchingRectangles.push(&self.boundingPolygons[i]);
+				}
+			}
+		}
+		else
+		{
+			// We are the ones testing and recursively asking the nodes below us for matching nodes.
+			assert!(self.children.len() == self.boundingPolygons.len());
+			for i in 0..self.children.len()
+			{
+				println!("[searchRectangle] Checking a child with id {}.", self.children[i].getId());
+				let intersecting = self.boundingPolygons[i].intersectsRectangle(requestedRectangle);
+				println!("[searchRectangle] {:?}", intersecting);
+				if intersecting
+				{
+					println!("[searchRectangle] Child matched. Recursing to add all valid leaves.");
+					for rectangle in &self.children[i].searchRectangle(requestedRectangle)
 					{
-						println!("[searchRectangle] Adding node {} to results at node {}", node.id, self.id);
-						matchingNodes.push(node);
+						println!("[searchRectangle] Adding to results at node {}", self.id);
+						matchingRectangles.push(rectangle);
 					}
 				}
 			}
 		}
 
-		return matchingNodes;
+		return matchingRectangles;
 	}
 
 	pub fn searchPoint(&self, requestedPoint: &Point) -> bool
 	{
-		// If we have no children then we have only to check our own bounding box
-		if self.children.len() == 0_usize
+		if self.children.len() == 0
 		{
-			println!("Checking ourself.");
-			return self.boundingPolygons[0].containsPoint(requestedPoint);
+			// We are a leaf so we have only to check our bounding boxes which represent the objects
+			for i in 0..self.boundingPolygons.len()
+			{
+				if self.boundingPolygons[i].containsPoint(requestedPoint)
+				{
+					return true;
+				}
+			}
 		}
 		else
 		{
 			// Check each child's bounding box to see if we should go to that subtree
+			assert!(self.children.len() == self.boundingPolygons.len());
 			for i in 0..self.children.len()
 			{
 				println!("Checking a child.");
@@ -84,42 +104,68 @@ impl Node
 		return false;
 	}
 
-	pub fn chooseLeaf(&self, newPolygon: &Point) -> &Node
+	pub fn insert(self, newRectangle: Rectangle)
 	{
+		// Phase 1: Iteratively descend the tree to the proper leaf while keeping track of our path
+		// by using the stack 'path'
+		let mut path = Vec::new();
+
+		let currentNode = &mut self;
+
+		loop
+		{
+			// If we are a leaf stop
+			if currentNode.children.len() == 0
+			{
+				unimplemented!();
+			}
+			else
+			{
+				// Pick a new current node based on least amount of expansion area
+				let mut chosen = 0;
+				let mut chosenMetrics = /**/.boundingPolygons[chosen].computeExpansionArea(&newRectangle);
+				for i in 0../**/.children.len()
+				{
+					let competitorMetrics = /**/.boundingPolygons[i].computeExpansionArea(&newRectangle);
+					if competitorMetrics.1 <= chosenMetrics.1 && competitorMetrics.0.area < chosenMetrics.0.area
+					{
+						chosen = i;
+						chosenMetrics = competitorMetrics;
+					}
+				}
+			}
+		}
+
+		// Print what node we've chosen
+		println!("We have chosen node {:?}", self);
+
+		// Phase 2: Analysis of the nodes, maybe we have to split and move backward to keep splitting
 		/*
-		// If we are a leaf then return ourselves
 		if self.children.len() == 0
 		{
-			return &self;
-		}
+			// So far we have no splitting just yet so jut enforce that there are less than 5 rect in a
+			// leaf which is kinda arbitrary but w/e
+			assert!(self.boundingPolygons.len() < 5);
 
-		// Choose node whos bounding polygon will require the least expansion. Breaking ties by
-		// smaller area
-		for boundingPolygon in self.boundingPolygons
-		{
-			unimplemented!();
-		}
-		*/
-		&self
-	}
-
-	pub fn insert(&self, newPolygon: &Point)
-	{
-		/*
-		// ChooseLeaf, we need to be given the starting node
-		let chosenLeaf = root.chooseLeaf(newPolygon);
-
-		// Add record to the leaf node
-		let overflow = false; // This should be dynamically figured out once we figure out leaves
-
-		if overflow
-		{
-			// Couldn't fit newPolygon so call splitNode
-			let L = chosenLeaf.splitNode(newPolygon);
+			self.boundingPolygons.push(newRectangle);
 		}
 		else
 		{
-			
+			// Choose a subtree based on smallest enlargement, breaking ties by area
+			let mut chosen = 0;
+			let mut chosenMetrics = self.boundingPolygons[chosen].computeExpansionArea(&newRectangle);
+			for i in 0..self.children.len()
+			{
+				let competitorMetrics = self.boundingPolygons[i].computeExpansionArea(&newRectangle);
+				if competitorMetrics.1 <= chosenMetrics.1 && competitorMetrics.0.area < chosenMetrics.0.area
+				{
+					chosen = i;
+					chosenMetrics = competitorMetrics;
+				}
+			}
+
+			// Descend into the chosen subtree
+			self.children[chosen].insert(newRectangle);
 		}
 		*/
 	}
@@ -180,28 +226,21 @@ impl Node
 #[test]
 fn testSimpleSearch()
 {
-	// NOTE: This test does not describe a smallest-fitting-boxes R-Tree
-	// The leaf nodes which have no children
-	let leafRect1 = Rectangle::new(2, 2, 4, 5, 6);
-	let leafRect2 = Rectangle::new(10, 18, 12, 20, 4);
-	let leafRect3 = Rectangle::new(17, 5, 18, 18, 13);
-	let leaf1 = Node::new(0, vec![leafRect1], Vec::new());
-	let leaf2 = Node::new(1, vec![leafRect2], Vec::new());
-	let leaf3 = Node::new(2, vec![leafRect3], Vec::new());
+	// NOTE: This test does not describe a tightest-fitting-boxes R-Tree but is a good simple test
 
 	// The node describing rectangles 1 and 2
 	let rect1 = Rectangle::new(2, 2, 4, 5, 6);
 	let rect2 = Rectangle::new(10, 18, 12, 20, 4);
-	let node1 = Node::new(3, vec![rect1, rect2], vec![leaf1, leaf2]);
+	let node1 = Node::new(1, vec![rect1, rect2], vec![]);
 
 	// The node describing rectangle 3
 	let rect3 = Rectangle::new(17, 5, 18, 18, 13);
-	let node2 = Node::new(4, vec![rect3], vec![leaf3]);
+	let node2 = Node::new(2, vec![rect3], vec![]);
 
 	// The linking (root) node describing node1 and node2
 	let rect4 = Rectangle::new(0, 0, 13, 21, 273);
 	let rect5 = Rectangle::new(15, 4, 21, 21, 102);
-	let root = Node::new(5, vec![rect4, rect5], vec![node1, node2]);
+	let root = Node::new(3, vec![rect4, rect5], vec![node1, node2]);
 
 	// The first query rectangle
 	let query1 = Rectangle::new(3, 3, 19, 19, 128);
@@ -214,4 +253,46 @@ fn testSimpleSearch()
 	// Test that the second query gives us back only rectangle 3
 	let queryResult2 = root.searchRectangle(&query2);
 	assert!(queryResult2.len() == 1);
+}
+
+#[test]
+fn testSimpleInsert()
+{
+	// NOTE: This test does not describe a tightest-fitting-boxes R-Tree but is a good simple test
+
+	// The node describing rectangles 1 and 2
+	let rect1 = Rectangle::new(2, 2, 4, 5, 6);
+	let rect2 = Rectangle::new(10, 18, 12, 20, 4);
+	let node1 = Node::new(1, vec![rect1, rect2], vec![]);
+
+	// The node describing rectangle 3
+	let rect3 = Rectangle::new(17, 5, 18, 18, 13);
+	let node2 = Node::new(2, vec![rect3], vec![]);
+
+	// The linking (root) node describing node1 and node2
+	let rect4 = Rectangle::new(0, 0, 13, 21, 273);
+	let rect5 = Rectangle::new(15, 4, 21, 21, 102);
+	let mut root = Node::new(3, vec![rect4, rect5], vec![node1, node2]);
+
+	// Rectangles to be inserted, they all fall under rect4 and should all be inserted under node1
+	let insert1 = Rectangle::new(6, 3, 8, 4, 2);
+	let insert2 = Rectangle::new(1, 13, 2, 14, 1);
+	let insert3 = Rectangle::new(11, 16, 15, 18, 8);
+
+	// Insert our rectangles
+	root.insert(insert1);
+	/*
+	root.insert(insert2);
+	root.insert(insert3);
+
+	// Test that our rectangles were inserted into the expected node
+	assert!(root.children[0].boundingPolygons.len() == 5);
+	assert!(root.children[0].boundingPolygons[2].area == 2);
+	assert!(root.children[0].boundingPolygons[3].area == 1);
+	assert!(root.children[0].boundingPolygons[4].area == 8);
+
+	// Test that the previous rectangles are still there
+	assert!(root.children[0].boundingPolygons[0].area == 6);
+	assert!(root.children[0].boundingPolygons[1].area == 4);
+	*/
 }

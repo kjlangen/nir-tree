@@ -5,6 +5,7 @@
 use std::cmp::max;
 use std::cmp::min;
 
+
 // A 2-D point
 #[derive(Debug)]
 pub struct Point
@@ -60,15 +61,15 @@ impl Rectangle
 
 	// Check if the requested Rectangle is fully contained, just intersecting a little, or totally
 	// disjoint from us
-	pub fn containsRectangle(&self, requestedRectangle: &Rectangle) -> bool
+	pub fn intersectsRectangle(&self, requestedRectangle: &Rectangle) -> bool
 	{
 		let intervalX = self.lowerLeft.x <= requestedRectangle.upperRight.x;
 		let intervalXPrime = requestedRectangle.lowerLeft.x <= self.upperRight.x;
 		let intervalY = self.lowerLeft.y <= requestedRectangle.upperRight.y;
 		let intervalYPrime = requestedRectangle.lowerLeft.y <= self.upperRight.y;
 
-		println!("[containsRectangle] Data is self = {:?} and requested = {:?}", self, requestedRectangle);
-		println!("[containsRectangle] Containment information is ({}, {}, {}, {})", intervalX, intervalXPrime, intervalY, intervalYPrime);
+		println!("[intersectsRectangle] Data is self = {:?} and requested = {:?}", self, requestedRectangle);
+		println!("[intersectsRectangle] Containment information is ({}, {}, {}, {})", intervalX, intervalXPrime, intervalY, intervalYPrime);
 
 		if intervalX && intervalXPrime && intervalY && intervalYPrime
 		{
@@ -145,16 +146,16 @@ fn RectangleIntersectionTest()
 	let uncontainedRectangle = Rectangle::new(6, 6, 8, 8, 4);
 
 	// Test full containment
-	assert!(baseRectangle.containsRectangle(&containedRectangle));
+	assert!(baseRectangle.intersectsRectangle(&containedRectangle));
 	// Test lower left point in base rectangle
-	assert!(baseRectangle.containsRectangle(&lowerLeftQuadrantRectangle));
+	assert!(baseRectangle.intersectsRectangle(&lowerLeftQuadrantRectangle));
 	// Test no point in rectangle but corners still intersect
-	assert!(baseRectangle.containsRectangle(&lowerRightQuadrantRectangle));
-	assert!(baseRectangle.containsRectangle(&upperLeftQuadrantRectangle));
+	assert!(baseRectangle.intersectsRectangle(&lowerRightQuadrantRectangle));
+	assert!(baseRectangle.intersectsRectangle(&upperLeftQuadrantRectangle));
 	// Test upper right point in base rectangle
-	assert!(baseRectangle.containsRectangle(&upperRightQuadrantRectangle));
+	assert!(baseRectangle.intersectsRectangle(&upperRightQuadrantRectangle));
 	// Test rectangles don't intersect
-	assert!(!baseRectangle.containsRectangle(&uncontainedRectangle));
+	assert!(!baseRectangle.intersectsRectangle(&uncontainedRectangle));
 }
 
 #[test]
