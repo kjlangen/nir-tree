@@ -1,12 +1,46 @@
 #include "rtree/rtree.h"
 
-void test()
+RTree::RTree()
 {
-	Point p0 = Point(1, 1);
-	Point p1 = Point(4, 4);
-	Rectangle testRect = Rectangle(p0, p1);
-	Point testPoint = Point(2, 2);
-	testRect.containsPoint(testPoint);
+}
+
+RTree::RTree(Node *root)
+{
+	this->root = root;
+}
+
+std::vector<Rectangle> RTree::searchRectangle(Rectangle requestedRectangle)
+{
+	return root->searchRectangle(requestedRectangle);
+}
+
+void RTree::insert(Rectangle newRectangle)
+{
+	root->insert(newRectangle);
+}
+
+Node::Node()
+{
+}
+
+Node::Node(unsigned id)
+{
+	this->id = id;
+}
+
+void Node::setParent(Node *parent)
+{
+	this->parent = parent;
+}
+
+void Node::addPolygon(Rectangle newRectangle)
+{
+	boundingPolygons.push_back(newRectangle);
+}
+
+void Node::addChild(Node *newChild)
+{
+	children.push_back(newChild);
 }
 
 std::vector<Rectangle> Node::searchRectangle(Rectangle requestedRectangle)
@@ -14,143 +48,195 @@ std::vector<Rectangle> Node::searchRectangle(Rectangle requestedRectangle)
 	// All the nodes in the R-Tree that match
 	std::vector<Rectangle> matchingRectangles = std::vector<Rectangle>();
 
-	if (this->children.size() == 0)
-	{
-		// We are a leaf so check our rectangles
-		for (int i = 0; i < this->boundingPolygons.size(); i++)
-		{
-			// println!("[searchRectangle] Checking rectangle {}.", i);
-			bool intersecting = this->boundingPolygons[i].intersectsRectangle(requestedRectangle);
-			// println!("[searchRectangle] {:?}", intersecting);
-			if (intersecting)
-			{
-				//println!("[searchRectangle] Leaf {} adding rectangle {}", self.id, i);
-				matchingRectangles.push_back(this->boundingPolygons[i]);
-			}
-		}
-	}
-	else
-	{
-		// We are the ones testing and recursively asking the nodes below us for matching nodes.
-		// assert(this->children.size() == this->boundingPolygons.size());
-		for (int i = 0; i < this->boundingPolygons.size(); i++)
-		{
-			//println!("[searchRectangle] Checking a child with id {}.", self.children[i].getId());
-			bool intersecting = this->boundingPolygons[i].intersectsRectangle(requestedRectangle);
-			//println!("[searchRectangle] {:?}", intersecting);
-			if (intersecting)
-			{
-				//println!("[searchRectangle] Child matched. Recursing to add all valid leaves.");
-				std::vector<Rectangle> lowerRectangles = this->children[i].searchRectangle(requestedRectangle);
-				for (int j = 0; j < lowerRectangles.size(); j++)
-				{
-					//println!("[searchRectangle] Adding to results at node {}", self.id);
-					matchingRectangles.push_back(lowerRectangles[j]);
-				}
-			}
-		}
-	}
+	// if (children.size() == 0)
+	// {
+	// 	// We are a leaf so check our rectangles
+	// 	for (unsigned i = 0; i < boundingPolygons.size(); ++i)
+	// 	{
+	// 		// println!("[searchRectangle] Checking rectangle {}.", i);
+	// 		bool intersecting = boundingPolygons[i].intersectsRectangle(requestedRectangle);
+	// 		// println!("[searchRectangle] {:?}", intersecting);
+	// 		if (intersecting)
+	// 		{
+	// 			//println!("[searchRectangle] Leaf {} adding rectangle {}", self.id, i);
+	// 			matchingRectangles.push_back(boundingPolygons[i]);
+	// 		}
+	// 	}
+	// }
+	// else
+	// {
+	// 	// We are the ones testing and recursively asking the nodes below us for matching nodes.
+	// 	assert(children.size() == boundingPolygons.size());
+	// 	for (unsigned i = 0; i < boundingPolygons.size(); ++i)
+	// 	{
+	// 		//println!("[searchRectangle] Checking a child with id {}.", self.children[i].getId());
+	// 		bool intersecting = boundingPolygons[i].intersectsRectangle(requestedRectangle);
+	// 		//println!("[searchRectangle] {:?}", intersecting);
+	// 		if (intersecting)
+	// 		{
+	// 			//println!("[searchRectangle] Child matched. Recursing to add all valid leaves.");
+	// 			std::vector<Rectangle> lowerRectangles = children[i]->searchRectangle(requestedRectangle);
+	// 			for (unsigned j = 0; j < lowerRectangles.size(); j++)
+	// 			{
+	// 				//println!("[searchRectangle] Adding to results at node {}", self.id);
+	// 				matchingRectangles.push_back(lowerRectangles[j]);
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	return matchingRectangles;
 }
 
-
 bool Node::searchPoint(Point requestedPoint)
 {
-	if (this->children.size() == 0)
-	{
-		// We are a leaf so we have only to check our bounding boxes which represent the objects
-		for (int i = 0; i < this->boundingPolygons.size(); i++)
-		{
-			if (this->boundingPolygons[i].containsPoint(requestedPoint))
-			{
-				return true;
-			}
-		}
-	}
-	else
-	{
-		// Check each child's bounding box to see if we should go to that subtree
-		// assert!(self.children.len() == self.boundingPolygons.len());
-		for (int i = 0; i < this->children.size(); i++)
-		{
-			// println!("Checking a child.");
-			if (this->boundingPolygons[i].containsPoint(requestedPoint))
-			{
-				// println!("Bounding polygon contained point. Recursing.");
-				return this->children[i].searchPoint(requestedPoint);
-			}
-		}
-	}
+	// if (children.size() == 0)
+	// {
+	// 	// We are a leaf so we have only to check our bounding boxes which represent the objects
+	// 	for (unsigned i = 0; i < boundingPolygons.size(); ++i)
+	// 	{
+	// 		if (boundingPolygons[i].containsPoint(requestedPoint))
+	// 		{
+	// 			return true;
+	// 		}
+	// 	}
+	// }
+	// else
+	// {
+	// 	// Check each child's bounding box to see if we should go to that subtree
+	// 	assert(children.size() == boundingPolygons.size());
+	// 	for (unsigned i = 0; i < children.size(); ++i)
+	// 	{
+	// 		// println!("Checking a child.");
+	// 		if (boundingPolygons[i].containsPoint(requestedPoint))
+	// 		{
+	// 			// println!("Bounding polygon contained point. Recursing.");
+	// 			return children[i]->searchPoint(requestedPoint);
+	// 		}
+	// 	}
+	// }
 
 	return false;
 }
 
-/*
-pub fn insert(self, newRectangle: Rectangle)
+Rectangle Node::computeBoundary()
 {
-	// Phase 1: Iteratively descend the tree to the proper leaf while keeping track of our path
-	// by using the stack 'path'
-	let mut path = Vec::new();
+	// assert(boundingPolygons.size() > 0);
+	// unsigned minX = boundingPolygons[0].lowerLeft.x;
+	// unsigned minY = boundingPolygons[0].lowerLeft.y;
 
-	let currentNode = &mut self;
+	// unsigned maxX = boundingPolygons[0].upperRight.x;
+	// unsigned maxY = boundingPolygons[0].upperRight.y;
 
-	loop
-	{
-		// If we are a leaf stop
-		if currentNode.children.len() == 0
-		{
-			unimplemented!();
-		}
-		else
-		{
-			// Pick a new current node based on least amount of expansion area
-			let mut chosen = 0;
-			let mut chosenMetrics = self.boundingPolygons[chosen].computeExpansionArea(&newRectangle);
-			for i in 0..self.children.len()
-			{
-				let competitorMetrics = self.boundingPolygons[i].computeExpansionArea(&newRectangle);
-				if competitorMetrics.1 <= chosenMetrics.1 && competitorMetrics.0.area < chosenMetrics.0.area
-				{
-					chosen = i;
-					chosenMetrics = competitorMetrics;
-				}
-			}
-		}
-	}
-
-	// Print what node we've chosen
-	println!("We have chosen node {:?}", self);
-
-	// Phase 2: Analysis of the nodes, maybe we have to split and move backward to keep splitting
-	// if self.children.len() == 0
+	// // Run over all the bounding polygons and find the max/min extents to create a tight bound
+	// for (int i = 0; i < boundingPolygons.size(); ++i)
 	// {
-	// 	// So far we have no splitting just yet so jut enforce that there are less than 5 rect in a
-	// 	// leaf which is kinda arbitrary but w/e
-	// 	assert!(self.boundingPolygons.len() < 5);
+	// 	minX = boundingPolygons[i].lowerLeft.x < minX ? boundingPolygons[i].lowerLeft.x: minX;
+	// 	minY = boundingPolygons[i].lowerLeft.y < minY ? boundingPolygons[i].lowerLeft.y: minY;
+	// 	maxX = boundingPolygons[i].upperRight.x > maxX ? boundingPolygons[i].upperRight.x: maxX;
+	// 	maxY = boundingPolygons[i].upperRight.y > maxY ? boundingPolygons[i].upperRight.y: maxY;
+	// }
 
-	// 	self.boundingPolygons.push(newRectangle);
+	return Rectangle(0, 0, 0, 0);
+}
+
+Node *Node::splitNode()
+{
+	// Make the new node
+	Node *babyNode = new Node();
+
+	// // Split the bounding polygons
+	// unsigned polygonsToMove = boundingPolygons.size() / 2;
+	// for (unsigned i = 0; i < polygonsToMove; ++i)
+	// {
+	// 	std::cout << "Moving polygon " << i << std::endl;
+	// 	babyNode->addPolygon(boundingPolygons.back());
+	// 	boundingPolygons.pop_back();
+	// }
+
+	// // Split the children
+	// for (unsigned i = 0; i < (children.size() / 2); ++i)
+	// {
+	// 	babyNode->addChild(children.back());
+	// 	children.pop_back();
+	// }
+
+	return babyNode;
+}
+
+Node *Node::insert(Rectangle newRectangle)
+{
+	// if (children.size() == 0)
+	// {
+	// 	// Phase 2: We are a leaf, so we need to check if we need to split and then if we do, call
+	// 	// adjust tree on our parent
+	// 	if (boundingPolygons.size() >= 4)
+	// 	{
+	// 		// Split node
+	// 		Node *newChild = splitNode();
+	// 		// Insert new Rectangle
+	// 		boundingPolygons.push_back(newRectangle);
+	// 		// Send the new child
+	// 		return newChild;
+	// 	}
+	// 	else
+	// 	{
+	// 		// Insert new Rectangle
+	// 		addPolygon(newRectangle);
+	// 	}
+
+	// 	return this;
 	// }
 	// else
 	// {
-	// 	// Choose a subtree based on smallest enlargement, breaking ties by area
-	// 	let mut chosen = 0;
-	// 	let mut chosenMetrics = self.boundingPolygons[chosen].computeExpansionArea(&newRectangle);
-	// 	for i in 0..self.children.len()
+	// 	// Phase 1: We are not a leaf so descend the tree to the proper leaf
+	// 	// Pick a new node based on least amount of expansion area
+	// 	unsigned chosen = 0;
+	// 	unsigned chosenMetric = boundingPolygons[chosen].computeExpansionArea(newRectangle);
+	// 	for (int i = 0; i < children.size(); ++i)
 	// 	{
-	// 		let competitorMetrics = self.boundingPolygons[i].computeExpansionArea(&newRectangle);
-	// 		if competitorMetrics.1 <= chosenMetrics.1 && competitorMetrics.0.area < chosenMetrics.0.area
+	// 		unsigned competitorMetric = boundingPolygons[i].computeExpansionArea(newRectangle);
+	// 		if (competitorMetric < chosenMetric)
 	// 		{
 	// 			chosen = i;
-	// 			chosenMetrics = competitorMetrics;
+	// 			chosenMetric = competitorMetric;
 	// 		}
 	// 	}
 
-	// 	// Descend into the chosen subtree
-	// 	self.children[chosen].insert(newRectangle);
+	// 	// Descend through the tree
+	// 	Node *newChildNode = children[chosen]->insert(newRectangle);
+
+	// 	// Update the bounding box for the chosen child
+	// 	boundingPolygons[chosen] = children[chosen]->computeBoundary();
+
+	// 	// If there really is a new child we need to absorb it, maybe split, and keep propogating
+	// 	if (newChildNode != children[chosen])
+	// 	{
+	// 		// There was a split, do we need to split now?
+	// 		if (boundingPolygons.size() >= 4)
+	// 		{
+	// 			// Split node
+	// 			Node *newNavNode = splitNode();
+	// 			// Insert new Node
+	// 			children.push_back(newChildNode);
+	// 			boundingPolygons.push_back(newChildNode->computeBoundary());
+	// 			// Send the new nav node that resulted from our split
+	// 			return newNavNode;
+	// 		}
+	// 		else
+	// 		{
+	// 			// Insert new Node
+	// 			children.push_back(newChildNode);
+	// 			boundingPolygons.push_back(newChildNode->computeBoundary());
+	// 		}
+	// 	}
+		
+	// 	// There wasn't a split so return ourselves
+	// 	return this;
 	// }
+
+	return this;
 }
-*/
 
 /*
 // Insert
@@ -203,3 +289,231 @@ pub fn insert(self, newRectangle: Rectangle)
 // nodes must be placed higher in the tree, so that leaves of their dependent subtrees will be on
 // the same level as leaves of the main tree.
 */
+
+
+void Node::print()
+{
+	std::cout << "Node " << id << " {" << std::endl;
+	for (int i = 0; i < boundingPolygons.size(); ++i)
+	{
+		boundingPolygons[i].print();
+	}
+	for (int i = 0; i < children.size(); ++i)
+	{
+		std::cout << "Child " << children[i]->id << std::endl;
+	}
+	std::cout << "}" << std::endl;
+}
+
+// void testSimpleSearch()
+// {
+// 	// NOTE: This test does not describe a tightest-fitting-boxes R-Tree but is a good simple test
+
+// 	// The node describing rectangles 1 and 2
+// 	Rectangle rect1 = Rectangle(2, 2, 4, 5);
+// 	Rectangle rect2 = Rectangle(10, 18, 12, 20);
+// 	Node *node1 = new Node(1);
+// 	node1->addPolygon(rect1);
+// 	node1->addPolygon(rect2);
+
+// 	// The node describing rectangle 3
+// 	Rectangle rect3 = Rectangle(17, 5, 18, 18);
+// 	Node *node2 = new Node(2);
+// 	node2->addPolygon(rect3);
+
+// 	// The linking (root) node describing node1 and node2
+// 	Rectangle rect4 = Rectangle(0, 0, 13, 21);
+// 	Rectangle rect5 = Rectangle(15, 4, 21, 21);
+// 	Node *root = new Node(3);
+// 	root->addPolygon(rect4);
+// 	root->addPolygon(rect5);
+// 	root->addChild(node1);
+// 	root->addChild(node2);
+
+// 	// The first query rectangle
+// 	Rectangle query1 = Rectangle(3, 3, 19, 19);
+// 	// Test that the first query gives us back all three leaves
+// 	std::vector<Rectangle> queryResult1 = root->searchRectangle(query1);
+// 	assert(queryResult1.size() == 3);
+
+// 	// The second query rectangle
+// 	Rectangle query2 = Rectangle(16, 4, 19, 21);
+// 	// Test that the second query gives us back only rectangle 3
+// 	std::vector<Rectangle> queryResult2 = root->searchRectangle(query2);
+// 	assert(queryResult2.size() == 1);
+
+// 	delete node1;
+// 	delete node2;
+// 	delete root;
+// }
+
+// void testSimpleInsert()
+// {
+// 	// NOTE: This test does not describe a tightest-fitting-boxes R-Tree but is a good simple test
+
+// 	// The node describing rectangles 1 and 2
+// 	Rectangle rect1 = Rectangle(2, 2, 4, 5);
+// 	Rectangle rect2 = Rectangle(10, 18, 12, 20);
+// 	Node *node1 = new Node(1);
+// 	node1->addPolygon(rect1);
+// 	node1->addPolygon(rect2);
+
+// 	// The node describing rectangle 3
+// 	Rectangle rect3 = Rectangle(17, 5, 18, 18);
+// 	Node *node2 = new Node(2);
+// 	node2->addPolygon(rect3);
+
+// 	// The linking (root) node describing node1 and node2
+// 	Rectangle rect4 = Rectangle(0, 0, 13, 21);
+// 	Rectangle rect5 = Rectangle(15, 4, 21, 21);
+// 	Node *root = new Node(3);
+// 	root->addPolygon(rect4);
+// 	root->addPolygon(rect5);
+// 	root->addChild(node1);
+// 	root->addChild(node2);
+
+// 	// Rectangles to be inserted, they all fall under rect4 and should all be inserted under node1
+// 	Rectangle insert1 = Rectangle(6, 3, 8, 4);
+// 	Rectangle insert2 = Rectangle(1, 13, 2, 14);
+// 	Rectangle insert3 = Rectangle(11, 16, 15, 18);
+// 	Rectangle insert4 = Rectangle(0, 19, 2, 21);
+
+// 	// Insert our rectangles
+// 	root->print();
+// 	root->children[0]->print();
+// 	root->children[1]->print();
+// 	std::cout << "==============================" << std::endl;
+// 	root->insert(insert1);
+// 	std::cout << "Insert 1" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	root->children[0]->print();
+// 	root->children[1]->print();
+// 	std::cout << "==============================" << std::endl;
+// 	root->insert(insert2);
+// 	std::cout << "Insert 2" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	root->children[0]->print();
+// 	root->children[1]->print();
+// 	std::cout << "==============================" << std::endl;
+// 	root->insert(insert3);
+// 	std::cout << "Insert 3" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	root->children[0]->print();
+// 	root->children[1]->print();
+// 	std::cout << "==============================" << std::endl;
+// 	root->insert(insert4);
+// 	std::cout << "Insert 4" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	root->children[0]->print();
+// 	root->children[1]->print();
+// 	root->children[2]->print();
+// 	/*
+// 	// Test that our rectangles were inserted into the expected node
+// 	assert!(root.children[0].boundingPolygons.len() == 5);
+// 	assert!(root.children[0].boundingPolygons[2].area == 2);
+// 	assert!(root.children[0].boundingPolygons[3].area == 1);
+// 	assert!(root.children[0].boundingPolygons[4].area == 8);
+// 	// Test that the previous rectangles are still there
+// 	assert!(root.children[0].boundingPolygons[0].area == 6);
+// 	assert!(root.children[0].boundingPolygons[1].area == 4);
+// 	*/
+// }
+
+// void expandRootTest()
+// {
+// 	// The node describing rectangles 1 and 2
+// 	Rectangle rect1 = Rectangle(20, 20, 21, 21);
+// 	Rectangle rect2 = Rectangle(0, 0, 1, 1);
+// 	Node *node1 = new Node(1);
+// 	node1->addPolygon(rect1);
+// 	node1->addPolygon(rect2);
+
+// 	// The node describing rectangle 3
+// 	Rectangle rect3 = Rectangle(17, 17, 18, 18);
+// 	Node *node2 = new Node(2);
+// 	node2->addPolygon(rect3);
+
+// 	// The linking (root) node describing node1 and node2
+// 	Rectangle rect4 = Rectangle(0, 0, 13, 21);
+// 	Rectangle rect5 = Rectangle(15, 4, 21, 21);
+// 	Node *root = new Node(3);
+// 	root->addPolygon(rect4);
+// 	root->addPolygon(rect5);
+// 	root->addChild(node1);
+// 	root->addChild(node2);
+
+// 	// Rectangles to be inserted, they all fall under rect4 and should all be inserted under node1
+// 	// Expand node 1 once
+// 	Rectangle insert1 = Rectangle(1, 1, 2, 2);
+// 	Rectangle insert2 = Rectangle(2, 2, 3, 3);
+// 	Rectangle insert3 = Rectangle(3, 3, 4, 4);
+// 	root->insert(insert1);
+// 	root->insert(insert2);
+// 	root->insert(insert3);
+
+// 	std::cout << "After Insert Group 1" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	for (int i = 0; i < root->children.size(); ++i)
+// 	{
+// 		root->children[i]->print();
+// 	}
+
+// 	// Expand node 2 once
+// 	Rectangle insert4 = Rectangle(15, 4, 16, 5);
+// 	Rectangle insert5 = Rectangle(16, 5, 17, 6);
+// 	Rectangle insert6 = Rectangle(17, 6, 18, 7);
+// 	Rectangle insert7 = Rectangle(18, 7, 19, 8);
+// 	root->insert(insert4);
+// 	root->insert(insert5);
+// 	root->insert(insert6);
+// 	root->insert(insert7);
+
+// 	std::cout << "After Insert Group 2" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	for (int i = 0; i < root->children.size(); ++i)
+// 	{
+// 		root->children[i]->print();
+// 	}
+
+// 	// Expand node 1 again, causing the root to split
+// 	Rectangle insert8 = Rectangle(5, 5, 6, 6);
+// 	Rectangle insert9 = Rectangle(7, 7, 8, 8);
+// 	Rectangle insert10 = Rectangle(9, 9, 10, 10);
+// 	Node *result8 = root->insert(insert8);
+
+// 	std::cout << "After Insert 8" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	for (int i = 0; i < root->children.size(); ++i)
+// 	{
+// 		root->children[i]->print();
+// 	}
+
+// 	Node *result9 = root->insert(insert9);
+// 	std::cout << "After Insert 9" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	for (int i = 0; i < root->children.size(); ++i)
+// 	{
+// 		root->children[i]->print();
+// 	}
+// 	std::cout << "----------------------" << std::endl;
+// 	result9->print();
+// 	for (int i = 0; i < result9->children.size(); ++i)
+// 	{
+// 		result9->children[i]->print();
+// 	}
+
+
+// 	Node *result10 = root->insert(insert10);
+// 	std::cout << "After Insert 10" << std::endl;
+// 	std::cout << "==============================" << std::endl;
+// 	root->print();
+// 	result10->print();
+// }

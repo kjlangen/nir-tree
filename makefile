@@ -1,6 +1,6 @@
 SXX = -std=c++11 	#Standard
 FLAGS = -g -Wall	#Flags
-OBJECTS = geometry.o btree.o rtree.o
+OBJECTS = geometry.o btree.o rtree.o randomSquares.o
 
 # Build btree
 btree.o:
@@ -14,9 +14,13 @@ geometry.o:
 rtree.o:
 	g++ ${SXX} -I src/include -c src/rtree/rtree.cpp
 
+# Build benchmarks
+randomSquares.o:
+	g++ ${SXX} -I src/include -c src/bench/randomSquares.cpp
+
 # Build all together
 all: ${OBJECTS}
-	g++ ${SXX} src/main.cpp ${OBJECTS} -o bin/main -I src/include
+	g++ ${SXX} src/main.cpp ${OBJECTS} -o bin/main -I src/include -lspatialindex
 
 # Clean all together
 clean:
