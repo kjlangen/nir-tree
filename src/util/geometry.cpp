@@ -12,6 +12,16 @@ Point::Point(double x, double y)
 	this->y = y;
 }
 
+bool Point::operator==(Point p)
+{
+	return this->x == p.x && this->y == p.y;
+}
+
+void Point::print()
+{
+	std::cout << "(" << x << ", " << y << ")" << std::endl;
+}
+
 Rectangle::Rectangle(double x, double y, double radiusX, double radiusY)
 {
 	this->centre = Point(x, y);
@@ -33,10 +43,31 @@ double Rectangle::computeExpansionArea(Rectangle requestedRectangle)
 	double newArea = (maxX - minX) * (maxY - minY);
 	double existingArea = (radiusX + radiusX) * (radiusY + radiusY);
 
-	// println!("[computeExpansionArea] Data is self = {:?} and requested = {:?}", self, requestedRectangle);
-	// println!("[computeExpansionArea] Area information is current = {} and expanded = {}", existingArea, newArea);
-
 	return newArea - existingArea;
+}
+
+double Rectangle::computeExpansionArea(Point givenPoint)
+{
+	// Distance from centre
+	Point centroidDistance = Point(fabs(centre.x - givenPoint.x), fabs(centre.y - givenPoint.y));
+
+	double newRadiusX = std::max(centroidDistance.x, radiusX);
+	double newRadiusY = std::max(centroidDistance.y, radiusY);
+
+	return (newRadiusX * newRadiusY) - (radiusX * radiusY);
+}
+
+// TODO: This is a naive expand and we should instead shift the centre not just increase radius
+void Rectangle::expand(Point givenPoint)
+{
+	// Distance from centre
+	Point centroidDistance = Point(fabs(centre.x - givenPoint.x), fabs(centre.y - givenPoint.y));
+
+	double newRadiusX = std::max(centroidDistance.x, radiusX);
+	double newRadiusY = std::max(centroidDistance.y, radiusY);
+
+	radiusX = newRadiusX;
+	radiusY = newRadiusY;
 }
 
 bool Rectangle::intersectsRectangle(Rectangle requestedRectangle)
@@ -53,8 +84,8 @@ bool Rectangle::intersectsRectangle(Rectangle requestedRectangle)
 
 bool Rectangle::containsPoint(Point requestedPoint)
 {
-	bool intervalX = abs(centre.x - requestedPoint.x) <= radiusX;
-	bool intervalY = abs(centre.y - requestedPoint.y) <= radiusY;
+	bool intervalX = fabs(centre.x - requestedPoint.x) <= radiusX;
+	bool intervalY = fabs(centre.y - requestedPoint.y) <= radiusY;
 
 	return intervalX && intervalY;
 }
@@ -65,8 +96,12 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 	// other rectangle
 
 	std::vector<Rectangle> v;
+	Point centroidDistance = Point(fabs(centre.x - clippingRectangle.centre.x), fabs(centre.y - clippingRectangle.centre.y));
+	std::cout << "centroidDistance = (" << centroidDistance.x << ", " << centroidDistance.y << ")" << std::endl;
+	bool xMeasure = centroidDistance.x + clippingRectangle.radiusX < radiusX;
+	bool yMeasure = centroidDistance.y + clippingRectangle.radiusY < radiusY;
 
-	if (true/* 1 corner */)
+	if (!(xMeasure || yMeasure))
 	{
 		// ***************************************************************************************
 		// This is all in the case of 1 corner contained
@@ -77,8 +112,9 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// and exactly on one side. Then the distance between the centres is the same as the sum of the
 		// two radii, and as the centres get closer the radii do not shrink.
 		
-		double overlapWidth = clippingRectangle.radiusX + radiusX - abs(clippingRectangle.centre.x - centre.x);
-		double overlapHeight = clippingRectangle.radiusY + radiusY - abs(clippingRectangle.centre.y - centre.y);
+		double overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
+		double overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
+		std::cout << "overlapWidth = " << overlapWidth << " overlapHeight = " << overlapHeight << std::endl;
 
 		// Now depending on the orientation we have to add/subtract these quantities from our centre
 		// in a particular order to get the centres of the two new rectangles.
@@ -119,10 +155,10 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		v.push_back(smallBoi);
 		v.push_back(largeBoi);
 	}
-	else if (true/* 2 corners */)
+	else if (xMeasure && !yMeasure)
 	{
 		// ***************************************************************************************
-		// This is all in the case of 2 corners contained
+		// This is all in the case of 2 corners contained, intersection from above/below
 		// ***************************************************************************************
 
 		// There are three new rectangles that must be built here.
@@ -134,24 +170,76 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// this always has to be the case because we can't just compress ourselves, we are a
 		// paricular height for a reason.
 
-		double centroidDistanceX = abs(clippingRectangle.centre.x - centre.x);
-		double overlapHeight = clippingRectangle.radiusY + radiusY - abs(clippingRectangle.centre.y - centre.y);
+		double overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
 
 		double centreRadiusX = clippingRectangle.radiusX;
-		double rightRadiusX = (radiusX - centreRadiusX - centroidDistanceX) / 2;
-		double leftRadiusX = radiusX - rightRadiusX - centreRadiusX;
+		double rightRadiusX = fabs((centre.x + radiusX) - (clippingRectangle.centre.x + clippingRectangle.radiusX)) / 2;
+		double leftRadiusX = fabs((centre.x - radiusX) - (clippingRectangle.centre.x - clippingRectangle.radiusX)) / 2;
 
 		double leftRadiusY = radiusY;
 		double centreRadiusY = radiusY - overlapHeight / 2;
 		double rightRadiusY = radiusY;
 
-		Rectangle centreRect = Rectangle(centre.x + centroidDistanceX, centre.y - overlapHeight / 2, centreRadiusX, centreRadiusY);
-		Rectangle rightRect = Rectangle(centreRect.centre.x + centreRadiusX + leftRadiusX, centre.y, rightRadiusX, rightRadiusY);
-		Rectangle leftRect = Rectangle(centreRect.centre.x - centreRadiusX - rightRadiusX, centre.y, leftRadiusX, leftRadiusY);
+		double centreYCoord;
+		if (centre.y < clippingRectangle.centre.y)
+		{
+			centreYCoord = clippingRectangle.centre.y - clippingRectangle.radiusY - centreRadiusY;
+		}
+		else
+		{
+			centreYCoord = clippingRectangle.centre.y + clippingRectangle.radiusY + centreRadiusY;
+		}
 
+		Rectangle centreRect = Rectangle(clippingRectangle.centre.x, centreYCoord, centreRadiusX, centreRadiusY);
+		Rectangle rightRect = Rectangle(centreRect.centre.x + centreRadiusX + rightRadiusX, centre.y, rightRadiusX, rightRadiusY);
+		Rectangle leftRect = Rectangle(centreRect.centre.x - centreRadiusX - leftRadiusX, centre.y, leftRadiusX, leftRadiusY);
+
+		v.push_back(leftRect);
 		v.push_back(centreRect);
 		v.push_back(rightRect);
-		v.push_back(leftRect);
+	}
+	else if (!xMeasure && yMeasure)
+	{
+		// ***************************************************************************************
+		// This is all in the case of 2 corners contained, intersection from sides
+		// ***************************************************************************************
+
+		// There are three new rectangles that must be built here.
+		// In this case the overlap will be the full extent of one of the rectangles in one dimension
+		// and then the other dimension will exhibit overlap in the same way as the previous 1
+		// corner case.
+
+		// Note in this case we assume the clipping rectangle is smaller than our rectangle. Maybe
+		// this always has to be the case because we can't just compress ourselves, we are a
+		// paricular height for a reason.
+
+		double overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
+
+		double upperRadiusY = fabs((centre.y + radiusY) - (clippingRectangle.centre.y + clippingRectangle.radiusY)) / 2;
+		double centreRadiusY = clippingRectangle.radiusY;
+		double lowerRadiusY = fabs((centre.y - radiusY) - (clippingRectangle.centre.y - clippingRectangle.radiusY)) / 2;
+
+		double upperRadiusX = radiusX;
+		double centreRadiusX = radiusX - overlapWidth / 2;
+		double lowerRadiusX = radiusX;
+
+		double centreXCoord;
+		if (centre.x < clippingRectangle.centre.x)
+		{
+			centreXCoord = centre.x - overlapWidth / 2;
+		}
+		else
+		{
+			centreXCoord = centre.x + overlapWidth / 2;
+		}
+
+		Rectangle upperRect = Rectangle(centre.x, clippingRectangle.centre.y + centreRadiusY + upperRadiusY, upperRadiusX, upperRadiusY);
+		Rectangle centreRect = Rectangle(centreXCoord, clippingRectangle.centre.y, centreRadiusX, centreRadiusY);
+		Rectangle lowerRect = Rectangle(centre.x, clippingRectangle.centre.y - centreRadiusY - lowerRadiusY, lowerRadiusX, lowerRadiusY);
+
+		v.push_back(upperRect);
+		v.push_back(centreRect);
+		v.push_back(lowerRect);
 	}
 	
 	return v;
@@ -159,5 +247,5 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 
 void Rectangle::print()
 {
-	std::cout << "Rectangle {(" << centre.x << "," << centre.y << "), " << radiusX << "," << radiusY << "}" << std::endl;
+	std::cout << "Rectangle {(" << centre.x << "," << centre.y << "), " << radiusX << ", " << radiusY << "}" << std::endl;
 }

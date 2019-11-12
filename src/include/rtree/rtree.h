@@ -1,43 +1,25 @@
 #ifndef __RTREE__
 #define __RTREE__
-#include "util/geometry.h"
 #include <cassert>
 #include <vector>
 #include <stack>
 #include <iostream>
+#include <utility>
+#include <util/geometry.h>
+#include <rtree/node.h>
 
-class Node
-{
-	public:
-	unsigned id;
-	Node *parent;
-	std::vector<Rectangle> boundingPolygons;
-	std::vector<Node *> children;
-
-	Node();
-	Node(unsigned id);
-	void setParent(Node *parent);
-	void addPolygon(Rectangle newRectangle);
-	void addChild(Node *newChild);
-	Rectangle computeBoundary();
-	std::vector<Rectangle> searchRectangle(Rectangle requestedRectangle);
-	bool searchPoint(Point requestedPoint);
-	Node *splitNode();
-	Node *insert(Rectangle newRectangle);
-	void print();
-};
-
+// For now we will work with an RTree that only stores points
 class RTree
 {
-	Node *root;
 	public:
-	RTree();
-	RTree(Node *root);
-	std::vector<Rectangle> searchRectangle(Rectangle requestedRectangle);
-	bool searchPoint(Point requestedPoint);
-	void insert(Rectangle newRectangle);
-};
+		Node *root;
 
+		RTree();
+		RTree(Node *root);
+		std::vector<Point> search(Rectangle requestedRectangle);
+		void insert(Point givenPoint);
+		void remove(Point givenPoint);
+};
 
 void testSimpleSearch();
 void testSimpleInsert();
