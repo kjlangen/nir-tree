@@ -1,6 +1,7 @@
 #include <iostream>
 #include <spatialindex/SpatialIndex.h>
 #include <bench/randomSquares.h>
+#include <rtree/node.h>
 #include <util/geometry.h>
 #include <cassert>
 
@@ -107,135 +108,39 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
-void testGeometryStuff()
-{
-	// Test set one
-	std::cout << "Test Set 1" << std::endl;
-	Rectangle r1 = Rectangle(3.0, 3.0, 2.0, 2.0);
-	Rectangle r2 = Rectangle(6.0, 6.0, 2.0, 2.0);
-
-	r1.print();
-	r2.print();
-
-	std::vector<Rectangle> v = r1.splitRectangle(r2);
-
-	assert(v.size() == 2);
-	assert(v[0].radiusX == 0.5);
-	assert(v[0].radiusY == 1.5);
-	assert(v[1].radiusX == 1.5);
-	assert(v[1].radiusY == 2.0);
-	v[0].print();
-	v[1].print();
-
-	// Test set two
-	std::cout << "Test Set 2" << std::endl;
-	r1 = Rectangle(2.0, 2.0, 2.0, 2.0);
-	r2 = Rectangle(3.5, -0.5, 2.5, 1.5);
-
-	r1.print();
-	r2.print();
-
-	v = r1.splitRectangle(r2);
-
-	assert(v.size() == 2);
-	assert(v[0].radiusX == 1.5);
-	assert(v[0].radiusY == 1.5);
-	assert(v[1].radiusX == 0.5);
-	assert(v[1].radiusY == 2.0);
-	v[0].print();
-	v[1].print();
-
-	// Test set three
-	std::cout << "Test Set 3" << std::endl;
-	r1 = Rectangle(-3.5, -2.5, 3.5, 2.5);
-	r2 = Rectangle(-6, -5.5, 2, 2.5);
-
-	r1.print();
-	r2.print();
-
-	v = r1.splitRectangle(r2);
-
-	assert(v.size() == 2);
-	assert(v[0].radiusX == 1.5);
-	assert(v[0].radiusY == 1.5);
-	assert(v[1].radiusX == 2.0);
-	assert(v[1].radiusY == 2.5);
-	v[0].print();
-	v[1].print();
-
-	// Test set four
-	std::cout << "Test Set 4" << std::endl;
-	r1 = Rectangle(2.0, 4.0, 2.0, 4.0);
-	r2 = Rectangle(5.0, 5.0, 2.0, 2.0);
-
-	r1.print();
-	r2.print();
-
-	v = r1.splitRectangle(r2);
-
-	assert(v.size() == 3);
-	assert(v[0].radiusX == 2.0);
-	assert(v[0].radiusY == 0.5);
-	assert(v[1].radiusX == 1.5);
-	assert(v[1].radiusY == 2.0);
-	assert(v[2].radiusX == 2.0);
-	assert(v[2].radiusY == 1.5);
-	v[0].print();
-	v[1].print();
-	v[2].print();
-
-	// Test set five
-	std::cout << "Test Set 5" << std::endl;
-	r1 = Rectangle(2.0, 4.0, 2.0, 4.0);
-	r2 = Rectangle(-1.0, 5.0, 2.0, 2.0);
-
-	r1.print();
-	r2.print();
-
-	v = r1.splitRectangle(r2);
-
-	assert(v.size() == 3);
-	assert(v[0].radiusX == 2.0);
-	assert(v[0].radiusY == 0.5);
-	assert(v[1].radiusX == 1.5);
-	assert(v[1].radiusY == 2.0);
-	assert(v[2].radiusX == 2.0);
-	assert(v[2].radiusY == 1.5);
-	v[0].print();
-	v[1].print();
-	v[2].print();
-
-	// Test set six
-	std::cout << "Test Set 6" << std::endl;
-	r1 = Rectangle(4.0, 2.0, 4.0, 2.0);
-	r2 = Rectangle(3.0, 4.0, 2.0, 2.0);
-
-	r1.print();
-	r2.print();
-
-	v = r1.splitRectangle(r2);
-
-	assert(v.size() == 3);
-	assert(v[0].radiusX == 0.5);
-	assert(v[0].radiusY == 2.0);
-	assert(v[1].radiusX == 2.0);
-	assert(v[1].radiusY == 1.0);
-	assert(v[2].radiusX == 1.5);
-	assert(v[2].radiusY == 2.0);
-	v[0].print();
-	v[1].print();
-	v[2].print();
-}
-
 int main(int argc, char const *argv[])
 {
 	// Argument parsing and switching goes here
 
 	// Fiddle around with the RTree as provided by spatial index
-	testLibSpatialIndex();
+	// testLibSpatialIndex();
 
-	// Fiddle around with the geometry objects as provided by util
-	testGeometryStuff();
+	// Unit test geometry functions
+	testPointEquality();
+	testRectangleArea();
+	testRectangleComputeExpansionArea();
+	testRectangleExpansion();
+	testRectangleIntersection();
+	testRectanglePointContainment();
+	testRectangleSplits();
+
+	std::cout << "Geometry tested." << std::endl;
+
+	// Unit test RTree
+	testBoundingBox();
+	testUpdateBoundingBox();
+	testRemoveChild();
+	testRemoveData();
+	testChooseLeaf();
+	// testFindLeaf();
+	// testSplitNode();
+	// testAdjustTree();
+	// testCondenseTree();
+	// testSearch();
+	// testInsert();
+	// testRemove();
+
+	std::cout << "RTree tested." << std::endl;
 
 	// Now we assume the randomSquares benchmark is requested
 	// Benchmark::benchmarkRandomSquares();

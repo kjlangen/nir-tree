@@ -14,12 +14,17 @@ Point::Point(double x, double y)
 
 bool Point::operator==(Point p)
 {
-	return this->x == p.x && this->y == p.y;
+	return x == p.x && y == p.y;
+}
+
+bool Point::operator!=(Point p)
+{
+	return x != p.x || y != p.y;
 }
 
 void Point::print()
 {
-	std::cout << "(" << x << ", " << y << ")" << std::endl;
+	std::cout << "(" << x << "," << y << ")" << std::endl;
 }
 
 Rectangle::Rectangle(double x, double y, double radiusX, double radiusY)
@@ -29,21 +34,9 @@ Rectangle::Rectangle(double x, double y, double radiusX, double radiusY)
 	this->radiusY = radiusY;
 }
 
-// TODO: Optimize
-double Rectangle::computeExpansionArea(Rectangle requestedRectangle)
+double Rectangle::area()
 {
-	// Min/Max along X
-	double minX = std::min(centre.x - radiusX, requestedRectangle.centre.x - requestedRectangle.radiusX);
-	double maxX = std::max(centre.x + radiusX, requestedRectangle.centre.x + requestedRectangle.radiusX);
-
-	// Min/Max along Y
-	double minY = std::min(centre.y - radiusY, requestedRectangle.centre.y - requestedRectangle.radiusY);
-	double maxY = std::max(centre.y + radiusY, requestedRectangle.centre.y + requestedRectangle.radiusY);
-
-	double newArea = (maxX - minX) * (maxY - minY);
-	double existingArea = (radiusX + radiusX) * (radiusY + radiusY);
-
-	return newArea - existingArea;
+	return (radiusX + radiusX) * (radiusY + radiusY);
 }
 
 double Rectangle::computeExpansionArea(Point givenPoint)
@@ -51,33 +44,94 @@ double Rectangle::computeExpansionArea(Point givenPoint)
 	// Distance from centre
 	Point centroidDistance = Point(fabs(centre.x - givenPoint.x), fabs(centre.y - givenPoint.y));
 
-	double newRadiusX = std::max(centroidDistance.x, radiusX);
-	double newRadiusY = std::max(centroidDistance.y, radiusY);
+	// The extra area we will need to include
+	double xExtra = centroidDistance.x > radiusX ? (centroidDistance.x - radiusX) : 0;
+	double yExtra = centroidDistance.y > radiusY ? (centroidDistance.y - radiusY) : 0;
 
-	return (newRadiusX * newRadiusY) - (radiusX * radiusY);
+	// Use addition here b/c it's faster
+	double diameterX = radiusX + radiusX;
+	double diameterY = radiusY + radiusY;
+	return (diameterX + xExtra) * (diameterY + yExtra) - (diameterX) * (diameterY);
 }
 
-// TODO: This is a naive expand and we should instead shift the centre not just increase radius
+double Rectangle::computeExpansionArea(Rectangle requestedRectangle)
+{
+	// Distance from centres
+	Point centroidDistance = Point(fabs(centre.x - requestedRectangle.centre.x), fabs(centre.y - requestedRectangle.centre.y));
+
+	double diameterX = centroidDistance.x + requestedRectangle.radiusX > radiusX ? centroidDistance.x + radiusX + requestedRectangle.radiusX : radiusX + radiusX;
+	double diameterY = centroidDistance.y + requestedRectangle.radiusY > radiusY ? centroidDistance.y + radiusY + requestedRectangle.radiusY : radiusY + radiusY;
+
+	// Use addition here b/c it's faster than multiplying by 2
+	return (diameterX * diameterY) - ((radiusX + radiusX) * (radiusY + radiusY));
+}
+
+// TODO: Optimize
 void Rectangle::expand(Point givenPoint)
 {
 	// Distance from centre
 	Point centroidDistance = Point(fabs(centre.x - givenPoint.x), fabs(centre.y - givenPoint.y));
 
-	double newRadiusX = std::max(centroidDistance.x, radiusX);
-	double newRadiusY = std::max(centroidDistance.y, radiusY);
+	// Step the centre over half the distance between the box's edge and the point
+	// Then increase the radius by half the distance between the box's edge and the point
+	if (centroidDistance.x > radiusX)
+	{
+		double halfDistBoxEdgeToPoint = (centroidDistance.x - radiusX) / 2;
+		radiusX += halfDistBoxEdgeToPoint;
+		halfDistBoxEdgeToPoint = givenPoint.x > centre.x ? halfDistBoxEdgeToPoint : -halfDistBoxEdgeToPoint;
+		centre.x += halfDistBoxEdgeToPoint;
+	}
 
-	radiusX = newRadiusX;
-	radiusY = newRadiusY;
+	if (centroidDistance.y > radiusY)
+	{
+		double halfDistBoxEdgeToPoint = (centroidDistance.y - radiusY) / 2;
+		radiusY += halfDistBoxEdgeToPoint;
+		halfDistBoxEdgeToPoint = givenPoint.y > centre.y ? halfDistBoxEdgeToPoint : -halfDistBoxEdgeToPoint;
+		centre.y += halfDistBoxEdgeToPoint;
+	}
+}
+
+// TODO: Optimize computing the centre x & y coords to one computation
+void Rectangle::expand(Rectangle givenRectangle)
+{
+	Point centroidDistance = Point(fabs(centre.x - givenRectangle.centre.x), fabs(centre.y - givenRectangle.centre.y));
+
+	// Adjust centre's x coord and radius
+	if (centroidDistance.x + givenRectangle.radiusX > radiusX)
+	{
+		if (givenRectangle.centre.x < centre.x)
+		{
+			centre.x = (centre.x + radiusX + givenRectangle.centre.x - givenRectangle.radiusX) / 2;
+		}
+		else
+		{
+			centre.x = (centre.x - radiusX + givenRectangle.centre.x + givenRectangle.radiusX) / 2;
+		}
+
+		radiusX = (centroidDistance.x + radiusX + givenRectangle.radiusX) / 2;
+	}
+
+	// Adjust centre's y coord and radius
+	if (centroidDistance.y + givenRectangle.radiusY > radiusY)
+	{
+		if (givenRectangle.centre.y < centre.y)
+		{
+			centre.y = (centre.y + radiusY + givenRectangle.centre.y - givenRectangle.radiusY) / 2;
+		}
+		else
+		{
+			centre.y = (centre.y - radiusY + givenRectangle.centre.y + givenRectangle.radiusY) / 2;
+		}
+
+		radiusY = (centroidDistance.y + radiusY + givenRectangle.radiusY) / 2;
+	}
 }
 
 bool Rectangle::intersectsRectangle(Rectangle requestedRectangle)
 {
 	// Compute the range intersections
-	bool intervalX = abs(centre.x - requestedRectangle.centre.x) < radiusX + requestedRectangle.radiusX;
-	bool intervalY = abs(centre.y - requestedRectangle.centre.y) < radiusY + requestedRectangle.radiusY;
-
-	// println!("[intersectsRectangle] Data is self = {:?} and requested = {:?}", self, requestedRectangle);
-	// println!("[intersectsRectangle] Containment information is ({}, {})", intervalX, intervalY);
+	bool intervalX = fabs(centre.x - requestedRectangle.centre.x) < radiusX + requestedRectangle.radiusX;
+	bool intervalY = fabs(centre.y - requestedRectangle.centre.y) < radiusY + requestedRectangle.radiusY;
 
 	return intervalX && intervalY;
 }
@@ -97,7 +151,6 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 
 	std::vector<Rectangle> v;
 	Point centroidDistance = Point(fabs(centre.x - clippingRectangle.centre.x), fabs(centre.y - clippingRectangle.centre.y));
-	std::cout << "centroidDistance = (" << centroidDistance.x << ", " << centroidDistance.y << ")" << std::endl;
 	bool xMeasure = centroidDistance.x + clippingRectangle.radiusX < radiusX;
 	bool yMeasure = centroidDistance.y + clippingRectangle.radiusY < radiusY;
 
@@ -114,7 +167,6 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		
 		double overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
 		double overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
-		std::cout << "overlapWidth = " << overlapWidth << " overlapHeight = " << overlapHeight << std::endl;
 
 		// Now depending on the orientation we have to add/subtract these quantities from our centre
 		// in a particular order to get the centres of the two new rectangles.
@@ -243,6 +295,226 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 	}
 	
 	return v;
+}
+
+bool Rectangle::operator==(Rectangle r)
+{
+	return centre == r.centre && radiusX == r.radiusX && radiusY == r.radiusY;
+}
+
+bool Rectangle::operator!=(Rectangle r)
+{
+	return centre != r.centre || radiusX != r.radiusX || radiusY != r.radiusY;
+}
+
+void testPointEquality()
+{
+	// Test set one
+	Point p1 = Point(0.0, 0.0);
+	Point p2 = Point(0.0, 0.0);
+	assert(p1 == p2);
+
+	// Test set two
+	Point p3 = Point(1.0, 1.0);
+	Point p4 = Point(1.0, 1.0);
+	assert(p3 == p4);
+
+	// Test set three
+	Point p5 = Point(-1.0, -1.0);
+	Point p6 = Point(-1.0, -1.0);
+	assert(p5 == p6);
+
+	// Test set four
+	Point p7 = Point(2.0, 1.0);
+	Point p8 = Point(-2.0, -1.0);
+	assert(p7 != p8);
+
+	// Test set five
+	Point p9 = Point(2.0, 1.0);
+	Point p10 = Point(1.0, 2.0);
+	assert(p9 != p10);
+}
+
+void testRectangleArea()
+{
+	// Test set one
+	Rectangle r1 = Rectangle(0.0, 0.0, 0.0, 0.0);
+	assert(r1.area() == 0.0);
+
+	// Test set two
+	Rectangle r2 = Rectangle(1.0, 1.0, 0.0, 0.0);
+	assert(r2.area() == 0.0);
+
+	// Test set three
+	Rectangle r3 = Rectangle(-5.0, -3.0, 13.0, 11.0);
+	assert(r3.area() == 572.0);
+
+	// Test set four
+	Rectangle r4 = Rectangle(-5.0, -3.0, 13.3, 11.2);
+	assert(r4.area() == 595.84);
+}
+
+void testRectangleComputeExpansionArea()
+{
+	// Test computing expansion area for a point
+	Rectangle r1 = Rectangle(2.0, 8.0, 4.0, 2.0);
+	Point p1 = Point(9.0, 5.0);
+	assert(r1.computeExpansionArea(p1) == 23.0);
+
+	// Test computing expansion area for a rectangle
+	Rectangle r2 = Rectangle(4.0, -2.5, 3.0, 1.5);
+	Rectangle r3 = Rectangle(5.0, 3.0, 1.0, 1.0);
+	assert(r2.computeExpansionArea(r3) == 30.0);
+
+	// Test computing expansion area for a rectangle partially inside another rectangle
+	Rectangle r4 = Rectangle(-9.0, 8.0, 1.0, 4.0);
+	Rectangle r5 = Rectangle(-8.0, 4.0, 1.0, 1.0);
+	assert(r4.computeExpansionArea(r5) == 11.0);
+
+	// Test computing expansion area for a rectangle wholly inside another rectangle
+	Rectangle r6 = Rectangle(-4.0, -3.0, 3.0, 5.0);
+	Rectangle r7 = Rectangle(-2.5, -5.0, 0.5, 2.0);
+	assert(r6.computeExpansionArea(r7) == 0.0);
+}
+
+void testRectangleExpansion()
+{
+	// Test computing expansion for a point
+	Rectangle r1 = Rectangle(2.0, 8.0, 4.0, 2.0);
+	Point p1 = Point(9.0, 5.0);
+	r1.expand(p1);
+	assert(r1.radiusX == 5.5);
+	assert(r1.radiusY == 2.5);
+	assert(r1.centre == Point(3.5, 7.5));
+
+	// Test computing expansion for a rectangle
+	Rectangle r2 = Rectangle(4.0, -2.5, 3.0, 1.5);
+	Rectangle r3 = Rectangle(5.0, 3.0, 1.0, 1.0);
+	r2.expand(r3);
+	assert(r2.radiusX == 3.0);
+	assert(r2.radiusY == 4.0);
+	assert(r2.centre == Point(4.0, 0.0));
+
+	// Test computing expansion area for a rectangle partially inside another rectangle
+	Rectangle r4 = Rectangle(-9.0, 8.0, 1.0, 4.0);
+	Rectangle r5 = Rectangle(-8.0, 4.0, 1.0, 1.0);
+	r4.expand(r5);
+	assert(r4.radiusX == 1.5);
+	assert(r4.radiusY == 4.5);
+	assert(r4.centre == Point(-8.5, 7.5));
+
+	// Test computing expansion area for a rectangle wholly inside another rectangle
+	Rectangle r6 = Rectangle(-4.0, -3.0, 3.0, 5.0);
+	Rectangle r7 = Rectangle(-2.5, -5.0, 0.5, 2.0);
+	r6.expand(r7);
+	assert(r6.radiusX == 3.0);
+	assert(r6.radiusY == 5.0);
+	assert(r6.centre == Point(-4.0, -3.0));
+}
+
+void testRectangleIntersection()
+{
+	// Test corner on corner intersection
+	Rectangle r1 = Rectangle(43.2, 42.0, 5.6, 5.9);
+	Rectangle r2 = Rectangle(59.4, 48.2, 13.4, 13.4);
+	assert(r1.intersectsRectangle(r2));
+
+	// Test side on side intersection
+	Rectangle r3 = Rectangle(-4.2, 1.7, 15.0, 2.0);
+	Rectangle r4 = Rectangle(-4.2, 0.0, 5.0, 2.0);
+	assert(r3.intersectsRectangle(r4));
+}
+
+void testRectanglePointContainment()
+{
+	// Test set one
+	Rectangle r1 = Rectangle(0.0, 0.0, 0.0, 0.0);
+	Point p1 = Point(0.0, 0.0);
+	assert(r1.containsPoint(p1));
+
+	// Test set two
+	Rectangle r2 = Rectangle(1.0, 1.0, 2.0, 2.0);
+	Point p2 = Point(-1.0, -1.0);
+	assert(r2.containsPoint(p2));
+
+	// Test set three
+	Rectangle r3 = Rectangle(1.0, 1.0, 2.0, 2.0);
+	Point p3 = Point(217.3, 527.7);
+	assert(!r3.containsPoint(p3));
+
+	// Test set four
+	Rectangle r4 = Rectangle(1.0, 1.0, 2.0, 2.0);
+	Point p4 = Point(3.0, 1.0);
+	assert(r4.containsPoint(p4));
+}
+
+void testRectangleSplits()
+{
+	// Test set one
+	Rectangle r1 = Rectangle(3.0, 3.0, 2.0, 2.0);
+	Rectangle r2 = Rectangle(6.0, 6.0, 2.0, 2.0);
+	std::vector<Rectangle> v = r1.splitRectangle(r2);
+	assert(v.size() == 2);
+	assert(v[0].radiusX == 0.5);
+	assert(v[0].radiusY == 1.5);
+	assert(v[1].radiusX == 1.5);
+	assert(v[1].radiusY == 2.0);
+
+	// Test set two
+	r1 = Rectangle(2.0, 2.0, 2.0, 2.0);
+	r2 = Rectangle(3.5, -0.5, 2.5, 1.5);
+	v = r1.splitRectangle(r2);
+	assert(v.size() == 2);
+	assert(v[0].radiusX == 1.5);
+	assert(v[0].radiusY == 1.5);
+	assert(v[1].radiusX == 0.5);
+	assert(v[1].radiusY == 2.0);
+
+	// Test set three
+	r1 = Rectangle(-3.5, -2.5, 3.5, 2.5);
+	r2 = Rectangle(-6, -5.5, 2, 2.5);
+	v = r1.splitRectangle(r2);
+	assert(v.size() == 2);
+	assert(v[0].radiusX == 1.5);
+	assert(v[0].radiusY == 1.5);
+	assert(v[1].radiusX == 2.0);
+	assert(v[1].radiusY == 2.5);
+
+	// Test set four
+	r1 = Rectangle(2.0, 4.0, 2.0, 4.0);
+	r2 = Rectangle(5.0, 5.0, 2.0, 2.0);
+	v = r1.splitRectangle(r2);
+	assert(v.size() == 3);
+	assert(v[0].radiusX == 2.0);
+	assert(v[0].radiusY == 0.5);
+	assert(v[1].radiusX == 1.5);
+	assert(v[1].radiusY == 2.0);
+	assert(v[2].radiusX == 2.0);
+	assert(v[2].radiusY == 1.5);
+
+	// Test set five
+	r1 = Rectangle(2.0, 4.0, 2.0, 4.0);
+	r2 = Rectangle(-1.0, 5.0, 2.0, 2.0);
+	v = r1.splitRectangle(r2);
+	assert(v.size() == 3);
+	assert(v[0].radiusX == 2.0);
+	assert(v[0].radiusY == 0.5);
+	assert(v[1].radiusX == 1.5);
+	assert(v[1].radiusY == 2.0);
+	assert(v[2].radiusX == 2.0);
+	assert(v[2].radiusY == 1.5);
+
+	// Test set six
+	r1 = Rectangle(4.0, 2.0, 4.0, 2.0);
+	r2 = Rectangle(3.0, 4.0, 2.0, 2.0);
+	v = r1.splitRectangle(r2);
+	assert(v.size() == 3);
+	assert(v[0].radiusX == 0.5);
+	assert(v[0].radiusY == 2.0);
+	assert(v[1].radiusX == 2.0);
+	assert(v[1].radiusY == 1.0);
+	assert(v[2].radiusX == 1.5);
+	assert(v[2].radiusY == 2.0);
 }
 
 void Rectangle::print()

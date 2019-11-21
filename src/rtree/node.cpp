@@ -2,6 +2,8 @@
 
 Node::Node()
 {
+	id = 0;
+	parent = nullptr;
 }
 
 Node::Node(unsigned id, Node *p)
@@ -14,26 +16,13 @@ Rectangle Node::boundingBox()
 {
 	assert(boundingBoxes.size() > 0);
 
-	double maxX = 0;
-	double minX = 0;
-	double maxY = 0;
-	double minY = 0;
-
-	for (int i = 0; i < boundingBoxes.size(); ++i)
+	Rectangle boundingBox = boundingBoxes[0];
+	for (int i = 1; i < boundingBoxes.size(); ++i)
 	{
-		maxX = boundingBoxes[maxX].centre.x < boundingBoxes[i].centre.x ? i : maxX;
-		minX = boundingBoxes[minX].centre.x > boundingBoxes[i].centre.x ? i : minX;
-
-		maxY = boundingBoxes[maxY].centre.y < boundingBoxes[i].centre.y ? i : maxY;
-		minY = boundingBoxes[minY].centre.y > boundingBoxes[i].centre.y ? i : minY;
+		boundingBox.expand(boundingBoxes[i]);
 	}
 
-	double radiusX = boundingBoxes[maxX].radiusX > boundingBoxes[minX].radiusX ? boundingBoxes[maxX].radiusX : boundingBoxes[minX].radiusX;
-	radiusX += boundingBoxes[maxX].centre.x - boundingBoxes[minX].centre.x;
-	double radiusY = boundingBoxes[maxY].radiusY > boundingBoxes[minY].radiusY ? boundingBoxes[maxY].radiusY : boundingBoxes[minY].radiusY;
-	radiusY += boundingBoxes[maxY].centre.y - boundingBoxes[minY].centre.y;
-
-	return Rectangle((boundingBoxes[maxX].centre.x + boundingBoxes[minX].centre.x) / 2, (boundingBoxes[maxY].centre.y + boundingBoxes[minY].centre.y) / 2, radiusX, radiusY);
+	return boundingBox;
 }
 
 // TODO: Optimize maybe
@@ -112,198 +101,41 @@ std::vector<Point> Node::search(Rectangle requestedRectangle)
 	}
 }
 
-// 	return matchingPoints;
-// }
-
-// Node *Node::insert(Point givenPoint)
-// {
-// 	// Leaf case and general case
-// 	if (children.size() == 0)
-// 	{
-// 		// Check if we have room for this new data
-// 		if ((data.size() + 1) * sizeof(Point) < PAGESIZE)
-// 		{
-// 			// We do have room, just insert
-// 			data.push_back(givenPoint);
-
-// 			// Nothing else to do
-// 			return nullptr;
-// 		}
-// 		else
-// 		{
-// 			// We don't have room, so build a new node
-// 			Node *newLeaf = new Node();
-
-// 			// Split the data in half between the new and current node
-// 			// TODO: Splitting the data is non-trivial b/c it has spatial implications
-// 			for (int i = 0; i < data.size() / 2; ++i)
-// 			{
-// 				Point p = data[data.size() - i - 1];
-// 				newLeaf->data.push_back(p);
-// 				data.pop_back();
-// 			}
-
-// 			// Hand back the node that needs to be inserted in our parent
-// 			return newLeaf;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		// Find the bounding box with least required expansion? Find the bounding box with least overlap?
-// 		unsigned leastOverlapRequriedIndex = 0;
-// 		double leastOverlapArea = boundingBoxes[0].computeExpansionArea(givenPoint);
-// 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
-// 		{
-// 			double testOverlapArea = boundingBoxes[leastOverlapRequriedIndex].computeExpansionArea(givenPoint);
-// 			if (leastOverlapArea < testOverlapArea)
-// 			{
-// 				leastOverlapRequriedIndex = i;
-// 				leastOverlapArea = testOverlapArea;
-// 			}
-// 		}
-
-// 		// Recurse
-// 		Node *newChild = children[leastOverlapRequriedIndex]->insert(givenPoint);
-
-// 		// Do we need to deal with a new child or not
-// 		if (newChild != nullptr)
-// 		{
-// 			// Check if we have room for this new child
-// 			if (children.size() + 1 <= MAXBRANCHFACTOR)
-// 			{
-// 				// We do have room, just insert
-// 				children.push_back(newChild);
-
-// 				// Update bounding box b/c which nodes have which points has shifted
-// 				// TODO: HTF do we do this without accessing pointers???
-
-// 				// Nothing else to do
-// 				return nullptr;
-// 			}
-// 			else
-// 			{
-// 				// We don't have room, so build a new node
-// 				Node *newSibling = new Node();
-
-// 				// Split the children in half between the new and current node
-// 				// TODO: Splitting the children is non-trivial b/c it has spatial implications
-// 				for (int i = 0; i < children.size() / 2; ++i)
-// 				{
-// 					Node *child = children[children.size() - i - 1];
-// 					newSibling->children.push_back(child);
-// 					children.pop_back();
-// 				}
-
-// 				// Update bounding box b/c there are now two nodes
-// 				// TODO: HTF do we do this without accessing pointers???
-
-// 				// Hand back the node that needs to be inserted in our parent
-// 				return newSibling;
-// 			}
-// 		}
-// 		else
-// 		{
-// 			// Update boundingBox
-// 			boundingBoxes[leastOverlapRequriedIndex].expand(givenPoint);
-
-// 			return nullptr;
-// 		}
-// 	}
-// }
-
-// // Failsafe, if the givenPoint is not in the tree we do nothing
-// Node *Node::remove(Point givenPoint, std::map<unsigned, std::list<std::pair<Rectangle, Node *>>> &q)
-// {
-// 	// Leaf case and general case
-// 	if (children.size() == 0)
-// 	{
-// 		// Erase the data
-// 		for (int i = 0; i < data.size(); ++i)
-// 		{
-// 			if (data[i] == givenPoint)
-// 			{
-// 				data.erase(data.begin() + i);
-// 			}
-// 		}
-
-// 		// Check ourselves before we wreck ourselves
-// 		if (data.size() > 0)
-// 		{
-// 			return nullptr;
-// 		}
-// 		else
-// 		{
-// 			return this;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
-// 		{
-// 			if (boundingBoxes[i].containsPoint(givenPoint))
-// 			{
-// 				// Recurse
-// 				Node *emptyChild = children[i]->remove(givenPoint, q);
-
-// 				// Do we need to delete this child or not?
-// 				if (emptyChild != nullptr)
-// 				{
-// 					// Delete the object
-// 					delete emptyChild;
-
-// 					// Remove the child from our list
-// 					children.erase(children.begin() + i);
-// 				}
-// 				else
-// 				{
-// 					// Update bounding box somehow
-// 				}
-// 			}
-// 		}
-
-// 		// Check ourselves before we wreck ourselves
-// 		if (data.size() > 0)
-// 		{
-// 			return nullptr;
-// 		}
-// 		else
-// 		{
-// 			return this;
-// 		}
-// 	}
-// }
-
 // Always called on root, this = root
 // TODO: Write the analogous chooseLeaf(Rectangle searchRectangle)
 Node *Node::chooseLeaf(Point givenPoint)
 {
 	assert(parent == nullptr);
 
+	// CL1 [Initialize]
 	Node *node = this;
 
 	for (;;)
 	{
+		// CL2 [Leaf check]
 		if (node->children.size() == 0)
 		{
 			return node;
 		}
 		else
 		{
+			// CL3 [Choose subtree]
 			// Find the bounding box with least required expansion? Find the bounding box with least overlap?
 			// TODO: Break ties by using smallest area
-			unsigned leastOverlapRequriedIndex = 0;
-			double leastOverlapArea = boundingBoxes[0].computeExpansionArea(givenPoint);
-			for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+			unsigned smallestExpansionIndex = 0;
+			double smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
+			for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
 			{
-				double testOverlapArea = boundingBoxes[leastOverlapRequriedIndex].computeExpansionArea(givenPoint);
-				if (leastOverlapArea < testOverlapArea)
+				double testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
+				if (smallestExpansionArea > testExpansionArea)
 				{
-					leastOverlapRequriedIndex = i;
-					leastOverlapArea = testOverlapArea;
+					smallestExpansionIndex = i;
+					smallestExpansionArea = testExpansionArea;
 				}
 			}
 
-			node = children[leastOverlapRequriedIndex];
+			// CL4 [Descend until a leaf is reached]
+			node = node->children[smallestExpansionIndex];
 		}
 	}
 }
@@ -315,6 +147,7 @@ Node *Node::findLeaf(Point givenPoint)
 
 	if (children.size() == 0)
 	{
+		// FL2 [Search leaf node for record]
 		// Check each entry to see if it matches E
 		for (int i = 0; i < data.size(); ++i)
 		{
@@ -327,6 +160,7 @@ Node *Node::findLeaf(Point givenPoint)
 	}
 	else
 	{
+		// FL1 [Search subtrees]
 		// Determine which branches we need to follow
 		for (unsigned i = 0; i < boundingBoxes.size() && finalAnswer == nullptr; ++i)
 		{
@@ -343,37 +177,201 @@ Node *Node::findLeaf(Point givenPoint)
 
 Node *Node::splitNode(Node *newChild)
 {
-	// Splitting an interior node
-	return nullptr;
+	// Setup the two groups which will be the entries in the two new nodes
+	std::vector<unsigned> groupA;
+	groupA.push_back(0);
+	Rectangle boundingBoxA = boundingBoxes[0];
+
+	std::vector<unsigned> groupB;
+	groupB.push_back(0);
+	Rectangle boundingBoxB = boundingBoxes[0];
+
+	// Compute the first entry in each group based on PS1 & PS2
+	double maxWasted = 0;
+	for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+	{
+		for (unsigned j = 0; j < boundingBoxes.size(); ++j)
+		{
+			double widthX = fabs(boundingBoxes[i].centre.x - boundingBoxes[j].centre.x) + boundingBoxes[i].radiusX + boundingBoxes[j].radiusX;
+			double widthY = fabs(boundingBoxes[i].centre.y - boundingBoxes[j].centre.y) + boundingBoxes[i].radiusY + boundingBoxes[j].radiusY;
+			double wasted = (widthX * widthY) - boundingBoxes[i].area() - boundingBoxes[j].area();
+
+			if (wasted > maxWasted)
+			{
+				wasted = maxWasted;
+
+				groupA[0] = i;
+				boundingBoxA = boundingBoxes[i];
+
+				groupB[0] = j;
+				boundingBoxB = boundingBoxes[j];
+			}
+		}
+	}
+
+	// Go through the remaining entries and add them to groupA or groupB
+	for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+	{
+		// Skip the original two rectangles we chose
+		if (i == groupA[0] || i == groupB[0])
+		{
+			continue;
+		}
+
+		// Choose the group which will need to expand the least
+		double expansionAreaA = boundingBoxA.computeExpansionArea(boundingBoxes[i]);
+		double expansionAreaB = boundingBoxB.computeExpansionArea(boundingBoxes[i]);
+
+		if (expansionAreaB > expansionAreaA)
+		{
+			groupA.push_back(i);
+			boundingBoxA.expand(boundingBoxes[i]);
+		}
+		else
+		{
+			groupB.push_back(i);
+			boundingBoxB.expand(boundingBoxes[i]);
+		}
+	}
+
+	// Create the new node and fill it with groupB entries
+	Node *newSibling = new Node();
+	for (int i = 0; i < groupB.size(); ++i)
+	{
+		newSibling->boundingBoxes.push_back(boundingBoxes[groupB[i]]);
+		newSibling->children.push_back(children[groupB[i]]);
+		boundingBoxes.erase(boundingBoxes.begin() + groupB[i]);
+		children.erase(children.begin() + groupB[i]);
+	}
+
+	// Add newChild which caused this split in the first place
+	Rectangle newBox = newChild->boundingBox();
+	// Choose the group which will need to expand the least
+	double expansionAreaA = boundingBoxA.computeExpansionArea(newBox);
+	double expansionAreaB = boundingBoxB.computeExpansionArea(newBox);
+
+	if (expansionAreaB > expansionAreaA)
+	{
+		boundingBoxes.push_back(newBox);
+		children.push_back(newChild);
+	}
+	else
+	{
+		newSibling->boundingBoxes.push_back(newBox);
+		newSibling->children.push_back(newChild);
+	}
+
+	// Return our newly minted sibling
+	return newSibling;
 }
 
-Node *Node::splitNode(Point givenPoint)
+Node *Node::splitNode(Point newData)
 {
-	// Splitting a leaf
-	return nullptr;
+	// Setup the two groups which will be the entries in the two new nodes
+	std::vector<unsigned> groupA;
+	std::vector<unsigned> groupB;
+
+	// Compute the first entry in each group based on PS1 & PS2
+	double maxWasted = 0;
+	for (unsigned i = 0; i < data.size(); ++i)
+	{
+		for (unsigned j = 0; j < data.size(); ++j)
+		{
+			double wasted = fabs(data[i].x - data[j].x) * fabs(data[i].y - data[j].y);
+
+			if (wasted > maxWasted)
+			{
+				wasted = maxWasted;
+
+				groupA[0] = i;
+				groupB[0] = j;
+			}
+		}
+	}
+
+	// Set the bounding rectangles
+	Rectangle boundingBoxA = Rectangle(data[groupA[0]].x, data[groupA[0]].y, 0, 0);
+	Rectangle boundingBoxB = Rectangle(data[groupB[0]].x, data[groupB[0]].y, 0, 0);
+
+	// Go through the remaining entries and add them to groupA or groupB
+	for (unsigned i = 0; i < data.size(); ++i)
+	{
+		// Skip the original two rectangles we chose
+		if (i == groupA[0] || i == groupB[0])
+		{
+			continue;
+		}
+
+		// Choose the group which will need to expand the least
+		double expansionAreaA = boundingBoxA.computeExpansionArea(data[i]);
+		double expansionAreaB = boundingBoxB.computeExpansionArea(data[i]);
+
+		if (expansionAreaB > expansionAreaA)
+		{
+			groupA.push_back(i);
+			boundingBoxA.expand(data[i]);
+		}
+		else
+		{
+			groupB.push_back(i);
+			boundingBoxB.expand(data[i]);
+		}
+	}
+
+	// Create the new node and fill it with groupB entries
+	Node *newSibling = new Node();
+	for (int i = 0; i < groupB.size(); ++i)
+	{
+		newSibling->data.push_back(data[groupB[i]]);
+		data.erase(data.begin() + groupB[i]);
+	}
+
+	// Add newData which caused this split in the first place
+	// Choose the group which will need to expand the least
+	double expansionAreaA = boundingBoxA.computeExpansionArea(newData);
+	double expansionAreaB = boundingBoxB.computeExpansionArea(newData);
+
+	if (expansionAreaB > expansionAreaA)
+	{
+		data.push_back(newData);
+	}
+	else
+	{
+		newSibling->data.push_back(newData);
+	}
+
+	// Return our newly minted sibling
+	return newSibling;
 }
 
 // To be called on the leaf l
 Node *Node::adjustTree(Node *siblingLeaf)
 {
+	// AT1 [Initialize]
 	Node *node = this;
 	Node *siblingNode = siblingLeaf;
 
 	for (;;)
 	{
+		// AT2 [If node is the root, stop]
 		if (node->parent == nullptr)
 		{
 			break;
 		}
 		else
 		{
+			// AT3 [Adjust covering rectangle in parent entry]
 			Node *parent = node->parent;
 			parent->updateBoundingBox(node, node->boundingBox());
+
+			// Did we have a split on the previous level
 			if (siblingNode != nullptr)
 			{
+				// AT4 [Propogate the node split upwards]
 				if (parent->children.size() == MAXBRANCHFACTOR)
 				{
 					Node *siblingParent = parent->splitNode(siblingNode);
+					// AT5 [Move up to next level]
 					node = parent;
 					siblingNode = siblingParent;
 				}
@@ -383,6 +381,8 @@ Node *Node::adjustTree(Node *siblingLeaf)
 					parent->boundingBoxes.push_back(siblingNode->boundingBox());
 					parent->children.push_back(siblingNode);
 					siblingNode->parent = parent;
+
+					// AT5 [Move up to next level]
 					node = parent;
 					siblingNode = nullptr;
 				}
@@ -398,11 +398,11 @@ Node *Node::insert(Point givenPoint)
 {
 	assert(parent == nullptr);
 
-	// I1
+	// I1 [Find position for new record]
 	Node *leaf = chooseLeaf(givenPoint);
 	Node *siblingLeaf = nullptr;
 
-	// I2
+	// I2 [Add record to leaf node]
 	if (leaf->data.size() < MAXBRANCHFACTOR)
 	{
 		leaf->data.push_back(givenPoint);
@@ -412,10 +412,59 @@ Node *Node::insert(Point givenPoint)
 		siblingLeaf = leaf->splitNode(givenPoint);
 	}
 
-	// I3
+	// I3 [Propogate changes upward]
 	Node *siblingNode = leaf->adjustTree(siblingLeaf);
 
-	// I4
+	// I4 [Grow tree taller]
+	if (siblingNode != nullptr)
+	{
+		Node *newRoot = new Node();
+		newRoot->boundingBoxes.push_back(this->boundingBox());
+		newRoot->children.push_back(this);
+		newRoot->boundingBoxes.push_back(siblingNode->boundingBox());
+		newRoot->children.push_back(siblingNode);
+
+		return newRoot;
+	}
+	else
+	{
+		return this;
+	}
+}
+
+// Always called on root, this = root
+Node *Node::insert(Node *orphan, unsigned level)
+{
+	assert(parent == nullptr);
+
+	// I0 [Initialization]
+	Rectangle box = orphan->boundingBox();
+
+	// I1 [Find position for new record]
+	Node *leaf = chooseLeaf(box.centre);
+	Node *siblingLeaf = nullptr;
+
+	// I1.5 [Move up to level]
+	for (unsigned i = 0; i < level; ++i)
+	{
+		leaf = leaf->parent;
+	}
+
+	// I2 [Add record to leaf node]
+	if (leaf->children.size() < MAXBRANCHFACTOR)
+	{
+		leaf->boundingBoxes.push_back(box);
+		leaf->children.push_back(orphan);
+	}
+	else
+	{
+		siblingLeaf = leaf->splitNode(orphan);
+	}
+
+	// I3 [Propogate changes upward]
+	Node *siblingNode = leaf->adjustTree(siblingLeaf);
+
+	// I4 [Grow tree taller]
 	if (siblingNode != nullptr)
 	{
 		Node *newRoot = new Node();
@@ -433,46 +482,52 @@ Node *Node::insert(Point givenPoint)
 }
 
 // To be called on the leaf l
-// TODO: Make Q a thing
 void Node::condenseTree()
 {
-	// CT1
-	Node *node = this;
-	std::vector<Point> Q;
+	assert(children.size() == 0);
 
-	// CT2
+	// CT1 [Initialize]
+	Node *node = this;
+	unsigned level = 0;
+
+	std::vector<Node *> Q;
+	std::vector<unsigned> Qlvl;
+
+	// CT2 [Find parent entry]
 	while (node->parent != nullptr)
 	{
 		Node *parent = node->parent;
 
-		// CT3 & CT4
+		// CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
 		if (node->boundingBoxes.size() < MINBRANCHFACTOR)
 		{
 			parent->removeChild(node);
-			// Q.push_back(node);
+			Q.push_back(node);
+			Qlvl.push_back(level);
 		}
 		else
 		{
 			parent->updateBoundingBox(node, node->boundingBox());
 		}
 
-		// CT5
+		// CT5 [Move up one level in the tree]
 		node = parent;
+		level++;
 	}
 
-	// CT6
+	// CT6 [Re-insert oprhaned entries]
 	for (int i = 0; i < Q.size(); ++i)
 	{
-		node->insert(Q[i]);
+		node->insert(Q[i], Qlvl[i]);
 	}
 }
 
 // Always called on root, this = root
 Node *Node::remove(Point givenPoint)
 {
-	assert(this->parent == nullptr);
+	assert(parent == nullptr);
 
-	// D1
+	// D1 [Find node containing record]
 	Node *leaf = findLeaf(givenPoint);
 
 	if (leaf == nullptr)
@@ -480,74 +535,24 @@ Node *Node::remove(Point givenPoint)
 		return nullptr;
 	}
 
-	// D2
+	// D2 [Delete record]
 	leaf->removeData(givenPoint);
 
-	// D3
+	// D3 [Propagate changes]
 	leaf->condenseTree();
 	delete leaf;
 
-	// D4
+	// D4 [Shorten tree]
 	if (children.size() == 1)
 	{
+		children[0]->parent = nullptr;
 		return children[0];
 	}
-
-	return this;
+	else
+	{
+		return this;
+	}
 }
-
-/*
-// Insert
-// 1. Find position for the new record. Call ChooseLeaf to select a leaf L in which to put E.
-// 2. Add record to the leaf node. If L has room for E then add it, otherwise call SplitNode to get
-// L and LL containing E and all the old entries of L.
-// 3. Propogate changes upwards. Call AdjustTree on L, also passing LL if created by step 2.
-// 4. Grow the tree taller. If the root split, create a new root with the results of AdjustTree.
-
-// ChooseLeaf
-// 1. Initialize. Set N to be the root node.
-// 2. Leaf check. If N is a leaf, return N.
-// 3. Choose subtree. If N is not a leaf, let F be the entry in N whose rectangle requires least
-// enlargement to include E. Break ties by using smallest area.
-// 4. Descend until a leaf is reached. Set N to be the chosen child node and repeat from step 2.
-
-// AdjustTree
-// 1. Initialize. Set N to be the leaf L. If L was split then also set NN to be LL.
-// 2. Check if done. If N is the root then stop.
-// 3. Adjust covering rectangle in parent. Let P be the parent of N. Adjust P's bounding box for N
-// so that it tightly encloses all entry rectangles in N.
-// 4. Propogate upwards. If N has a partner NN then create a new entry pointing to NN enclosing all
-// rectangles within NN. Add this to P if there is room. Otherwise call SplitNode to make P and PP.
-// 5. Move up to next level. Set N = P and NN = PP. Repeat from step 2.
-
-// Deletion
-// 1. Find node containing record E. Call FindLeaf to locate the leaf node L containing E. Stop if
-// the record was not found.
-// 2. Delete record. Remove E from L.
-// 3. Propagate changes. Call CondenseTree, passing L.
-// 4. Shorten tree. If the root node has only one child after the tree has been adjusted, make the
-// child the new root.
-
-// FindLeaf
-// 1. Search subtrees. If T is not a leaf, check each entry F in T to determine overlaps. For each
-// such entry call FindLeaf on the subtrees until E is found or all subtrees have been checked.
-// 2. Search leaf node for record E. If T is a leaf, check each entry to see if it matches E. If E
-// is found return T.
-
-// CondenseTree
-// 1. Initialize. Set N = L. Set Q, the set of eliminated nodes, to be empty.
-// 2. Find parent entry. If N is the root, go to step 6. Otherwise let P be the parent of N, and let
-// EN be N's entry in P.
-// 3. Eliminate under-full node. If N has fewer than m entries, delete EN from P and add N to set Q
-// 4. Adjust covering rectangle. If N has not been eliminated, adjust EN.I to tightly contain all
-// entries in N.
-// 5. Move up one level in tree. Set N = P and repeat from step 2.
-// 6. Re-insert orphaned entries. Re-insert all entries of nodes in set Q. Entries from eliminated
-// leaf nodes are re-inserted in tree leaves as described in Insert, but entries from higher-level
-// nodes must be placed higher in the tree, so that leaves of their dependent subtrees will be on
-// the same level as leaves of the main tree.
-*/
-
 
 void Node::print()
 {
@@ -565,4 +570,181 @@ void Node::print()
 		data[i].print();
 	}
 	std::cout << "}" << std::endl;
+}
+
+void testBoundingBox()
+{
+	// Test set one
+	Node testNode = Node();
+	testNode.boundingBoxes.push_back(Rectangle(10.0, 3.0, 2.0, 2.0));
+	testNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	testNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+
+	assert(testNode.boundingBox() == Rectangle(12.0, -0.5, 4.0, 5.5));
+
+	// Test set two
+	Node testNode2 = Node();
+	testNode2.boundingBoxes.push_back(Rectangle(9.0, 13.0, 1.0, 1.0));
+	testNode2.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	testNode2.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+
+	assert(testNode2.boundingBox() == Rectangle(11.0, 13.0, 3.0, 1.0));
+}
+
+void testUpdateBoundingBox()
+{
+	Node parentNode = Node();
+
+	Node *child0 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	parentNode.children.push_back(child0);
+
+	Node *child1 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	parentNode.children.push_back(child1);
+
+	Node *child2 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	parentNode.children.push_back(child2);
+
+	Node *child3 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	parentNode.children.push_back(child3);
+
+	parentNode.updateBoundingBox(child3, Rectangle(4.0, 4.0, 1.0, 1.0));
+	assert(parentNode.boundingBoxes[3] == Rectangle(4.0, 4.0, 1.0, 1.0));
+}
+
+void testRemoveChild()
+{
+	// Setup a node with some children
+	Node parentNode = Node();
+
+	Node *child0 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	parentNode.children.push_back(child0);
+
+	Node *child1 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	parentNode.children.push_back(child1);
+
+	Node *child2 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	parentNode.children.push_back(child2);
+
+	Node *child3 = new Node();
+	parentNode.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	parentNode.children.push_back(child3);
+
+	// Remove one of the children
+	parentNode.removeChild(child3);
+	assert(parentNode.boundingBoxes.size() == 3);
+	assert(parentNode.children.size() == 3);
+
+	// Cleanup
+	delete child0;
+	delete child1;
+	delete child2;
+	delete child3;
+}
+
+void testRemoveData()
+{
+	// Setup a node with some data
+	Node parentNode = Node();
+
+	parentNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	parentNode.data.push_back(Point(9.0, -5.0));
+
+	parentNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	parentNode.data.push_back(Point(14.0, -3.0));
+
+	parentNode.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	parentNode.data.push_back(Point(11.0, 13.0));
+
+	parentNode.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	parentNode.data.push_back(Point(13.0, 13.0));
+
+	// Remove some of the data
+	parentNode.removeData(Point(13.0, 13.0));
+	assert(parentNode.boundingBoxes.size() == 3);
+	assert(parentNode.data.size() == 3);
+}
+
+void testChooseLeaf()
+{
+	// Create nodes
+	Node *root = new Node();
+	Node *left = new Node();
+	Node *right = new Node();
+	Node *leftChild0 = new Node();
+	Node *leftChild1 = new Node();
+	Node *leftChild2 = new Node();
+	Node *rightChild0 = new Node();
+	Node *rightChild1 = new Node();
+	Node *rightChild2 = new Node();
+
+	// Setup nodes
+	left->boundingBoxes.push_back(Rectangle(9.0, 13.0, 1.0, 1.0));
+	left->children.push_back(leftChild0);
+	left->boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	left->children.push_back(leftChild1);
+	left->boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	left->children.push_back(leftChild2);
+
+	right->boundingBoxes.push_back(Rectangle(10.0, 3.0, 2.0, 2.0));
+	right->children.push_back(rightChild0);
+	right->boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	right->children.push_back(rightChild1);
+	right->boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	right->children.push_back(rightChild2);
+
+	root->boundingBoxes.push_back(Rectangle(11.0, 13.0, 3.0, 1.0));
+	root->children.push_back(left);
+
+	root->boundingBoxes.push_back(Rectangle(12.0, -0.5, 4.0, 5.5));
+	root->children.push_back(right);
+
+	// Test that we get the right child for the given point
+	assert(rightChild1 == root->chooseLeaf(Point(13.0, -3.0)));
+	assert(leftChild0 == root->chooseLeaf(Point(8.5, 12.5)));
+	assert(leftChild2 == root->chooseLeaf(Point(13.5, 13.5)));
+	assert(rightChild0 == root->chooseLeaf(Point(7.0, 3.0)));
+	assert(leftChild1 == root->chooseLeaf(Point(11.0, 15.0)));
+	assert(leftChild0 == root->chooseLeaf(Point(4.0, 8.0)));
+}
+
+void testFindLeaf()
+{
+	return;
+}
+
+void testSplitNode()
+{
+	return;
+}
+
+void testAdjustTree()
+{
+	return;
+}
+
+void testCondenseTree()
+{
+	return;
+}
+
+void testSearch()
+{
+	return;
+}
+
+void testInsert()
+{
+	return;
+}
+
+void testRemove()
+{
+	return;
 }

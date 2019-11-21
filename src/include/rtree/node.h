@@ -6,6 +6,7 @@
 #include <map>
 #include <list>
 #include <utility>
+#include <cmath>
 #include <iostream>
 #include <util/geometry.h>
 
@@ -24,6 +25,7 @@ class Node
 
 		Node();
 		Node(unsigned id, Node *p=nullptr);
+
 		Rectangle boundingBox();
 		void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 		void removeChild(Node *child);
@@ -32,13 +34,27 @@ class Node
 		Node *chooseLeaf(Point givenPoint);
 		Node *findLeaf(Point givenPoint);
 		Node *splitNode(Node *newChild);
-		Node *splitNode(Point givenPoint);
-		Node *adjustTree(Node *ll);
+		Node *splitNode(Point newData);
+		Node *adjustTree(Node *siblingLeaf);
 		Node *insert(Point givenPoint);
+		Node *insert(Node *orphan, unsigned level);
 		void condenseTree();
 		Node *remove(Point givenPoint);
-		// Node *remove(Point givenPoint, std::map<unsigned, std::list<std::pair<Rectangle, Node *>>> &q);
+
 		void print();
 };
+
+void testBoundingBox();
+void testUpdateBoundingBox();
+void testRemoveChild();
+void testRemoveData();
+void testChooseLeaf();
+void testFindLeaf();
+void testSplitNode();
+void testAdjustTree();
+void testCondenseTree();
+void testSearch();
+void testInsert();
+void testRemove();
 
 #endif
