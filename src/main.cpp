@@ -132,8 +132,8 @@ int main(int argc, char const *argv[])
 	testRemoveChild();
 	testRemoveData();
 	testChooseLeaf();
-	// testFindLeaf();
-	// testSplitNode();
+	testFindLeaf();
+	testSplitNode();
 	// testAdjustTree();
 	// testCondenseTree();
 	// testSearch();

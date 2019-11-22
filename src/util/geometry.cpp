@@ -24,12 +24,26 @@ bool Point::operator!=(Point p)
 
 void Point::print()
 {
-	std::cout << "(" << x << "," << y << ")" << std::endl;
+	std::cout << "(" << x << "," << y << ")";
+}
+
+Rectangle::Rectangle()
+{
+	centre = Point(0.0, 0.0);
+	radiusX = 0.0;
+	radiusY = 0.0;
 }
 
 Rectangle::Rectangle(double x, double y, double radiusX, double radiusY)
 {
 	this->centre = Point(x, y);
+	this->radiusX = radiusX;
+	this->radiusY = radiusY;
+}
+
+Rectangle::Rectangle(Point centre, double radiusX, double radiusY)
+{
+	this->centre = centre;
 	this->radiusX = radiusX;
 	this->radiusY = radiusY;
 }
@@ -146,7 +160,7 @@ bool Rectangle::containsPoint(Point requestedPoint)
 
 std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 {
-	// We can have side-on-side/corner-on-corner intersections with 0, 1, or 2 corners inside the
+	// We can have side-on-side or corner-on-corner intersections with 0, 1, or 2 corners inside the
 	// other rectangle
 
 	std::vector<Rectangle> v;
@@ -160,10 +174,10 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// This is all in the case of 1 corner contained
 		// ***************************************************************************************
 
-		// The overlap size in each dimension can be comptued by considering how much larger the sum of
-		// the two radii are than the distance between centres. Consider when the rectangles touch only
-		// and exactly on one side. Then the distance between the centres is the same as the sum of the
-		// two radii, and as the centres get closer the radii do not shrink.
+		// The overlap size in each dimension can be comptued by considering how much larger the sum
+		// of the two radii are than the distance between centres. Consider when the rectangles
+		// touch only and exactly on one side. Then the distance between the centres is the same as
+		// the sum of the two radii, and as the centres get closer the radii do not shrink.
 		
 		double overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
 		double overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
@@ -257,9 +271,9 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// ***************************************************************************************
 
 		// There are three new rectangles that must be built here.
-		// In this case the overlap will be the full extent of one of the rectangles in one dimension
-		// and then the other dimension will exhibit overlap in the same way as the previous 1
-		// corner case.
+		// In this case the overlap will be the full extent of one of the rectangles in one
+		// dimension and then the other dimension will exhibit overlap in the same way as the
+		// previous 1 corner case.
 
 		// Note in this case we assume the clipping rectangle is smaller than our rectangle. Maybe
 		// this always has to be the case because we can't just compress ourselves, we are a
@@ -305,6 +319,11 @@ bool Rectangle::operator==(Rectangle r)
 bool Rectangle::operator!=(Rectangle r)
 {
 	return centre != r.centre || radiusX != r.radiusX || radiusY != r.radiusY;
+}
+
+void Rectangle::print()
+{
+	std::cout << "Rectangle {(" << centre.x << "," << centre.y << "), " << radiusX << ", " << radiusY << "}";
 }
 
 void testPointEquality()
@@ -515,9 +534,4 @@ void testRectangleSplits()
 	assert(v[1].radiusY == 1.0);
 	assert(v[2].radiusX == 1.5);
 	assert(v[2].radiusY == 2.0);
-}
-
-void Rectangle::print()
-{
-	std::cout << "Rectangle {(" << centre.x << "," << centre.y << "), " << radiusX << ", " << radiusY << "}" << std::endl;
 }

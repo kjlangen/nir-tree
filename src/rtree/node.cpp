@@ -14,12 +14,24 @@ Node::Node(unsigned id, Node *p)
 
 Rectangle Node::boundingBox()
 {
-	assert(boundingBoxes.size() > 0);
+	assert(data.size() > 0 || boundingBoxes.size() > 0);
 
-	Rectangle boundingBox = boundingBoxes[0];
-	for (int i = 1; i < boundingBoxes.size(); ++i)
+	Rectangle boundingBox;
+	if (boundingBoxes.size() > 0)
 	{
-		boundingBox.expand(boundingBoxes[i]);
+		boundingBox = boundingBoxes[0];
+		for (int i = 1; i < boundingBoxes.size(); ++i)
+		{
+			boundingBox.expand(boundingBoxes[i]);
+		}
+	}
+	else
+	{
+		boundingBox = Rectangle(data[0], 0.0, 0.0);
+		for (int i = 0; i < data.size(); ++i)
+		{
+			boundingBox.expand(data[i]);
+		}
 	}
 
 	return boundingBox;
@@ -120,7 +132,7 @@ Node *Node::chooseLeaf(Point givenPoint)
 		else
 		{
 			// CL3 [Choose subtree]
-			// Find the bounding box with least required expansion? Find the bounding box with least overlap?
+			// Find the bounding box with least required expansion/overlap?
 			// TODO: Break ties by using smallest area
 			unsigned smallestExpansionIndex = 0;
 			double smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
@@ -179,11 +191,9 @@ Node *Node::splitNode(Node *newChild)
 {
 	// Setup the two groups which will be the entries in the two new nodes
 	std::vector<unsigned> groupA;
-	groupA.push_back(0);
 	Rectangle boundingBoxA = boundingBoxes[0];
 
 	std::vector<unsigned> groupB;
-	groupB.push_back(0);
 	Rectangle boundingBoxB = boundingBoxes[0];
 
 	// Compute the first entry in each group based on PS1 & PS2
@@ -196,14 +206,11 @@ Node *Node::splitNode(Node *newChild)
 			double widthY = fabs(boundingBoxes[i].centre.y - boundingBoxes[j].centre.y) + boundingBoxes[i].radiusY + boundingBoxes[j].radiusY;
 			double wasted = (widthX * widthY) - boundingBoxes[i].area() - boundingBoxes[j].area();
 
-			if (wasted > maxWasted)
+			if (maxWasted < wasted)
 			{
-				wasted = maxWasted;
+				maxWasted = wasted;
 
-				groupA[0] = i;
 				boundingBoxA = boundingBoxes[i];
-
-				groupB[0] = j;
 				boundingBoxB = boundingBoxes[j];
 			}
 		}
@@ -212,12 +219,6 @@ Node *Node::splitNode(Node *newChild)
 	// Go through the remaining entries and add them to groupA or groupB
 	for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 	{
-		// Skip the original two rectangles we chose
-		if (i == groupA[0] || i == groupB[0])
-		{
-			continue;
-		}
-
 		// Choose the group which will need to expand the least
 		double expansionAreaA = boundingBoxA.computeExpansionArea(boundingBoxes[i]);
 		double expansionAreaB = boundingBoxB.computeExpansionArea(boundingBoxes[i]);
@@ -234,15 +235,28 @@ Node *Node::splitNode(Node *newChild)
 		}
 	}
 
-	// Create the new node and fill it with groupB entries
+	// Create the new node and fill it with groupB entries by doing complicated stuff
 	Node *newSibling = new Node();
-	for (int i = 0; i < groupB.size(); ++i)
+	// for (int i = 0; i < groupB.size(); ++i)
+	// {
+	// 	newSibling->boundingBoxes.push_back(boundingBoxes[groupB[i]]);
+	// 	newSibling->children.push_back(children[groupB[i]]);
+	// 	boundingBoxes.erase(boundingBoxes.begin() + groupB[i]);
+	// 	children.erase(children.begin() + groupB[i]);
+	// }
+	unsigned groupALastIndex = groupA.size() - 1;
+	for (unsigned i = 0; i < groupB.size(); ++i)
 	{
 		newSibling->boundingBoxes.push_back(boundingBoxes[groupB[i]]);
 		newSibling->children.push_back(children[groupB[i]]);
-		boundingBoxes.erase(boundingBoxes.begin() + groupB[i]);
-		children.erase(children.begin() + groupB[i]);
+
+		boundingBoxes[groupB[i]] = boundingBoxes[groupA[groupALastIndex]];
+		children[groupB[i]] = children[groupA[groupALastIndex]];
+
+		groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
 	}
+	boundingBoxes.resize(groupA.size());
+	children.resize(groupA.size());
 
 	// Add newChild which caused this split in the first place
 	Rectangle newBox = newChild->boundingBox();
@@ -272,6 +286,7 @@ Node *Node::splitNode(Point newData)
 	std::vector<unsigned> groupB;
 
 	// Compute the first entry in each group based on PS1 & PS2
+	double seedA, seedB;
 	double maxWasted = 0;
 	for (unsigned i = 0; i < data.size(); ++i)
 	{
@@ -279,28 +294,26 @@ Node *Node::splitNode(Point newData)
 		{
 			double wasted = fabs(data[i].x - data[j].x) * fabs(data[i].y - data[j].y);
 
-			if (wasted > maxWasted)
+			if (maxWasted < wasted)
 			{
-				wasted = maxWasted;
+				maxWasted = wasted;
 
-				groupA[0] = i;
-				groupB[0] = j;
+				seedA = i;
+				seedB = j;
 			}
 		}
 	}
 
 	// Set the bounding rectangles
-	Rectangle boundingBoxA = Rectangle(data[groupA[0]].x, data[groupA[0]].y, 0, 0);
-	Rectangle boundingBoxB = Rectangle(data[groupB[0]].x, data[groupB[0]].y, 0, 0);
+	Rectangle boundingBoxA = Rectangle(data[seedA].x, data[seedA].y, 0, 0);
+	Rectangle boundingBoxB = Rectangle(data[seedB].x, data[seedB].y, 0, 0);
 
 	// Go through the remaining entries and add them to groupA or groupB
 	for (unsigned i = 0; i < data.size(); ++i)
 	{
-		// Skip the original two rectangles we chose
-		if (i == groupA[0] || i == groupB[0])
-		{
-			continue;
-		}
+		// TODO: Is there an edge case where when considering one of the seeds, it is placed in the
+		// incorrect group? We rely on the groups sorted in ascending order so that's why we
+		// consider them here instead of adding them in the beginning
 
 		// Choose the group which will need to expand the least
 		double expansionAreaA = boundingBoxA.computeExpansionArea(data[i]);
@@ -318,13 +331,16 @@ Node *Node::splitNode(Point newData)
 		}
 	}
 
-	// Create the new node and fill it with groupB entries
+	// Create the new node and fill it with groupB entries by doing really complicated stuff
 	Node *newSibling = new Node();
-	for (int i = 0; i < groupB.size(); ++i)
+	unsigned groupALastIndex = groupA.size() - 1;
+	for (unsigned i = 0; i < groupB.size(); ++i)
 	{
 		newSibling->data.push_back(data[groupB[i]]);
-		data.erase(data.begin() + groupB[i]);
+		data[groupB[i]] = data[groupA[groupALastIndex]];
+		groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
 	}
+	data.resize(groupA.size());
 
 	// Add newData which caused this split in the first place
 	// Choose the group which will need to expand the least
@@ -705,7 +721,7 @@ void testChooseLeaf()
 	root->boundingBoxes.push_back(Rectangle(12.0, -0.5, 4.0, 5.5));
 	root->children.push_back(right);
 
-	// Test that we get the right child for the given point
+	// Test that we get the correct child for the given point
 	assert(rightChild1 == root->chooseLeaf(Point(13.0, -3.0)));
 	assert(leftChild0 == root->chooseLeaf(Point(8.5, 12.5)));
 	assert(leftChild2 == root->chooseLeaf(Point(13.5, 13.5)));
@@ -716,12 +732,137 @@ void testChooseLeaf()
 
 void testFindLeaf()
 {
-	return;
+	// Setup the tree
+
+	// Cluster 4, n = 7
+	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
+	// Organized into two nodes
+	Node *cluster4a = new Node();
+	cluster4a->data.push_back(Point(-10.0, -2.0));
+	cluster4a->data.push_back(Point(-12.0, -3.0));
+	cluster4a->data.push_back(Point(-11.0, -3.0));
+	cluster4a->data.push_back(Point(-10.0, -3.0));
+
+	Node *cluster4b = new Node();
+	cluster4b->data.push_back(Point(-9.0, -3.0));
+	cluster4b->data.push_back(Point(-7.0, -3.0));
+	cluster4b->data.push_back(Point(-10.0, -5.0));
+
+	Node *cluster4 = new Node();
+	cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
+	cluster4->children.push_back(cluster4a);
+	cluster4->boundingBoxes.push_back(cluster4b->boundingBox());
+	cluster4->children.push_back(cluster4b);
+
+	// Cluster 5, n = 16
+	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
+	// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
+	// (-14, -15), (-13, -15), (-12, -15)
+	// Organized into four nodes
+	Node *cluster5a = new Node();
+	cluster5a->data.push_back(Point(-14.5, -13.0));
+	cluster5a->data.push_back(Point(-14.0, -13.0));
+	cluster5a->data.push_back(Point(-13.5, -13.5));
+	cluster5a->data.push_back(Point(-15.0, -14.0));
+
+	Node *cluster5b = new Node();
+	cluster5b->data.push_back(Point(-14.0, -14.0));
+	cluster5b->data.push_back(Point(-13.0, -14.0));
+	cluster5b->data.push_back(Point(-12.0, -14.0));
+	cluster5b->data.push_back(Point(-13.5, -16.0));
+
+	Node *cluster5c = new Node();
+	cluster5c->data.push_back(Point(-15.0, -14.5));
+	cluster5c->data.push_back(Point(-14.0, -14.5));
+	cluster5c->data.push_back(Point(-12.5, -14.5));
+	cluster5c->data.push_back(Point(-13.5, -15.5));
+
+	Node *cluster5d = new Node();
+	cluster5d->data.push_back(Point(-15.0, -15.0));
+	cluster5d->data.push_back(Point(-14.0, -15.0));
+	cluster5d->data.push_back(Point(-13.0, -15.0));
+	cluster5d->data.push_back(Point(-12.0, -15.0));
+
+	Node *cluster5 = new Node();
+	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
+	cluster5->children.push_back(cluster5a);
+	cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
+	cluster5->children.push_back(cluster5b);
+	cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
+	cluster5->children.push_back(cluster5c);
+	cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
+	cluster5->children.push_back(cluster5d);
+
+	// Root
+	Node *root = new Node();
+	root->boundingBoxes.push_back(cluster4->boundingBox());
+	root->children.push_back(cluster4);
+	root->boundingBoxes.push_back(cluster5->boundingBox());
+	root->children.push_back(cluster5);
+
+
+	// Test finding leaves
+	assert(root->findLeaf(Point(-11.0, -3.0)) == cluster4a);
+	assert(root->findLeaf(Point(-9.0, -3.0)) == cluster4b);
+	assert(root->findLeaf(Point(-13.5, -13.5)) == cluster5a);
+	assert(root->findLeaf(Point(-12.0, -14.0)) == cluster5b);
+	assert(root->findLeaf(Point(-12.5, -14.5)) == cluster5c);
+	assert(root->findLeaf(Point(-13.0, -15.0)) == cluster5d);
 }
 
 void testSplitNode()
 {
-	return;
+	// Test set one
+	// Cluster 6, n = 7
+	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
+	Node *cluster6 = new Node();
+	cluster6->data.push_back(Point(-2.0, -6.0));
+	cluster6->data.push_back(Point(2.0, -6.0));
+	cluster6->data.push_back(Point(-1.0, -7.0));
+	cluster6->data.push_back(Point(1.0, -7.0));
+	cluster6->data.push_back(Point(3.0, -8.0));
+	cluster6->data.push_back(Point(-2.0, -9.0));
+
+	// Split the node in two
+	Node *cluster6p = cluster6->splitNode(Point(-3.0, -11.0));
+
+	// Test the split
+	assert(cluster6->data.size() == 3);
+	assert(cluster6->data[0] == Point(3.0, -8.0));
+	assert(cluster6->data[1] == Point(2.0, -6.0));
+	assert(cluster6->data[2] == Point(1.0, -7.0));
+	assert(cluster6p->data.size() == 4);
+	assert(cluster6p->data[0] == Point(-2.0, -6.0));
+	assert(cluster6p->data[1] == Point(-1.0, -7.0));
+	assert(cluster6p->data[2] == Point(-2.0, -9.0));
+	assert(cluster6p->data[3] == Point(-3.0, -11.0));
+
+	// Test set two
+	// Cluster 2, n = 8
+	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
+	Node *cluster2 = new Node();
+	cluster2->data.push_back(Point(-14.0, 8.0));
+	cluster2->data.push_back(Point(-10.0, 8.0));
+	cluster2->data.push_back(Point(-9.0, 10.0));
+	cluster2->data.push_back(Point(-9.0, 9.0));
+	cluster2->data.push_back(Point(-8.0, 10.0));
+	cluster2->data.push_back(Point(-9.0, 7.0));
+	cluster2->data.push_back(Point(-8.0, 8.0));
+
+	// Split the node in two
+	Node *cluster2p = cluster2->splitNode(Point(-8.0, 9.0));
+
+	// Test the split
+	assert(cluster2->data.size() == 2);
+	assert(cluster2->data[0] == Point(-14.0, 8.0));
+	assert(cluster2->data[1] == Point(-10.0, 8.0));
+	assert(cluster2p->data.size() == 6);
+	assert(cluster2p->data[0] == Point(-9.0, 10.0));
+	assert(cluster2p->data[1] == Point(-9.0, 9.0));
+	assert(cluster2p->data[2] == Point(-8.0, 10.0));
+	assert(cluster2p->data[3] == Point(-9.0, 7.0));
+	assert(cluster2p->data[4] == Point(-8.0, 8.0));
+	assert(cluster2p->data[5] == Point(-8.0, 9.0));
 }
 
 void testAdjustTree()

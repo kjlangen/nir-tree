@@ -27,7 +27,9 @@ class Rectangle
 		double radiusX;
 		double radiusY;
 
+		Rectangle();
 		Rectangle(double x, double y, double radiusX, double radiusY);
+		Rectangle(Point centre, double radiusX, double radiusY);
 		double area();
 		double computeExpansionArea(Point givenPoint);
 		double computeExpansionArea(Rectangle requestedRectangle);
