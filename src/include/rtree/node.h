@@ -16,10 +16,19 @@ const unsigned MAXBRANCHFACTOR = 5;
 
 class Node
 {
+	class ReinsertionEntry
+	{
+		public:
+			Rectangle boundingBox;
+			Point data;
+			Node *child;
+			unsigned level;
+	};
+
 	public:
 		unsigned id;
-		std::vector<Rectangle> boundingBoxes;
 		Node *parent;
+		std::vector<Rectangle> boundingBoxes;
 		std::vector<Node *> children;
 		std::vector<Point> data;
 
@@ -32,13 +41,14 @@ class Node
 		void removeData(Point givenPoint);
 		std::vector<Point> search(Rectangle requestedRectangle);
 		Node *chooseLeaf(Point givenPoint);
+		Node *chooseNode(ReinsertionEntry e);
 		Node *findLeaf(Point givenPoint);
 		Node *splitNode(Node *newChild);
 		Node *splitNode(Point newData);
 		Node *adjustTree(Node *siblingLeaf);
 		Node *insert(Point givenPoint);
-		Node *insert(Node *orphan, unsigned level);
-		void condenseTree();
+		Node *insert(ReinsertionEntry e);
+		Node *condenseTree();
 		Node *remove(Point givenPoint);
 
 		void print();

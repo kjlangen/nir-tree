@@ -108,13 +108,8 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
-int main(int argc, char const *argv[])
+void testGeometry()
 {
-	// Argument parsing and switching goes here
-
-	// Fiddle around with the RTree as provided by spatial index
-	// testLibSpatialIndex();
-
 	// Unit test geometry functions
 	testPointEquality();
 	testRectangleArea();
@@ -125,7 +120,10 @@ int main(int argc, char const *argv[])
 	testRectangleSplits();
 
 	std::cout << "Geometry tested." << std::endl;
+}
 
+void testRTree()
+{
 	// Unit test RTree
 	testBoundingBox();
 	testUpdateBoundingBox();
@@ -134,16 +132,21 @@ int main(int argc, char const *argv[])
 	testChooseLeaf();
 	testFindLeaf();
 	testSplitNode();
-	// testAdjustTree();
-	// testCondenseTree();
-	// testSearch();
+	testAdjustTree();
+	testCondenseTree();
+	testSearch();
 	// testInsert();
 	// testRemove();
 
 	std::cout << "RTree tested." << std::endl;
+}
 
-	// Now we assume the randomSquares benchmark is requested
-	// Benchmark::benchmarkRandomSquares();
+int main(int argc, char const *argv[])
+{
+	// Argument parsing and switching goes here
+
+	testGeometry();
+	testRTree();
 
 	return 0;
 }

@@ -144,8 +144,8 @@ void Rectangle::expand(Rectangle givenRectangle)
 bool Rectangle::intersectsRectangle(Rectangle requestedRectangle)
 {
 	// Compute the range intersections
-	bool intervalX = fabs(centre.x - requestedRectangle.centre.x) < radiusX + requestedRectangle.radiusX;
-	bool intervalY = fabs(centre.y - requestedRectangle.centre.y) < radiusY + requestedRectangle.radiusY;
+	bool intervalX = fabs(centre.x - requestedRectangle.centre.x) <= radiusX + requestedRectangle.radiusX;
+	bool intervalY = fabs(centre.y - requestedRectangle.centre.y) <= radiusY + requestedRectangle.radiusY;
 
 	return intervalX && intervalY;
 }
