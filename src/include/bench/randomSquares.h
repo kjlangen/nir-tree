@@ -1,11 +1,11 @@
-#pragma once
-
+#ifndef __RANDOMSQUARES__
+#define __RANDOMSQUARES__
 #include <iostream>
 #include <random>
 #include <chrono>
 #include <spatialindex/SpatialIndex.h>
+#include <rtree/rtree.h>
 
-namespace Benchmark
-{
-	void benchmarkRandomSquares();
-}
+void randomSquares();
+
+#endif

@@ -14,11 +14,18 @@ class RTree
 	public:
 		Node *root;
 
-		RTree();
+		// Constructors and destructors
+		RTree(unsigned minBranchFactor, unsigned maxBrnachFactor);
 		RTree(Node *root);
+		~RTree();
+
+		// Datastructure interface
 		std::vector<Point> search(Rectangle requestedRectangle);
 		void insert(Point givenPoint);
 		void remove(Point givenPoint);
+
+		// Miscellaneous
+		void print();
 };
 
 void testSimpleSearch();

@@ -6,10 +6,30 @@ Point::Point()
 	this->y = 0;
 }
 
-Point::Point(double x, double y)
+Point::Point(float x, float y)
 {
 	this->x = x;
 	this->y = y;
+}
+
+bool Point::operator<(Point p)
+{
+	return x < p.x && y < p.y;
+}
+
+bool Point::operator>(Point p)
+{
+	return x > p.x && y > p.y;
+}
+
+bool Point::operator<=(Point p)
+{
+	return x <= p.x && y <= p.y;
+}
+
+bool Point::operator>=(Point p)
+{
+	return x >= p.x && y >= p.y;
 }
 
 bool Point::operator==(Point p)
@@ -24,6 +44,7 @@ bool Point::operator!=(Point p)
 
 void Point::print()
 {
+	std::cout.precision(std::numeric_limits<double>::max_digits10+3);
 	std::cout << "(" << x << "," << y << ")";
 }
 
@@ -34,47 +55,47 @@ Rectangle::Rectangle()
 	radiusY = 0.0;
 }
 
-Rectangle::Rectangle(double x, double y, double radiusX, double radiusY)
+Rectangle::Rectangle(float x, float y, float radiusX, float radiusY)
 {
 	this->centre = Point(x, y);
 	this->radiusX = radiusX;
 	this->radiusY = radiusY;
 }
 
-Rectangle::Rectangle(Point centre, double radiusX, double radiusY)
+Rectangle::Rectangle(Point centre, float radiusX, float radiusY)
 {
 	this->centre = centre;
 	this->radiusX = radiusX;
 	this->radiusY = radiusY;
 }
 
-double Rectangle::area()
+float Rectangle::area()
 {
 	return (radiusX + radiusX) * (radiusY + radiusY);
 }
 
-double Rectangle::computeExpansionArea(Point givenPoint)
+float Rectangle::computeExpansionArea(Point givenPoint)
 {
 	// Distance from centre
 	Point centroidDistance = Point(fabs(centre.x - givenPoint.x), fabs(centre.y - givenPoint.y));
 
 	// The extra area we will need to include
-	double xExtra = centroidDistance.x > radiusX ? (centroidDistance.x - radiusX) : 0;
-	double yExtra = centroidDistance.y > radiusY ? (centroidDistance.y - radiusY) : 0;
+	float xExtra = centroidDistance.x > radiusX ? (centroidDistance.x - radiusX) : 0;
+	float yExtra = centroidDistance.y > radiusY ? (centroidDistance.y - radiusY) : 0;
 
 	// Use addition here b/c it's faster
-	double diameterX = radiusX + radiusX;
-	double diameterY = radiusY + radiusY;
+	float diameterX = radiusX + radiusX;
+	float diameterY = radiusY + radiusY;
 	return (diameterX + xExtra) * (diameterY + yExtra) - (diameterX) * (diameterY);
 }
 
-double Rectangle::computeExpansionArea(Rectangle requestedRectangle)
+float Rectangle::computeExpansionArea(Rectangle requestedRectangle)
 {
 	// Distance from centres
 	Point centroidDistance = Point(fabs(centre.x - requestedRectangle.centre.x), fabs(centre.y - requestedRectangle.centre.y));
 
-	double diameterX = centroidDistance.x + requestedRectangle.radiusX > radiusX ? centroidDistance.x + radiusX + requestedRectangle.radiusX : radiusX + radiusX;
-	double diameterY = centroidDistance.y + requestedRectangle.radiusY > radiusY ? centroidDistance.y + radiusY + requestedRectangle.radiusY : radiusY + radiusY;
+	float diameterX = centroidDistance.x + requestedRectangle.radiusX > radiusX ? centroidDistance.x + radiusX + requestedRectangle.radiusX : radiusX + radiusX;
+	float diameterY = centroidDistance.y + requestedRectangle.radiusY > radiusY ? centroidDistance.y + radiusY + requestedRectangle.radiusY : radiusY + radiusY;
 
 	// Use addition here b/c it's faster than multiplying by 2
 	return (diameterX * diameterY) - ((radiusX + radiusX) * (radiusY + radiusY));
@@ -88,20 +109,35 @@ void Rectangle::expand(Point givenPoint)
 
 	// Step the centre over half the distance between the box's edge and the point
 	// Then increase the radius by half the distance between the box's edge and the point
+	// Set rounding to be towards +infinity so that when computing radii we err on the side of caution
 	if (centroidDistance.x > radiusX)
 	{
-		double halfDistBoxEdgeToPoint = (centroidDistance.x - radiusX) / 2;
+		// std::fesetround(FE_UPWARD);
+		float halfDistBoxEdgeToPoint = (centroidDistance.x - radiusX) / 2;
 		radiusX += halfDistBoxEdgeToPoint;
 		halfDistBoxEdgeToPoint = givenPoint.x > centre.x ? halfDistBoxEdgeToPoint : -halfDistBoxEdgeToPoint;
+		// std::fesetround(FE_TONEAREST);
 		centre.x += halfDistBoxEdgeToPoint;
+		// Correct for rounding in FP math
+		// std::fesetround(FE_UPWARD);
+		float error = fabs(centre.x - givenPoint.x) - radiusX;
+		// std::fesetround(FE_TONEAREST);
+		radiusX += error;
 	}
 
 	if (centroidDistance.y > radiusY)
 	{
-		double halfDistBoxEdgeToPoint = (centroidDistance.y - radiusY) / 2;
+		// std::fesetround(FE_UPWARD);
+		float halfDistBoxEdgeToPoint = (centroidDistance.y - radiusY) / 2;
 		radiusY += halfDistBoxEdgeToPoint;
 		halfDistBoxEdgeToPoint = givenPoint.y > centre.y ? halfDistBoxEdgeToPoint : -halfDistBoxEdgeToPoint;
+		// std::fesetround(FE_TONEAREST);
 		centre.y += halfDistBoxEdgeToPoint;
+		// Correct for rounding in FP math
+		// std::fesetround(FE_UPWARD);
+		float error = fabs(centre.y - givenPoint.y) - radiusY;
+		// std::fesetround(FE_TONEAREST);
+		radiusY += error;
 	}
 }
 
@@ -158,7 +194,7 @@ bool Rectangle::containsPoint(Point requestedPoint)
 	return intervalX && intervalY;
 }
 
-std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
+std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 {
 	// We can have side-on-side or corner-on-corner intersections with 0, 1, or 2 corners inside the
 	// other rectangle
@@ -179,17 +215,17 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// touch only and exactly on one side. Then the distance between the centres is the same as
 		// the sum of the two radii, and as the centres get closer the radii do not shrink.
 		
-		double overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
-		double overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
+		float overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
+		float overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
 
 		// Now depending on the orientation we have to add/subtract these quantities from our centre
 		// in a particular order to get the centres of the two new rectangles.
 
 		// Determine the x coord and radius of both new rectangles.
 		// The radius of the rectangles can be computed without knowledge of intersection orientation
-		double smallRadiusX = overlapWidth / 2;
-		double largeRadiusX = radiusX - smallRadiusX;
-		double smallXCoord, largeXCoord;
+		float smallRadiusX = overlapWidth / 2;
+		float largeRadiusX = radiusX - smallRadiusX;
+		float smallXCoord, largeXCoord;
 		if (centre.x < clippingRectangle.centre.x)
 		{
 			smallXCoord = centre.x + radiusX - smallRadiusX;
@@ -204,8 +240,8 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// Determine the y coord and radius of the small new retangle, the large rectangle doesn't
 		// change. The radius of the rectangles can be computed without knowledge of intersection
 		// orientation. Additionally we can assert the large y coord since it does not change.
-		double smallRadiusY = radiusY - overlapHeight / 2;
-		double smallYCoord;
+		float smallRadiusY = radiusY - overlapHeight / 2;
+		float smallYCoord;
 		if (centre.y < clippingRectangle.centre.y)
 		{
 			smallYCoord = centre.y - radiusY + smallRadiusY;
@@ -236,17 +272,17 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// this always has to be the case because we can't just compress ourselves, we are a
 		// paricular height for a reason.
 
-		double overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
+		float overlapHeight = clippingRectangle.radiusY + radiusY - centroidDistance.y;
 
-		double centreRadiusX = clippingRectangle.radiusX;
-		double rightRadiusX = fabs((centre.x + radiusX) - (clippingRectangle.centre.x + clippingRectangle.radiusX)) / 2;
-		double leftRadiusX = fabs((centre.x - radiusX) - (clippingRectangle.centre.x - clippingRectangle.radiusX)) / 2;
+		float centreRadiusX = clippingRectangle.radiusX;
+		float rightRadiusX = fabs((centre.x + radiusX) - (clippingRectangle.centre.x + clippingRectangle.radiusX)) / 2;
+		float leftRadiusX = fabs((centre.x - radiusX) - (clippingRectangle.centre.x - clippingRectangle.radiusX)) / 2;
 
-		double leftRadiusY = radiusY;
-		double centreRadiusY = radiusY - overlapHeight / 2;
-		double rightRadiusY = radiusY;
+		float leftRadiusY = radiusY;
+		float centreRadiusY = radiusY - overlapHeight / 2;
+		float rightRadiusY = radiusY;
 
-		double centreYCoord;
+		float centreYCoord;
 		if (centre.y < clippingRectangle.centre.y)
 		{
 			centreYCoord = clippingRectangle.centre.y - clippingRectangle.radiusY - centreRadiusY;
@@ -279,17 +315,17 @@ std::vector<Rectangle> Rectangle::splitRectangle(Rectangle clippingRectangle)
 		// this always has to be the case because we can't just compress ourselves, we are a
 		// paricular height for a reason.
 
-		double overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
+		float overlapWidth = clippingRectangle.radiusX + radiusX - centroidDistance.x;
 
-		double upperRadiusY = fabs((centre.y + radiusY) - (clippingRectangle.centre.y + clippingRectangle.radiusY)) / 2;
-		double centreRadiusY = clippingRectangle.radiusY;
-		double lowerRadiusY = fabs((centre.y - radiusY) - (clippingRectangle.centre.y - clippingRectangle.radiusY)) / 2;
+		float upperRadiusY = fabs((centre.y + radiusY) - (clippingRectangle.centre.y + clippingRectangle.radiusY)) / 2;
+		float centreRadiusY = clippingRectangle.radiusY;
+		float lowerRadiusY = fabs((centre.y - radiusY) - (clippingRectangle.centre.y - clippingRectangle.radiusY)) / 2;
 
-		double upperRadiusX = radiusX;
-		double centreRadiusX = radiusX - overlapWidth / 2;
-		double lowerRadiusX = radiusX;
+		float upperRadiusX = radiusX;
+		float centreRadiusX = radiusX - overlapWidth / 2;
+		float lowerRadiusX = radiusX;
 
-		double centreXCoord;
+		float centreXCoord;
 		if (centre.x < clippingRectangle.centre.x)
 		{
 			centreXCoord = centre.x - overlapWidth / 2;
@@ -323,6 +359,7 @@ bool Rectangle::operator!=(Rectangle r)
 
 void Rectangle::print()
 {
+	std::cout.precision(std::numeric_limits<double>::max_digits10+3);
 	std::cout << "Rectangle {(" << centre.x << "," << centre.y << "), " << radiusX << ", " << radiusY << "}";
 }
 
@@ -467,12 +504,12 @@ void testRectanglePointContainment()
 	assert(r4.containsPoint(p4));
 }
 
-void testRectangleSplits()
+void testRectangleFragmentation()
 {
 	// Test set one
 	Rectangle r1 = Rectangle(3.0, 3.0, 2.0, 2.0);
 	Rectangle r2 = Rectangle(6.0, 6.0, 2.0, 2.0);
-	std::vector<Rectangle> v = r1.splitRectangle(r2);
+	std::vector<Rectangle> v = r1.fragmentRectangle(r2);
 	assert(v.size() == 2);
 	assert(v[0].radiusX == 0.5);
 	assert(v[0].radiusY == 1.5);
@@ -482,7 +519,7 @@ void testRectangleSplits()
 	// Test set two
 	r1 = Rectangle(2.0, 2.0, 2.0, 2.0);
 	r2 = Rectangle(3.5, -0.5, 2.5, 1.5);
-	v = r1.splitRectangle(r2);
+	v = r1.fragmentRectangle(r2);
 	assert(v.size() == 2);
 	assert(v[0].radiusX == 1.5);
 	assert(v[0].radiusY == 1.5);
@@ -492,7 +529,7 @@ void testRectangleSplits()
 	// Test set three
 	r1 = Rectangle(-3.5, -2.5, 3.5, 2.5);
 	r2 = Rectangle(-6, -5.5, 2, 2.5);
-	v = r1.splitRectangle(r2);
+	v = r1.fragmentRectangle(r2);
 	assert(v.size() == 2);
 	assert(v[0].radiusX == 1.5);
 	assert(v[0].radiusY == 1.5);
@@ -502,7 +539,7 @@ void testRectangleSplits()
 	// Test set four
 	r1 = Rectangle(2.0, 4.0, 2.0, 4.0);
 	r2 = Rectangle(5.0, 5.0, 2.0, 2.0);
-	v = r1.splitRectangle(r2);
+	v = r1.fragmentRectangle(r2);
 	assert(v.size() == 3);
 	assert(v[0].radiusX == 2.0);
 	assert(v[0].radiusY == 0.5);
@@ -514,7 +551,7 @@ void testRectangleSplits()
 	// Test set five
 	r1 = Rectangle(2.0, 4.0, 2.0, 4.0);
 	r2 = Rectangle(-1.0, 5.0, 2.0, 2.0);
-	v = r1.splitRectangle(r2);
+	v = r1.fragmentRectangle(r2);
 	assert(v.size() == 3);
 	assert(v[0].radiusX == 2.0);
 	assert(v[0].radiusY == 0.5);
@@ -526,7 +563,7 @@ void testRectangleSplits()
 	// Test set six
 	r1 = Rectangle(4.0, 2.0, 4.0, 2.0);
 	r2 = Rectangle(3.0, 4.0, 2.0, 2.0);
-	v = r1.splitRectangle(r2);
+	v = r1.fragmentRectangle(r2);
 	assert(v.size() == 3);
 	assert(v[0].radiusX == 0.5);
 	assert(v[0].radiusY == 2.0);

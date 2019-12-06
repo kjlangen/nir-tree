@@ -1,7 +1,7 @@
 SXX = -std=c++11 	#Standard
 FLAGS = -g -Wall	#Flags
 DIR = src/include 	#Include directory
-OBJECTS = geometry.o btree.o node.o rtree.o randomSquares.o
+OBJECTS = geometry.o btree.o node.o rtree.o randomSquares.o randomPoints.o
 
 # Build btree
 btree.o:
@@ -22,6 +22,9 @@ rtree.o:
 # Build benchmarks
 randomSquares.o:
 	g++ ${SXX} -I ${DIR} -c src/bench/randomSquares.cpp
+
+randomPoints.o:
+	g++ ${SXX} -I ${DIR} -c src/bench/randomPoints.cpp
 
 # Build all together
 all: ${OBJECTS}

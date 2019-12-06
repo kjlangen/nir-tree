@@ -5,15 +5,21 @@
 #include <cassert>
 #include <vector>
 #include <cmath>
+#include <limits>
+#include <cfenv>
 
 class Point
 {
 	public:
-		double x;
-		double y;
+		float x;
+		float y;
 
 		Point();
-		Point(double x, double y);
+		Point(float x, float y);
+		bool operator<(Point p);
+		bool operator>(Point p);
+		bool operator<=(Point p);
+		bool operator>=(Point p);
 		bool operator==(Point p);
 		bool operator!=(Point p);
 
@@ -24,20 +30,20 @@ class Rectangle
 {
 	public:
 		Point centre;
-		double radiusX;
-		double radiusY;
+		float radiusX;
+		float radiusY;
 
 		Rectangle();
-		Rectangle(double x, double y, double radiusX, double radiusY);
-		Rectangle(Point centre, double radiusX, double radiusY);
-		double area();
-		double computeExpansionArea(Point givenPoint);
-		double computeExpansionArea(Rectangle requestedRectangle);
+		Rectangle(float x, float y, float radiusX, float radiusY);
+		Rectangle(Point centre, float radiusX, float radiusY);
+		float area();
+		float computeExpansionArea(Point givenPoint);
+		float computeExpansionArea(Rectangle requestedRectangle);
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle requestedRectangle);
 		bool containsPoint(Point requestedPoint);
-		std::vector<Rectangle> splitRectangle(Rectangle clippingRectangle);
+		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
 		bool operator==(Rectangle r);
 		bool operator!=(Rectangle r);
@@ -51,7 +57,7 @@ class DynamicRectangle
 		std::vector<Rectangle> boundingBoxes;
 
 		DynamicRectangle();
-		double computeExpansionArea();
+		float computeExpansionArea();
 		bool intersectsRectangle();
 };
 
@@ -61,6 +67,6 @@ void testRectangleComputeExpansionArea();
 void testRectangleExpansion();
 void testRectangleIntersection();
 void testRectanglePointContainment();
-void testRectangleSplits();
+void testRectangleFragmentation();
 
 #endif

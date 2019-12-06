@@ -48,7 +48,7 @@ class DefaultVisitor : public SpatialIndex::IVisitor
 	}
 };
 
-void Benchmark::benchmarkRandomSquares()
+void benchmarkRandomSquares()
 {
 	// Setup random generators
 	std::default_random_engine generator;

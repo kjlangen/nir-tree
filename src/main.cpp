@@ -1,9 +1,9 @@
 #include <iostream>
 #include <spatialindex/SpatialIndex.h>
-#include <bench/randomSquares.h>
 #include <rtree/node.h>
 #include <util/geometry.h>
-#include <cassert>
+#include <bench/randomSquares.h>
+#include <bench/randomPoints.h>
 
 void testLibSpatialIndex()
 {
@@ -117,7 +117,7 @@ void testGeometry()
 	testRectangleExpansion();
 	testRectangleIntersection();
 	testRectanglePointContainment();
-	testRectangleSplits();
+	testRectangleFragmentation();
 
 	std::cout << "Geometry tested." << std::endl;
 }
@@ -135,8 +135,8 @@ void testRTree()
 	testAdjustTree();
 	testCondenseTree();
 	testSearch();
-	// testInsert();
-	// testRemove();
+	testInsert();
+	testRemove();
 
 	std::cout << "RTree tested." << std::endl;
 }
@@ -145,8 +145,10 @@ int main(int argc, char const *argv[])
 {
 	// Argument parsing and switching goes here
 
-	testGeometry();
-	testRTree();
+	// testGeometry();
+	// testRTree();
+
+	randomPoints();
 
 	return 0;
 }
