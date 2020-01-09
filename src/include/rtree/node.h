@@ -50,12 +50,16 @@ class Node
 		Node *insert(ReinsertionEntry e);
 
 		// Datastructure interface functions
-		void search(Rectangle &requestedRectangle, std::vector<Point> &accumulator);
+		void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
+		std::vector<Point> search(Point &requestedPoint);
+		std::vector<Point> search(Rectangle &requestedRectangle);
 		Node *insert(Point givenPoint);
 		Node *remove(Point givenPoint);
 
 		// Miscellaneous
-		void print();
+		unsigned checksum();
+		void print(unsigned n=0);
+		void printTree(unsigned n=0);
 };
 
 void testBoundingBox();

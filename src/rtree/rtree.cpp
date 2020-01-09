@@ -16,12 +16,22 @@ RTree::~RTree()
 	delete root;
 }
 
-std::vector<Point> RTree::search(Rectangle requestedRectangle)
+std::vector<Point> RTree::exhaustiveSearch(Point requestedPoint)
 {
 	std::vector<Point> v;
-	root->search(requestedRectangle, v);
+	root->exhaustiveSearch(requestedPoint, v);
 
 	return v;
+}
+
+std::vector<Point> RTree::search(Point requestedPoint)
+{
+	return root->search(requestedPoint);
+}
+
+std::vector<Point> RTree::search(Rectangle requestedRectangle)
+{
+	return root->search(requestedRectangle);
 }
 
 void RTree::insert(Point givenPoint)
@@ -32,16 +42,14 @@ void RTree::insert(Point givenPoint)
 void RTree::remove(Point givenPoint)
 {
 	root = root->remove(givenPoint);
-	assert(root != nullptr);
+}
+
+unsigned RTree::checksum()
+{
+	return root->checksum();
 }
 
 void RTree::print()
 {
-	std::cout << "-----------------------------------------------" << std::endl;
-	root->print();
-	for (int i = 0; i < root->children.size(); ++i)
-	{
-		std::cout << "-----------------------------------------------" << std::endl;
-		root->children[i]->print();
-	}
+	root->printTree();
 }

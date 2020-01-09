@@ -1,0 +1,10 @@
+Finished deletion of 3000000 points.
+Checksum OK.
+Total time to insert: 1471.6694912980112804s
+Avg time to insert: 0.00049055649709933712727s
+Total time to search: 1242.9631309699818758s
+Avg time to search: 0.00041432104365666063599s
+Total time to range search: 0.12632966200000000923s
+Avg time to range search: 0.0078956038750000005766s
+Total time to delete: 5000.2604176553004436s
+Avg time to delete: 0.0016667534725517667987s

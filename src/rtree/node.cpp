@@ -38,9 +38,8 @@ void Node::deleteSubtrees()
 
 Rectangle Node::boundingBox()
 {
-	assert(data.size() > 0 || boundingBoxes.size() > 0);
-
 	Rectangle boundingBox;
+
 	if (boundingBoxes.size() > 0)
 	{
 		boundingBox = boundingBoxes[0];
@@ -51,7 +50,7 @@ Rectangle Node::boundingBox()
 	}
 	else
 	{
-		boundingBox = Rectangle(data[0], 0.0, 0.0);
+		boundingBox = Rectangle(data[0], data[0]);
 		for (unsigned i = 0; i < data.size(); ++i)
 		{
 			boundingBox.expand(data[i]);
@@ -64,7 +63,6 @@ Rectangle Node::boundingBox()
 // TODO: Optimize maybe
 void Node::updateBoundingBox(Node *child, Rectangle updatedBoundingBox)
 {
-	assert(children.size() == boundingBoxes.size());
 	for (unsigned i = 0; i < children.size(); ++i)
 	{
 		if (children[i] == child)
@@ -102,42 +100,120 @@ void Node::removeData(Point givenPoint)
 	}
 }
 
-void Node::search(Rectangle &requestedRectangle, std::vector<Point> &accumulator)
+void Node::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
 {
 	if (children.size() == 0)
 	{
-		// We are a leaf so add our data points when they are within the search rectangle
+		// We are a leaf so add our data points when they are the search point
 		for (unsigned i = 0; i < data.size(); ++i)
 		{
-			if (requestedRectangle.containsPoint(data[i]))
+			if (requestedPoint == data[i])
 			{
 				accumulator.push_back(data[i]);
+				break;
 			}
 		}
 	}
 	else
 	{
 		// Determine which branches we need to follow
-		unsigned searchedBranches = 0;
+		assert(children.size() == boundingBoxes.size());
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 		{
-			if (boundingBoxes[i].intersectsRectangle(requestedRectangle))
+			// Recurse
+			children[i]->exhaustiveSearch(requestedPoint, accumulator);
+		}
+	}
+}
+
+std::vector<Point> Node::search(Point &requestedPoint)
+{
+	std::vector<Point> matchingPoints;
+
+	// Initialize our context stack
+	std::stack<Node *> context;
+	context.push(this);
+	Node *currentContext;
+
+	for (;!context.empty();)
+	{
+		currentContext = context.top();
+		context.pop();
+
+		if (currentContext->children.size() == 0)
+		{
+			// We are a leaf so add our data points when they are the search point
+			for (unsigned i = 0; i < currentContext->data.size(); ++i)
 			{
-				// Recurse
-				children[i]->search(requestedRectangle, accumulator);
-				searchedBranches++;
+				if (requestedPoint == currentContext->data[i])
+				{
+					matchingPoints.push_back(currentContext->data[i]);
+				}
 			}
 		}
-		std::cout << "[search] searched " << searchedBranches << " branches of " << boundingBoxes.size() << " total branches." << std::endl;
+		else
+		{
+			// Determine which branches we need to follow
+			for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
+			{
+				if (currentContext->boundingBoxes[i].containsPoint(requestedPoint))
+				{
+					// Add to the nodes we will check
+					context.push(currentContext->children[i]);
+				}
+			}
+		}
 	}
+
+	return matchingPoints;
+}
+
+std::vector<Point> Node::search(Rectangle &requestedRectangle)
+{
+	std::vector<Point> matchingPoints;
+
+	// Initialize our context stack
+	std::stack<Node *> context;
+	context.push(this);
+	Node *currentContext;
+
+	for (;!context.empty();)
+	{
+		currentContext = context.top();
+		context.pop();
+
+		if (currentContext->children.size() == 0)
+		{
+			// We are a leaf so add our data points when they are within the search rectangle
+			for (unsigned i = 0; i < currentContext->data.size(); ++i)
+			{
+				if (requestedRectangle.containsPoint(currentContext->data[i]))
+				{
+					matchingPoints.push_back(currentContext->data[i]);
+				}
+			}
+		}
+		else
+		{
+			// Determine which branches we need to follow
+			for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
+			{
+				if (currentContext->boundingBoxes[i].intersectsRectangle(requestedRectangle))
+				{
+					// Add to the nodes we will check
+					context.push(currentContext->children[i]);
+				}
+			}
+		}
+	}
+
+	return matchingPoints;
 }
 
 // Always called on root, this = root
 // TODO: Write the analogous chooseLeaf(Rectangle searchRectangle)
 Node *Node::chooseLeaf(Point givenPoint)
 {
-	assert(parent == nullptr);
-
 	// CL1 [Initialize]
 	Node *node = this;
 
@@ -174,8 +250,6 @@ Node *Node::chooseLeaf(Point givenPoint)
 // Always called on root, this = root
 Node *Node::chooseNode(ReinsertionEntry e)
 {
-	assert(parent == nullptr);
-
 	// CL1 [Initialize]
 	Node *node = this;
 
@@ -214,35 +288,41 @@ Node *Node::chooseNode(ReinsertionEntry e)
 	}
 }
 
-// TODO: Write the analogous findLeaf(Rectangle searchRectangle)
+// TODO: Optimize
 Node *Node::findLeaf(Point givenPoint)
 {
-	if (children.size() == 0)
+	// Initialize our context stack
+	std::stack<Node *> context;
+	context.push(this);
+	Node *currentContext;
+
+	for (;!context.empty();)
 	{
-		// FL2 [Search leaf node for record]
-		// Check each entry to see if it matches E
-		for (unsigned i = 0; i < data.size(); ++i)
+		currentContext = context.top();
+		context.pop();
+
+		if (currentContext->children.size() == 0)
 		{
-			if (data[i] == givenPoint)
+			// FL2 [Search leaf node for record]
+			// Check each entry to see if it matches E
+			for (unsigned i = 0; i < currentContext->data.size(); ++i)
 			{
-				// finalAnswer = this;
-				return this;
+				if (currentContext->data[i] == givenPoint)
+				{
+					return currentContext;
+				}
 			}
 		}
-	}
-	else
-	{
-		// FL1 [Search subtrees]
-		// Determine which branches we need to follow
-		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+		else
 		{
-			if (boundingBoxes[i].containsPoint(givenPoint))
+			// FL1 [Search subtrees]
+			// Determine which branches we need to follow
+			for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
 			{
-				// Recurse
-				Node *recurseResult = children[i]->findLeaf(givenPoint);
-				if (recurseResult != nullptr)
+				if (currentContext->boundingBoxes[i].containsPoint(givenPoint))
 				{
-					return recurseResult;
+					// Add the child to the nodes we will consider
+					context.push(currentContext->children[i]);
 				}
 			}
 		}
@@ -253,51 +333,33 @@ Node *Node::findLeaf(Point givenPoint)
 
 Node *Node::splitNode(Node *newChild)
 {
-	// std::cout << "[splitNode] Begin" << std::endl;
-	// Setup the two groups which will be the entries in the two new nodes
-	// std::cout << "SN1" << std::endl;
-	std::vector<unsigned> groupA;
-	Rectangle boundingBoxA = Rectangle(0.0, 0.0, 0.0, 0.0); // boundingBoxes[0];
+	unsigned boundingBoxesSize = boundingBoxes.size();
 
+	// Setup the two groups which will be the entries in the two new nodes
+	float seedA = 0;
+	std::vector<unsigned> groupA;
+
+	float seedB = boundingBoxesSize - 1;
 	std::vector<unsigned> groupB;
-	Rectangle boundingBoxB = Rectangle(0.0, 0.0, 0.0, 0.0); // boundingBoxes[1];
 
 	// Compute the first entry in each group based on PS1 & PS2
-	// std::cout << "SN2" << std::endl;
-	float seedA = 0;
-	float seedB = 0;
 	float maxWasted = 0;
-	for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+	Rectangle iBox, jBox;
+	for (unsigned i = 0; i < boundingBoxesSize; ++i)
 	{
-		for (unsigned j = 0; j < boundingBoxes.size(); ++j)
+		iBox = boundingBoxes[i];
+		for (unsigned j = 0; j < boundingBoxesSize; ++j)
 		{
-			float xdist = fabs(boundingBoxes[i].centre.x - boundingBoxes[j].centre.x);
-			float ydist = fabs(boundingBoxes[i].centre.y - boundingBoxes[j].centre.y);
+			jBox = boundingBoxes[j];
+			float xdist = iBox.lowerLeft.x - jBox.lowerLeft.x;
+			float xdistPrime = iBox.upperRight.x - jBox.upperRight.x;
+			float ydist = iBox.lowerLeft.y - jBox.lowerLeft.y;
+			float ydistPrime = iBox.upperRight.y - jBox.upperRight.y;
 
-			// float xRadiiSum = boundingBoxes[i].radiusX + boundingBoxes[j].radiusX;
-			// float yRadiiSum = boundingBoxes[i].radiusY + boundingBoxes[j].radiusY;
-
-			// float xoverlap = xdist < xRadiiSum ? xRadiiSum - xdist : 0;
-			// float yoverlap = ydist < yRadiiSum ? yRadiiSum - ydist : 0;
-
-			// float largeArea = (xdist + xRadiiSum) * (ydist + yRadiiSum);
-			// float overlapArea = xoverlap * yoverlap;
-			// float wasted = largeArea - boundingBoxes[i].area() - boundingBoxes[j].area() + overlapArea;
-
-			float wasted = xdist * xdist + ydist * ydist;
-
-			// std::cout << "[splitNode] largeArea: " << largeArea << std::endl;
-			// std::cout << "[splitNode] boundingBoxes[i].area(): " << boundingBoxes[i].area() << std::endl;
-			// std::cout << "[splitNode] boundingBoxes[j].area(): " << boundingBoxes[j].area() << std::endl;
-			// std::cout << "[splitNode] overlapArea: " << overlapArea << std::endl;
-			// std::cout << "[splitNode] wasted: " << wasted << std::endl;
-
+			float wasted = (xdist * xdist + xdistPrime * xdistPrime + ydist * ydist + ydistPrime * ydistPrime) / 2;
 			if (maxWasted < wasted)
 			{
 				maxWasted = wasted;
-
-				// boundingBoxA = boundingBoxes[i];
-				// boundingBoxB = boundingBoxes[j];
 
 				seedA = i;
 				seedB = j;
@@ -305,26 +367,11 @@ Node *Node::splitNode(Node *newChild)
 		}
 	}
 
-	boundingBoxA = boundingBoxes[seedA];
-	boundingBoxB = boundingBoxes[seedB];
-	// boundingBoxA.print();
-	// std::cout << std::endl;
-	// boundingBoxB.print();
-	// std::cout << std::endl;
-
-	if (boundingBoxA == boundingBoxB)
-	{	
-		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
-		{
-			boundingBoxes[i].print();
-			std::cout << std::endl;
-		}
-		assert(!(boundingBoxA == boundingBoxB));
-	}
+	Rectangle boundingBoxA = boundingBoxes[seedA];
+	Rectangle boundingBoxB = boundingBoxes[seedB];
 
 	// Go through the remaining entries and add them to groupA or groupB
-	// std::cout << "SN3" << std::endl;
-	for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+	for (unsigned i = 0; i < boundingBoxesSize; ++i)
 	{
 		if (i == seedA)
 		{
@@ -338,13 +385,7 @@ Node *Node::splitNode(Node *newChild)
 		}
 
 		// Choose the group which will need to expand the least
-		// std::cout << "[splitNode] Checking bounding box " << i << " "; boundingBoxes[i].print();
-		float expansionAreaA = boundingBoxA.computeExpansionArea(boundingBoxes[i]);
-		float expansionAreaB = boundingBoxB.computeExpansionArea(boundingBoxes[i]);
-		// std::cout << std::endl << "[splitNode] expansionAreaA: " << expansionAreaA << std::endl;
-		// std::cout << "[splitNode] expansionAreaB: " << expansionAreaB << std::endl;
-
-		if (expansionAreaB > expansionAreaA)
+		if (boundingBoxB.computeExpansionArea(boundingBoxes[i]) > boundingBoxA.computeExpansionArea(boundingBoxes[i]))
 		{
 			groupA.push_back(i);
 			boundingBoxA.expand(boundingBoxes[i]);
@@ -357,36 +398,30 @@ Node *Node::splitNode(Node *newChild)
 	}
 
 	// Create the new node and fill it with groupB entries by doing complicated stuff
-	// std::cout << "SN4" << std::endl;
-	Node *newSibling = new Node(minBranchFactor, maxBranchFactor);
-	unsigned groupALastIndex = groupA.size() - 1;
-	// std::cout << "[splitNode] groupA.size(): " << groupA.size() << std::endl;
-	// std::cout << "[splitNode] groupB.size(): " << groupB.size() << std::endl;
-	// std::cout << "[splitNode] groupALastIndex: " << groupALastIndex << std::endl;
+	Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+	unsigned groupASize = groupA.size();
+	unsigned groupALastIndex = groupASize - 1;
+	unsigned iGroupB;
 	for (unsigned i = 0; i < groupB.size(); ++i)
 	{
-		newSibling->boundingBoxes.push_back(boundingBoxes[groupB[i]]);
-		newSibling->children.push_back(children[groupB[i]]);
+		iGroupB = groupB[i];
+		children[iGroupB]->parent = newSibling;
+		newSibling->boundingBoxes.push_back(boundingBoxes[iGroupB]);
+		newSibling->children.push_back(children[iGroupB]);
 
-		boundingBoxes[groupB[i]] = boundingBoxes[groupA[groupALastIndex]];
-		// std::cout << "SN4.1" << std::endl;
-		children[groupB[i]] = children[groupA[groupALastIndex]];
-		// std::cout << "SN4.2" << std::endl;
+		boundingBoxes[iGroupB] = boundingBoxes[groupA[groupALastIndex]];
+		children[iGroupB] = children[groupA[groupALastIndex]];
 
 		groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
 	}
-	boundingBoxes.resize(groupA.size());
-	children.resize(groupA.size());
+	boundingBoxes.resize(groupASize);
+	children.resize(groupASize);
 
 	// Add newChild which caused this split in the first place
-	// std::cout << "SN5" << std::endl;
 	Rectangle newBox = newChild->boundingBox();
-	// Choose the group which will need to expand the least
-	// std::cout << "SN6" << std::endl;
-	float expansionAreaA = boundingBoxA.computeExpansionArea(newBox);
-	float expansionAreaB = boundingBoxB.computeExpansionArea(newBox);
 
-	if (expansionAreaB > expansionAreaA)
+	// Choose the group which will need to expand the least
+	if (boundingBoxB.computeExpansionArea(newBox) > boundingBoxA.computeExpansionArea(newBox))
 	{
 		newChild->parent = this;
 		boundingBoxes.push_back(newBox);
@@ -399,37 +434,37 @@ Node *Node::splitNode(Node *newChild)
 		newSibling->children.push_back(newChild);
 	}
 
-	// std::cout << "[splitNode] End" << std::endl;
-
 	// Return our newly minted sibling
-	// std::cout << "SN7" << std::endl;
 	return newSibling;
 }
 
 // TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
-// with sets is necessary and that with necessitate rewriting the entire R-Tree with sets.
+// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
 Node *Node::splitNode(Point newData)
 {
-	// std::cout << "[splitNode] Begin" << std::endl;
+	float dataSize = data.size();
+
 	// Setup the two groups which will be the entries in the two new nodes
 	std::vector<unsigned> groupA;
 	std::vector<unsigned> groupB;
 
 	// Compute the first entry in each group based on PS1 & PS2
 	unsigned seedA = 0;
-	unsigned seedB = data.size() - 1;
+	unsigned seedB = dataSize - 1;
 
-	float xdist = fabs(data[seedA].x - data[seedB].x);
-	float ydist = fabs(data[seedA].y - data[seedB].y);
+	float xdist = data[seedA].x - data[seedB].x;
+	float ydist = data[seedA].y - data[seedB].y;
 
 	float maxWasted = xdist * xdist + ydist * ydist;
-
-	for (unsigned i = 0; i < data.size(); ++i)
+	Point iData, jData;
+	for (unsigned i = 0; i < dataSize; ++i)
 	{
-		for (unsigned j = 0; j < data.size(); ++j)
+		iData = data[i];
+		for (unsigned j = 0; j < dataSize; ++j)
 		{
-			xdist = fabs(data[i].x - data[j].x);
-			ydist = fabs(data[i].y - data[j].y);
+			jData = data[j];
+			xdist = iData.x - jData.x;
+			ydist = iData.y - jData.y;
 			float wasted = xdist * xdist + ydist * ydist;
 
 			if (maxWasted < wasted)
@@ -443,11 +478,11 @@ Node *Node::splitNode(Point newData)
 	}
 
 	// Set the bounding rectangles
-	Rectangle boundingBoxA = Rectangle(data[seedA].x, data[seedA].y, 0, 0);
-	Rectangle boundingBoxB = Rectangle(data[seedB].x, data[seedB].y, 0, 0);
+	Rectangle boundingBoxA = Rectangle(data[seedA], data[seedA]);
+	Rectangle boundingBoxB = Rectangle(data[seedB], data[seedB]);
 
 	// Go through the remaining entries and add them to groupA or groupB
-	for (unsigned i = 0; i < data.size(); ++i)
+	for (unsigned i = 0; i < dataSize; ++i)
 	{
 		// TODO: Is there an edge case where when considering one of the seeds, it is placed in the
 		// incorrect group? We rely on the groups sorted in ascending order so that's why we
@@ -466,10 +501,7 @@ Node *Node::splitNode(Point newData)
 		}
 
 		// Choose the group which will need to expand the least
-		float expansionAreaA = boundingBoxA.computeExpansionArea(data[i]);
-		float expansionAreaB = boundingBoxB.computeExpansionArea(data[i]);
-
-		if (expansionAreaB > expansionAreaA)
+		if (boundingBoxB.computeExpansionArea(data[i]) > boundingBoxA.computeExpansionArea(data[i]))
 		{
 			groupA.push_back(i);
 			boundingBoxA.expand(data[i]);
@@ -482,25 +514,21 @@ Node *Node::splitNode(Point newData)
 	}
 
 	// Create the new node and fill it with groupB entries by doing really complicated stuff
-	Node *newSibling = new Node(minBranchFactor, maxBranchFactor);
+	Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
 	unsigned groupALastIndex = groupA.size() - 1;
-	// std::cout << "[splitNode] groupA.size(): " << groupA.size() << std::endl;
-	// std::cout << "[splitNode] groupB.size(): " << groupB.size() << std::endl;
-	// std::cout << "[splitNode] groupALastIndex: " << groupALastIndex << std::endl;
+	unsigned iGroupB;
 	for (unsigned i = 0; i < groupB.size(); ++i)
 	{
-		newSibling->data.push_back(data[groupB[i]]);
-		data[groupB[i]] = data[groupA[groupALastIndex]];
+		iGroupB = groupB[i];
+		newSibling->data.push_back(data[iGroupB]);
+		data[iGroupB] = data[groupA[groupALastIndex]];
 		groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
 	}
 	data.resize(groupA.size());
 
 	// Add newData which caused this split in the first place
 	// Choose the group which will need to expand the least
-	float expansionAreaA = boundingBoxA.computeExpansionArea(newData);
-	float expansionAreaB = boundingBoxB.computeExpansionArea(newData);
-
-	if (expansionAreaB > expansionAreaA)
+	if (boundingBoxB.computeExpansionArea(newData) > boundingBoxA.computeExpansionArea(newData))
 	{
 		data.push_back(newData);
 	}
@@ -509,8 +537,6 @@ Node *Node::splitNode(Point newData)
 		newSibling->data.push_back(newData);
 	}
 
-	// std::cout << "[splitNode] End" << std::endl;
-
 	// Return our newly minted sibling
 	return newSibling;
 }
@@ -518,14 +544,12 @@ Node *Node::splitNode(Point newData)
 Node *Node::adjustTree(Node *sibling)
 {
 	// AT1 [Initialize]
-	// std::cout << "AT1" << std::endl;
 	Node *node = this;
 	Node *siblingNode = sibling;
 
 	for (;;)
 	{
 		// AT2 [If node is the root, stop]
-		// std::cout << "AT2" << std::endl;
 		if (node->parent == nullptr)
 		{
 			break;
@@ -533,41 +557,32 @@ Node *Node::adjustTree(Node *sibling)
 		else
 		{
 			// AT3 [Adjust covering rectangle in parent entry]
-			// std::cout << "AT3" << std::endl;
-			Node *parent = node->parent;
-			parent->updateBoundingBox(node, node->boundingBox());
+			node->parent->updateBoundingBox(node, node->boundingBox());
 
-			// Did we have a split on the previous level
+			// If we have a split then deal with it otherwise move up the tree
 			if (siblingNode != nullptr)
 			{
 				// AT4 [Propogate the node split upwards]
-				// std::cout << "AT4" << std::endl;
-				if (parent->children.size() == parent->maxBranchFactor)
+				if (node->parent->children.size() < node->parent->maxBranchFactor)
 				{
-					Node *siblingParent = parent->splitNode(siblingNode);
+					node->parent->boundingBoxes.push_back(siblingNode->boundingBox());
+					node->parent->children.push_back(siblingNode);
+					siblingNode->parent = node->parent;
 
-					// AT5 [Move up to next level]
-					// std::cout << "AT5" << std::endl;
-					node = parent;
-					siblingNode = siblingParent;
+					node = node->parent;
+					siblingNode = nullptr;
 				}
 				else
 				{
-					// Create entry in p for nn
-					parent->boundingBoxes.push_back(siblingNode->boundingBox());
-					parent->children.push_back(siblingNode);
-					siblingNode->parent = parent;
+					Node *siblingParent = node->parent->splitNode(siblingNode);
 
-					// AT5 [Move up to next level]
-					// std::cout << "AT5'" << std::endl;
-					node = parent;
-					siblingNode = nullptr;
+					node = node->parent;
+					siblingNode = siblingParent;
 				}
 			}
 			else
 			{
 				// AT5 [Move up to next level]
-				// std::cout << "AT5''" << std::endl;
 				node = node->parent;
 			}
 		}
@@ -579,8 +594,6 @@ Node *Node::adjustTree(Node *sibling)
 // Always called on root, this = root
 Node *Node::insert(Point givenPoint)
 {
-	assert(parent == nullptr);
-
 	// I1 [Find position for new record]
 	Node *leaf = chooseLeaf(givenPoint);
 	Node *siblingLeaf = nullptr;
@@ -592,7 +605,6 @@ Node *Node::insert(Point givenPoint)
 	}
 	else
 	{
-		assert(leaf != nullptr);
 		siblingLeaf = leaf->splitNode(givenPoint);
 	}
 
@@ -603,9 +615,11 @@ Node *Node::insert(Point givenPoint)
 	if (siblingNode != nullptr)
 	{
 		Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
+
 		this->parent = newRoot;
 		newRoot->boundingBoxes.push_back(this->boundingBox());
 		newRoot->children.push_back(this);
+
 		siblingNode->parent = newRoot;
 		newRoot->boundingBoxes.push_back(siblingNode->boundingBox());
 		newRoot->children.push_back(siblingNode);
@@ -621,8 +635,6 @@ Node *Node::insert(Point givenPoint)
 // Always called on root, this = root
 Node *Node::insert(ReinsertionEntry e)
 {
-	assert(parent == nullptr);
-
 	// If reinserting a leaf then use normal insert
 	if (e.level == 0)
 	{
@@ -636,6 +648,7 @@ Node *Node::insert(ReinsertionEntry e)
 	// I2 [Add record to node]
 	if (node->children.size() < node->maxBranchFactor)
 	{
+		e.child->parent = node;
 		node->boundingBoxes.push_back(e.boundingBox);
 		node->children.push_back(e.child);
 	}
@@ -651,9 +664,11 @@ Node *Node::insert(ReinsertionEntry e)
 	if (siblingNode != nullptr)
 	{
 		Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
+
 		this->parent = newRoot;
 		newRoot->boundingBoxes.push_back(this->boundingBox());
 		newRoot->children.push_back(this);
+
 		siblingNode->parent = newRoot;
 		newRoot->boundingBoxes.push_back(siblingNode->boundingBox());
 		newRoot->children.push_back(siblingNode);
@@ -669,8 +684,6 @@ Node *Node::insert(ReinsertionEntry e)
 // To be called on a leaf
 Node *Node::condenseTree()
 {
-	assert(children.size() == 0);
-
 	// CT1 [Initialize]
 	Node *node = this;
 	unsigned level = 0;
@@ -678,29 +691,36 @@ Node *Node::condenseTree()
 	std::vector<ReinsertionEntry> Q;
 
 	// CT2 [Find parent entry]
+	unsigned nodeBoundingBoxesSize, nodeDataSize;
 	while (node->parent != nullptr)
 	{
-		Node *parent = node->parent;
-
+		nodeBoundingBoxesSize = node->boundingBoxes.size();
+		nodeDataSize = node->data.size();
 		// CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
-		if (node->boundingBoxes.size() >= node->minBranchFactor || node->data.size() >= node->minBranchFactor)
+		if (nodeBoundingBoxesSize >= node->minBranchFactor || nodeDataSize >= node->minBranchFactor)
 		{
-			parent->updateBoundingBox(node, node->boundingBox());
+			node->parent->updateBoundingBox(node, node->boundingBox());
+
+			// CT5 [Move up one level in the tree]
+			// Move up a level without deleting ourselves
+			node = node->parent;
+			level++;
 		}
 		else
 		{
-			// Remove ourselves from circulation
-			parent->removeChild(node);
+			// Remove ourselves from our parent
+			node->parent->removeChild(node);
 
 			// Add a reinsertion entry for each data point or branch of this node
-			for (unsigned i = 0; i < node->data.size(); ++i)
+			for (unsigned i = 0; i < nodeDataSize; ++i)
 			{
 				ReinsertionEntry e = {};
+				e.child = nullptr;
 				e.data = node->data[i];
 				e.level = 0;
 				Q.push_back(e);
 			}
-			for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
+			for (unsigned i = 0; i < nodeBoundingBoxesSize; ++i)
 			{
 				ReinsertionEntry e = {};
 				e.boundingBox = node->boundingBoxes[i];
@@ -709,13 +729,17 @@ Node *Node::condenseTree()
 				Q.push_back(e);
 			}
 
-			// Cleanup ourselves without deleting children b/c they will be reinserted
-			delete node;
-		}
+			// Prepare for garbage collection
+			Node *garbage = node;
 
-		// CT5 [Move up one level in the tree]
-		node = parent;
-		level++;
+			// CT5 [Move up one level in the tree]
+			// Move up a level before deleting ourselves
+			node = node->parent;
+			level++;
+
+			// Cleanup ourselves without deleting children b/c they will be reinserted
+			delete garbage;
+		}
 	}
 
 	// CT6 [Re-insert oprhaned entries]
@@ -730,28 +754,21 @@ Node *Node::condenseTree()
 // Always called on root, this = root
 Node *Node::remove(Point givenPoint)
 {
-	assert(parent == nullptr);
-
 	// D1 [Find node containing record]
-	// std::cout << "D1" << std::endl;
 	Node *leaf = findLeaf(givenPoint);
 
 	if (leaf == nullptr)
 	{
-		// std::cout << "[remove] Returning null" << std::endl;
 		return nullptr;
 	}
 
 	// D2 [Delete record]
-	// std::cout << "D2" << std::endl;
 	leaf->removeData(givenPoint);
 
 	// D3 [Propagate changes]
-	// std::cout << "D3" << std::endl;
 	Node *root = leaf->condenseTree();
 
 	// D4 [Shorten tree]
-	// std::cout << "D4" << std::endl;
 	if (root->children.size() == 1)
 	{
 		root->children[0]->parent = nullptr;
@@ -763,45 +780,88 @@ Node *Node::remove(Point givenPoint)
 	}
 }
 
-void Node::print()
+void Node::print(unsigned n)
 {
-	std::cout << "Node " << (void *)this << " {" << std::endl;
-	std::cout << "    Parent: " << (void *)parent << std::endl;
-	std::cout << "    Bounding Boxes: ";
-	for (int i = 0; i < boundingBoxes.size(); ++i)
+	std::string indendtation(n * 4, ' ');
+	std::cout << indendtation << "Node " << (void *)this << std::endl;
+	std::cout << indendtation << "{" << std::endl;
+	std::cout << indendtation << "    Parent: " << (void *)parent << std::endl;
+	std::cout << indendtation << "    Bounding Boxes: " << std::endl;
+	for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 	{
+		std::cout << indendtation << "		";
 		boundingBoxes[i].print();
 	}
-	std::cout << std::endl << "    Children: ";
-	for (int i = 0; i < children.size(); ++i)
+	std::cout << std::endl << indendtation << "    Children: ";
+	for (unsigned i = 0; i < children.size(); ++i)
 	{
 		std::cout << (void *)children[i] << ' ';
 	}
-	std::cout << std::endl << "    Data: ";
-	for (int i = 0; i < data.size(); ++i)
+	std::cout << std::endl << indendtation << "    Data: ";
+	for (unsigned i = 0; i < data.size(); ++i)
 	{
 		data[i].print();
 	}
-	std::cout << std::endl << "}" << std::endl;
+	std::cout << std::endl << indendtation << "}" << std::endl;
+}
+
+void Node::printTree(unsigned n)
+{
+	// Print this node first
+	print(n);
+
+	// Print any of our children with one more level of indentation
+	if (children.size() > 0)
+	{
+		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+		{
+			// Recurse
+			children[i]->printTree(n + 1);
+		}
+	}
+}
+
+unsigned Node::checksum()
+{
+	unsigned sum = 0;
+
+	if (children.size() == 0)
+	{
+		for (unsigned i = 0; i < data.size(); ++i)
+		{
+			sum += (unsigned)data[i].x;
+			sum += (unsigned)data[i].y;
+		}
+	}
+	else
+	{
+		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+		{
+			// Recurse
+			sum += children[i]->checksum();
+		}
+	}
+
+	return sum;
 }
 
 void testBoundingBox()
 {
 	// Test set one
 	Node testNode = Node();
-	testNode.boundingBoxes.push_back(Rectangle(10.0, 3.0, 2.0, 2.0));
-	testNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
-	testNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	testNode.boundingBoxes.push_back(Rectangle(8.0, 1.0, 12.0, 5.0));
+	testNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
+	testNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 
-	assert(testNode.boundingBox() == Rectangle(12.0, -0.5, 4.0, 5.5));
+	assert(testNode.boundingBox() == Rectangle(8.0, -6.0, 16.0, 5.0));
 
 	// Test set two
 	Node testNode2 = Node();
-	testNode2.boundingBoxes.push_back(Rectangle(9.0, 13.0, 1.0, 1.0));
-	testNode2.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
-	testNode2.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	testNode2.boundingBoxes.push_back(Rectangle(8.0, 12.0, 10.0, 14.0));
+	testNode2.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
+	testNode2.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
 
-	assert(testNode2.boundingBox() == Rectangle(11.0, 13.0, 3.0, 1.0));
+	assert(testNode2.boundingBox() == Rectangle(8.0, 12.0, 14.0, 14.0));
 }
 
 void testUpdateBoundingBox()
@@ -809,24 +869,28 @@ void testUpdateBoundingBox()
 	Node parentNode = Node();
 
 	Node *child0 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	child0->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 	parentNode.children.push_back(child0);
 
 	Node *child1 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	child1->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
 	parentNode.children.push_back(child1);
 
 	Node *child2 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	child2->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
 	parentNode.children.push_back(child2);
 
 	Node *child3 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	child3->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
 	parentNode.children.push_back(child3);
 
 	// Test the bounding box update
-	parentNode.updateBoundingBox(child3, Rectangle(4.0, 4.0, 1.0, 1.0));
-	assert(parentNode.boundingBoxes[3] == Rectangle(4.0, 4.0, 1.0, 1.0));
+	parentNode.updateBoundingBox(child3, Rectangle(3.0, 3.0, 5.0, 5.0));
+	assert(parentNode.boundingBoxes[3] == Rectangle(3.0, 3.0, 5.0, 5.0));
 
 	// Cleanup
 	delete child0;
@@ -841,19 +905,23 @@ void testRemoveChild()
 	Node parentNode = Node();
 
 	Node *child0 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	child0->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 	parentNode.children.push_back(child0);
 
 	Node *child1 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	child1->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
 	parentNode.children.push_back(child1);
 
 	Node *child2 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	child2->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
 	parentNode.children.push_back(child2);
 
 	Node *child3 = new Node();
-	parentNode.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	child3->parent = &parentNode;
+	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
 	parentNode.children.push_back(child3);
 
 	// Remove one of the children
@@ -873,16 +941,16 @@ void testRemoveData()
 	// Setup a node with some data
 	Node parentNode = Node();
 
-	parentNode.boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 	parentNode.data.push_back(Point(9.0, -5.0));
 
-	parentNode.boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
 	parentNode.data.push_back(Point(14.0, -3.0));
 
-	parentNode.boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
 	parentNode.data.push_back(Point(11.0, 13.0));
 
-	parentNode.boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
 	parentNode.data.push_back(Point(13.0, 13.0));
 
 	// Remove some of the data
@@ -906,24 +974,36 @@ void testChooseLeaf()
 	Node *rightChild2 = new Node();
 
 	// Setup nodes
-	left->boundingBoxes.push_back(Rectangle(9.0, 13.0, 1.0, 1.0));
+	leftChild0->parent = left;
+	left->boundingBoxes.push_back(Rectangle(8.0, 12.0, 10.0, 14.0));
 	left->children.push_back(leftChild0);
-	left->boundingBoxes.push_back(Rectangle(11.0, 13.0, 1.0, 1.0));
+
+	leftChild1->parent = left;
+	left->boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
 	left->children.push_back(leftChild1);
-	left->boundingBoxes.push_back(Rectangle(13.0, 13.0, 1.0, 1.0));
+
+	leftChild2->parent = left;
+	left->boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
 	left->children.push_back(leftChild2);
 
-	right->boundingBoxes.push_back(Rectangle(10.0, 3.0, 2.0, 2.0));
+	rightChild0->parent = right;
+	right->boundingBoxes.push_back(Rectangle(8.0, 1.0, 12.0, 5.0));
 	right->children.push_back(rightChild0);
-	right->boundingBoxes.push_back(Rectangle(14.0, -3.0, 2.0, 1.0));
+
+	rightChild1->parent = right;
+	right->boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
 	right->children.push_back(rightChild1);
-	right->boundingBoxes.push_back(Rectangle(9.0, -5.0, 1.0, 1.0));
+
+	rightChild2->parent = right;
+	right->boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 	right->children.push_back(rightChild2);
 
-	root->boundingBoxes.push_back(Rectangle(11.0, 13.0, 3.0, 1.0));
+	left->parent = root;
+	root->boundingBoxes.push_back(Rectangle(8.0, 12.0, 14.0, 14.0));
 	root->children.push_back(left);
 
-	root->boundingBoxes.push_back(Rectangle(12.0, -0.5, 4.0, 5.5));
+	right->parent = root;
+	root->boundingBoxes.push_back(Rectangle(8.0, -6.0, 16.0, 5.0));
 	root->children.push_back(right);
 
 	// Test that we get the correct child for the given point
@@ -935,6 +1015,7 @@ void testChooseLeaf()
 	assert(leftChild0 == root->chooseLeaf(Point(4.0, 8.0)));
 
 	// Cleanup
+	root->deleteSubtrees();
 	delete root;
 }
 
@@ -957,8 +1038,10 @@ void testFindLeaf()
 	cluster4b->data.push_back(Point(-10.0, -5.0));
 
 	Node *cluster4 = new Node();
+	cluster4a->parent = cluster4;
 	cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
 	cluster4->children.push_back(cluster4a);
+	cluster4b->parent = cluster4;
 	cluster4->boundingBoxes.push_back(cluster4b->boundingBox());
 	cluster4->children.push_back(cluster4b);
 
@@ -992,19 +1075,25 @@ void testFindLeaf()
 	cluster5d->data.push_back(Point(-12.0, -15.0));
 
 	Node *cluster5 = new Node();
+	cluster5a->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
 	cluster5->children.push_back(cluster5a);
+	cluster5b->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
 	cluster5->children.push_back(cluster5b);
+	cluster5c->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
 	cluster5->children.push_back(cluster5c);
+	cluster5d->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
 	cluster5->children.push_back(cluster5d);
 
 	// Root
 	Node *root = new Node();
+	cluster4->parent = root;
 	root->boundingBoxes.push_back(cluster4->boundingBox());
 	root->children.push_back(cluster4);
+	cluster5->parent = root;
 	root->boundingBoxes.push_back(cluster5->boundingBox());
 	root->children.push_back(cluster5);
 
@@ -1017,6 +1106,7 @@ void testFindLeaf()
 	assert(root->findLeaf(Point(-13.0, -15.0)) == cluster5d);
 
 	// Cleanup
+	root->deleteSubtrees();
 	delete root;
 }
 
@@ -1047,6 +1137,10 @@ void testSplitNode()
 	assert(cluster6p->data[3] == Point(-2.0, -9.0));
 	assert(cluster6p->data[4] == Point(-3.0, -11.0));
 
+	// Cleanup
+	delete cluster6;
+	delete cluster6p;
+
 	// Test set two
 	// Cluster 2, n = 8
 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
@@ -1074,24 +1168,35 @@ void testSplitNode()
 	assert(cluster2p->data[4] == Point(-8.0, 8.0));
 	assert(cluster2p->data[5] == Point(-8.0, 9.0));
 
+	// Cleanup
+	delete cluster2;
+	delete cluster2p;
+
 	// Test set three
 	// Cluster 3, n = 9
 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
 	// {(-5, 4), 1, 1}, {(-2, 4), 1, 1}, {(-1, 3), 1, 1}, {(-1, 1), 1, 1}, {(-3, 0), 1, 1},
 	// {(-6, 2), 1, 1}
 	Node *cluster3 = new Node();
-	cluster3->boundingBoxes.push_back(Rectangle(-5.0, 4.0, 1.0, 1.0));
-	cluster3->children.push_back((Node *)0x0);
-	cluster3->boundingBoxes.push_back(Rectangle(-2.0, 4.0, 1.0, 1.0));
-	cluster3->children.push_back((Node *)0x1);
-	cluster3->boundingBoxes.push_back(Rectangle(-1.0, 3.0, 1.0, 1.0));
-	cluster3->children.push_back((Node *)0x2);
-	cluster3->boundingBoxes.push_back(Rectangle(-1.0, 1.0, 1.0, 1.0));
-	cluster3->children.push_back((Node *)0x3);
-	cluster3->boundingBoxes.push_back(Rectangle(-3.0, 0.0, 1.0, 1.0));
-	cluster3->children.push_back((Node *)0x4);
-	cluster3->boundingBoxes.push_back(Rectangle(-6.0, 2.0, 1.0, 1.0));
-	cluster3->children.push_back((Node *)0x5);
+	Node *dummys[6] = {new Node(), new Node(), new Node(), new Node(), new Node(), new Node()};
+	dummys[0]->parent = cluster3;
+	cluster3->boundingBoxes.push_back(Rectangle(-6.0, 3.0, -4.0, 5.0));
+	cluster3->children.push_back(dummys[0]);
+	dummys[1]->parent = cluster3;
+	cluster3->boundingBoxes.push_back(Rectangle(-3.0, 3.0, -1.0, 5.0));
+	cluster3->children.push_back(dummys[1]);
+	dummys[2]->parent = cluster3;
+	cluster3->boundingBoxes.push_back(Rectangle(-2.0, 2.0, 0.0, 4.0));
+	cluster3->children.push_back(dummys[2]);
+	dummys[3]->parent = cluster3;
+	cluster3->boundingBoxes.push_back(Rectangle(-2.0, 0.0, 0.0, 2.0));
+	cluster3->children.push_back(dummys[3]);
+	dummys[4]->parent = cluster3;
+	cluster3->boundingBoxes.push_back(Rectangle(-4.0, -1.0, -2.0, 1.0));
+	cluster3->children.push_back(dummys[4]);
+	dummys[5]->parent = cluster3;
+	cluster3->boundingBoxes.push_back(Rectangle(-7.0, 1.0, -5.0, 3.0));
+	cluster3->children.push_back(dummys[5]);
 
 	// Extra node causing the split
 	Node *cluster3extra = new Node();
@@ -1101,78 +1206,70 @@ void testSplitNode()
 	// Test the split
 	Node *cluster3p = cluster3->splitNode(cluster3extra);
 
-	assert(cluster3->children.size() == 3);
-	assert(cluster3->children[0] == (Node *)0x0);
-	assert(cluster3->children[1] == (Node *)0x1);
-	assert(cluster3->children[2] == (Node *)0x5);
+	assert(cluster3->children.size() == 5);
+	assert(cluster3->boundingBoxes[0] == Rectangle(-4.0, -1.0, -2.0, 1.0));
+	assert(cluster3->boundingBoxes[1] == Rectangle(-3.0, 3.0, -1.0, 5.0));
+	assert(cluster3->boundingBoxes[2] == Rectangle(-2.0, 2.0, 0.0, 4.0));
+	assert(cluster3->boundingBoxes[3] == Rectangle(-2.0, 0.0, 0.0, 2.0));
+	assert(cluster3->boundingBoxes[4] == Rectangle(1.0, 1.0, 2.0, 2.0));
+	assert(cluster3->children[4] == cluster3extra);
 
-	assert(cluster3->boundingBoxes.size() == 3);
-	assert(cluster3->boundingBoxes[0] == Rectangle(-5.0, 4.0, 1.0, 1.0));
-	assert(cluster3->boundingBoxes[1] == Rectangle(-2.0, 4.0, 1.0, 1.0));
-	assert(cluster3->boundingBoxes[2] == Rectangle(-6.0, 2.0, 1.0, 1.0));
-
-	assert(cluster3p->children.size() == 4);
-	assert(cluster3p->children[0] == (Node *)0x2);
-	assert(cluster3p->children[1] == (Node *)0x3);
-	assert(cluster3p->children[2] == (Node *)0x4);
-	assert(cluster3p->children[3] == cluster3extra);
-
-	assert(cluster3p->boundingBoxes.size() == 4);
-	assert(cluster3p->boundingBoxes[0] == Rectangle(-1.0, 3.0, 1.0, 1.0));
-	assert(cluster3p->boundingBoxes[1] == Rectangle(-1.0, 1.0, 1.0, 1.0));
-	assert(cluster3p->boundingBoxes[2] == Rectangle(-3.0, 0.0, 1.0, 1.0));
-	assert(cluster3p->boundingBoxes[3] == Rectangle(1.5, 1.5, 0.5, 0.5));
+	assert(cluster3p->children.size() == 2);
+	assert(cluster3p->boundingBoxes[0] == Rectangle(-6.0, 3.0, -4.0, 5.0));
+	assert(cluster3p->boundingBoxes[1] == Rectangle(-7.0, 1.0, -5.0, 3.0));
 
 	// Cleanup
-	delete cluster2;
-	// delete cluster3; fake pointers will cause the destructor to seg fault
+	delete cluster3;
+	delete cluster3p;
 	delete cluster3extra;
-	delete cluster6;
+	delete dummys[0];
+	delete dummys[1];
+	delete dummys[2];
+	delete dummys[3];
+	delete dummys[4];
+	delete dummys[5];
 }
 
 void testAdjustTree()
 {
-	// Nodes
-	Node *cluster4a;
-	Node *cluster4b;
-	Node *middle;
-	Node *root;
-
 	// Leaf Node and new sibling leaf
 	// Cluster 4, n = 7
 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	cluster4a = new Node();
+	Node *cluster4a = new Node();
 	cluster4a->data.push_back(Point(-10.0, -2.0));
 	cluster4a->data.push_back(Point(-12.0, -3.0));
 	cluster4a->data.push_back(Point(-11.0, -3.0));
 	cluster4a->data.push_back(Point(-10.0, -3.0));
 
-	cluster4b = new Node();
+	Node *cluster4b = new Node();
 	cluster4b->data.push_back(Point(-9.0, -3.0));
 	cluster4b->data.push_back(Point(-7.0, -3.0));
 	cluster4b->data.push_back(Point(-10.0, -5.0));
 
 	// Middle Node
-	middle = new Node();
-	middle->boundingBoxes.push_back(Rectangle(-9.0, 3.0, 1.0, 1.0));
-	middle->children.push_back(nullptr);
-	middle->boundingBoxes.push_back(Rectangle(-11.0, -9.0, 1.0, 1.0));
-	middle->children.push_back(nullptr);
-	middle->boundingBoxes.push_back(Rectangle(-9.5, -3.5, 2.5, 1.5));
+	Node *middle = new Node();
+	Node *dummys[4] = {new Node(), new Node(), new Node(), new Node()};
+	dummys[0]->parent = middle;
+	middle->boundingBoxes.push_back(Rectangle(-10.0, 2.0, -8.0, 4.0));
+	middle->children.push_back(dummys[0]);
+	dummys[1]->parent = middle;
+	middle->boundingBoxes.push_back(Rectangle(-12.0, -10.0, -10.0, -8.0));
+	middle->children.push_back(dummys[1]);
+	cluster4a->parent = middle;
+	middle->boundingBoxes.push_back(Rectangle(-12.0, -5.0, -7.0, -2.0));
 	middle->children.push_back(cluster4a);
-	middle->boundingBoxes.push_back(Rectangle(7.0, 7.0, 1.0, 1.0));
-	middle->children.push_back(nullptr);
-	middle->boundingBoxes.push_back(Rectangle(16.0, -16.0, 1.0, 1.0));
-	middle->children.push_back(nullptr);
+	dummys[2]->parent = middle;
+	middle->boundingBoxes.push_back(Rectangle(6.0, 6.0, 8.0, 8.0));
+	middle->children.push_back(dummys[2]);
+	dummys[3]->parent = middle;
+	middle->boundingBoxes.push_back(Rectangle(15.0, -17.0, 17.0, -15.0));
+	middle->children.push_back(dummys[3]);
 
 	// Root Node
-	root = new Node();
+	Node *root = new Node();
+	middle->parent = root;
 	root->boundingBoxes.push_back(middle->boundingBox());
 	root->children.push_back(middle);
-
-	// Chain parent pointers together
-	cluster4a->parent = middle;
-	middle->parent = root;
 
 	// Adjust the tree
 	Node *result = cluster4a->adjustTree(cluster4b);
@@ -1180,13 +1277,14 @@ void testAdjustTree()
 	// Test the adjustment
 	assert(result == nullptr);
 	assert(root->children.size() == 2);
-	assert(root->boundingBoxes[0] == Rectangle(-9.5, -3.0, 2.5, 7.0));
-	assert(root->boundingBoxes[1] == Rectangle(11.5, -4.5, 5.5, 12.5));
+	assert(root->boundingBoxes[0] == Rectangle(-12.0, -10.0, -7.0, 4.0));
+	assert(root->boundingBoxes[1] == Rectangle(6.0, -17.0, 17.0, 8.0));
 	assert(middle->children.size() == 4);
-	assert(middle->boundingBoxes[2] == Rectangle(-11.0, -2.5, 1.0, 0.5));
-	assert(middle->boundingBoxes[3] == Rectangle(-8.5, -4.0, 1.5, 1.0));
+	assert(middle->boundingBoxes[2] == Rectangle(-12.0, -3.0, -10.0, -2.0));
+	assert(middle->boundingBoxes[3] == Rectangle(-10.0, -5.0, -7.0, -3.0));
 
 	// Cleanup
+	root->deleteSubtrees();
 	delete root;
 }
 
@@ -1212,6 +1310,8 @@ void testCondenseTree()
 	assert(cluster6->boundingBoxes.size() == 0);
 	assert(cluster6->children.size() == 0);
 	assert(cluster6->data.size() == 7);
+	assert(cluster6->data[0] == Point(-2.0, -6.0));
+	assert(cluster6->data[6] == Point(-3.0, -11.0));
 
 	// Cleanup
 	delete cluster6;
@@ -1226,12 +1326,12 @@ void testCondenseTree()
 	cluster6->data.push_back(Point(1.0, -7.0));
 	cluster6->data.push_back(Point(3.0, -8.0));
 	cluster6->data.push_back(Point(-2.0, -9.0));
-	// cluster6->data.push_back(Point(-3.0, -11.0)); left out so the bounding box should change
+	// (-3, -11) left out so the bounding box should change
 
 	Node *root = new Node();
-	root->boundingBoxes.push_back(Rectangle(0.0, -8.0, 3.0, 2.0));
-	root->children.push_back(cluster6);
 	cluster6->parent = root;
+	root->boundingBoxes.push_back(Rectangle(-3.0, -10.0, 3.0, 6.0));
+	root->children.push_back(cluster6);
 
 	// Condense the tree
 	cluster6->condenseTree();
@@ -1240,7 +1340,7 @@ void testCondenseTree()
 	assert(root->parent == nullptr);
 	assert(root->boundingBoxes.size() == 1);
 	assert(root->children.size() == 1);
-	assert(root->boundingBoxes[0] == Rectangle(0.5, -7.5, 2.5, 1.5));
+	assert(root->boundingBoxes[0] == Rectangle(-2.0, -9.0, 3.0, -6.0));
 	assert(root->children[0] == cluster6);
 	assert(cluster6->parent == root);
 	assert(cluster6->boundingBoxes.size() == 0);
@@ -1248,6 +1348,7 @@ void testCondenseTree()
 	assert(cluster6->data.size() == 6);
 
 	// Cleanup
+	delete cluster6;
 	delete root;
 
 	// Test where condensing is unconfined to a leaf != root
@@ -1266,8 +1367,10 @@ void testCondenseTree()
 	// cluster4b->data.push_back(Point(-10.0, -5.0)); left out to precipitate condensing
 
 	Node *cluster4 = new Node();
+	cluster4a->parent = cluster4;
 	cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
 	cluster4->children.push_back(cluster4a);
+	cluster4b->parent = cluster4;
 	cluster4->boundingBoxes.push_back(cluster4b->boundingBox());
 	cluster4->children.push_back(cluster4b);
 
@@ -1281,51 +1384,43 @@ void testCondenseTree()
 	cluster5a->data.push_back(Point(-14.0, -13.0));
 	cluster5a->data.push_back(Point(-13.5, -13.5));
 	cluster5a->data.push_back(Point(-15.0, -14.0));
-
 	Node *cluster5b = new Node();
 	cluster5b->data.push_back(Point(-14.0, -14.0));
 	cluster5b->data.push_back(Point(-13.0, -14.0));
 	cluster5b->data.push_back(Point(-12.0, -14.0));
 	cluster5b->data.push_back(Point(-13.5, -16.0));
-
 	Node *cluster5c = new Node();
 	cluster5c->data.push_back(Point(-15.0, -14.5));
 	cluster5c->data.push_back(Point(-14.0, -14.5));
 	cluster5c->data.push_back(Point(-12.5, -14.5));
 	cluster5c->data.push_back(Point(-13.5, -15.5));
-
 	Node *cluster5d = new Node();
 	cluster5d->data.push_back(Point(-15.0, -15.0));
 	cluster5d->data.push_back(Point(-14.0, -15.0));
 	cluster5d->data.push_back(Point(-13.0, -15.0));
 	cluster5d->data.push_back(Point(-12.0, -15.0));
-
 	Node *cluster5 = new Node();
+	cluster5a->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
 	cluster5->children.push_back(cluster5a);
+	cluster5b->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
 	cluster5->children.push_back(cluster5b);
+	cluster5c->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
 	cluster5->children.push_back(cluster5c);
+	cluster5d->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
 	cluster5->children.push_back(cluster5d);
 
 	// Root
 	root = new Node();
+	cluster4->parent = root;
 	root->boundingBoxes.push_back(cluster4->boundingBox());
 	root->children.push_back(cluster4);
+	cluster5->parent = root;
 	root->boundingBoxes.push_back(cluster5->boundingBox());
 	root->children.push_back(cluster5);
-
-	// Link the tree together
-	cluster4->parent = root;
-	cluster4a->parent = cluster4;
-	cluster4b->parent = cluster4;
-	cluster5->parent = root;
-	cluster5a->parent = cluster5;
-	cluster5b->parent = cluster5;
-	cluster5c->parent = cluster5;
-	cluster5d->parent = cluster5;
 
 	// Condense the tree
 	Node *newRoot = cluster4b->condenseTree();
@@ -1341,6 +1436,7 @@ void testCondenseTree()
 	assert(root->children[1]->children[0]->data[1] == Point(-7.0, -3.0));
 
 	// Cleanup
+	root->deleteSubtrees();
 	delete root;
 }
 
@@ -1392,74 +1488,77 @@ void testSearch()
 
 	// High level nodes
 	Node *left = new Node();
+	cluster1a->parent = left;
 	left->boundingBoxes.push_back(cluster1a->boundingBox());
 	left->children.push_back(cluster1a);
+	cluster1b->parent = left;
 	left->boundingBoxes.push_back(cluster1b->boundingBox());
 	left->children.push_back(cluster1b);
+	cluster2a->parent = left;
 	left->boundingBoxes.push_back(cluster2a->boundingBox());
 	left->children.push_back(cluster2a);
+	cluster2b->parent = left;
 	left->boundingBoxes.push_back(cluster2b->boundingBox());
 	left->children.push_back(cluster2b);
 
 	Node *right = new Node();
+	cluster3a->parent = right;
 	right->boundingBoxes.push_back(cluster3a->boundingBox());
 	right->children.push_back(cluster3a);
+	cluster3b->parent = right;
 	right->boundingBoxes.push_back(cluster3b->boundingBox());
 	right->children.push_back(cluster3b);
 
 	Node *root = new Node();
+	left->parent = root;
 	root->boundingBoxes.push_back(left->boundingBox());
 	root->children.push_back(left);
+	right->parent = root;
 	root->boundingBoxes.push_back(right->boundingBox());
 	root->children.push_back(right);
 
 	// Test search
 
 	// Test set one
-	std::vector<Point> v1;
-	Rectangle sr1 = Rectangle(-7.0, 11.0, 2.0, 1.5);
-	root->search(sr1, v1);
+	Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+	std::vector<Point> v1 = root->search(sr1);
 	assert(v1.size() == 3);
-	assert(v1[0] == Point(-5.0, 12.0));
-	assert(v1[1] == Point(-8.0, 10.0));
-	assert(v1[2] == Point(-9.0, 10.0));
+	assert(v1[0] == Point(-8.0, 10.0));
+	assert(v1[1] == Point(-9.0, 10.0));
+	assert(v1[2] == Point(-5.0, 12.0));
 
 	// Test set two
-	std::vector<Point> v2;
-	Rectangle sr2 = Rectangle(-6.5, 6.0, 1.5, 2.0);
-	root->search(sr2, v2);
+	Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+	std::vector<Point> v2 = root->search(sr2);
 	assert(v2.size() == 2);
-	assert(v2[0] == Point(-8.0, 8.0));
-	assert(v2[1] == Point(-5.0, 4.0));
+	assert(v2[0] == Point(-5.0, 4.0));
+	assert(v2[1] == Point(-8.0, 8.0));
 
 	// Test set three
-	std::vector<Point> v3;
-	Rectangle sr3 = Rectangle(-6.0, 8.0, 2.0, 8.0);
-	root->search(sr3, v3);
+	Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+	std::vector<Point> v3 = root->search(sr3);
 	assert(v3.size() == 12);
-	assert(v3[0] == Point(-4.0, 13.0));
-	assert(v3[1] == Point(-5.0, 12.0));
-	assert(v3[2] == Point(-5.0, 15.0));
-	assert(v3[3] == Point(-6.0, 14.0));
-	assert(v3[4] == Point(-8.0, 16.0));
-	assert(v3[5] == Point(-8.0, 10.0));
-	assert(v3[6] == Point(-8.0, 9.0));
-	assert(v3[7] == Point(-8.0, 8.0));
-	assert(v3[8] == Point(-5.0, 4.0));
-	assert(v3[9] == Point(-4.0, 3.0));
-	assert(v3[10] == Point(-4.0, 1.0));
-	assert(v3[11] == Point(-6.0, 2.0));
+	assert(v3[0] == Point(-5.0, 4.0));
+	assert(v3[1] == Point(-4.0, 3.0));
+	assert(v3[2] == Point(-4.0, 1.0));
+	assert(v3[3] == Point(-6.0, 2.0));
+	assert(v3[4] == Point(-8.0, 10.0));
+	assert(v3[5] == Point(-8.0, 9.0));
+	assert(v3[6] == Point(-8.0, 8.0));
+	assert(v3[7] == Point(-5.0, 12.0));
+	assert(v3[8] == Point(-5.0, 15.0));
+	assert(v3[9] == Point(-6.0, 14.0));
+	assert(v3[10] == Point(-8.0, 16.0));
+	assert(v3[11] == Point(-4.0, 13.0));
 
 	// Test set four
-	std::vector<Point> v4;
-	Rectangle sr4 = Rectangle(3.0, -3.0, 1.0, 1.0);
-	root->search(sr4, v4);
+	Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+	std::vector<Point> v4 = root->search(sr4);
 	assert(v4.size() == 0);
 
 	// Test set five
-	std::vector<Point> v5;
-	Rectangle sr5 = Rectangle(-2.5, 2.0, 1.0, 1.0);
-	root->search(sr5, v5);
+	Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+	std::vector<Point> v5 = root->search(sr5);
 	assert(v5.size() == 0);
 
 	// Cleanup
@@ -1486,9 +1585,11 @@ void testInsert()
 	// Test set one
 	assert(root->boundingBoxes.size() == 2);
 	assert(root->children.size() == 2);
+	assert(root->children[0]->parent == root);
 	assert(root->children[0]->boundingBoxes.size() == 0);
 	assert(root->children[0]->children.size() == 0);
 	assert(root->children[0]->data.size() == 3);
+	assert(root->children[1]->parent == root);
 	assert(root->children[1]->boundingBoxes.size() == 0);
 	assert(root->children[1]->children.size() == 0);
 	assert(root->children[1]->data.size() == 5);
@@ -1506,9 +1607,11 @@ void testInsert()
 	// Test set two
 	assert(root->boundingBoxes.size() == 2);
 	assert(root->children.size() == 2);
+	assert(root->children[0]->parent == root);
 	assert(root->children[0]->boundingBoxes.size() == 3);
 	assert(root->children[0]->children.size() == 3);
 	assert(root->children[0]->data.size() == 0);
+	assert(root->children[1]->parent == root);
 	assert(root->children[1]->boundingBoxes.size() == 3);
 	assert(root->children[1]->children.size() == 3);
 	assert(root->children[1]->data.size() == 0);
@@ -1527,9 +1630,11 @@ void testInsert()
 	// Test set three
 	assert(root->boundingBoxes.size() == 2);
 	assert(root->children.size() == 2);
+	assert(root->children[0]->parent == root);
 	assert(root->children[0]->boundingBoxes.size() == 5);
 	assert(root->children[0]->children.size() == 5);
 	assert(root->children[0]->data.size() == 0);
+	assert(root->children[1]->parent == root);
 	assert(root->children[1]->boundingBoxes.size() == 3);
 	assert(root->children[1]->children.size() == 3);
 	assert(root->children[1]->data.size() == 0);
@@ -1549,18 +1654,21 @@ void testInsert()
 	// Test set four
 	assert(root->boundingBoxes.size() == 3);
 	assert(root->children.size() == 3);
+	assert(root->children[0]->parent == root);
 	assert(root->children[0]->boundingBoxes.size() == 5);
 	assert(root->children[0]->children.size() == 5);
 	assert(root->children[0]->data.size() == 0);
+	assert(root->children[1]->parent == root);
 	assert(root->children[1]->boundingBoxes.size() == 3);
 	assert(root->children[1]->children.size() == 3);
 	assert(root->children[1]->data.size() == 0);
+	assert(root->children[2]->parent == root);
 	assert(root->children[2]->boundingBoxes.size() == 3);
 	assert(root->children[2]->children.size() == 3);
 	assert(root->children[2]->data.size() == 0);
 
-
 	// Cleanup
+	root->deleteSubtrees();
 	delete root;
 }
 
@@ -1596,12 +1704,16 @@ void testRemove()
 	cluster5d->data.push_back(Point(-12.0, -15.0));
 
 	Node *cluster5 = new Node();
+	cluster5a->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
 	cluster5->children.push_back(cluster5a);
+	cluster5b->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
 	cluster5->children.push_back(cluster5b);
+	cluster5c->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
 	cluster5->children.push_back(cluster5c);
+	cluster5c->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
 	cluster5->children.push_back(cluster5d);
 
@@ -1623,10 +1735,13 @@ void testRemove()
 	cluster3c->data.push_back(Point(-6.0, 2.0));
 
 	Node *cluster3 = new Node();
+	cluster3a->parent = cluster3;
 	cluster3->boundingBoxes.push_back(cluster3a->boundingBox());
 	cluster3->children.push_back(cluster3a);
+	cluster3b->parent = cluster3;
 	cluster3->boundingBoxes.push_back(cluster3b->boundingBox());
 	cluster3->children.push_back(cluster3b);
+	cluster3c->parent = cluster3;
 	cluster3->boundingBoxes.push_back(cluster3c->boundingBox());
 	cluster3->children.push_back(cluster3c);
 
@@ -1648,40 +1763,29 @@ void testRemove()
 	cluster1c->data.push_back(Point(-2.0, 13.5));
 
 	Node *cluster1 = new Node();
+	cluster1a->parent = cluster1;
 	cluster1->boundingBoxes.push_back(cluster1a->boundingBox());
 	cluster1->children.push_back(cluster1a);
+	cluster1b->parent = cluster1;
 	cluster1->boundingBoxes.push_back(cluster1b->boundingBox());
 	cluster1->children.push_back(cluster1b);
+	cluster1c->parent = cluster1;
 	cluster1->boundingBoxes.push_back(cluster1c->boundingBox());
 	cluster1->children.push_back(cluster1c);
 
 	// Root
 	Node *root = new Node();
+	cluster3->parent = root;
 	root->boundingBoxes.push_back(cluster3->boundingBox());
 	root->children.push_back(cluster3);
+	cluster5->parent = root;
 	root->boundingBoxes.push_back(cluster5->boundingBox());
 	root->children.push_back(cluster5);
+	cluster1->parent = root;
 	root->boundingBoxes.push_back(cluster1->boundingBox());
 	root->children.push_back(cluster1);
+
 	assert(root->boundingBoxes.size() == 3);
-
-	// Setup parentage
-	cluster5a->parent = cluster5;
-	cluster5b->parent = cluster5;
-	cluster5c->parent = cluster5;
-	cluster5d->parent = cluster5;
-
-	cluster3a->parent = cluster3;
-	cluster3b->parent = cluster3;
-	cluster3c->parent = cluster3;
-
-	cluster1a->parent = cluster1;
-	cluster1b->parent = cluster1;
-	cluster1c->parent = cluster1;
-
-	cluster5->parent = root;
-	cluster3->parent = root;
-	cluster1->parent = root;
 
 	// Remove an element, no other changes in tree
 	root->remove(Point(-12.0, -15.0));
@@ -1691,8 +1795,10 @@ void testRemove()
 	assert(cluster5d->data[0] == Point(-15.0, -15.0));
 	assert(cluster5d->data[1] == Point(-14.0, -15.0));
 	assert(cluster5d->data[2] == Point(-13.0, -15.0));
+	assert(cluster5->parent == root);
 	assert(cluster5->boundingBoxes.size() == 4);
 	assert(cluster5->children.size() == 4);
+	assert(root->parent == nullptr);
 	assert(root->boundingBoxes.size() == 3);
 	assert(root->children.size() == 3);
 
@@ -1702,8 +1808,10 @@ void testRemove()
 	// Test the removal
 	assert(root->boundingBoxes.size() == 2);
 	assert(root->children.size() == 2);
+	assert(root->children[0]->parent == root);
 	assert(root->children[0]->boundingBoxes.size() == 4);
 	assert(root->children[0]->children.size() == 4);
+	assert(root->children[1]->parent == root);
 	assert(root->children[1]->boundingBoxes.size() == 5);
 	assert(root->children[1]->children.size() == 5);
 
@@ -1724,18 +1832,16 @@ void testRemove()
 	cluster6b->data.push_back(Point(1.0, -7.0));
 	cluster6b->data.push_back(Point(3.0, -8.0));
 	cluster6b->data.push_back(Point(-2.0, -9.0));
-	// cluster6->data.push_back(Point(-3.0, -11.0)); held out so we get a shrinking root
+	// (-3.0, -11.0) held out so we get a shrinking root
 
 	// Root
 	root = new Node();
+	cluster6a->parent = root;
 	root->boundingBoxes.push_back(cluster6a->boundingBox());
 	root->children.push_back(cluster6a);
+	cluster6b->parent = root;
 	root->boundingBoxes.push_back(cluster6b->boundingBox());
 	root->children.push_back(cluster6b);
-
-	// Setup parentage
-	cluster6a->parent = root;
-	cluster6b->parent = root;
 
 	// Remove an element, the tree should shrink and cluster6a should be the new root
 	root = root->remove(Point(3.0, -8.0));

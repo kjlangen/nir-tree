@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 #include <spatialindex/SpatialIndex.h>
 #include <rtree/node.h>
 #include <util/geometry.h>
@@ -141,14 +142,75 @@ void testRTree()
 	std::cout << "RTree tested." << std::endl;
 }
 
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
-	// Argument parsing and switching goes here
+	/* getopt example
+	while ((c = getopt (argc, argv, "abc:")) != -1)
+	{
+		switch (c)
+		{
+			case 'a':
+				aflag = 1;
+				break;
+			case 'b':
+				bflag = 1;
+				break;
+			case 'c':
+				cvalue = optarg;
+				break;
+			case '?':
+				if (optopt == 'c')
+					fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+				else if (isprint (optopt))
+					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+				else
+				fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+				return 1;
+			default:
+				abort();
+		}
+	}
+    */
 
-	// testGeometry();
-	// testRTree();
+	// Argument parsing and switching
+	bool runUnitTests = false;
+	bool runBenchMark = false;
+	// string benchmark;
+	// string structure;
 
-	randomPoints();
+	for (int option = getopt(argc, argv, "ub"); option != -1; option = getopt(argc, argv, "ub"))
+	{
+		switch (option)
+		{
+			case 'u':
+				runUnitTests = true;
+				break;
+			case 'b':
+				runBenchMark = true;
+				break;
+			default:
+				std::cout << "Options are:\n\t-u for unit tests\n\t-b for benchmarks" << std::endl;
+				return 0;
+		}
+	}
+
+
+	// First unit tests are run and then benchmarks are run
+	if (runUnitTests)
+	{
+		testGeometry();
+		testRTree();
+	}
+
+	if (runBenchMark)
+	{
+		randomPoints();
+	}
+
+	if (!runUnitTests && !runBenchMark)
+	{
+		std::cout << "No option selected, exiting." << std::endl;
+	}
 
 	return 0;
 }
