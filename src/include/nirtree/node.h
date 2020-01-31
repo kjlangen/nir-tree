@@ -1,5 +1,5 @@
-#ifndef __NODE__
-#define __NODE__
+#ifndef __NIRNODE__
+#define __NIRNODE__
 #include <cassert>
 #include <vector>
 #include <stack>
@@ -10,14 +10,14 @@
 #include <iostream>
 #include <util/geometry.h>
 
-namespace rtree
+namespace nirtree
 {
 	class Node
 	{
 		class ReinsertionEntry
 		{
 			public:
-				Rectangle boundingBox;
+				DynamicRectangle boundingBox;
 				Point data;
 				Node *child;
 				unsigned level;
@@ -28,7 +28,7 @@ namespace rtree
 
 		public:
 			Node *parent;
-			std::vector<Rectangle> boundingBoxes;
+			std::vector<DynamicRectangle> boundingBoxes;
 			std::vector<Node *> children;
 			std::vector<Point> data;
 
@@ -38,7 +38,7 @@ namespace rtree
 			void deleteSubtrees();
 
 			// Helper functions
-			Rectangle boundingBox();
+			// Rectangle boundingBox();
 			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 			void removeChild(Node *child);
 			void removeData(Point givenPoint);
@@ -48,21 +48,34 @@ namespace rtree
 			Node *splitNode(Node *newChild);
 			Node *splitNode(Point newData);
 			Node *adjustTree(Node *siblingLeaf);
-			Node *condenseTree();
-			Node *insert(ReinsertionEntry e);
+			// Node *condenseTree();
+			// Node *insert(ReinsertionEntry e);
 
-			// Datastructure interface functions
+			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
 			std::vector<Point> search(Point &requestedPoint);
 			std::vector<Point> search(Rectangle &requestedRectangle);
 			Node *insert(Point givenPoint);
-			Node *remove(Point givenPoint);
+			// Node *remove(Point givenPoint);
 
 			// Miscellaneous
 			unsigned checksum();
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 	};
+
+	// void testBoundingBox();
+	// void testUpdateBoundingBox();
+	// void testRemoveChild();
+	// void testRemoveData();
+	// void testChooseLeaf();
+	// void testFindLeaf();
+	// void testSplitNode();
+	// void testAdjustTree();
+	// void testCondenseTree();
+	// void testSearch();
+	// void testInsert();
+	// void testRemove();
 }
 
 #endif

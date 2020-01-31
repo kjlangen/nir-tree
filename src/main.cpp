@@ -1,9 +1,13 @@
 #include <iostream>
 #include <spatialindex/SpatialIndex.h>
-
 #include <rtree/rtree.h>
+#include <nirtree/nirtree.h>
+#include <util/geometry.h>
+#include <bench/randomSquares.h>
 #include <bench/randomPoints.h>
 #include <rplustree/rPlusTree.h>
+#define CATCH_CONFIG_RUNNER
+#include <catch2/catch.hpp>
 
 void testLibSpatialIndex()
 {
@@ -107,9 +111,6 @@ void testLibSpatialIndex()
 
 	delete pirateTree;
 }
-
-#define CATCH_CONFIG_RUNNER
-#include <catch2/catch.hpp>
 
 int main(int argc, char *argv[])
 {

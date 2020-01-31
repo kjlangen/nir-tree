@@ -9,31 +9,34 @@
 #include <rtree/node.h>
 #include <index/index.h>
 
-// For now we will work with an RTree that only stores points
-class RTree: public Index
+namespace rtree
 {
-	public:
-		Node *root;
+	// For now we will work with an RTree that only stores points
+	class RTree: public Index
+	{
+		public:
+			Node *root;
 
-		// Constructors and destructors
-		RTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-		RTree(Node *root);
-		~RTree();
+			// Constructors and destructors
+			RTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+			RTree(Node *root);
+			~RTree();
 
-		// Datastructure interface
-		std::vector<Point> exhaustiveSearch(Point requestedPoint);
-		std::vector<Point> search(Point requestedPoint) const override;
-		std::vector<Point> search(Rectangle requestedRectangle) const override;
-		void insert(Point givenPoint) override;
-		void remove(Point givenPoint) override;
+			// Datastructure interface
+			std::vector<Point> exhaustiveSearch(Point requestedPoint);
+			std::vector<Point> search(Point requestedPoint) const override;
+			std::vector<Point> search(Rectangle requestedRectangle) const override;
+			void insert(Point givenPoint) override;
+			void remove(Point givenPoint) override;
 
-		// Miscellaneous
-		unsigned checksum() override;
-		void print();
-};
+			// Miscellaneous
+			unsigned checksum() override;
+			void print();
+	};
 
-void testSimpleSearch();
-void testSimpleInsert();
-void expandRootTest();
+	void testSimpleSearch();
+	void testSimpleInsert();
+	void expandRootTest();
+}
 
 #endif

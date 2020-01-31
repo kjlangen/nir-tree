@@ -37,14 +37,15 @@ class Rectangle
 		Rectangle(float x, float y, float xp, float yp);
 		Rectangle(Point lowerLeft, Point upperRight);
 		float area();
+		float computeIntersectionArea(Rectangle givenRectangle);
 		float computeExpansionArea(Point givenPoint);
-		float computeExpansionArea(Rectangle requestedRectangle);
-		float computeOverlapArea(Rectangle requestedRectangle);
+		float computeExpansionArea(Rectangle givenRectangle);
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
-		bool intersectsRectangle(Rectangle requestedRectangle);
-		bool strictIntersectsRectangle(Rectangle requestedRectangle);
+		bool intersectsRectangle(Rectangle givenRectangle);
+		bool strictIntersectsRectangle(Rectangle givenRectangle);
 		bool containsPoint(Point requestedPoint);
+		Rectangle intersectionRectangle(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
 		bool operator==(Rectangle r) const;
@@ -54,25 +55,28 @@ class Rectangle
 		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
 };
 
-class DynamicRectangle
+class IsotheticPolygon
 {
 	public:
 		std::vector<Rectangle> basicRectangles;
 
-		DynamicRectangle();
-		DynamicRectangle(Rectangle baseRectangle);
+		IsotheticPolygon();
+		IsotheticPolygon(Rectangle baseRectangle);
 		float area();
+		float computeIntersectionArea(Rectangle givenRectangle);
 		float computeExpansionArea(Point givenPoint);
-		float computeExpansionArea(Rectangle requestedRectangle);
+		float computeExpansionArea(Rectangle givenRectangle);
+		Rectangle boundingBox();
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
-		bool intersectsRectangle(Rectangle &requestedRectangle);
-		bool intersectsRectangle(DynamicRectangle &requestedRectangle);
+		void expand(IsotheticPolygon &targetPolygon, IsotheticPolygon &constraintPolygon);
+		bool intersectsRectangle(Rectangle &givenRectangle);
+		bool intersectsRectangle(IsotheticPolygon &givenPolygon);
 		bool containsPoint(Point requestedPoint);
 		void increaseResolution(Rectangle clippingRectangle);
 
-		bool operator==(const DynamicRectangle& r);
-		bool operator!=(const DynamicRectangle& r);
+		bool operator==(IsotheticPolygon r);
+		bool operator!=(IsotheticPolygon r);
 
 		void print();
 };
