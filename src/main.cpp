@@ -1,7 +1,8 @@
 #include <iostream>
 #include <unistd.h>
 #include <spatialindex/SpatialIndex.h>
-#include <rtree/node.h>
+#include <rtree/rtree.h>
+#include <nirtree/nirtree.h>
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
 #include <bench/randomPoints.h>
@@ -126,18 +127,18 @@ void testGeometry()
 void testRTree()
 {
 	// Unit test RTree
-	testBoundingBox();
-	testUpdateBoundingBox();
-	testRemoveChild();
-	testRemoveData();
-	testChooseLeaf();
-	testFindLeaf();
-	testSplitNode();
-	testAdjustTree();
-	testCondenseTree();
-	testSearch();
-	testInsert();
-	testRemove();
+	rtree::testBoundingBox();
+	rtree::testUpdateBoundingBox();
+	rtree::testRemoveChild();
+	rtree::testRemoveData();
+	rtree::testChooseLeaf();
+	rtree::testFindLeaf();
+	rtree::testSplitNode();
+	rtree::testAdjustTree();
+	rtree::testCondenseTree();
+	rtree::testSearch();
+	rtree::testInsert();
+	rtree::testRemove();
 
 	std::cout << "RTree tested." << std::endl;
 }

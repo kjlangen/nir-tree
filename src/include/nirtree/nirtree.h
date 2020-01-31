@@ -1,32 +1,32 @@
-#ifndef __RTREE__
-#define __RTREE__
+#ifndef __NIRTREE__
+#define __NIRTREE__
 #include <cassert>
 #include <vector>
 #include <stack>
 #include <iostream>
 #include <utility>
 #include <util/geometry.h>
-#include <rtree/node.h>
+#include <nirtree/node.h>
 
-namespace rtree
+namespace nirtree
 {
-	// For now we will work with an RTree that only stores points
-	class RTree
+	// For now we will work with a NIRTree that only stores points
+	class NIRTree
 	{
 		public:
 			Node *root;
 
 			// Constructors and destructors
-			RTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-			RTree(Node *root);
-			~RTree();
+			NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+			NIRTree(Node *root);
+			~NIRTree();
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);
 			std::vector<Point> search(Point requestedPoint);
 			std::vector<Point> search(Rectangle requestedRectangle);
 			void insert(Point givenPoint);
-			void remove(Point givenPoint);
+			// void remove(Point givenPoint);
 
 			// Miscellaneous
 			unsigned checksum();

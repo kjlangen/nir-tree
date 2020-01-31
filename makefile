@@ -1,7 +1,7 @@
 SXX = -std=c++11 	# Standard
 FLAGS = -Wall	# Flags
 DIR = src/include 	# Include directory
-OBJECTS = geometry.o btree.o node.o rtree.o randomSquares.o randomPoints.o
+OBJECTS = geometry.o btree.o node.o rtree.o nirnode.o nirtree.o randomSquares.o randomPoints.o
 
 # Build btree
 btree.o:
@@ -18,6 +18,14 @@ node.o:
 # Build rtree
 rtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/rtree.cpp
+
+# Build nir tree node
+nirnode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/node.cpp -o nirnode.o
+
+# Build nirtree
+nirtree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/nirtree.cpp
 
 # Build benchmarks
 randomSquares.o:
