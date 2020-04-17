@@ -216,10 +216,13 @@ namespace nirtree
 
 	// Always called on root, this = root
 	// TODO: Write the analogous chooseLeaf(Rectangle searchRectangle)
+	// This top-to-bottom sweep is only for adjusting bounding boxes to contain the point and choosing
+	// a particular leaf
 	Node *Node::chooseLeaf(Point givenPoint)
 	{
 		// CL1 [Initialize]
 		Node *node = this;
+		unsigned prevSmallestExpansionIndex = 0;
 
 		for (;;)
 		{
@@ -245,8 +248,30 @@ namespace nirtree
 					}
 				}
 
+				// CL3.1 Expand the chosen bounding polygon to cover the new point and keep it
+				// within the area defined by our bounding polygon. The root has no bounding polygon
+				if (node->parent == nullptr)
+				{
+					node->boundingBoxes[smallestExpansionIndex].expand(givenPoint);
+				}
+				else
+				{
+					node->boundingBoxes[smallestExpansionIndex].expand(givenPoint, node->parent->boundingBoxes[prevSmallestExpansionIndex]);
+				}
+
+				// CL3.2 Trim back the chosen bounding polygon so it plays nice with our other
+				// children
+				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
+				{
+					if (node->boundingBoxes[i].intersectsRectangle(node->boundingBoxes[smallestExpansionIndex]))
+					{
+						node->boundingBoxes[smallestExpansionIndex].increaseResolution(node->boundingBoxes[i]);
+					}
+				}
+
 				// CL4 [Descend until a leaf is reached]
 				node = node->children[smallestExpansionIndex];
+				prevSmallestExpansionIndex = smallestExpansionIndex;
 			}
 		}
 	}
@@ -338,109 +363,110 @@ namespace nirtree
 	// TODO: Convert
 	Node *Node::splitNode(Node *newChild)
 	{
-		unsigned boundingBoxesSize = boundingBoxes.size();
+		return nullptr;
+		// unsigned boundingBoxesSize = boundingBoxes.size();
 
-		// Setup the two groups which will be the entries in the two new nodes
-		unsigned seedA = 0;
-		std::vector<unsigned> groupA;
+		// // Setup the two groups which will be the entries in the two new nodes
+		// unsigned seedA = 0;
+		// std::vector<unsigned> groupA;
 
-		unsigned seedB = boundingBoxesSize - 1;
-		std::vector<unsigned> groupB;
+		// unsigned seedB = boundingBoxesSize - 1;
+		// std::vector<unsigned> groupB;
 
-		// Compute the first entry in each group based on PS1 & PS2
-		float maxWasted = 0;
-		Rectangle iBox, jBox;
-		for (unsigned i = 0; i < boundingBoxesSize; ++i)
-		{
-			iBox = boundingBoxes[i];
-			for (unsigned j = 0; j < boundingBoxesSize; ++j)
-			{
-				jBox = boundingBoxes[j];
-				float xdist = iBox.lowerLeft.x - jBox.lowerLeft.x;
-				float xdistPrime = iBox.upperRight.x - jBox.upperRight.x;
-				float ydist = iBox.lowerLeft.y - jBox.lowerLeft.y;
-				float ydistPrime = iBox.upperRight.y - jBox.upperRight.y;
+		// // Compute the first entry in each group based on PS1 & PS2
+		// float maxWasted = 0;
+		// IsotheticPolygon iBox, jBox;
+		// for (unsigned i = 0; i < boundingBoxesSize; ++i)
+		// {
+		// 	iBox = boundingBoxes[i];
+		// 	for (unsigned j = 0; j < boundingBoxesSize; ++j)
+		// 	{
+		// 		jBox = boundingBoxes[j];
+		// 		// float xdist = iBox.lowerLeft.x - jBox.lowerLeft.x;
+		// 		// float xdistPrime = iBox.upperRight.x - jBox.upperRight.x;
+		// 		// float ydist = iBox.lowerLeft.y - jBox.lowerLeft.y;
+		// 		// float ydistPrime = iBox.upperRight.y - jBox.upperRight.y;
 
-				float wasted = (xdist * xdist + xdistPrime * xdistPrime + ydist * ydist + ydistPrime * ydistPrime) / 2;
-				if (maxWasted < wasted)
-				{
-					maxWasted = wasted;
+		// 		// float wasted = (xdist * xdist + xdistPrime * xdistPrime + ydist * ydist + ydistPrime * ydistPrime) / 2;
+		// 		// if (maxWasted < wasted)
+		// 		// {
+		// 		// 	maxWasted = wasted;
 
-					seedA = i;
-					seedB = j;
-				}
-			}
-		}
+		// 		// 	seedA = i;
+		// 		// 	seedB = j;
+		// 		// }
+		// 	}
+		// }
 
-		Rectangle boundingBoxA = boundingBoxes[seedA];
-		Rectangle boundingBoxB = boundingBoxes[seedB];
+		// IsotheticPolygon boundingBoxA = boundingBoxes[seedA];
+		// IsotheticPolygon boundingBoxB = boundingBoxes[seedB];
 
-		// Go through the remaining entries and add them to groupA or groupB
-		for (unsigned i = 0; i < boundingBoxesSize; ++i)
-		{
-			if (i == seedA)
-			{
-				groupA.push_back(i);
-				continue;
-			}
-			else if (i == seedB)
-			{
-				groupB.push_back(i);
-				continue;
-			}
+		// // Go through the remaining entries and add them to groupA or groupB
+		// for (unsigned i = 0; i < boundingBoxesSize; ++i)
+		// {
+		// 	if (i == seedA)
+		// 	{
+		// 		groupA.push_back(i);
+		// 		continue;
+		// 	}
+		// 	else if (i == seedB)
+		// 	{
+		// 		groupB.push_back(i);
+		// 		continue;
+		// 	}
 
-			// Choose the group which will need to expand the least
-			if (boundingBoxB.computeExpansionArea(boundingBoxes[i]) > boundingBoxA.computeExpansionArea(boundingBoxes[i]))
-			{
-				groupA.push_back(i);
-				boundingBoxA.expand(boundingBoxes[i]);
-			}
-			else
-			{
-				groupB.push_back(i);
-				boundingBoxB.expand(boundingBoxes[i]);
-			}
-		}
+		// 	// Choose the group which will need to expand the least
+		// 	// if (boundingBoxB.computeExpansionArea(boundingBoxes[i]) > boundingBoxA.computeExpansionArea(boundingBoxes[i]))
+		// 	// {
+		// 	// 	groupA.push_back(i);
+		// 	// 	boundingBoxA.expand(boundingBoxes[i]);
+		// 	// }
+		// 	// else
+		// 	// {
+		// 	// 	groupB.push_back(i);
+		// 	// 	boundingBoxB.expand(boundingBoxes[i]);
+		// 	// }
+		// }
 
-		// Create the new node and fill it with groupB entries by doing complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		unsigned groupASize = groupA.size();
-		unsigned groupALastIndex = groupASize - 1;
-		unsigned iGroupB;
-		for (unsigned i = 0; i < groupB.size(); ++i)
-		{
-			iGroupB = groupB[i];
-			children[iGroupB]->parent = newSibling;
-			newSibling->boundingBoxes.push_back(boundingBoxes[iGroupB]);
-			newSibling->children.push_back(children[iGroupB]);
+		// // Create the new node and fill it with groupB entries by doing complicated stuff
+		// Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		// unsigned groupASize = groupA.size();
+		// unsigned groupALastIndex = groupASize - 1;
+		// unsigned iGroupB;
+		// for (unsigned i = 0; i < groupB.size(); ++i)
+		// {
+		// 	iGroupB = groupB[i];
+		// 	children[iGroupB]->parent = newSibling;
+		// 	newSibling->boundingBoxes.push_back(boundingBoxes[iGroupB]);
+		// 	newSibling->children.push_back(children[iGroupB]);
 
-			boundingBoxes[iGroupB] = boundingBoxes[groupA[groupALastIndex]];
-			children[iGroupB] = children[groupA[groupALastIndex]];
+		// 	boundingBoxes[iGroupB] = boundingBoxes[groupA[groupALastIndex]];
+		// 	children[iGroupB] = children[groupA[groupALastIndex]];
 
-			groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
-		}
-		boundingBoxes.resize(groupASize);
-		children.resize(groupASize);
+		// 	groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
+		// }
+		// boundingBoxes.resize(groupASize);
+		// children.resize(groupASize);
 
-		// Add newChild which caused this split in the first place
-		Rectangle newBox = newChild->boundingBox();
+		// // Add newChild which caused this split in the first place
+		// IsotheticPolygon newBox = IsotheticPolygon(); // Rectangle newBox = newChild->boundingBox();
 
-		// Choose the group which will need to expand the least
-		if (boundingBoxB.computeExpansionArea(newBox) > boundingBoxA.computeExpansionArea(newBox))
-		{
-			newChild->parent = this;
-			boundingBoxes.push_back(newBox);
-			children.push_back(newChild);
-		}
-		else
-		{
-			newChild->parent = newSibling;
-			newSibling->boundingBoxes.push_back(newBox);
-			newSibling->children.push_back(newChild);
-		}
+		// // Choose the group which will need to expand the least
+		// if (boundingBoxB.computeExpansionArea(newBox) > boundingBoxA.computeExpansionArea(newBox))
+		// {
+		// 	newChild->parent = this;
+		// 	boundingBoxes.push_back(newBox);
+		// 	children.push_back(newChild);
+		// }
+		// else
+		// {
+		// 	newChild->parent = newSibling;
+		// 	newSibling->boundingBoxes.push_back(newBox);
+		// 	newSibling->children.push_back(newChild);
+		// }
 
-		// Return our newly minted sibling
-		return newSibling;
+		// // Return our newly minted sibling
+		// return newSibling;
 	}
 
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
@@ -448,6 +474,32 @@ namespace nirtree
 	// TODO: Convert
 	Node *Node::splitNode(Point newData)
 	{
+		// Special case, rectangles = 1
+		if (parent != nullptr && parent->boundingBoxes[this].size() == 1)
+		{
+			// Split the points, between two halves of our bounding box
+			// Sort the points by x value
+			// std::sort(data.begin(), data.end(), [](Point p, Point pp){return p.x <= pp.x;});
+		}
+		else
+		{
+			// General case, rectangles > 1
+			// Treeify our isothetic polygon
+			char graph[parent->boundingBoxes[this].size()][parent->boundingBoxes[this].size()];
+
+			for (unsigned i = 0; i < parent->boundingBoxes[this].size(); ++i)
+			{
+				for (unsigned j = 0; j < parent->boundingBoxes[this].size(); ++j)
+				{
+					if (parent->boundingBoxes[this][i].intersectsRectangle(parent->boundingBoxes[this][j]))
+					{
+						graph[i][j] = 1;
+					}
+				}
+			}
+		}
+
+
 		float dataSize = data.size();
 
 		// Setup the two groups which will be the entries in the two new nodes
@@ -483,71 +535,74 @@ namespace nirtree
 			}
 		}
 
-		// Set the bounding rectangles
-		Rectangle boundingBoxA = Rectangle(data[seedA], data[seedA]);
-		Rectangle boundingBoxB = Rectangle(data[seedB], data[seedB]);
+		return nullptr;
 
-		// Go through the remaining entries and add them to groupA or groupB
-		for (unsigned i = 0; i < dataSize; ++i)
-		{
-			// TODO: Is there an edge case where when considering one of the seeds, it is placed in the
-			// incorrect group? We rely on the groups sorted in ascending order so that's why we
-			// consider them here instead of adding them in the beginning
-			if (i == seedA)
-			{
-				groupA.push_back(i);
-				boundingBoxA.expand(data[i]);
-				continue;
-			}
-			else if (i == seedB)
-			{
-				groupB.push_back(i);
-				boundingBoxB.expand(data[i]);
-				continue;
-			}
+		// // Set the bounding rectangles
+		// Rectangle boundingBoxA = Rectangle(data[seedA], data[seedA]);
+		// Rectangle boundingBoxB = Rectangle(data[seedB], data[seedB]);
 
-			// Choose the group which will need to expand the least
-			if (boundingBoxB.computeExpansionArea(data[i]) > boundingBoxA.computeExpansionArea(data[i]))
-			{
-				groupA.push_back(i);
-				boundingBoxA.expand(data[i]);
-			}
-			else
-			{
-				groupB.push_back(i);
-				boundingBoxB.expand(data[i]);
-			}
-		}
+		// // Go through the remaining entries and add them to groupA or groupB
+		// for (unsigned i = 0; i < dataSize; ++i)
+		// {
+		// 	// TODO: Is there an edge case where when considering one of the seeds, it is placed in the
+		// 	// incorrect group? We rely on the groups sorted in ascending order so that's why we
+		// 	// consider them here instead of adding them in the beginning
+		// 	if (i == seedA)
+		// 	{
+		// 		groupA.push_back(i);
+		// 		boundingBoxA.expand(data[i]);
+		// 		continue;
+		// 	}
+		// 	else if (i == seedB)
+		// 	{
+		// 		groupB.push_back(i);
+		// 		boundingBoxB.expand(data[i]);
+		// 		continue;
+		// 	}
 
-		// Create the new node and fill it with groupB entries by doing really complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		unsigned groupALastIndex = groupA.size() - 1;
-		unsigned iGroupB;
-		for (unsigned i = 0; i < groupB.size(); ++i)
-		{
-			iGroupB = groupB[i];
-			newSibling->data.push_back(data[iGroupB]);
-			data[iGroupB] = data[groupA[groupALastIndex]];
-			groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
-		}
-		data.resize(groupA.size());
+		// 	// Choose the group which will need to expand the least
+		// 	if (boundingBoxB.computeExpansionArea(data[i]) > boundingBoxA.computeExpansionArea(data[i]))
+		// 	{
+		// 		groupA.push_back(i);
+		// 		boundingBoxA.expand(data[i]);
+		// 	}
+		// 	else
+		// 	{
+		// 		groupB.push_back(i);
+		// 		boundingBoxB.expand(data[i]);
+		// 	}
+		// }
 
-		// Add newData which caused this split in the first place
-		// Choose the group which will need to expand the least
-		if (boundingBoxB.computeExpansionArea(newData) > boundingBoxA.computeExpansionArea(newData))
-		{
-			data.push_back(newData);
-		}
-		else
-		{
-			newSibling->data.push_back(newData);
-		}
+		// // Create the new node and fill it with groupB entries by doing really complicated stuff
+		// Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		// unsigned groupALastIndex = groupA.size() - 1;
+		// unsigned iGroupB;
+		// for (unsigned i = 0; i < groupB.size(); ++i)
+		// {
+		// 	iGroupB = groupB[i];
+		// 	newSibling->data.push_back(data[iGroupB]);
+		// 	data[iGroupB] = data[groupA[groupALastIndex]];
+		// 	groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
+		// }
+		// data.resize(groupA.size());
 
-		// Return our newly minted sibling
-		return newSibling;
+		// // Add newData which caused this split in the first place
+		// // Choose the group which will need to expand the least
+		// if (boundingBoxB.computeExpansionArea(newData) > boundingBoxA.computeExpansionArea(newData))
+		// {
+		// 	data.push_back(newData);
+		// }
+		// else
+		// {
+		// 	newSibling->data.push_back(newData);
+		// }
+
+		// // Return our newly minted sibling
+		// return newSibling;
 	}
 
 	// TODO: Convert
+	// This bottom-to-top sweep is only for splitting bounding boxes as necessary
 	Node *Node::adjustTree(Node *sibling)
 	{
 		// AT1 [Initialize]
@@ -564,7 +619,8 @@ namespace nirtree
 			else
 			{
 				// AT3 [Adjust covering rectangle in parent entry]
-				node->parent->updateBoundingBox(node, node->boundingBox());
+				// TODO: Remove this instruction, it has already been covered in the new chooseLeaf
+				// node->parent->updateBoundingBox(node, node->boundingBox());
 
 				// If we have a split then deal with it otherwise move up the tree
 				if (siblingNode != nullptr)
@@ -572,7 +628,9 @@ namespace nirtree
 					// AT4 [Propogate the node split upwards]
 					if (node->parent->children.size() < node->parent->maxBranchFactor)
 					{
-						node->parent->boundingBoxes.push_back(siblingNode->boundingBox());
+						// TODO: Somehow get the bounding box created in split node over here to
+						// be able to push it into the parent
+						// node->parent->boundingBoxes.push_back(siblingNode->boundingBox());
 						node->parent->children.push_back(siblingNode);
 						siblingNode->parent = node->parent;
 
@@ -625,11 +683,15 @@ namespace nirtree
 			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
-			newRoot->boundingBoxes.push_back(this->boundingBox());
+			// TODO: Somehow get the bounding box created in split node over here to
+			// be able to push it into the parent
+			// newRoot->boundingBoxes.push_back(this->boundingBox());
 			newRoot->children.push_back(this);
 
 			siblingNode->parent = newRoot;
-			newRoot->boundingBoxes.push_back(siblingNode->boundingBox());
+			// TODO: Somehow get the bounding box created in split node over here to
+			// be able to push it into the parent
+			// newRoot->boundingBoxes.push_back(siblingNode->boundingBox());
 			newRoot->children.push_back(siblingNode);
 
 			return newRoot;

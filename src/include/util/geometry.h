@@ -66,12 +66,14 @@ class IsotheticPolygon
 		float computeExpansionArea(Rectangle givenRectangle);
 		Rectangle boundingBox();
 		void expand(Point givenPoint);
+		void expand(Point givenPoint, IsotheticPolygon &constraintPolygon);
 		void expand(Rectangle givenRectangle);
 		void expand(IsotheticPolygon &targetPolygon, IsotheticPolygon &constraintPolygon);
 		bool intersectsRectangle(Rectangle &givenRectangle);
 		bool intersectsRectangle(IsotheticPolygon &givenPolygon);
 		bool containsPoint(Point requestedPoint);
 		void increaseResolution(Rectangle clippingRectangle);
+		void increaseResolution(IsotheticPolygon &clippingPolygon);
 
 		bool operator==(IsotheticPolygon r);
 		bool operator!=(IsotheticPolygon r);

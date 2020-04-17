@@ -17,7 +17,7 @@ namespace nirtree
 		class ReinsertionEntry
 		{
 			public:
-				DynamicRectangle boundingBox;
+				IsotheticPolygon boundingBox;
 				Point data;
 				Node *child;
 				unsigned level;
@@ -28,7 +28,7 @@ namespace nirtree
 
 		public:
 			Node *parent;
-			std::vector<DynamicRectangle> boundingBoxes;
+			std::vector<IsotheticPolygon> boundingBoxes;
 			std::vector<Node *> children;
 			std::vector<Point> data;
 
