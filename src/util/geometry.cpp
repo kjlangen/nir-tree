@@ -373,6 +373,52 @@ Rectangle IsotheticPolygon::boundingBox()
 
 // TODO: This is a simple functional first-pass at expanding. It could get far more complex and most
 // likely will as we deal with the special case of spirals
+void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPolygon)
+{
+	unsigned minIndex = 0;
+	float minArea = basicRectangles[0].computeExpansionArea(givenPoint);
+	float evalArea;
+
+	for (unsigned i = 1; i < basicRectangles.size(); ++i)
+	{
+		evalArea = basicRectangles[i].computeExpansionArea(givenPoint);
+		if (evalArea < minArea)
+		{
+			minArea = evalArea;
+			minIndex = i;
+		}
+	}
+
+	basicRectangles[minIndex].expand(givenPoint);
+
+	// By expanding naively the expanded rectangle could intersect some other of our own rectangles.
+	// To fix this we move the newly expanded out of the array (setting it's slot to the rectangle
+	// at infinity which intersects nothing) and then pretend it is a clipping rectangle for
+	// which we need to increase our resolution. After increasing our resolution we put the newly
+	// expanded rectangle back in at its old spot. This way we don't have to resize the vec at all.
+	Rectangle bb = basicRectangles[minIndex];
+	basicRectangles[minIndex] = Rectangle(); // The degenerate rectangle at infinity
+	increaseResolution(bb);
+	basicRectangles[minIndex] = bb;
+
+	// Intersect bb with the constraint polygon to get a set of polygons who are a subset of bb and
+	// whose union equals bb with any area outside the constraint polyogn removed
+	std::vector<Rectangle> v;
+	for (unsigned i = 0; i < constraintPolygon.basicRectangles.size(); ++i)
+	{
+		if (constraintPolygon.basicRectangles[i].intersectsRectangle(bb))
+		{
+			v.push_back(constraintPolygon.basicRectangles[i].intersectionRectangle(bb));
+		}
+	}
+
+	basicRectangles[minIndex] = v[0];
+	for (unsigned i = 1; i < v.size(); ++i)
+	{
+		basicRectangles.push_back(v[i]);
+	}
+}
+
 void IsotheticPolygon::expand(Point givenPoint)
 {
 	unsigned minIndex = 0;
@@ -390,6 +436,16 @@ void IsotheticPolygon::expand(Point givenPoint)
 	}
 
 	basicRectangles[minIndex].expand(givenPoint);
+
+	// By expanding naively the expanded rectangle could intersect some other of our own rectangles.
+	// To fix this we move the newly expanded out of the array (setting it's slot to the rectangle
+	// at infinity which intersects nothing) and then pretend it is a clipping rectangle for
+	// which we need to increase our resolution. After increasing our resolution we put the newly
+	// expanded rectangle back in at its old spot. This way we don't have to resize the vec at all.
+	Rectangle bb = basicRectangles[minIndex];
+	basicRectangles[minIndex] = Rectangle(); // The degenerate rectangle at infinity
+	increaseResolution(bb);
+	basicRectangles[minIndex] = bb;
 }
 
 // TODO: This is a simple functional first-pass at expanding. It could get far more complex and most
@@ -463,43 +519,46 @@ void IsotheticPolygon::expand(IsotheticPolygon &targetPolygon, IsotheticPolygon 
 
 bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
 {
-	bool running = false;
-
 	// Short circuit checking if we find a positive
-	for (unsigned i = 0; i < basicRectangles.size() || running; ++i)
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
 	{
-		running = running || givenRectangle.intersectsRectangle(basicRectangles[i]);
+		if(givenRectangle.intersectsRectangle(basicRectangles[i]))
+		{
+			return true;
+		}
 	}
 
-	return running;
+	return false;
 }
 
 // TODO: This can be optimized to be O(Nlog(N)) and take O(N) space, the algorithm is detailed in
 // introduction to computational geometry by Preparata
 bool IsotheticPolygon::intersectsRectangle(IsotheticPolygon &givenPolygon)
 {
-	bool running = false;
-
 	// Short circuit checking if we find a positive
-	for (unsigned i = 0; i < basicRectangles.size() || running; ++i)
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
 	{
-		running = running || givenPolygon.intersectsRectangle(basicRectangles[i]);
+		if (givenPolygon.intersectsRectangle(basicRectangles[i]))
+		{
+			return true;
+		}
 	}
 
-	return running;
+	return false;
 }
 
 bool IsotheticPolygon::containsPoint(Point requestedPoint)
 {
-	bool running = false;
-
 	// Short circuit checking if we find a positive
-	for (unsigned i = 0; i < basicRectangles.size() || running; ++i)
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
 	{
-		running = running || basicRectangles[i].containsPoint(requestedPoint);
+		if(basicRectangles[i].containsPoint(requestedPoint))
+		{
+			return true;
+		}
 	}
 
-	return running;
+	return false;
 }
 
 void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
@@ -520,6 +579,14 @@ void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 				basicRectangles.push_back(v[j]);
 			}
 		}
+	}
+}
+
+void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
+{
+	for (unsigned i = 0; i < clippingPolygon.basicRectangles.size(); ++i)
+	{
+		increaseResolution(clippingPolygon.basicRectangles[i]);
 	}
 }
 
