@@ -475,29 +475,29 @@ namespace nirtree
 	Node *Node::splitNode(Point newData)
 	{
 		// Special case, rectangles = 1
-		if (parent != nullptr && parent->boundingBoxes[this].size() == 1)
-		{
-			// Split the points, between two halves of our bounding box
-			// Sort the points by x value
-			// std::sort(data.begin(), data.end(), [](Point p, Point pp){return p.x <= pp.x;});
-		}
-		else
-		{
-			// General case, rectangles > 1
-			// Treeify our isothetic polygon
-			char graph[parent->boundingBoxes[this].size()][parent->boundingBoxes[this].size()];
+		// if (parent != nullptr && parent->boundingBoxes[this].size() == 1)
+		// {
+		// 	// Split the points, between two halves of our bounding box
+		// 	// Sort the points by x value
+		// 	// std::sort(data.begin(), data.end(), [](Point p, Point pp){return p.x <= pp.x;});
+		// }
+		// else
+		// {
+		// 	// General case, rectangles > 1
+		// 	// Treeify our isothetic polygon
+		// 	char graph[parent->boundingBoxes[this].size()][parent->boundingBoxes[this].size()];
 
-			for (unsigned i = 0; i < parent->boundingBoxes[this].size(); ++i)
-			{
-				for (unsigned j = 0; j < parent->boundingBoxes[this].size(); ++j)
-				{
-					if (parent->boundingBoxes[this][i].intersectsRectangle(parent->boundingBoxes[this][j]))
-					{
-						graph[i][j] = 1;
-					}
-				}
-			}
-		}
+		// 	for (unsigned i = 0; i < parent->boundingBoxes[this].size(); ++i)
+		// 	{
+		// 		for (unsigned j = 0; j < parent->boundingBoxes[this].size(); ++j)
+		// 		{
+		// 			if (parent->boundingBoxes[this][i].intersectsRectangle(parent->boundingBoxes[this][j]))
+		// 			{
+		// 				graph[i][j] = 1;
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 
 		float dataSize = data.size();
