@@ -126,7 +126,7 @@ void testGeometry()
 
 void testRTree()
 {
-	// Unit test RTree
+	// Unit test R-Tree
 	rtree::testBoundingBox();
 	rtree::testUpdateBoundingBox();
 	rtree::testRemoveChild();
@@ -141,6 +141,12 @@ void testRTree()
 	rtree::testRemove();
 
 	std::cout << "RTree tested." << std::endl;
+}
+
+void testNIRTree()
+{
+	// Unit test NIR-Tree
+	nirtree::testPlayground();
 }
 
 int main(int argc, char *argv[])
@@ -199,8 +205,9 @@ int main(int argc, char *argv[])
 	// First unit tests are run and then benchmarks are run
 	if (runUnitTests)
 	{
-		testGeometry();
-		testRTree();
+		// testGeometry();
+		// testRTree();
+		testNIRTree();
 	}
 
 	if (runBenchMark)

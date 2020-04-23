@@ -4,10 +4,14 @@
 #include <vector>
 #include <stack>
 #include <map>
+#include <unordered_map>
 #include <list>
+#include <queue>
 #include <utility>
 #include <cmath>
+#include <cstring>
 #include <iostream>
+#include <chrono>
 #include <util/geometry.h>
 
 namespace nirtree
@@ -64,6 +68,7 @@ namespace nirtree
 			void printTree(unsigned n=0);
 	};
 
+	void testPlayground();
 	// void testBoundingBox();
 	// void testUpdateBoundingBox();
 	// void testRemoveChild();

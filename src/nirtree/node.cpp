@@ -469,73 +469,355 @@ namespace nirtree
 		// return newSibling;
 	}
 
+	// TODO: Make this function iterative and put back into splitNode
+	unsigned splitNodeHelper(unsigned us, unsigned parent, unsigned limit, bool *tree, unsigned *weights)
+	{
+		unsigned degree = 0;
+		for (unsigned i = 0; i < limit; ++i)
+		{
+			// std::cout << "The math is wrong?" << std::endl;
+			degree += i != us && tree[limit * us + i] ? 1 : 0;
+			// std::cout << "The math is not wrong!" << std::endl;
+		}
+
+		if (degree == 1)
+		{
+			return weights[us];
+		}
+		else
+		{
+			unsigned summedWeight = weights[us];
+			for (unsigned i = 0; i < limit; ++i)
+			{
+				// std::cout << "The math is wrong? Redux" << std::endl; 
+				if (i != parent && i != us && tree[limit * us + i])
+				{
+					// std::cout << "The math is not wrong! Redux" << std::endl;
+					summedWeight += splitNodeHelper(i, us, limit, tree, weights);
+				}
+				// summedWeight += i != parent && i != us && tree[limit * us + i] ? splitNodeHelper(i, us, limit, tree, weights) : 0;
+			}
+			weights[us] = summedWeight;
+			return summedWeight;
+		}
+	}
+
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
 	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
 	// TODO: Convert
 	Node *Node::splitNode(Point newData)
 	{
-		// Special case, rectangles = 1
-		// if (parent != nullptr && parent->boundingBoxes[this].size() == 1)
-		// {
-		// 	// Split the points, between two halves of our bounding box
-		// 	// Sort the points by x value
-		// 	// std::sort(data.begin(), data.end(), [](Point p, Point pp){return p.x <= pp.x;});
-		// }
-		// else
-		// {
-		// 	// General case, rectangles > 1
-		// 	// Treeify our isothetic polygon
-		// 	char graph[parent->boundingBoxes[this].size()][parent->boundingBoxes[this].size()];
-
-		// 	for (unsigned i = 0; i < parent->boundingBoxes[this].size(); ++i)
-		// 	{
-		// 		for (unsigned j = 0; j < parent->boundingBoxes[this].size(); ++j)
-		// 		{
-		// 			if (parent->boundingBoxes[this][i].intersectsRectangle(parent->boundingBoxes[this][j]))
-		// 			{
-		// 				graph[i][j] = 1;
-		// 			}
-		// 		}
-		// 	}
-		// }
-
-
-		float dataSize = data.size();
-
-		// Setup the two groups which will be the entries in the two new nodes
-		std::vector<unsigned> groupA;
-		std::vector<unsigned> groupB;
-
-		// Compute the first entry in each group based on PS1 & PS2
-		unsigned seedA = 0;
-		unsigned seedB = dataSize - 1;
-
-		float xdist = data[seedA].x - data[seedB].x;
-		float ydist = data[seedA].y - data[seedB].y;
-
-		float maxWasted = xdist * xdist + ydist * ydist;
-		Point iData, jData;
-		for (unsigned i = 0; i < dataSize; ++i)
+		// Special cases
+		// 1. The node is the root
+		// 2. This node's bounding polygon is a rectangle
+		if (parent == nullptr)
 		{
-			iData = data[i];
-			for (unsigned j = 0; j < dataSize; ++j)
+			/* code */
+			return nullptr;
+		}
+
+		unsigned polygonIndex;
+		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
+		std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
+
+		if (parent->boundingBoxes[polygonIndex].basicRectangles.size() == 1)
+		{
+			/* code */
+			return nullptr;
+		}
+		
+		// Build graph
+		// TODO: Optimize to only use lower triangle of array
+		std::cout << "Building graph..." << std::endl;
+		bool graph[basics.size()][basics.size()];
+		std::memset(graph, false, basics.size() * basics.size());
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			for (unsigned j = 0; j < basics.size() && j < i; ++j)
 			{
-				jData = data[j];
-				xdist = iData.x - jData.x;
-				ydist = iData.y - jData.y;
-				float wasted = xdist * xdist + ydist * ydist;
-
-				if (maxWasted < wasted)
+				if (i != j && basics[i].intersectsRectangle(basics[j]))
 				{
-					maxWasted = wasted;
-
-					seedA = i;
-					seedB = j;
+					graph[i][j] = true;
+					graph[j][i] = true;
 				}
 			}
 		}
 
-		return nullptr;
+		// Printing...
+		std::cout << "    0 1 2 3 4  " << std::endl;
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout << i << " | ";
+			for (unsigned j = 0; j < basics.size(); ++j)
+			{
+				std::cout << graph[i][j] << " ";
+			}
+			std::cout << "|" << std::endl;
+		}
+
+		// Build tree
+		// TODO: Optimize to only use lower triangle of array
+		std::cout << "Building tree..." << std::endl;
+		bool tree[basics.size()][basics.size()];
+		unsigned currentVertex;
+		std::queue<unsigned> explorationQ; // Breadth first search
+		bool explored[basics.size()]; // Exploration labels
+		bool connected[basics.size()]; // Connection labels so we don't double connect leaves
+
+		std::memset(tree, false, basics.size() * basics.size());
+		std::memset(explored, false, basics.size());
+		std::memset(connected, false, basics.size());
+
+		explorationQ.push(basics.size() / 2);
+		for (;explorationQ.size();)
+		{
+			currentVertex = explorationQ.front();
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < basics.size(); ++neighbouringVertex)
+			{
+				if (graph[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				{
+					if (!connected[neighbouringVertex])
+					{
+						tree[currentVertex][neighbouringVertex] = true;
+						tree[neighbouringVertex][currentVertex] = true;
+						connected[neighbouringVertex] = true;
+					}
+					explorationQ.push(neighbouringVertex);
+				}
+			}
+			explored[currentVertex] = true;
+			explorationQ.pop();
+		}
+
+		// Printing...
+		std::cout << "    0 1 2 3 4  " << std::endl;
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout <<  i  << " | ";
+			for (unsigned j = 0; j < basics.size(); ++j)
+			{
+				std::cout << tree[i][j] << " ";
+			}
+			std::cout << "|" << std::endl;
+		}
+
+		// Weight the tree
+		std::cout << "Weighting tree..." << std::endl;
+		unsigned weights[basics.size()];
+
+		// Printing...
+		std::cout << "weights = [";
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout << " " << weights[i];
+		}
+		std::cout << " ]" << std::endl;
+
+		std::memset(weights, 0, basics.size() * sizeof(unsigned));
+
+		// Printing...
+		std::cout << "weights = [";
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout << " " << weights[i];
+		}
+		std::cout << " ]" << std::endl;
+
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout << "data.size() = " << data.size() << std::endl;
+			for (unsigned j = 0; j < data.size(); ++j)
+			{
+				if (basics[i].containsPoint(data[j]))
+				{
+					weights[i] = weights[i] + 1;
+				}
+			}
+		}
+
+		// Printing...
+		std::cout << "weights = [";
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout << " " << weights[i];
+		}
+		std::cout << " ]" << std::endl;
+
+		std::cout << "Combining weights..." << std::endl;
+		weights[basics.size() / 2] = splitNodeHelper(basics.size() / 2, basics.size() / 2, basics.size(), tree[0], weights);
+
+		// Printing...
+		std::cout << "weights = [";
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout << " " << weights[i];
+		}
+		std::cout << " ]" << std::endl;
+
+		// Find a separator
+		std::cout << "Finding a separator..." << std::endl;
+		unsigned delta = std::numeric_limits<unsigned>::max();
+		unsigned subtreeRoot, subtreeParent;
+
+		std::memset(explored, false, basics.size());
+
+		explorationQ.push(basics.size() / 2);
+		for (;explorationQ.size();)
+		{
+			currentVertex = explorationQ.front();
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < basics.size(); ++neighbouringVertex)
+			{
+				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				{
+					// Current vertex will always be the head and neighbouring vertex will always be the tail
+					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
+					// If it is it means that the subtree rooted at neighbouring vertex is more balanced than
+					// any of our previous splits.
+					unsigned componentOneWeight = weights[basics.size() / 2] - weights[neighbouringVertex];
+					unsigned componentTwoWeight = weights[neighbouringVertex];
+					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
+					if (comparisonDelta < delta)
+					{
+						delta = comparisonDelta;
+						subtreeRoot = neighbouringVertex;
+						subtreeParent = currentVertex;
+					}
+					explorationQ.push(neighbouringVertex);
+				}
+			}
+			explored[currentVertex] = true;
+			explorationQ.pop();
+		}
+
+		// Split along seperator
+		std::cout << "Splitting along separator..." << std::endl;
+		bool switchboard[basics.size()];
+		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
+
+		std::memset(switchboard, false, basics.size());
+		std::memset(explored, false, basics.size());
+
+		switchboard[subtreeRoot] = true;
+
+		explorationQ.push(subtreeRoot);
+		for (;explorationQ.size();)
+		{
+			currentVertex = explorationQ.front();
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < basics.size(); ++neighbouringVertex)
+			{
+				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				{
+					switchboard[neighbouringVertex] = true;
+					explorationQ.push(neighbouringVertex);
+				}
+			}
+			explored[currentVertex] = true;
+			explorationQ.pop();
+		}
+
+		// Printing...
+		std::cout << "switchboard = [";
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			std::cout << " " << switchboard[i];
+		}
+		std::cout << " ]" << std::endl;
+
+		// Break the tree into two components
+		std::cout << "Splitting and swapping..." << std::endl;
+		std::vector<Rectangle> oldRectangles;
+		std::vector<Rectangle> newRectangles;
+
+		for (unsigned i = 0; i < basics.size(); ++i)
+		{
+			if (switchboard[i])
+			{
+				newRectangles.emplace_back(basics[i]);
+			}
+			else
+			{
+				oldRectangles.emplace_back(basics[i]);
+			}
+		}
+
+		IsotheticPolygon newSiblingIsotheticPolygon;
+		newSiblingIsotheticPolygon.basicRectangles.clear();
+		newSiblingIsotheticPolygon.basicRectangles.swap(newRectangles);
+		basics.clear();
+		basics.swap(oldRectangles);
+
+		std::vector<Point> oldPoints;
+		std::vector<Point> newPoints;
+
+		for (unsigned i = 0; i < data.size(); ++i)
+		{
+			if (newSiblingIsotheticPolygon.containsPoint(data[i]))
+			{
+				newPoints.emplace_back(data[i]);
+			}
+			else
+			{
+				oldPoints.emplace_back(data[i]);
+			}
+		}
+
+		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		newSibling->data.clear();
+		newSibling->data.swap(newPoints);
+		data.clear();
+		data.swap(oldPoints);
+
+		if (newSiblingIsotheticPolygon.containsPoint(newData))
+		{
+			newSibling->data.push_back(newData);
+		}
+		else
+		{
+			data.push_back(newData);
+		}
+
+		std::cout << "Old stuff recombobulated:" << std::endl;
+		parent->boundingBoxes[polygonIndex].print();
+		this->print();
+		std::cout << "New stuff recombobulated:" << std::endl;
+		newSiblingIsotheticPolygon.print();
+		newSibling->print();
+
+		return newSibling; // {newSibling, p};
+
+		// unsigned dataSize = data.size();
+
+		// // Setup the two groups which will be the entries in the two new nodes
+		
+
+		// // Compute the first entry in each group based on PS1 & PS2
+		// unsigned seedA = 0;
+		// unsigned seedB = dataSize - 1;
+
+		// float xdist = data[seedA].x - data[seedB].x;
+		// float ydist = data[seedA].y - data[seedB].y;
+
+		// float maxWasted = xdist * xdist + ydist * ydist;
+		// Point iData, jData;
+		// for (unsigned i = 0; i < dataSize; ++i)
+		// {
+		// 	iData = data[i];
+		// 	for (unsigned j = 0; j < dataSize; ++j)
+		// 	{
+		// 		jData = data[j];
+		// 		xdist = iData.x - jData.x;
+		// 		ydist = iData.y - jData.y;
+		// 		float wasted = xdist * xdist + ydist * ydist;
+
+		// 		if (maxWasted < wasted)
+		// 		{
+		// 			maxWasted = wasted;
+
+		// 			seedA = i;
+		// 			seedB = j;
+		// 		}
+		// 	}
+		// }
 
 		// // Set the bounding rectangles
 		// Rectangle boundingBoxA = Rectangle(data[seedA], data[seedA]);
@@ -915,6 +1197,52 @@ namespace nirtree
 		}
 
 		return sum;
+	}
+
+	void testPlayground()
+	{
+		// Setup
+		Node *root = new Node();
+		Node *leaf = new Node(1, 1, root);
+		IsotheticPolygon p = IsotheticPolygon();
+
+		root->children.push_back(leaf);
+
+		p.basicRectangles.push_back(Rectangle(0.0, 7.0, 5.0, 10.0));
+		p.basicRectangles.push_back(Rectangle(5.0, 5.0, 8.0, 12.0));
+		p.basicRectangles.push_back(Rectangle(8.0, 10.0, 13.0, 14.0));
+		p.basicRectangles.push_back(Rectangle(4.0, 0.0, 10.0, 5.0));
+		p.basicRectangles.push_back(Rectangle(10.0, 0.0, 13.0, 10.0));
+		root->boundingBoxes.push_back(p);
+		
+		leaf->data.push_back(Point(1.0, 8.0));
+		leaf->data.push_back(Point(2.0, 9.0));
+		leaf->data.push_back(Point(3.0, 8.0));
+		leaf->data.push_back(Point(6.5, 11.0));
+		leaf->data.push_back(Point(6.0, 8.0));
+		leaf->data.push_back(Point(7.0, 8.0));
+		leaf->data.push_back(Point(7.0, 6.0));
+		leaf->data.push_back(Point(6.0, 2.0));
+		leaf->data.push_back(Point(9.0, 4.0));
+		leaf->data.push_back(Point(11.0, 2.0));
+		leaf->data.push_back(Point(12.0, 1.0));
+		leaf->data.push_back(Point(12.0, 5.0));
+		leaf->data.push_back(Point(12.0, 8.0));
+		leaf->data.push_back(Point(10.0, 10.0));
+		leaf->data.push_back(Point(13.0, 10.0));
+		leaf->data.push_back(Point(12.0, 12.0));
+
+		std::cout << "Setup complete." << std::endl;
+
+
+		// Split
+		auto timerStart = std::chrono::high_resolution_clock::now();
+		leaf->splitNode(Point(8.0, 1.0));
+		auto timerEnd = std::chrono::high_resolution_clock::now();
+
+
+		// Print results
+		std::cout << "It took " << std::chrono::duration_cast<std::chrono::microseconds>(timerEnd - timerStart).count() << "us to split." << std::endl;
 	}
 
 	// void testBoundingBox()

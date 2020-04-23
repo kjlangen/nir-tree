@@ -354,6 +354,9 @@ Rectangle IsotheticPolygon::boundingBox()
 
 // TODO: This is a simple functional first-pass at expanding. It could get far more complex and most
 // likely will as we deal with the special case of spirals
+// TODO: There's a special case where this doesn't work when the expansion of the isothetic polygon
+// bridges a U shape indent of the constraint polygon. The new expansion might be non-contigous
+// after being intersected with the constraint polygon.
 void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPolygon)
 {
 	unsigned minIndex = 0;
@@ -376,7 +379,8 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	// To fix this we move the newly expanded out of the array (setting it's slot to the rectangle
 	// at infinity which intersects nothing) and then pretend it is a clipping rectangle for
 	// which we need to increase our resolution. After increasing our resolution we put the newly
-	// expanded rectangle back in at its old spot. This way we don't have to resize the vec at all.
+	// expanded rectangle back in at its old spot. This way we don't have to resize the vec more
+	// than normally required by clipping/upping the resolution.
 	Rectangle bb = basicRectangles[minIndex];
 	basicRectangles[minIndex] = Rectangle(); // The degenerate rectangle at infinity
 	increaseResolution(bb);
@@ -592,7 +596,7 @@ void IsotheticPolygon::print()
 		basicRectangles[i].upperRight.print();
 		std::cout << '|';
 	}
-	std::cout << '|' << std::endl;
+	std::cout << std::endl;
 }
 
 void testPointEquality()
