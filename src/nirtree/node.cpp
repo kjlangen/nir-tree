@@ -470,35 +470,22 @@ namespace nirtree
 	}
 
 	// TODO: Make this function iterative and put back into splitNode
-	unsigned splitNodeHelper(unsigned us, unsigned parent, unsigned limit, bool *tree, unsigned *weights)
+	unsigned splitNodeHelper(unsigned currentVertex, std::unordered_multimap<unsigned, unsigned> &tree, unsigned *weights)
 	{
-		unsigned degree = 0;
-		for (unsigned i = 0; i < limit; ++i)
+		if (tree.count(currentVertex) == 0)
 		{
-			// std::cout << "The math is wrong?" << std::endl;
-			degree += i != us && tree[limit * us + i] ? 1 : 0;
-			// std::cout << "The math is not wrong!" << std::endl;
-		}
-
-		if (degree == 1)
-		{
-			return weights[us];
+			// std::cout << currentVertex << ":Leaf:" << weights[currentVertex] << std::endl;
+			return weights[currentVertex];
 		}
 		else
 		{
-			unsigned summedWeight = weights[us];
-			for (unsigned i = 0; i < limit; ++i)
+			// std::cout << currentVertex << ":NodePre:" << weights[currentVertex] << std::endl;
+			for (auto iter = tree.begin(currentVertex); iter != tree.end(currentVertex); ++iter)
 			{
-				// std::cout << "The math is wrong? Redux" << std::endl; 
-				if (i != parent && i != us && tree[limit * us + i])
-				{
-					// std::cout << "The math is not wrong! Redux" << std::endl;
-					summedWeight += splitNodeHelper(i, us, limit, tree, weights);
-				}
-				// summedWeight += i != parent && i != us && tree[limit * us + i] ? splitNodeHelper(i, us, limit, tree, weights) : 0;
+				weights[currentVertex] += splitNodeHelper(iter->second, tree, weights);
 			}
-			weights[us] = summedWeight;
-			return summedWeight;
+			// std::cout << currentVertex << ":NodePost:" << weights[currentVertex] << std::endl;
+			return weights[currentVertex];
 		}
 	}
 
@@ -531,43 +518,39 @@ namespace nirtree
 		// Build graph
 		// TODO: Optimize to only use lower triangle of array
 		// std::cout << "Building graph..." << std::endl;
-		bool graph[basicsSize][basicsSize];
-		std::memset(graph, false, basicsSize * basicsSize);
+		std::unordered_multimap<unsigned, unsigned> graph;
+		// bool graph[basicsSize][basicsSize];
+		// std::memset(graph, false, basicsSize * basicsSize);
 		for (unsigned i = 0; i < basicsSize; ++i)
 		{
-			for (unsigned j = 0; j < basicsSize && j < i; ++j)
+			for (unsigned j = 0; j < basicsSize; ++j)
 			{
 				if (i != j && basics[i].intersectsRectangle(basics[j]))
 				{
-					graph[i][j] = true;
-					graph[j][i] = true;
+					graph.emplace(i, j);
 				}
 			}
 		}
 
 		// Printing...
 		// std::cout << "    0 1 2 3 4  " << std::endl;
-		// for (unsigned i = 0; i < basics.size(); ++i)
+		// for (auto &i : graph)
 		// {
-		// 	std::cout << i << " | ";
-		// 	for (unsigned j = 0; j < basics.size(); ++j)
-		// 	{
-		// 		std::cout << graph[i][j] << " ";
-		// 	}
-		// 	std::cout << "|" << std::endl;
+		// 	std::cout << i.first << " , " << i.second << std::endl;
 		// }
 
 		// Build tree
 		// TODO: Optimize to only use lower triangle of array
 		// std::cout << "Building tree..." << std::endl;
-		bool tree[basicsSize][basicsSize];
+		std::unordered_multimap<unsigned, unsigned> tree;
+		// bool tree[basicsSize][basicsSize];
 		unsigned currentVertex;
 		std::queue<unsigned> explorationQ; // Breadth first search
 		bool explored[basicsSize]; // Exploration labels
 		bool connected[basicsSize]; // Connection labels so we don't double connect leaves
 		unsigned weights[basicsSize];
 
-		std::memset(tree, false, basicsSize * basicsSize);
+		// std::memset(tree, false, basicsSize * basicsSize);
 		std::memset(explored, false, basicsSize);
 		std::memset(connected, false, basicsSize);
 		std::memset(weights, 0, basicsSize * sizeof(unsigned));
@@ -576,19 +559,21 @@ namespace nirtree
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
-
+			// std::cout << "currentVertex = " << currentVertex << std::endl;
 			// Connect children of this node to the tree
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
+			for (auto iter = graph.begin(currentVertex); iter != graph.end(currentVertex); ++iter)
 			{
-				if (graph[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				// std::cout << "	iter->second = " << iter->second << std::endl;
+				if (!explored[iter->second])
 				{
-					if (!connected[neighbouringVertex])
+					if (!connected[iter->second])
 					{
-						tree[currentVertex][neighbouringVertex] = true;
-						tree[neighbouringVertex][currentVertex] = true;
-						connected[neighbouringVertex] = true;
+						// std::cout << "	emplacing " << currentVertex << ", " << iter->second << std::endl;
+						tree.emplace(currentVertex, iter->second);
+						connected[iter->second] = true;
 					}
-					explorationQ.push(neighbouringVertex);
+					// std::cout << "	queuing " << iter->second << std::endl;
+					explorationQ.push(iter->second);
 				}
 			}
 
@@ -607,14 +592,9 @@ namespace nirtree
 
 		// Printing...
 		// std::cout << "    0 1 2 3 4  " << std::endl;
-		// for (unsigned i = 0; i < basics.size(); ++i)
+		// for (auto &i : tree)
 		// {
-		// 	std::cout <<  i  << " | ";
-		// 	for (unsigned j = 0; j < basics.size(); ++j)
-		// 	{
-		// 		std::cout << tree[i][j] << " ";
-		// 	}
-		// 	std::cout << "|" << std::endl;
+		// 	std::cout << i.first << " , " << i.second << std::endl;
 		// }
 
 		// Weight the tree
@@ -661,7 +641,7 @@ namespace nirtree
 		// std::cout << " ]" << std::endl;
 
 		// std::cout << "Combining weights..." << std::endl;
-		weights[basicsSize / 2] = splitNodeHelper(basicsSize / 2, basicsSize / 2, basicsSize, tree[0], weights);
+		weights[basicsSize / 2] = splitNodeHelper(basicsSize / 2, tree, weights);
 
 		// Printing...
 		// std::cout << "weights = [";
@@ -673,8 +653,8 @@ namespace nirtree
 
 		// Find a separator
 		// std::cout << "Finding a separator..." << std::endl;
-		unsigned delta = std::numeric_limits<unsigned>::max();
-		unsigned subtreeRoot, subtreeParent;
+		unsigned delta, subtreeRoot, subtreeParent;
+		delta = subtreeRoot = subtreeParent = std::numeric_limits<unsigned>::max();
 
 		std::memset(explored, false, basicsSize);
 
@@ -682,24 +662,26 @@ namespace nirtree
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
+			// std::cout << "currentVertex = " << currentVertex << std::endl;
+			for (auto iter = tree.begin(currentVertex); iter != tree.end(currentVertex); ++iter)
 			{
-				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				// std::cout << "iter->second = " << iter->second << std::endl;
+				if (!explored[iter->second])
 				{
 					// Current vertex will always be the head and neighbouring vertex will always be the tail
 					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
 					// If it is it means that the subtree rooted at neighbouring vertex is more balanced than
 					// any of our previous splits.
-					unsigned componentTwoWeight = weights[neighbouringVertex];
+					unsigned componentTwoWeight = weights[iter->second];
 					unsigned componentOneWeight = weights[basicsSize / 2] - componentTwoWeight;
 					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
 					if (comparisonDelta < delta)
 					{
 						delta = comparisonDelta;
-						subtreeRoot = neighbouringVertex;
+						subtreeRoot = iter->second;
 						subtreeParent = currentVertex;
 					}
-					explorationQ.push(neighbouringVertex);
+					explorationQ.push(iter->second);
 				}
 			}
 			explored[currentVertex] = true;
@@ -709,27 +691,36 @@ namespace nirtree
 		// Split along seperator
 		// std::cout << "Splitting along separator..." << std::endl;
 		bool switchboard[basicsSize];
-		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
+		// tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
 
 		std::memset(switchboard, false, basicsSize);
 		std::memset(explored, false, basicsSize);
 
+		// std::cout << "Subtree Root = " << subtreeRoot << std::endl;
+		// std::cout << "Subtree Parent = " << subtreeParent << std::endl;
 		switchboard[subtreeRoot] = true;
+		explored[subtreeParent] = true;
 
 		explorationQ.push(subtreeRoot);
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
+			for (auto iter = tree.begin(currentVertex); iter != tree.end(currentVertex); ++iter)
 			{
-				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				// std::cout << "Pre if" << std::endl;
+				if (!explored[iter->second])
 				{
-					switchboard[neighbouringVertex] = true;
-					explorationQ.push(neighbouringVertex);
+					// std::cout << "Post if" << std::endl;
+					switchboard[iter->second] = true;
+					// std::cout << "Post switchboard" << std::endl;
+					explorationQ.push(iter->second);
+					// std::cout << "Post push" << std::endl;
 				}
 			}
 			explored[currentVertex] = true;
+			// std::cout << "Post explored" << std::endl;
 			explorationQ.pop();
+			// std::cout << "Post pop" << std::endl;
 		}
 
 		// Printing...
