@@ -519,8 +519,10 @@ namespace nirtree
 		unsigned polygonIndex;
 		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
 		std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
+		const unsigned basicsSize = basics.size();
+		const unsigned dataSize = data.size();
 
-		if (parent->boundingBoxes[polygonIndex].basicRectangles.size() == 1)
+		if (basicsSize == 1)
 		{
 			/* code */
 			return nullptr;
@@ -528,12 +530,12 @@ namespace nirtree
 		
 		// Build graph
 		// TODO: Optimize to only use lower triangle of array
-		std::cout << "Building graph..." << std::endl;
-		bool graph[basics.size()][basics.size()];
-		std::memset(graph, false, basics.size() * basics.size());
-		for (unsigned i = 0; i < basics.size(); ++i)
+		// std::cout << "Building graph..." << std::endl;
+		bool graph[basicsSize][basicsSize];
+		std::memset(graph, false, basicsSize * basicsSize);
+		for (unsigned i = 0; i < basicsSize; ++i)
 		{
-			for (unsigned j = 0; j < basics.size() && j < i; ++j)
+			for (unsigned j = 0; j < basicsSize && j < i; ++j)
 			{
 				if (i != j && basics[i].intersectsRectangle(basics[j]))
 				{
@@ -544,35 +546,39 @@ namespace nirtree
 		}
 
 		// Printing...
-		std::cout << "    0 1 2 3 4  " << std::endl;
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout << i << " | ";
-			for (unsigned j = 0; j < basics.size(); ++j)
-			{
-				std::cout << graph[i][j] << " ";
-			}
-			std::cout << "|" << std::endl;
-		}
+		// std::cout << "    0 1 2 3 4  " << std::endl;
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << i << " | ";
+		// 	for (unsigned j = 0; j < basics.size(); ++j)
+		// 	{
+		// 		std::cout << graph[i][j] << " ";
+		// 	}
+		// 	std::cout << "|" << std::endl;
+		// }
 
 		// Build tree
 		// TODO: Optimize to only use lower triangle of array
-		std::cout << "Building tree..." << std::endl;
-		bool tree[basics.size()][basics.size()];
+		// std::cout << "Building tree..." << std::endl;
+		bool tree[basicsSize][basicsSize];
 		unsigned currentVertex;
 		std::queue<unsigned> explorationQ; // Breadth first search
-		bool explored[basics.size()]; // Exploration labels
-		bool connected[basics.size()]; // Connection labels so we don't double connect leaves
+		bool explored[basicsSize]; // Exploration labels
+		bool connected[basicsSize]; // Connection labels so we don't double connect leaves
+		unsigned weights[basicsSize];
 
-		std::memset(tree, false, basics.size() * basics.size());
-		std::memset(explored, false, basics.size());
-		std::memset(connected, false, basics.size());
+		std::memset(tree, false, basicsSize * basicsSize);
+		std::memset(explored, false, basicsSize);
+		std::memset(connected, false, basicsSize);
+		std::memset(weights, 0, basicsSize * sizeof(unsigned));
 
-		explorationQ.push(basics.size() / 2);
+		explorationQ.push(basicsSize / 2);
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basics.size(); ++neighbouringVertex)
+
+			// Connect children of this node to the tree
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
 			{
 				if (graph[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
 				{
@@ -585,87 +591,98 @@ namespace nirtree
 					explorationQ.push(neighbouringVertex);
 				}
 			}
+
+			// Weight this node
+			for (unsigned j = 0; j < dataSize; ++j)
+			{
+				if (basics[currentVertex].containsPoint(data[j]))
+				{
+					++weights[currentVertex];
+				}
+			}
+
 			explored[currentVertex] = true;
 			explorationQ.pop();
 		}
 
 		// Printing...
-		std::cout << "    0 1 2 3 4  " << std::endl;
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout <<  i  << " | ";
-			for (unsigned j = 0; j < basics.size(); ++j)
-			{
-				std::cout << tree[i][j] << " ";
-			}
-			std::cout << "|" << std::endl;
-		}
+		// std::cout << "    0 1 2 3 4  " << std::endl;
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout <<  i  << " | ";
+		// 	for (unsigned j = 0; j < basics.size(); ++j)
+		// 	{
+		// 		std::cout << tree[i][j] << " ";
+		// 	}
+		// 	std::cout << "|" << std::endl;
+		// }
 
 		// Weight the tree
-		std::cout << "Weighting tree..." << std::endl;
-		unsigned weights[basics.size()];
+		// std::cout << "Weighting tree..." << std::endl;
+		// unsigned weights[basicsSize];
 
 		// Printing...
-		std::cout << "weights = [";
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout << " " << weights[i];
-		}
-		std::cout << " ]" << std::endl;
+		// std::cout << "weights = [";
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << " " << weights[i];
+		// }
+		// std::cout << " ]" << std::endl;
 
-		std::memset(weights, 0, basics.size() * sizeof(unsigned));
-
-		// Printing...
-		std::cout << "weights = [";
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout << " " << weights[i];
-		}
-		std::cout << " ]" << std::endl;
-
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout << "data.size() = " << data.size() << std::endl;
-			for (unsigned j = 0; j < data.size(); ++j)
-			{
-				if (basics[i].containsPoint(data[j]))
-				{
-					weights[i] = weights[i] + 1;
-				}
-			}
-		}
+		// std::memset(weights, 0, basicsSize * sizeof(unsigned));
 
 		// Printing...
-		std::cout << "weights = [";
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout << " " << weights[i];
-		}
-		std::cout << " ]" << std::endl;
+		// std::cout << "weights = [";
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << " " << weights[i];
+		// }
+		// std::cout << " ]" << std::endl;
 
-		std::cout << "Combining weights..." << std::endl;
-		weights[basics.size() / 2] = splitNodeHelper(basics.size() / 2, basics.size() / 2, basics.size(), tree[0], weights);
+		// const unsigned dataSize = data.size();
+		// for (unsigned i = 0; i < basicsSize; ++i)
+		// {
+		// 	// std::cout << "data.size() = " << data.size() << std::endl;
+		// 	for (unsigned j = 0; j < dataSize; ++j)
+		// 	{
+		// 		if (basics[i].containsPoint(data[j]))
+		// 		{
+		// 			weights[i] = weights[i] + 1;
+		// 		}
+		// 	}
+		// }
 
 		// Printing...
-		std::cout << "weights = [";
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout << " " << weights[i];
-		}
-		std::cout << " ]" << std::endl;
+		// std::cout << "weights = [";
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << " " << weights[i];
+		// }
+		// std::cout << " ]" << std::endl;
+
+		// std::cout << "Combining weights..." << std::endl;
+		weights[basicsSize / 2] = splitNodeHelper(basicsSize / 2, basicsSize / 2, basicsSize, tree[0], weights);
+
+		// Printing...
+		// std::cout << "weights = [";
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << " " << weights[i];
+		// }
+		// std::cout << " ]" << std::endl;
 
 		// Find a separator
-		std::cout << "Finding a separator..." << std::endl;
+		// std::cout << "Finding a separator..." << std::endl;
 		unsigned delta = std::numeric_limits<unsigned>::max();
 		unsigned subtreeRoot, subtreeParent;
 
-		std::memset(explored, false, basics.size());
+		std::memset(explored, false, basicsSize);
 
-		explorationQ.push(basics.size() / 2);
+		explorationQ.push(basicsSize / 2);
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basics.size(); ++neighbouringVertex)
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
 			{
 				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
 				{
@@ -673,8 +690,8 @@ namespace nirtree
 					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
 					// If it is it means that the subtree rooted at neighbouring vertex is more balanced than
 					// any of our previous splits.
-					unsigned componentOneWeight = weights[basics.size() / 2] - weights[neighbouringVertex];
 					unsigned componentTwoWeight = weights[neighbouringVertex];
+					unsigned componentOneWeight = weights[basicsSize / 2] - componentTwoWeight;
 					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
 					if (comparisonDelta < delta)
 					{
@@ -690,12 +707,12 @@ namespace nirtree
 		}
 
 		// Split along seperator
-		std::cout << "Splitting along separator..." << std::endl;
-		bool switchboard[basics.size()];
+		// std::cout << "Splitting along separator..." << std::endl;
+		bool switchboard[basicsSize];
 		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
 
-		std::memset(switchboard, false, basics.size());
-		std::memset(explored, false, basics.size());
+		std::memset(switchboard, false, basicsSize);
+		std::memset(explored, false, basicsSize);
 
 		switchboard[subtreeRoot] = true;
 
@@ -703,7 +720,7 @@ namespace nirtree
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basics.size(); ++neighbouringVertex)
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
 			{
 				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
 				{
@@ -716,19 +733,19 @@ namespace nirtree
 		}
 
 		// Printing...
-		std::cout << "switchboard = [";
-		for (unsigned i = 0; i < basics.size(); ++i)
-		{
-			std::cout << " " << switchboard[i];
-		}
-		std::cout << " ]" << std::endl;
+		// std::cout << "switchboard = [";
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << " " << switchboard[i];
+		// }
+		// std::cout << " ]" << std::endl;
 
 		// Break the tree into two components
-		std::cout << "Splitting and swapping..." << std::endl;
+		// std::cout << "Splitting and swapping..." << std::endl;
 		std::vector<Rectangle> oldRectangles;
 		std::vector<Rectangle> newRectangles;
 
-		for (unsigned i = 0; i < basics.size(); ++i)
+		for (unsigned i = 0; i < basicsSize; ++i)
 		{
 			if (switchboard[i])
 			{
@@ -749,7 +766,7 @@ namespace nirtree
 		std::vector<Point> oldPoints;
 		std::vector<Point> newPoints;
 
-		for (unsigned i = 0; i < data.size(); ++i)
+		for (unsigned i = 0; i < dataSize; ++i)
 		{
 			if (newSiblingIsotheticPolygon.containsPoint(data[i]))
 			{
@@ -776,12 +793,12 @@ namespace nirtree
 			data.push_back(newData);
 		}
 
-		std::cout << "Old stuff recombobulated:" << std::endl;
-		parent->boundingBoxes[polygonIndex].print();
-		this->print();
-		std::cout << "New stuff recombobulated:" << std::endl;
-		newSiblingIsotheticPolygon.print();
-		newSibling->print();
+		// std::cout << "Old stuff recombobulated:" << std::endl;
+		// parent->boundingBoxes[polygonIndex].print();
+		// this->print();
+		// std::cout << "New stuff recombobulated:" << std::endl;
+		// newSiblingIsotheticPolygon.print();
+		// newSibling->print();
 
 		return newSibling; // {newSibling, p};
 
@@ -1214,7 +1231,7 @@ namespace nirtree
 		p.basicRectangles.push_back(Rectangle(4.0, 0.0, 10.0, 5.0));
 		p.basicRectangles.push_back(Rectangle(10.0, 0.0, 13.0, 10.0));
 		root->boundingBoxes.push_back(p);
-		
+
 		leaf->data.push_back(Point(1.0, 8.0));
 		leaf->data.push_back(Point(2.0, 9.0));
 		leaf->data.push_back(Point(3.0, 8.0));

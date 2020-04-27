@@ -1,7 +1,7 @@
 SXX = -std=c++11 	# Standard
 FLAGS = -Wall	# Flags
 DIR = src/include 	# Include directory
-OBJECTS = geometry.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o randomSquares.o randomPoints.o
+OBJECTS = geometry.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o randomSquares.o randomPoints.o splitPoints.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
 
 .PHONY : clean tests
@@ -22,7 +22,15 @@ node.o:
 rtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/rtree.cpp
 
-# Build nir tree node
+# Build rplustree node
+rPlusTreeNode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTreeNode.cpp
+
+# Build rplustree
+rPlusTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
+
+# Build nirtree node
 nirnode.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/node.cpp -o nirnode.o
 
@@ -37,12 +45,10 @@ randomSquares.o:
 randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
 
-rPlusTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
+splitPoints.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/splitPoints.cpp
 
-rPlusTreeNode.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTreeNode.cpp
-
+# Build tests
 testGeometry.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testGeometry.cpp
 

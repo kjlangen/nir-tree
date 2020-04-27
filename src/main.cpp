@@ -2,10 +2,11 @@
 #include <spatialindex/SpatialIndex.h>
 #include <rtree/rtree.h>
 #include <nirtree/nirtree.h>
+#include <rplustree/rPlusTree.h>
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
 #include <bench/randomPoints.h>
-#include <rplustree/rPlusTree.h>
+#include <bench/splitPoints.h>
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
