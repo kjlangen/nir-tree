@@ -6,6 +6,7 @@
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
 #include <bench/randomPoints.h>
+#include <bench/splitPoints.h>
 
 void testLibSpatialIndex()
 {
@@ -212,7 +213,8 @@ int main(int argc, char *argv[])
 
 	if (runBenchMark)
 	{
-		randomPoints();
+		// randomPoints();
+		splitPoints();
 	}
 
 	if (!runUnitTests && !runBenchMark)
