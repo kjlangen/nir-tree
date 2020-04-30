@@ -12,6 +12,7 @@
 #include <cstring>
 #include <iostream>
 #include <chrono>
+#include <utility>
 #include <util/geometry.h>
 
 namespace nirtree
@@ -42,16 +43,16 @@ namespace nirtree
 			void deleteSubtrees();
 
 			// Helper functions
-			// Rectangle boundingBox();
+			Rectangle boundingBox();
 			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 			void removeChild(Node *child);
 			void removeData(Point givenPoint);
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
-			Node *splitNode(Node *newChild);
-			Node *splitNode(Point newData);
-			Node *adjustTree(Node *siblingLeaf);
+			std::pair<Node *, IsotheticPolygon> splitNode(Node *newChild, IsotheticPolygon newPolygon);
+			std::pair<Node *, IsotheticPolygon> splitNode(Point newData);
+			std::pair<Node *, IsotheticPolygon> adjustTree(Node *sibling, IsotheticPolygon siblingPolygon);
 			// Node *condenseTree();
 			// Node *insert(ReinsertionEntry e);
 

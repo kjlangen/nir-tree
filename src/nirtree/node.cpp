@@ -38,30 +38,29 @@ namespace nirtree
 		}
 	}
 
-	// TODO: Convert
-	// Rectangle Node::boundingBox()
-	// {
-	// 	Rectangle boundingBox;
+	Rectangle Node::boundingBox()
+	{
+		Rectangle boundingBox;
 
-	// 	if (boundingBoxes.size() > 0)
-	// 	{
-	// 		boundingBox = boundingBoxes[0];
-	// 		for (unsigned i = 1; i < boundingBoxes.size(); ++i)
-	// 		{
-	// 			boundingBox.expand(boundingBoxes[i]);
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		boundingBox = Rectangle(data[0], data[0]);
-	// 		for (unsigned i = 0; i < data.size(); ++i)
-	// 		{
-	// 			boundingBox.expand(data[i]);
-	// 		}
-	// 	}
+		if (boundingBoxes.size() > 0)
+		{
+			boundingBox = boundingBoxes[0].boundingBox();
+			for (unsigned i = 1; i < boundingBoxes.size(); ++i)
+			{
+				boundingBox.expand(boundingBoxes[i].boundingBox());
+			}
+		}
+		else
+		{
+			boundingBox = Rectangle(data[0], data[0]);
+			for (unsigned i = 1; i < data.size(); ++i)
+			{
+				boundingBox.expand(data[i]);
+			}
+		}
 
-	// 	return boundingBox;
-	// }
+		return boundingBox;
+	}
 
 	// TODO: Optimize maybe
 	// TODO: Convert
@@ -361,9 +360,10 @@ namespace nirtree
 	}
 
 	// TODO: Convert
-	Node *Node::splitNode(Node *newChild)
+	std::pair<Node *, IsotheticPolygon> Node::splitNode(Node *newChild, IsotheticPolygon newPolygon)
 	{
-		return nullptr;
+		IsotheticPolygon newSiblingIsotheticPolygon;
+		return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
 		// unsigned boundingBoxesSize = boundingBoxes.size();
 
 		// // Setup the two groups which will be the entries in the two new nodes
@@ -469,51 +469,16 @@ namespace nirtree
 		// return newSibling;
 	}
 
-	// TODO: Make this function iterative and put back into splitNode
-	unsigned splitNodeHelper(unsigned us, unsigned parent, unsigned limit, bool *tree, unsigned *weights)
-	{
-		unsigned degree = 0;
-		for (unsigned i = 0; i < limit; ++i)
-		{
-			// std::cout << "The math is wrong?" << std::endl;
-			degree += i != us && tree[limit * us + i] ? 1 : 0;
-			// std::cout << "The math is not wrong!" << std::endl;
-		}
-
-		if (degree == 1)
-		{
-			return weights[us];
-		}
-		else
-		{
-			unsigned summedWeight = weights[us];
-			for (unsigned i = 0; i < limit; ++i)
-			{
-				// std::cout << "The math is wrong? Redux" << std::endl; 
-				if (i != parent && i != us && tree[limit * us + i])
-				{
-					// std::cout << "The math is not wrong! Redux" << std::endl;
-					summedWeight += splitNodeHelper(i, us, limit, tree, weights);
-				}
-				// summedWeight += i != parent && i != us && tree[limit * us + i] ? splitNodeHelper(i, us, limit, tree, weights) : 0;
-			}
-			weights[us] = summedWeight;
-			return summedWeight;
-		}
-	}
-
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
 	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
-	// TODO: Convert
-	Node *Node::splitNode(Point newData)
+	std::pair<Node *, IsotheticPolygon> Node::splitNode(Point newData)
 	{
-		// Special cases
-		// 1. The node is the root
-		// 2. This node's bounding polygon is a rectangle
+		IsotheticPolygon newSiblingIsotheticPolygon;
+
+		// TODO: Write special case where the leaf is also the root
 		if (parent == nullptr)
 		{
-			/* code */
-			return nullptr;
+			return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
 		}
 
 		unsigned polygonIndex;
@@ -521,23 +486,23 @@ namespace nirtree
 		std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
 		const unsigned basicsSize = basics.size();
 		const unsigned dataSize = data.size();
+		const unsigned root = basicsSize / 2;
 
+		// TODO: Write special case where the leaf is a rectangle
 		if (basicsSize == 1)
 		{
-			/* code */
-			return nullptr;
+			return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
 		}
 		
 		// Build graph
-		// TODO: Optimize to only use lower triangle of array
 		// std::cout << "Building graph..." << std::endl;
 		bool graph[basicsSize][basicsSize];
 		std::memset(graph, false, basicsSize * basicsSize);
 		for (unsigned i = 0; i < basicsSize; ++i)
 		{
-			for (unsigned j = 0; j < basicsSize && j < i; ++j)
+			for (unsigned j = 0; j < i; ++j)
 			{
-				if (i != j && basics[i].intersectsRectangle(basics[j]))
+				if (basics[i].intersectsRectangle(basics[j]))
 				{
 					graph[i][j] = true;
 					graph[j][i] = true;
@@ -558,21 +523,23 @@ namespace nirtree
 		// }
 
 		// Build tree
-		// TODO: Optimize to only use lower triangle of array
 		// std::cout << "Building tree..." << std::endl;
 		bool tree[basicsSize][basicsSize];
 		unsigned currentVertex;
-		std::queue<unsigned> explorationQ; // Breadth first search
-		bool explored[basicsSize]; // Exploration labels
+		std::queue<unsigned> explorationQ;
+		bool explored[basicsSize]; // Exploration labels so we don't cycle during search
 		bool connected[basicsSize]; // Connection labels so we don't double connect leaves
 		unsigned weights[basicsSize];
+		std::stack<unsigned> weightS;
+		std::stack<unsigned> parentS;
 
 		std::memset(tree, false, basicsSize * basicsSize);
 		std::memset(explored, false, basicsSize);
 		std::memset(connected, false, basicsSize);
 		std::memset(weights, 0, basicsSize * sizeof(unsigned));
 
-		explorationQ.push(basicsSize / 2);
+		explorationQ.push(root);
+		explored[root] = true;
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
@@ -587,6 +554,8 @@ namespace nirtree
 						tree[currentVertex][neighbouringVertex] = true;
 						tree[neighbouringVertex][currentVertex] = true;
 						connected[neighbouringVertex] = true;
+						weightS.push(neighbouringVertex);
+						parentS.push(currentVertex);
 					}
 					explorationQ.push(neighbouringVertex);
 				}
@@ -606,7 +575,6 @@ namespace nirtree
 		}
 
 		// Printing...
-		// std::cout << "    0 1 2 3 4  " << std::endl;
 		// for (unsigned i = 0; i < basics.size(); ++i)
 		// {
 		// 	std::cout <<  i  << " | ";
@@ -617,9 +585,21 @@ namespace nirtree
 		// 	std::cout << "|" << std::endl;
 		// }
 
-		// Weight the tree
-		// std::cout << "Weighting tree..." << std::endl;
-		// unsigned weights[basicsSize];
+		// Printing...
+		// std::cout << "explored = [";
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << " " << explored[i];
+		// }
+		// std::cout << " ]" << std::endl;
+
+		// Printing...
+		// std::cout << "connected = [";
+		// for (unsigned i = 0; i < basics.size(); ++i)
+		// {
+		// 	std::cout << " " << connected[i];
+		// }
+		// std::cout << " ]" << std::endl;
 
 		// Printing...
 		// std::cout << "weights = [";
@@ -629,39 +609,15 @@ namespace nirtree
 		// }
 		// std::cout << " ]" << std::endl;
 
-		// std::memset(weights, 0, basicsSize * sizeof(unsigned));
-
-		// Printing...
-		// std::cout << "weights = [";
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << " " << weights[i];
-		// }
-		// std::cout << " ]" << std::endl;
-
-		// const unsigned dataSize = data.size();
-		// for (unsigned i = 0; i < basicsSize; ++i)
-		// {
-		// 	// std::cout << "data.size() = " << data.size() << std::endl;
-		// 	for (unsigned j = 0; j < dataSize; ++j)
-		// 	{
-		// 		if (basics[i].containsPoint(data[j]))
-		// 		{
-		// 			weights[i] = weights[i] + 1;
-		// 		}
-		// 	}
-		// }
-
-		// Printing...
-		// std::cout << "weights = [";
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << " " << weights[i];
-		// }
-		// std::cout << " ]" << std::endl;
-
+		// Weight the tree so we can quickly find a separator
 		// std::cout << "Combining weights..." << std::endl;
-		weights[basicsSize / 2] = splitNodeHelper(basicsSize / 2, basicsSize / 2, basicsSize, tree[0], weights);
+		// weights[root] = splitNodeHelper(root, root, basicsSize, tree[0], weights);
+		// std::cout << "Stack: " << std::endl;
+		for (unsigned i = 0; i < basicsSize - 1; ++i)
+		{
+			// std::cout << weightS.top() << std::endl;
+			weights[parentS.top()] += weights[weightS.top()];
+		}
 
 		// Printing...
 		// std::cout << "weights = [";
@@ -678,7 +634,7 @@ namespace nirtree
 
 		std::memset(explored, false, basicsSize);
 
-		explorationQ.push(basicsSize / 2);
+		explorationQ.push(root);
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
@@ -686,12 +642,11 @@ namespace nirtree
 			{
 				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
 				{
-					// Current vertex will always be the head and neighbouring vertex will always be the tail
 					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
-					// If it is it means that the subtree rooted at neighbouring vertex is more balanced than
-					// any of our previous splits.
+					// If yes that means that the subtree rooted at neighbouring vertex is more
+					// balanced than any of our previous splits.
 					unsigned componentTwoWeight = weights[neighbouringVertex];
-					unsigned componentOneWeight = weights[basicsSize / 2] - componentTwoWeight;
+					unsigned componentOneWeight = weights[root] - componentTwoWeight;
 					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
 					if (comparisonDelta < delta)
 					{
@@ -741,6 +696,7 @@ namespace nirtree
 		// std::cout << " ]" << std::endl;
 
 		// Break the tree into two components
+		// TODO: Optimize using swapping in previous version
 		// std::cout << "Splitting and swapping..." << std::endl;
 		std::vector<Rectangle> oldRectangles;
 		std::vector<Rectangle> newRectangles;
@@ -757,7 +713,6 @@ namespace nirtree
 			}
 		}
 
-		IsotheticPolygon newSiblingIsotheticPolygon;
 		newSiblingIsotheticPolygon.basicRectangles.clear();
 		newSiblingIsotheticPolygon.basicRectangles.swap(newRectangles);
 		basics.clear();
@@ -800,113 +755,16 @@ namespace nirtree
 		// newSiblingIsotheticPolygon.print();
 		// newSibling->print();
 
-		return newSibling; // {newSibling, p};
-
-		// unsigned dataSize = data.size();
-
-		// // Setup the two groups which will be the entries in the two new nodes
-		
-
-		// // Compute the first entry in each group based on PS1 & PS2
-		// unsigned seedA = 0;
-		// unsigned seedB = dataSize - 1;
-
-		// float xdist = data[seedA].x - data[seedB].x;
-		// float ydist = data[seedA].y - data[seedB].y;
-
-		// float maxWasted = xdist * xdist + ydist * ydist;
-		// Point iData, jData;
-		// for (unsigned i = 0; i < dataSize; ++i)
-		// {
-		// 	iData = data[i];
-		// 	for (unsigned j = 0; j < dataSize; ++j)
-		// 	{
-		// 		jData = data[j];
-		// 		xdist = iData.x - jData.x;
-		// 		ydist = iData.y - jData.y;
-		// 		float wasted = xdist * xdist + ydist * ydist;
-
-		// 		if (maxWasted < wasted)
-		// 		{
-		// 			maxWasted = wasted;
-
-		// 			seedA = i;
-		// 			seedB = j;
-		// 		}
-		// 	}
-		// }
-
-		// // Set the bounding rectangles
-		// Rectangle boundingBoxA = Rectangle(data[seedA], data[seedA]);
-		// Rectangle boundingBoxB = Rectangle(data[seedB], data[seedB]);
-
-		// // Go through the remaining entries and add them to groupA or groupB
-		// for (unsigned i = 0; i < dataSize; ++i)
-		// {
-		// 	// TODO: Is there an edge case where when considering one of the seeds, it is placed in the
-		// 	// incorrect group? We rely on the groups sorted in ascending order so that's why we
-		// 	// consider them here instead of adding them in the beginning
-		// 	if (i == seedA)
-		// 	{
-		// 		groupA.push_back(i);
-		// 		boundingBoxA.expand(data[i]);
-		// 		continue;
-		// 	}
-		// 	else if (i == seedB)
-		// 	{
-		// 		groupB.push_back(i);
-		// 		boundingBoxB.expand(data[i]);
-		// 		continue;
-		// 	}
-
-		// 	// Choose the group which will need to expand the least
-		// 	if (boundingBoxB.computeExpansionArea(data[i]) > boundingBoxA.computeExpansionArea(data[i]))
-		// 	{
-		// 		groupA.push_back(i);
-		// 		boundingBoxA.expand(data[i]);
-		// 	}
-		// 	else
-		// 	{
-		// 		groupB.push_back(i);
-		// 		boundingBoxB.expand(data[i]);
-		// 	}
-		// }
-
-		// // Create the new node and fill it with groupB entries by doing really complicated stuff
-		// Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		// unsigned groupALastIndex = groupA.size() - 1;
-		// unsigned iGroupB;
-		// for (unsigned i = 0; i < groupB.size(); ++i)
-		// {
-		// 	iGroupB = groupB[i];
-		// 	newSibling->data.push_back(data[iGroupB]);
-		// 	data[iGroupB] = data[groupA[groupALastIndex]];
-		// 	groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
-		// }
-		// data.resize(groupA.size());
-
-		// // Add newData which caused this split in the first place
-		// // Choose the group which will need to expand the least
-		// if (boundingBoxB.computeExpansionArea(newData) > boundingBoxA.computeExpansionArea(newData))
-		// {
-		// 	data.push_back(newData);
-		// }
-		// else
-		// {
-		// 	newSibling->data.push_back(newData);
-		// }
-
-		// // Return our newly minted sibling
-		// return newSibling;
+		return std::pair<Node *, IsotheticPolygon>(newSibling, newSiblingIsotheticPolygon);
 	}
 
-	// TODO: Convert
 	// This bottom-to-top sweep is only for splitting bounding boxes as necessary
-	Node *Node::adjustTree(Node *sibling)
+	std::pair<Node *, IsotheticPolygon> Node::adjustTree(Node *sibling, IsotheticPolygon polygon)
 	{
 		// AT1 [Initialize]
 		Node *node = this;
 		Node *siblingNode = sibling;
+		IsotheticPolygon siblingPolygon = polygon;
 
 		for (;;)
 		{
@@ -917,32 +775,29 @@ namespace nirtree
 			}
 			else
 			{
-				// AT3 [Adjust covering rectangle in parent entry]
-				// TODO: Remove this instruction, it has already been covered in the new chooseLeaf
-				// node->parent->updateBoundingBox(node, node->boundingBox());
-
-				// If we have a split then deal with it otherwise move up the tree
+				// If one of children split then integrate the new node otherwise keep ascending the tree
 				if (siblingNode != nullptr)
 				{
 					// AT4 [Propogate the node split upwards]
 					if (node->parent->children.size() < node->parent->maxBranchFactor)
 					{
-						// TODO: Somehow get the bounding box created in split node over here to
-						// be able to push it into the parent
-						// node->parent->boundingBoxes.push_back(siblingNode->boundingBox());
+						node->parent->boundingBoxes.push_back(siblingPolygon);
 						node->parent->children.push_back(siblingNode);
 						siblingNode->parent = node->parent;
-
-						node = node->parent;
+						// No split so clear the variable
 						siblingNode = nullptr;
 					}
 					else
 					{
-						Node *siblingParent = node->parent->splitNode(siblingNode);
+						std::pair<Node *, IsotheticPolygon> splitResult = node->parent->splitNode(siblingNode, siblingPolygon);
 
-						node = node->parent;
-						siblingNode = siblingParent;
+						// Is a split so set the variables
+						siblingNode = splitResult.first;
+						siblingPolygon = splitResult.second;
 					}
+
+					// AT5 [Move up to next level]
+					node = node->parent;
 				}
 				else
 				{
@@ -952,16 +807,16 @@ namespace nirtree
 			}
 		}
 
-		return siblingNode;
+		return std::pair<Node *, IsotheticPolygon>(siblingNode, polygon);
 	}
 
 	// Always called on root, this = root
-	// TODO: Convert
 	Node *Node::insert(Point givenPoint)
 	{
 		// I1 [Find position for new record]
 		Node *leaf = chooseLeaf(givenPoint);
 		Node *siblingLeaf = nullptr;
+		IsotheticPolygon siblingPolygon;
 
 		// I2 [Add record to leaf node]
 		if (leaf->data.size() < leaf->maxBranchFactor)
@@ -970,28 +825,29 @@ namespace nirtree
 		}
 		else
 		{
-			siblingLeaf = leaf->splitNode(givenPoint);
+			std::pair<Node *, IsotheticPolygon> splitResult = leaf->splitNode(givenPoint);
+			siblingLeaf = splitResult.first;
+			siblingPolygon = splitResult.second;
 		}
 
 		// I3 [Propogate changes upward]
-		Node *siblingNode = leaf->adjustTree(siblingLeaf);
+		std::pair<Node *, IsotheticPolygon> siblingPair = leaf->adjustTree(siblingLeaf, siblingPolygon);
 
 		// I4 [Grow tree taller]
-		if (siblingNode != nullptr)
+		if (siblingPair.first != nullptr)
 		{
 			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
 
+			// Push the modified old root node into the new root node
 			this->parent = newRoot;
-			// TODO: Somehow get the bounding box created in split node over here to
-			// be able to push it into the parent
-			// newRoot->boundingBoxes.push_back(this->boundingBox());
+			newRoot->boundingBoxes.push_back(IsotheticPolygon(this->boundingBox()));
+			newRoot->boundingBoxes[0].increaseResolution(siblingPair.second);
 			newRoot->children.push_back(this);
 
-			siblingNode->parent = newRoot;
-			// TODO: Somehow get the bounding box created in split node over here to
-			// be able to push it into the parent
-			// newRoot->boundingBoxes.push_back(siblingNode->boundingBox());
-			newRoot->children.push_back(siblingNode);
+			// Push the new node into the new root node
+			siblingPair.first->parent = newRoot;
+			newRoot->boundingBoxes.push_back(siblingPair.second);
+			newRoot->children.push_back(siblingPair.first);
 
 			return newRoot;
 		}
