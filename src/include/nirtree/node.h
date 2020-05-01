@@ -3,7 +3,6 @@
 #include <cassert>
 #include <vector>
 #include <stack>
-#include <map>
 #include <unordered_map>
 #include <list>
 #include <queue>
@@ -12,7 +11,7 @@
 #include <cstring>
 #include <iostream>
 #include <chrono>
-#include <utility>
+#include <algorithm>
 #include <util/geometry.h>
 
 namespace nirtree
@@ -50,8 +49,9 @@ namespace nirtree
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
-			std::pair<Node *, IsotheticPolygon> splitNode(Node *newChild, IsotheticPolygon newPolygon);
+			std::pair<Node *, IsotheticPolygon> splitNodeSpecialCase(Point newData);
 			std::pair<Node *, IsotheticPolygon> splitNode(Point newData);
+			std::pair<Node *, IsotheticPolygon> splitNode(Node *newChild, IsotheticPolygon newPolygon);
 			std::pair<Node *, IsotheticPolygon> adjustTree(Node *sibling, IsotheticPolygon siblingPolygon);
 			// Node *condenseTree();
 			// Node *insert(ReinsertionEntry e);
