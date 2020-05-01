@@ -469,16 +469,50 @@ namespace nirtree
 		// return newSibling;
 	}
 
+	std::pair<Node *, IsotheticPolygon> Node::splitNodeSpecialCase(Point newData)
+	{
+		// Setup the new node and its bounding polygon
+		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		IsotheticPolygon newSiblingIsotheticPolygon;
+
+		data.push_back(newData);
+
+		const unsigned dataSize = data.size();
+		const unsigned dataHalfSize = dataSize / 2;
+
+		// Always split along the first dimension
+		// TODO: To get really fancy we could do some variance analysis and split along the
+		// dimension with highest variance.
+		std::sort(data.begin(), data.end(), [](Point a, Point b){return a.x < b.x;});
+
+		// Fill new node with data and remove that data from this node
+		for (unsigned i = dataHalfSize; i < dataSize; ++i)
+		{
+			newSibling->data.push_back(data[i]);
+		}
+		data.resize(dataHalfSize);
+
+		// Create the bounding box for newSibling
+		float minY = newSibling->data[0].y;
+		float maxY = newSibling->data[0].y;
+		for (unsigned i = 1; i < newSibling->data.size(); ++i)
+		{
+			minY = std::min(minY, newSibling->data[i].y);
+			maxY = std::max(maxY, newSibling->data[i].y);
+		}
+		newSiblingIsotheticPolygon.basicRectangles.push_back(Rectangle(newSibling->data[0].x, minY, newSibling->data[newSibling->data.size() - 1].x, maxY));
+
+		return std::pair<Node *, IsotheticPolygon>(newSibling, newSiblingIsotheticPolygon);
+	}
+
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
 	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
 	std::pair<Node *, IsotheticPolygon> Node::splitNode(Point newData)
 	{
-		IsotheticPolygon newSiblingIsotheticPolygon;
-
-		// TODO: Write special case where the leaf is also the root
+		// Special case where the leaf to be split is the root
 		if (parent == nullptr)
 		{
-			return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
+			return splitNodeSpecialCase(newData);
 		}
 
 		unsigned polygonIndex;
@@ -488,11 +522,16 @@ namespace nirtree
 		const unsigned dataSize = data.size();
 		const unsigned root = basicsSize / 2;
 
-		// TODO: Write special case where the leaf is a rectangle
+		// Special case where the leaf is bounded by a simple rectangle
 		if (basicsSize == 1)
 		{
-			return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
+			return splitNodeSpecialCase(newData);
 		}
+
+		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		IsotheticPolygon newSiblingIsotheticPolygon;
+
+		data.push_back(newData);
 		
 		// Build graph
 		// std::cout << "Building graph..." << std::endl;
@@ -732,20 +771,10 @@ namespace nirtree
 			}
 		}
 
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
 		newSibling->data.clear();
 		newSibling->data.swap(newPoints);
 		data.clear();
 		data.swap(oldPoints);
-
-		if (newSiblingIsotheticPolygon.containsPoint(newData))
-		{
-			newSibling->data.push_back(newData);
-		}
-		else
-		{
-			data.push_back(newData);
-		}
 
 		// std::cout << "Old stuff recombobulated:" << std::endl;
 		// parent->boundingBoxes[polygonIndex].print();
@@ -1074,18 +1103,18 @@ namespace nirtree
 	void testPlayground()
 	{
 		// Setup
-		Node *root = new Node();
-		Node *leaf = new Node(1, 1, root);
-		IsotheticPolygon p = IsotheticPolygon();
+		// Node *root = new Node();
+		Node *leaf = new Node();
+		// IsotheticPolygon p = IsotheticPolygon();
 
-		root->children.push_back(leaf);
+		// root->children.push_back(leaf);
 
-		p.basicRectangles.push_back(Rectangle(0.0, 7.0, 5.0, 10.0));
-		p.basicRectangles.push_back(Rectangle(5.0, 5.0, 8.0, 12.0));
-		p.basicRectangles.push_back(Rectangle(8.0, 10.0, 13.0, 14.0));
-		p.basicRectangles.push_back(Rectangle(4.0, 0.0, 10.0, 5.0));
-		p.basicRectangles.push_back(Rectangle(10.0, 0.0, 13.0, 10.0));
-		root->boundingBoxes.push_back(p);
+		// p.basicRectangles.push_back(Rectangle(0.0, 7.0, 5.0, 10.0));
+		// p.basicRectangles.push_back(Rectangle(5.0, 5.0, 8.0, 12.0));
+		// p.basicRectangles.push_back(Rectangle(8.0, 10.0, 13.0, 14.0));
+		// p.basicRectangles.push_back(Rectangle(4.0, 0.0, 10.0, 5.0));
+		// p.basicRectangles.push_back(Rectangle(10.0, 0.0, 13.0, 10.0));
+		// root->boundingBoxes.push_back(p);
 
 		leaf->data.push_back(Point(1.0, 8.0));
 		leaf->data.push_back(Point(2.0, 9.0));
@@ -1109,8 +1138,21 @@ namespace nirtree
 
 		// Split
 		auto timerStart = std::chrono::high_resolution_clock::now();
-		leaf->splitNode(Point(8.0, 1.0));
+		std::pair<Node *, IsotheticPolygon> p = leaf->splitNode(Point(8.0, 1.0));
 		auto timerEnd = std::chrono::high_resolution_clock::now();
+
+		for (unsigned i = 0; i < leaf->data.size(); ++i)
+		{
+			leaf->data[i].print();
+		}
+		std::cout << std::endl;
+
+		for (unsigned i = 0; i < p.first->data.size(); ++i)
+		{
+			p.first->data[i].print();
+		}
+		std::cout << std::endl;
+		p.second.print();
 
 
 		// Print results
