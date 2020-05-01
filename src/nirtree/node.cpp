@@ -530,8 +530,8 @@ namespace nirtree
 		bool explored[basicsSize]; // Exploration labels so we don't cycle during search
 		bool connected[basicsSize]; // Connection labels so we don't double connect leaves
 		unsigned weights[basicsSize];
-		std::stack<unsigned> weightS;
-		std::stack<unsigned> parentS;
+		std::stack<unsigned> weightStack;
+		std::stack<unsigned> parentStack;
 
 		std::memset(tree, false, basicsSize * basicsSize);
 		std::memset(explored, false, basicsSize);
@@ -554,8 +554,8 @@ namespace nirtree
 						tree[currentVertex][neighbouringVertex] = true;
 						tree[neighbouringVertex][currentVertex] = true;
 						connected[neighbouringVertex] = true;
-						weightS.push(neighbouringVertex);
-						parentS.push(currentVertex);
+						weightStack.push(neighbouringVertex);
+						parentStack.push(currentVertex);
 					}
 					explorationQ.push(neighbouringVertex);
 				}
@@ -611,12 +611,11 @@ namespace nirtree
 
 		// Weight the tree so we can quickly find a separator
 		// std::cout << "Combining weights..." << std::endl;
-		// weights[root] = splitNodeHelper(root, root, basicsSize, tree[0], weights);
-		// std::cout << "Stack: " << std::endl;
 		for (unsigned i = 0; i < basicsSize - 1; ++i)
 		{
-			// std::cout << weightS.top() << std::endl;
-			weights[parentS.top()] += weights[weightS.top()];
+			weights[parentStack.top()] += weights[weightStack.top()];
+			weightStack.pop();
+			parentStack.pop();
 		}
 
 		// Printing...
