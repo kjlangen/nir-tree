@@ -18,13 +18,12 @@ namespace nirtree
 {
 	class Node
 	{
-		class ReinsertionEntry
+		struct ReinsertionEntry
 		{
-			public:
-				IsotheticPolygon boundingBox;
-				Point data;
-				Node *child;
-				unsigned level;
+			IsotheticPolygon boundingBox;
+			Point data;
+			Node *child;
+			unsigned level;
 		};
 
 		unsigned minBranchFactor;
@@ -49,6 +48,8 @@ namespace nirtree
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
+			std::vector<Rectangle> decomposeNode(unsigned polygonIndex);
+			std::vector<Rectangle> recomposeNode();
 			std::pair<Node *, IsotheticPolygon> splitNodeSpecialCase(Point newData);
 			std::pair<Node *, IsotheticPolygon> splitNode(Point newData);
 			std::pair<Node *, IsotheticPolygon> splitNode(Node *newChild, IsotheticPolygon newPolygon);

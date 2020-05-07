@@ -62,6 +62,7 @@ class IsotheticPolygon
 
 		IsotheticPolygon();
 		IsotheticPolygon(Rectangle baseRectangle);
+		IsotheticPolygon(const IsotheticPolygon &basePolygon);
 		float area();
 		float computeIntersectionArea(Rectangle givenRectangle);
 		float computeExpansionArea(Point givenPoint);

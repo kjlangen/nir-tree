@@ -359,114 +359,270 @@ namespace nirtree
 		return nullptr;
 	}
 
-	// TODO: Convert
+	// TODO: Optimize maybe
+	std::vector<Rectangle> Node::decomposeNode(unsigned polygonIndex)
+	{
+		// Copy our bounding polygon to start
+		IsotheticPolygon temp = parent->boundingBoxes[polygonIndex];
+		// std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
+		// temp.basicRectangles.insert(temp.basicRectangles.end(), basics.begin(), basics.end());
+
+		// Decompose our bounding box using code for increasing a polygon's "resolution"
+		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+		{
+			if (temp.intersectsRectangle(boundingBoxes[i]))
+			{
+				temp.increaseResolution(boundingBoxes[i]);
+			}
+		}
+
+		return temp.basicRectangles;
+	}
+
+	// TODO: This whole function
+	std::vector<Rectangle> Node::recomposeNode()
+	{
+		// Step 1: Setup the new polygon
+		std::vector<Rectangle> recombobulated;
+
+		// Step 2: ???
+
+		// Step 3: Return/Profit
+		return recombobulated;
+	}
+
 	std::pair<Node *, IsotheticPolygon> Node::splitNode(Node *newChild, IsotheticPolygon newPolygon)
 	{
+		// TODO: Special case where the routing node is the root
+		// if (parent == nullptr)
+		// {
+		// 	return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
+		// }
+
+		unsigned polygonIndex;
+		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
+		// std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
+		// const unsigned basicsSize = basics.size();
+		const unsigned childrenSize = children.size();
+
+		// TODO: Special case where the routing node is bounded by a simple rectangle
+		// if (basicsSize == 1)
+		// {
+		// 	return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
+		// }
+
+		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
 		IsotheticPolygon newSiblingIsotheticPolygon;
-		return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
-		// unsigned boundingBoxesSize = boundingBoxes.size();
 
-		// // Setup the two groups which will be the entries in the two new nodes
-		// unsigned seedA = 0;
-		// std::vector<unsigned> groupA;
+		boundingBoxes.push_back(newPolygon);
+		children.push_back(newChild);
 
-		// unsigned seedB = boundingBoxesSize - 1;
-		// std::vector<unsigned> groupB;
+		// Decompose polygon
+		std::vector<Rectangle> decomposed = decomposeNode(polygonIndex);
 
-		// // Compute the first entry in each group based on PS1 & PS2
-		// float maxWasted = 0;
-		// IsotheticPolygon iBox, jBox;
-		// for (unsigned i = 0; i < boundingBoxesSize; ++i)
+		const unsigned decomposedSize = decomposed.size();
+		const unsigned totalSize = childrenSize + decomposedSize;
+		const unsigned root = totalSize / 2;
+
+		// Build graph
+		bool graph[totalSize][totalSize];
+		std::memset(graph, false, totalSize * totalSize);
+		for (unsigned i = 0; i < childrenSize; ++i)
+		{
+			// Children X Children
+			for (unsigned j = 0; j < i && j < childrenSize; ++j)
+			{
+				if (boundingBoxes[i].intersectsRectangle(boundingBoxes[j]))
+				{
+					graph[i][j] = true;
+					graph[j][i] = true;
+				}
+			}
+
+			// Children X Decomposed Polygon
+			for (unsigned j = childrenSize; i < totalSize; ++j)
+			{
+				if (boundingBoxes[i].intersectsRectangle(decomposed[j - childrenSize]))
+				{
+					graph[i][j] = true;
+					graph[j][i] = true;
+				}
+			}
+		}
+		for (unsigned i = 0; i < decomposedSize; ++i)
+		{
+			// Decomposed Polygon X Decomposed Polygon
+			for (unsigned j = 0; j < decomposedSize; ++j)
+			{
+				if (decomposed[i].intersectsRectangle(decomposed[j]))
+				{
+					graph[i][j] = true;
+					graph[j][i] = true;
+				}
+			}
+		}
+
+		// Build tree
+		bool tree[totalSize][totalSize];
+		unsigned currentVertex;
+		std::queue<unsigned> explorationQ;
+		bool explored[totalSize]; // Exploration labels so we don't cycle during search
+		bool connected[totalSize]; // Connection labels so we don't double connect leaves
+		unsigned weights[totalSize];
+		std::stack<unsigned> weightStack;
+		std::stack<unsigned> parentStack;
+
+		std::memset(tree, false, totalSize * totalSize);
+		std::memset(explored, false, totalSize);
+		std::memset(connected, false, totalSize);
+		std::memset(weights, 0, totalSize * sizeof(unsigned));
+
+		explorationQ.push(root);
+		explored[root] = true;
+		for (;explorationQ.size();)
+		{
+			currentVertex = explorationQ.front();
+
+			// Connect children of this node to the tree
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < totalSize; ++neighbouringVertex)
+			{
+				if (graph[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				{
+					if (!connected[neighbouringVertex])
+					{
+						tree[currentVertex][neighbouringVertex] = true;
+						tree[neighbouringVertex][currentVertex] = true;
+						connected[neighbouringVertex] = true;
+						weightStack.push(neighbouringVertex);
+						parentStack.push(currentVertex);
+					}
+					explorationQ.push(neighbouringVertex);
+				}
+			}
+
+			// Weight the current node
+			if (currentVertex < childrenSize)
+			{
+				// Give the node weight if and only if it is in this->children
+				weights[currentVertex] = 1;
+			}
+
+			explored[currentVertex] = true;
+			explorationQ.pop();
+		}
+
+		// Push weights up the tree
+		for (unsigned i = 0; i < totalSize; ++i)
+		{
+			weights[parentStack.top()] += weights[weightStack.top()];
+			weightStack.pop();
+			parentStack.pop();
+		}
+
+		// Find a seperator
+		unsigned delta = std::numeric_limits<unsigned>::max();
+		unsigned subtreeRoot, subtreeParent;
+
+		std::memset(explored, false, totalSize);
+
+		explorationQ.push(root);
+		for (;explorationQ.size();)
+		{
+			currentVertex = explorationQ.front();
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < totalSize; ++neighbouringVertex)
+			{
+				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				{
+					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
+					// If yes that means that the subtree rooted at neighbouring vertex is more
+					// balanced than any of our previous splits.
+					// TODO: The math here can be simplified, I'm sure of it, we know total weight
+					// and so we should be able to do some set-complement-y stuff...
+					unsigned componentTwoWeight = weights[neighbouringVertex];
+					unsigned componentOneWeight = weights[root] - componentTwoWeight;
+					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
+					if (comparisonDelta < delta)
+					{
+						delta = comparisonDelta;
+						subtreeRoot = neighbouringVertex;
+						subtreeParent = currentVertex;
+					}
+					explorationQ.push(neighbouringVertex);
+				}
+			}
+			explored[currentVertex] = true;
+			explorationQ.pop();
+		}
+
+		// Split along seperator
+		bool switchboard[totalSize];
+		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
+
+		std::memset(switchboard, false, totalSize);
+		std::memset(explored, false, totalSize);
+
+		switchboard[subtreeRoot] = true;
+
+		explorationQ.push(subtreeRoot);
+		for (;explorationQ.size();)
+		{
+			currentVertex = explorationQ.front();
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < totalSize; ++neighbouringVertex)
+			{
+				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
+				{
+					switchboard[neighbouringVertex] = true;
+					explorationQ.push(neighbouringVertex);
+				}
+			}
+			explored[currentVertex] = true;
+			explorationQ.pop();
+		}
+
+		// TODO: Recompose polygon into two polygons
+
+		// std::vector<IsotheticPolygon> oldRectangles;
+		// std::vector<IsotheticPolygon> newRectangles;
+
+		// for (unsigned i = 0; i < basicsSize; ++i)
 		// {
-		// 	iBox = boundingBoxes[i];
-		// 	for (unsigned j = 0; j < boundingBoxesSize; ++j)
+		// 	if (switchboard[i])
 		// 	{
-		// 		jBox = boundingBoxes[j];
-		// 		// float xdist = iBox.lowerLeft.x - jBox.lowerLeft.x;
-		// 		// float xdistPrime = iBox.upperRight.x - jBox.upperRight.x;
-		// 		// float ydist = iBox.lowerLeft.y - jBox.lowerLeft.y;
-		// 		// float ydistPrime = iBox.upperRight.y - jBox.upperRight.y;
-
-		// 		// float wasted = (xdist * xdist + xdistPrime * xdistPrime + ydist * ydist + ydistPrime * ydistPrime) / 2;
-		// 		// if (maxWasted < wasted)
-		// 		// {
-		// 		// 	maxWasted = wasted;
-
-		// 		// 	seedA = i;
-		// 		// 	seedB = j;
-		// 		// }
+		// 		newRectangles.emplace_back(basics[i]);
+		// 	}
+		// 	else
+		// 	{
+		// 		oldRectangles.emplace_back(basics[i]);
 		// 	}
 		// }
 
-		// IsotheticPolygon boundingBoxA = boundingBoxes[seedA];
-		// IsotheticPolygon boundingBoxB = boundingBoxes[seedB];
+		// newSiblingIsotheticPolygon.basicRectangles.clear();
+		// newSiblingIsotheticPolygon.basicRectangles.swap(newRectangles);
+		// basics.clear();
+		// basics.swap(oldRectangles);
 
-		// // Go through the remaining entries and add them to groupA or groupB
-		// for (unsigned i = 0; i < boundingBoxesSize; ++i)
-		// {
-		// 	if (i == seedA)
-		// 	{
-		// 		groupA.push_back(i);
-		// 		continue;
-		// 	}
-		// 	else if (i == seedB)
-		// 	{
-		// 		groupB.push_back(i);
-		// 		continue;
-		// 	}
+		// Split into two nodes
+		std::vector<Node *> oldChildren;
+		std::vector<Node *> newChildren;
 
-		// 	// Choose the group which will need to expand the least
-		// 	// if (boundingBoxB.computeExpansionArea(boundingBoxes[i]) > boundingBoxA.computeExpansionArea(boundingBoxes[i]))
-		// 	// {
-		// 	// 	groupA.push_back(i);
-		// 	// 	boundingBoxA.expand(boundingBoxes[i]);
-		// 	// }
-		// 	// else
-		// 	// {
-		// 	// 	groupB.push_back(i);
-		// 	// 	boundingBoxB.expand(boundingBoxes[i]);
-		// 	// }
-		// }
+		for (unsigned i = 0; i < childrenSize; ++i)
+		{
+			if (switchboard[i])
+			{
+				newChildren.emplace_back(children[i]);
+			}
+			else
+			{
+				oldChildren.emplace_back(children[i]);
+			}
+		}
 
-		// // Create the new node and fill it with groupB entries by doing complicated stuff
-		// Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		// unsigned groupASize = groupA.size();
-		// unsigned groupALastIndex = groupASize - 1;
-		// unsigned iGroupB;
-		// for (unsigned i = 0; i < groupB.size(); ++i)
-		// {
-		// 	iGroupB = groupB[i];
-		// 	children[iGroupB]->parent = newSibling;
-		// 	newSibling->boundingBoxes.push_back(boundingBoxes[iGroupB]);
-		// 	newSibling->children.push_back(children[iGroupB]);
+		newSibling->children.clear();
+		newSibling->children.swap(newChildren);
+		children.clear();
+		children.swap(oldChildren);
 
-		// 	boundingBoxes[iGroupB] = boundingBoxes[groupA[groupALastIndex]];
-		// 	children[iGroupB] = children[groupA[groupALastIndex]];
-
-		// 	groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
-		// }
-		// boundingBoxes.resize(groupASize);
-		// children.resize(groupASize);
-
-		// // Add newChild which caused this split in the first place
-		// IsotheticPolygon newBox = IsotheticPolygon(); // Rectangle newBox = newChild->boundingBox();
-
-		// // Choose the group which will need to expand the least
-		// if (boundingBoxB.computeExpansionArea(newBox) > boundingBoxA.computeExpansionArea(newBox))
-		// {
-		// 	newChild->parent = this;
-		// 	boundingBoxes.push_back(newBox);
-		// 	children.push_back(newChild);
-		// }
-		// else
-		// {
-		// 	newChild->parent = newSibling;
-		// 	newSibling->boundingBoxes.push_back(newBox);
-		// 	newSibling->children.push_back(newChild);
-		// }
-
-		// // Return our newly minted sibling
-		// return newSibling;
+		return std::pair<Node *, IsotheticPolygon>(newSibling, newSiblingIsotheticPolygon);
 	}
 
 	std::pair<Node *, IsotheticPolygon> Node::splitNodeSpecialCase(Point newData)
@@ -506,7 +662,7 @@ namespace nirtree
 	}
 
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
-	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
+	// with sets will necessitate rewriting the entire R-Tree with sets.
 	std::pair<Node *, IsotheticPolygon> Node::splitNode(Point newData)
 	{
 		// Special case where the leaf to be split is the root
@@ -683,6 +839,8 @@ namespace nirtree
 					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
 					// If yes that means that the subtree rooted at neighbouring vertex is more
 					// balanced than any of our previous splits.
+					// TODO: The math here can be simplified, I'm sure of it, we know total weight
+					// and so we should be able to do some set-complement-y stuff...
 					unsigned componentTwoWeight = weights[neighbouringVertex];
 					unsigned componentOneWeight = weights[root] - componentTwoWeight;
 					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
@@ -734,7 +892,7 @@ namespace nirtree
 		// std::cout << " ]" << std::endl;
 
 		// Break the tree into two components
-		// TODO: Optimize using swapping in previous version
+		// TODO: Optimize, fairly certain swapping could be made faster
 		// std::cout << "Splitting and swapping..." << std::endl;
 		std::vector<Rectangle> oldRectangles;
 		std::vector<Rectangle> newRectangles;

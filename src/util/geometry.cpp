@@ -192,47 +192,34 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 	// 3 -> left vertical, not intersecting the top or bottom slabs
 	Rectangle slots[] = { Rectangle(), Rectangle(), Rectangle(), Rectangle() };
 
-	// Enumerate each of the points of the bounding rectangle/cube/hypercube
-	Point upperLeft = Point(clippingRectangle.lowerLeft.x, clippingRectangle.upperRight.y);
-	Point lowerRight = Point(clippingRectangle.upperRight.x, clippingRectangle.lowerLeft.y);
-
 	// If the top slab is defined this will be revised downward
 	float maxVertical = upperRight.y;
+	float minVertical = lowerLeft.y;
 
-	// Upper right is inside us
-	if (containsPoint(clippingRectangle.upperRight))
+	// Define the top slab
+	if (lowerLeft.y < clippingRectangle.upperRight.y && clippingRectangle.upperRight.y < upperRight.y)
 	{
-		// Nothing is in top or right slots before us so no need to check anything
-		slots[0] = Rectangle(lowerLeft.x, clippingRectangle.upperRight.y, upperRight.x, upperRight.y);
-		slots[1] = Rectangle(clippingRectangle.upperRight.x, lowerLeft.y, upperRight.x, clippingRectangle.upperRight.y);
 		maxVertical = clippingRectangle.upperRight.y;
+		slots[0] = Rectangle(lowerLeft.x, maxVertical, upperRight.x, upperRight.y);
 	}
 
-	// Upper left is inside us
-	if (containsPoint(upperLeft))
+	// Define the bottom slab
+	if (lowerLeft.y < clippingRectangle.lowerLeft.y && clippingRectangle.lowerLeft.y < upperRight.y)
 	{
-		// Overwrite here is okay because it creates the same rectangle as if the upper right was inside us
-		slots[0] = Rectangle(lowerLeft.x, upperLeft.y, upperRight.x, upperRight.y);
-		slots[3] = Rectangle(lowerLeft.x, lowerLeft.y, upperLeft.x, upperLeft.y);
-		maxVertical = upperLeft.y;
+		minVertical = clippingRectangle.lowerLeft.y;
+		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, minVertical);
 	}
 
-	// Lower right is inside us
-	if (containsPoint(lowerRight))
+	// Define the right vertical
+	if (lowerLeft.x < clippingRectangle.upperRight.x && clippingRectangle.upperRight.x < upperRight.x)
 	{
-		// Nothing is in the bottom slot before us os no need to check anything
-		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, lowerRight.y);
-		// Overwrite the vertical slab in slot 1 and use maxVertical for the y value so we don't collide with slot 0 if it's defined
-		slots[1] = Rectangle(lowerRight.x, lowerRight.y, upperRight.x, maxVertical);
+		slots[1] = Rectangle(clippingRectangle.upperRight.x, minVertical, upperRight.x, maxVertical);
 	}
 
-	// Lower left is inside us
-	if (containsPoint(clippingRectangle.lowerLeft))
+	// Define the left vertical
+	if (lowerLeft.x < clippingRectangle.lowerLeft.x && clippingRectangle.lowerLeft.x < upperRight.x)
 	{
-		// Overwrite here is okay because it creates the same bottom rectangle as if the lower right was inside us
-		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, clippingRectangle.lowerLeft.y);
-		// Overwrite the vertical slab in slot 3 and then revise our overwrite to be shorter if top slab is defined
-		slots[3] = Rectangle(lowerLeft.x, clippingRectangle.lowerLeft.y, clippingRectangle.lowerLeft.x, maxVertical);
+		slots[3] = Rectangle(lowerLeft.x, minVertical, clippingRectangle.lowerLeft.x, maxVertical);
 	}
 
 	// TODO: Maybe optimize this away and just return the array?
@@ -282,6 +269,11 @@ IsotheticPolygon::IsotheticPolygon()
 IsotheticPolygon::IsotheticPolygon(Rectangle baseRectangle)
 {
 	basicRectangles.push_back(baseRectangle);
+}
+
+IsotheticPolygon::IsotheticPolygon(const IsotheticPolygon &basePolygon)
+{
+	basicRectangles.insert(basicRectangles.end(), basePolygon.basicRectangles.begin(), basePolygon.basicRectangles.end());
 }
 
 float IsotheticPolygon::area()
