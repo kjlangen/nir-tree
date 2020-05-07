@@ -179,47 +179,34 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 	// 3 -> left vertical, not intersecting the top or bottom slabs
 	Rectangle slots[] = { Rectangle(), Rectangle(), Rectangle(), Rectangle() };
 
-	// Enumerate each of the points of the bounding rectangle/cube/hypercube
-	Point upperLeft = Point(clippingRectangle.lowerLeft.x, clippingRectangle.upperRight.y);
-	Point lowerRight = Point(clippingRectangle.upperRight.x, clippingRectangle.lowerLeft.y);
-
 	// If the top slab is defined this will be revised downward
 	float maxVertical = upperRight.y;
+	float minVertical = lowerLeft.y;
 
-	// Upper right is inside us
-	if (containsPoint(clippingRectangle.upperRight))
+	// Define the top slab
+	if (lowerLeft.y < clippingRectangle.upperRight.y && clippingRectangle.upperRight.y < upperRight.y)
 	{
-		// Nothing is in top or right slots before us so no need to check anything
-		slots[0] = Rectangle(lowerLeft.x, clippingRectangle.upperRight.y, upperRight.x, upperRight.y);
-		slots[1] = Rectangle(clippingRectangle.upperRight.x, lowerLeft.y, upperRight.x, clippingRectangle.upperRight.y);
 		maxVertical = clippingRectangle.upperRight.y;
+		slots[0] = Rectangle(lowerLeft.x, maxVertical, upperRight.x, upperRight.y);
 	}
 
-	// Upper left is inside us
-	if (containsPoint(upperLeft))
+	// Define the bottom slab
+	if (lowerLeft.y < clippingRectangle.lowerLeft.y && clippingRectangle.lowerLeft.y < upperRight.y)
 	{
-		// Overwrite here is okay because it creates the same rectangle as if the upper right was inside us
-		slots[0] = Rectangle(lowerLeft.x, upperLeft.y, upperRight.x, upperRight.y);
-		slots[3] = Rectangle(lowerLeft.x, lowerLeft.y, upperLeft.x, upperLeft.y);
-		maxVertical = upperLeft.y;
+		minVertical = clippingRectangle.lowerLeft.y;
+		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, minVertical);
 	}
 
-	// Lower right is inside us
-	if (containsPoint(lowerRight))
+	// Define the right vertical
+	if (lowerLeft.x < clippingRectangle.upperRight.x && clippingRectangle.upperRight.x < upperRight.x)
 	{
-		// Nothing is in the bottom slot before us os no need to check anything
-		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, lowerRight.y);
-		// Overwrite the vertical slab in slot 1 and use maxVertical for the y value so we don't collide with slot 0 if it's defined
-		slots[1] = Rectangle(lowerRight.x, lowerRight.y, upperRight.x, maxVertical);
+		slots[1] = Rectangle(clippingRectangle.upperRight.x, minVertical, upperRight.x, maxVertical);
 	}
 
-	// Lower left is inside us
-	if (containsPoint(clippingRectangle.lowerLeft))
+	// Define the left vertical
+	if (lowerLeft.x < clippingRectangle.lowerLeft.x && clippingRectangle.lowerLeft.x < upperRight.x)
 	{
-		// Overwrite here is okay because it creates the same bottom rectangle as if the lower right was inside us
-		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, clippingRectangle.lowerLeft.y);
-		// Overwrite the vertical slab in slot 3 and then revise our overwrite to be shorter if top slab is defined
-		slots[3] = Rectangle(lowerLeft.x, clippingRectangle.lowerLeft.y, clippingRectangle.lowerLeft.x, maxVertical);
+		slots[3] = Rectangle(lowerLeft.x, minVertical, clippingRectangle.lowerLeft.x, maxVertical);
 	}
 
 	// TODO: Maybe optimize this away and just return the array?
@@ -263,6 +250,11 @@ IsotheticPolygon::IsotheticPolygon()
 IsotheticPolygon::IsotheticPolygon(Rectangle baseRectangle)
 {
 	basicRectangles.push_back(baseRectangle);
+}
+
+IsotheticPolygon::IsotheticPolygon(const IsotheticPolygon &basePolygon)
+{
+	basicRectangles.insert(basicRectangles.end(), basePolygon.basicRectangles.begin(), basePolygon.basicRectangles.end());
 }
 
 float IsotheticPolygon::area()
@@ -793,29 +785,62 @@ void testRectangleFragmentation()
 	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
 	r2 = Rectangle(3.0, 3.0, 7.0, 7.0);
 	v = r1.fragmentRectangle(r2);
-	assert(v.size() == 4);
-	assert(v[0] == Rectangle(0.0, 0.0, 4.0, 3.0));
-	assert(v[1] == Rectangle(0.0, 3.0, 3.0, 8.0));
-	assert(v[2] == Rectangle(0.0, 7.0, 4.0, 8.0));
-	assert(v[3] == Rectangle(0.0, 0.0, 3.0, 7.0));
+	assert(v.size() == 3);
+	assert(v[0] == Rectangle(0.0, 7.0, 4.0, 8.0));
+	assert(v[1] == Rectangle(0.0, 0.0, 4.0, 3.0));
+	assert(v[2] == Rectangle(0.0, 3.0, 3.0, 7.0));
 
 	// Test set five
 	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
 	r2 = Rectangle(-3.0, 3.0, 1.0, 7.0);
 	v = r1.fragmentRectangle(r2);
-	assert(v.size() == 4);
+	assert(v.size() == 3);
 	assert(v[0] == Rectangle(0.0, 7.0, 4.0, 8.0));
-	assert(v[1] == Rectangle(1.0, 0.0, 4.0, 7.0));
+	assert(v[1] == Rectangle(1.0, 3.0, 4.0, 7.0));
 	assert(v[2] == Rectangle(0.0, 0.0, 4.0, 3.0));
-	assert(v[3] == Rectangle(1.0, 3.0, 4.0, 8.0));
 
 	// Test set six
 	r1 = Rectangle(0.0, 0.0, 8.0, 4.0);
 	r2 = Rectangle(1.0, 2.0, 5.0, 6.0);
 	v = r1.fragmentRectangle(r2);
+	assert(v.size() == 3);
+	assert(v[0] == Rectangle(5.0, 2.0, 8.0, 4.0));
+	assert(v[1] == Rectangle(0.0, 0.0, 8.0, 2.0));
+	assert(v[2] == Rectangle(0.0, 2.0, 1.0, 4.0));
+
+	// Test set seven
+	// Horizontal bar
+	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
+	r2 = Rectangle(-1.0, 3.0, 5.0, 5.0);
+	v = r1.fragmentRectangle(r2);
+	assert(v.size() == 2);
+	assert(v[0] == Rectangle(0.0, 5.0, 4.0, 8.0));
+	assert(v[1] == Rectangle(0.0, 0.0, 4.0, 3.0));
+
+	// Test set eight
+	// Vertical bar
+	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
+	r2 = Rectangle(2.0, -1.0, 3.0, 9.0);
+	v = r1.fragmentRectangle(r2);
+	assert(v.size() == 2);
+	assert(v[0] == Rectangle(3.0, 0.0, 4.0, 8.0));
+	assert(v[1] == Rectangle(0.0, 0.0, 2.0, 8.0));
+
+	// Test set nine
+	// Equivalent rectangles
+	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
+	r2 = Rectangle(0.0, 0.0, 4.0, 8.0);
+	v = r1.fragmentRectangle(r2);
+	assert(v.size() == 0);
+
+	// Test set ten
+	// Fully enclosed rectangle
+	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
+	r2 = Rectangle(2.0, 3.0, 3.0, 6.0);
+	v = r1.fragmentRectangle(r2);
 	assert(v.size() == 4);
-	assert(v[0] == Rectangle(0.0, 0.0, 8.0, 2.0));
-	assert(v[1] == Rectangle(5.0, 2.0, 8.0, 4.0));
-	assert(v[2] == Rectangle(0.0, 0.0, 8.0, 2.0));
-	assert(v[3] == Rectangle(0.0, 2.0, 1.0, 4.0));
+	assert(v[0] == Rectangle(0.0, 6.0, 4.0, 8.0));
+	assert(v[1] == Rectangle(3.0, 3.0, 4.0, 6.0));
+	assert(v[2] == Rectangle(0.0, 0.0, 4.0, 3.0));
+	assert(v[3] == Rectangle(0.0, 3.0, 2.0, 6.0));
 }
