@@ -360,12 +360,10 @@ namespace nirtree
 	}
 
 	// TODO: Optimize maybe
-	std::vector<Rectangle> Node::decomposeNode(unsigned polygonIndex)
+	std::vector<Rectangle> Node::decomposeNode(IsotheticPolygon &boundingPolygon)
 	{
 		// Copy our bounding polygon to start
-		IsotheticPolygon temp = parent->boundingBoxes[polygonIndex];
-		// std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
-		// temp.basicRectangles.insert(temp.basicRectangles.end(), basics.begin(), basics.end());
+		IsotheticPolygon temp = boundingPolygon;
 
 		// Decompose our bounding box using code for increasing a polygon's "resolution"
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
@@ -379,46 +377,36 @@ namespace nirtree
 		return temp.basicRectangles;
 	}
 
-	// TODO: This whole function
-	std::vector<Rectangle> Node::recomposeNode()
+	Node::SplitResult Node::splitNode(Node *newChild, IsotheticPolygon newPolygon)
 	{
-		// Step 1: Setup the new polygon
-		std::vector<Rectangle> recombobulated;
-
-		// Step 2: ???
-
-		// Step 3: Return/Profit
-		return recombobulated;
-	}
-
-	std::pair<Node *, IsotheticPolygon> Node::splitNode(Node *newChild, IsotheticPolygon newPolygon)
-	{
-		// TODO: Special case where the routing node is the root
-		// if (parent == nullptr)
-		// {
-		// 	return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
-		// }
-
-		unsigned polygonIndex;
-		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
-		// std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
-		// const unsigned basicsSize = basics.size();
-		const unsigned childrenSize = children.size();
-
-		// TODO: Special case where the routing node is bounded by a simple rectangle
-		// if (basicsSize == 1)
-		// {
-		// 	return std::pair<Node *, IsotheticPolygon>(nullptr, newSiblingIsotheticPolygon);
-		// }
-
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		IsotheticPolygon newSiblingIsotheticPolygon;
 
 		boundingBoxes.push_back(newPolygon);
 		children.push_back(newChild);
 
+		const unsigned childrenSize = children.size();
+		unsigned polygonIndex;
+		IsotheticPolygon ourPolygon;
+
+		if (parent == nullptr)
+		{
+			for (unsigned i = 0; i < children.size(); ++i)
+			{
+				ourPolygon.basicRectangles.insert(ourPolygon.basicRectangles.begin(), boundingBoxes[i].basicRectangles.begin(), boundingBoxes[i].basicRectangles.end());
+			}
+			Rectangle r = ourPolygon.boundingBox();
+			ourPolygon.basicRectangles.clear();
+			ourPolygon.basicRectangles[0] = r;
+		}
+		else
+		{
+			for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
+
+			ourPolygon = parent->boundingBoxes[polygonIndex];
+		}
+
 		// Decompose polygon
-		std::vector<Rectangle> decomposed = decomposeNode(polygonIndex);
+		std::vector<Rectangle> decomposed = decomposeNode(ourPolygon);
 
 		const unsigned decomposedSize = decomposed.size();
 		const unsigned totalSize = childrenSize + decomposedSize;
@@ -579,29 +567,52 @@ namespace nirtree
 			explorationQ.pop();
 		}
 
-		// TODO: Recompose polygon into two polygons
+		// Recompose into two polygons by building polygons representing what we have now and then
+		// reducing in size their representation
+		IsotheticPolygon currentNewPolygon;
+		IsotheticPolygon currentOldPolygon;
+		IsotheticPolygon finalNewPolygon;
+		IsotheticPolygon finalOldPolygon;
 
-		// std::vector<IsotheticPolygon> oldRectangles;
-		// std::vector<IsotheticPolygon> newRectangles;
+		for (unsigned i = 0; i < totalSize; ++i)
+		{
+			if (switchboard[i])
+			{
+				if (i < childrenSize)
+				{
+					currentNewPolygon.basicRectangles.insert(currentNewPolygon.basicRectangles.end(), boundingBoxes[i].basicRectangles.begin(), boundingBoxes[i].basicRectangles.end());
+				}
+				else
+				{
+					currentNewPolygon.basicRectangles.emplace_back(decomposed[i - childrenSize]);
+				}
+			}
+			else
+			{
+				if (i < childrenSize)
+				{
+					currentOldPolygon.basicRectangles.insert(currentOldPolygon.basicRectangles.end(), boundingBoxes[i].basicRectangles.begin(), boundingBoxes[i].basicRectangles.end());
+				}
+				else
+				{
+					currentOldPolygon.basicRectangles.emplace_back(decomposed[i - childrenSize]);
+				}
+			}
+		}
 
-		// for (unsigned i = 0; i < basicsSize; ++i)
-		// {
-		// 	if (switchboard[i])
-		// 	{
-		// 		newRectangles.emplace_back(basics[i]);
-		// 	}
-		// 	else
-		// 	{
-		// 		oldRectangles.emplace_back(basics[i]);
-		// 	}
-		// }
+		finalNewPolygon.basicRectangles.push_back(currentNewPolygon.boundingBox());
+		finalOldPolygon.basicRectangles.push_back(currentOldPolygon.boundingBox());
 
-		// newSiblingIsotheticPolygon.basicRectangles.clear();
-		// newSiblingIsotheticPolygon.basicRectangles.swap(newRectangles);
-		// basics.clear();
-		// basics.swap(oldRectangles);
+		// Intersect with original polygon => No going outside original boundaries
+		finalNewPolygon.intersection(ourPolygon);
+		finalOldPolygon.intersection(ourPolygon);
 
-		// Split into two nodes
+		// Remove from the new polygon the old polygon defined by the separator found earlier
+		finalNewPolygon.increaseResolution(currentOldPolygon);
+		// Remove from the old polygon the new polygon defined by the separator found earlier (use finalNewPolygon b/c it is smaller)
+		finalOldPolygon.increaseResolution(finalNewPolygon);
+
+		// Split children in two
 		std::vector<Node *> oldChildren;
 		std::vector<Node *> newChildren;
 
@@ -617,15 +628,24 @@ namespace nirtree
 			}
 		}
 
+		// Update new node's children
 		newSibling->children.clear();
 		newSibling->children.swap(newChildren);
+		// Update our children
 		children.clear();
 		children.swap(oldChildren);
 
-		return std::pair<Node *, IsotheticPolygon>(newSibling, newSiblingIsotheticPolygon);
+		// Update our bounding box if we are not the root
+		if (parent != nullptr)
+		{
+			parent->boundingBoxes[polygonIndex].basicRectangles.clear();
+			parent->boundingBoxes[polygonIndex] = finalOldPolygon;
+		}
+
+		return {newSibling, finalNewPolygon, finalOldPolygon};
 	}
 
-	std::pair<Node *, IsotheticPolygon> Node::splitNodeSpecialCase(Point newData)
+	Node::SplitResult Node::splitNodeSpecialCase(Point newData)
 	{
 		// Setup the new node and its bounding polygon
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
@@ -649,21 +669,33 @@ namespace nirtree
 		data.resize(dataHalfSize);
 
 		// Create the bounding box for newSibling
-		float minY = newSibling->data[0].y;
-		float maxY = newSibling->data[0].y;
+		float newMinY = newSibling->data[0].y;
+		float newMaxY = newSibling->data[0].y;
 		for (unsigned i = 1; i < newSibling->data.size(); ++i)
 		{
-			minY = std::min(minY, newSibling->data[i].y);
-			maxY = std::max(maxY, newSibling->data[i].y);
+			newMinY = std::min(newMinY, newSibling->data[i].y);
+			newMaxY = std::max(newMaxY, newSibling->data[i].y);
 		}
-		newSiblingIsotheticPolygon.basicRectangles.push_back(Rectangle(newSibling->data[0].x, minY, newSibling->data[newSibling->data.size() - 1].x, maxY));
 
-		return std::pair<Node *, IsotheticPolygon>(newSibling, newSiblingIsotheticPolygon);
+		float oldMinY = data[0].y;
+		float oldMaxY = data[0].y;
+		for (unsigned i = 1; i < data.size(); ++i)
+		{
+			oldMinY = std::min(oldMinY, data[i].y);
+			oldMaxY = std::max(oldMaxY, data[i].y);
+		}
+
+		return
+		{
+			newSibling,
+			IsotheticPolygon(Rectangle(newSibling->data[0].x, newMinY, newSibling->data[newSibling->data.size() - 1].x, newMaxY)),
+			IsotheticPolygon(Rectangle(data[0].x, oldMinY, data[data.size() - 1].x, oldMaxY))
+		};
 	}
 
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
 	// with sets will necessitate rewriting the entire R-Tree with sets.
-	std::pair<Node *, IsotheticPolygon> Node::splitNode(Point newData)
+	Node::SplitResult Node::splitNode(Point newData)
 	{
 		// Special case where the leaf to be split is the root
 		if (parent == nullptr)
@@ -681,12 +713,12 @@ namespace nirtree
 		// Special case where the leaf is bounded by a simple rectangle
 		if (basicsSize == 1)
 		{
-			return splitNodeSpecialCase(newData);
+			SplitResult sr = splitNodeSpecialCase(newData);
+			parent->boundingBoxes[polygonIndex] = sr.third;
+			return sr;
 		}
 
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		IsotheticPolygon newSiblingIsotheticPolygon;
-
 		data.push_back(newData);
 		
 		// Build graph
@@ -723,7 +755,7 @@ namespace nirtree
 		unsigned currentVertex;
 		std::queue<unsigned> explorationQ;
 		bool explored[basicsSize]; // Exploration labels so we don't cycle during search
-		bool connected[basicsSize]; // Connection labels so we don't double connect leaves
+		bool connected[basicsSize]; // Connection labels so we don't double connect vertices
 		unsigned weights[basicsSize];
 		std::stack<unsigned> weightStack;
 		std::stack<unsigned> parentStack;
@@ -894,32 +926,34 @@ namespace nirtree
 		// Break the tree into two components
 		// TODO: Optimize, fairly certain swapping could be made faster
 		// std::cout << "Splitting and swapping..." << std::endl;
-		std::vector<Rectangle> oldRectangles;
-		std::vector<Rectangle> newRectangles;
+
+
+		// Break the bounding polygon in two
+		IsotheticPolygon finalOldPolygon;
+		IsotheticPolygon finalNewPolygon;
 
 		for (unsigned i = 0; i < basicsSize; ++i)
 		{
 			if (switchboard[i])
 			{
-				newRectangles.emplace_back(basics[i]);
+				finalNewPolygon.basicRectangles.emplace_back(basics[i]);
 			}
 			else
 			{
-				oldRectangles.emplace_back(basics[i]);
+				finalOldPolygon.basicRectangles.emplace_back(basics[i]);
 			}
 		}
 
-		newSiblingIsotheticPolygon.basicRectangles.clear();
-		newSiblingIsotheticPolygon.basicRectangles.swap(newRectangles);
-		basics.clear();
-		basics.swap(oldRectangles);
+		// Update our bounding box
+		parent->boundingBoxes[polygonIndex] = finalOldPolygon;
 
+		// Break the data in two
 		std::vector<Point> oldPoints;
 		std::vector<Point> newPoints;
 
 		for (unsigned i = 0; i < dataSize; ++i)
 		{
-			if (newSiblingIsotheticPolygon.containsPoint(data[i]))
+			if (finalNewPolygon.containsPoint(data[i]))
 			{
 				newPoints.emplace_back(data[i]);
 			}
@@ -929,8 +963,10 @@ namespace nirtree
 			}
 		}
 
+		// Update new node's data
 		newSibling->data.clear();
 		newSibling->data.swap(newPoints);
+		// Update our data
 		data.clear();
 		data.swap(oldPoints);
 
@@ -941,11 +977,11 @@ namespace nirtree
 		// newSiblingIsotheticPolygon.print();
 		// newSibling->print();
 
-		return std::pair<Node *, IsotheticPolygon>(newSibling, newSiblingIsotheticPolygon);
+		return {newSibling, finalNewPolygon, finalOldPolygon};
 	}
 
 	// This bottom-to-top sweep is only for splitting bounding boxes as necessary
-	std::pair<Node *, IsotheticPolygon> Node::adjustTree(Node *sibling, IsotheticPolygon polygon)
+	Node::SplitResult Node::adjustTree(Node *sibling, IsotheticPolygon polygon)
 	{
 		// AT1 [Initialize]
 		Node *node = this;
@@ -975,11 +1011,11 @@ namespace nirtree
 					}
 					else
 					{
-						std::pair<Node *, IsotheticPolygon> splitResult = node->parent->splitNode(siblingNode, siblingPolygon);
+						SplitResult sr = node->parent->splitNode(siblingNode, siblingPolygon);
 
 						// Is a split so set the variables
-						siblingNode = splitResult.first;
-						siblingPolygon = splitResult.second;
+						siblingNode = sr.first;
+						siblingPolygon = sr.second;
 					}
 
 					// AT5 [Move up to next level]
@@ -993,7 +1029,7 @@ namespace nirtree
 			}
 		}
 
-		return std::pair<Node *, IsotheticPolygon>(siblingNode, polygon);
+		return {siblingNode, polygon, IsotheticPolygon()};
 	}
 
 	// Always called on root, this = root
@@ -1011,29 +1047,28 @@ namespace nirtree
 		}
 		else
 		{
-			std::pair<Node *, IsotheticPolygon> splitResult = leaf->splitNode(givenPoint);
-			siblingLeaf = splitResult.first;
-			siblingPolygon = splitResult.second;
+			Node::SplitResult sr = leaf->splitNode(givenPoint);
+			siblingLeaf = sr.first;
+			siblingPolygon = sr.second;
 		}
 
 		// I3 [Propogate changes upward]
-		std::pair<Node *, IsotheticPolygon> siblingPair = leaf->adjustTree(siblingLeaf, siblingPolygon);
+		SplitResult adjustmentResult = leaf->adjustTree(siblingLeaf, siblingPolygon);
 
 		// I4 [Grow tree taller]
-		if (siblingPair.first != nullptr)
+		if (adjustmentResult.first != nullptr)
 		{
 			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
 
 			// Push the modified old root node into the new root node
 			this->parent = newRoot;
-			newRoot->boundingBoxes.push_back(IsotheticPolygon(this->boundingBox()));
-			newRoot->boundingBoxes[0].increaseResolution(siblingPair.second);
+			newRoot->boundingBoxes.push_back(adjustmentResult.third);
 			newRoot->children.push_back(this);
 
 			// Push the new node into the new root node
-			siblingPair.first->parent = newRoot;
-			newRoot->boundingBoxes.push_back(siblingPair.second);
-			newRoot->children.push_back(siblingPair.first);
+			adjustmentResult.first->parent = newRoot;
+			newRoot->boundingBoxes.push_back(adjustmentResult.second);
+			newRoot->children.push_back(adjustmentResult.first);
 
 			return newRoot;
 		}
@@ -1295,26 +1330,26 @@ namespace nirtree
 
 
 		// Split
-		auto timerStart = std::chrono::high_resolution_clock::now();
-		std::pair<Node *, IsotheticPolygon> p = leaf->splitNode(Point(8.0, 1.0));
-		auto timerEnd = std::chrono::high_resolution_clock::now();
+		// auto timerStart = std::chrono::high_resolution_clock::now();
+		// std::pair<Node *, IsotheticPolygon> p = leaf->splitNode(Point(8.0, 1.0));
+		// auto timerEnd = std::chrono::high_resolution_clock::now();
 
-		for (unsigned i = 0; i < leaf->data.size(); ++i)
-		{
-			leaf->data[i].print();
-		}
-		std::cout << std::endl;
+		// for (unsigned i = 0; i < leaf->data.size(); ++i)
+		// {
+		// 	leaf->data[i].print();
+		// }
+		// std::cout << std::endl;
 
-		for (unsigned i = 0; i < p.first->data.size(); ++i)
-		{
-			p.first->data[i].print();
-		}
-		std::cout << std::endl;
-		p.second.print();
+		// for (unsigned i = 0; i < p.first->data.size(); ++i)
+		// {
+		// 	p.first->data[i].print();
+		// }
+		// std::cout << std::endl;
+		// p.second.print();
 
 
-		// Print results
-		std::cout << "It took " << std::chrono::duration_cast<std::chrono::microseconds>(timerEnd - timerStart).count() << "us to split." << std::endl;
+		// // Print results
+		// std::cout << "It took " << std::chrono::duration_cast<std::chrono::microseconds>(timerEnd - timerStart).count() << "us to split." << std::endl;
 	}
 
 	// void testBoundingBox()
