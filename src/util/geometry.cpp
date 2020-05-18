@@ -153,28 +153,30 @@ Rectangle Rectangle::intersectionRectangle(Rectangle clippingRectangle)
 	// Return rectangle
 	Rectangle r = Rectangle(lowerLeft, upperRight);
 
-	// Enumerate each of the points of the bounding rectangle/cube/hypercube
-	Point upperLeft = Point(clippingRectangle.lowerLeft.x, clippingRectangle.upperRight.y);
-	Point lowerRight = Point(clippingRectangle.upperRight.x, clippingRectangle.lowerLeft.y);
+	// Revise inward whenever the clippingRectangle is inside us
 
-	// Each point that is contained provides some information on the boundary of the intersection
-	if (containsPoint(clippingRectangle.upperRight))
+	// Define the top
+	if (lowerLeft.y < clippingRectangle.upperRight.y && clippingRectangle.upperRight.y < upperRight.y)
 	{
-		r.upperRight = clippingRectangle.upperRight;
+		r.upperRight.y = clippingRectangle.upperRight.y;
 	}
-	if (containsPoint(upperLeft))
+
+	// Define the bottom
+	if (lowerLeft.y < clippingRectangle.lowerLeft.y && clippingRectangle.lowerLeft.y < upperRight.y)
 	{
-		r.lowerLeft.x = upperLeft.x;
-		r.upperRight.y = upperLeft.y;
+		r.lowerLeft.y = clippingRectangle.lowerLeft.y;
 	}
-	if (containsPoint(lowerRight))
+
+	// Define the right vertical
+	if (lowerLeft.x < clippingRectangle.upperRight.x && clippingRectangle.upperRight.x < upperRight.x)
 	{
-		r.lowerLeft.y = lowerRight.y;
-		r.upperRight.x = lowerRight.x;
+		r.upperRight.x = clippingRectangle.upperRight.x;
 	}
-	if (containsPoint(clippingRectangle.lowerLeft))
+
+	// Define the left vertical
+	if (lowerLeft.x < clippingRectangle.lowerLeft.x && clippingRectangle.lowerLeft.x < upperRight.x)
 	{
-		r.lowerLeft = clippingRectangle.lowerLeft;
+		r.lowerLeft.x = clippingRectangle.lowerLeft.x;
 	}
 
 	return r;
@@ -555,6 +557,25 @@ bool IsotheticPolygon::containsPoint(Point requestedPoint)
 	}
 
 	return false;
+}
+
+void IsotheticPolygon::intersection(IsotheticPolygon &constraintPolygon)
+{
+	std::vector<Rectangle> v;
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	{
+		for (unsigned j = 0; j < constraintPolygon.basicRectangles.size(); ++j)
+		{
+			Rectangle r = basicRectangles[i].intersectionRectangle(constraintPolygon.basicRectangles[j]);
+
+			if (r.area() != 0)
+			{
+				v.push_back(r);
+			}
+		}
+	}
+	basicRectangles.clear();
+	basicRectangles.swap(v);
 }
 
 void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)

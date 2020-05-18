@@ -26,6 +26,13 @@ namespace nirtree
 			unsigned level;
 		};
 
+		struct SplitResult
+		{
+			Node *first;
+			IsotheticPolygon second;
+			IsotheticPolygon third;
+		};
+
 		unsigned minBranchFactor;
 		unsigned maxBranchFactor;
 
@@ -48,12 +55,11 @@ namespace nirtree
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
-			std::vector<Rectangle> decomposeNode(unsigned polygonIndex);
-			std::vector<Rectangle> recomposeNode();
-			std::pair<Node *, IsotheticPolygon> splitNodeSpecialCase(Point newData);
-			std::pair<Node *, IsotheticPolygon> splitNode(Point newData);
-			std::pair<Node *, IsotheticPolygon> splitNode(Node *newChild, IsotheticPolygon newPolygon);
-			std::pair<Node *, IsotheticPolygon> adjustTree(Node *sibling, IsotheticPolygon siblingPolygon);
+			std::vector<Rectangle> decomposeNode(IsotheticPolygon &boundingPolygon);
+			SplitResult splitNodeSpecialCase(Point newData);
+			SplitResult splitNode(Point newData);
+			SplitResult splitNode(Node *newChild, IsotheticPolygon newPolygon);
+			SplitResult adjustTree(Node *sibling, IsotheticPolygon siblingPolygon);
 			// Node *condenseTree();
 			// Node *insert(ReinsertionEntry e);
 

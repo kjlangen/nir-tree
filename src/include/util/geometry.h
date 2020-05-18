@@ -75,6 +75,7 @@ class IsotheticPolygon
 		bool intersectsRectangle(Rectangle &givenRectangle);
 		bool intersectsRectangle(IsotheticPolygon &givenPolygon);
 		bool containsPoint(Point requestedPoint);
+		void intersection(IsotheticPolygon &constraintPolygon);
 		void increaseResolution(Rectangle clippingRectangle);
 		void increaseResolution(IsotheticPolygon &clippingPolygon);
 
