@@ -1,5 +1,6 @@
 #ifndef __RANDOMSQUARES__
 #define __RANDOMSQUARES__
+
 #include <iostream>
 #include <random>
 #include <chrono>
