@@ -39,7 +39,7 @@ splitPoints.o:
 
 # Build all together
 all: ${OBJECTS}
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I src/include -lspatialindex
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I src/include -lspatialindex -lctemplate_nothreads
 
 # Alter flags to include profiling
 profileflags:
@@ -48,7 +48,7 @@ profileflags:
 # Build all together with profiling
 # Note: Problems will occur if files were previously compiled without -pg and were not altered since
 profile: profileflags ${OBJECTS}
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I src/include -lspatialindex
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I src/include -lspatialindex -lctemplate_nothreads
 
 # Clean all together
 clean:

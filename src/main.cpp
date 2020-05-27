@@ -147,7 +147,13 @@ void testRTree()
 void testNIRTree()
 {
 	// Unit test NIR-Tree
-	nirtree::testPlayground();
+	// nirtree::testPlayground();
+	nirtree::testPencilIdGeneration();
+	nirtree::testSimplePrintToPencil();
+	nirtree::testMultiLevelPrintToPencil();
+	nirtree::testComplexGeometryPrintToPencil();
+
+	std::cout << "NIRTree tested." << std::endl;
 }
 
 int main(int argc, char *argv[])
