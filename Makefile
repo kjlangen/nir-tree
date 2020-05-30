@@ -28,6 +28,7 @@ randomPoints.o:
 
 # Build all together
 all: ${OBJECTS}
+	mkdir -p bin
 	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${INCLUDE} -lspatialindex
 
 # Alter flags to include profiling
@@ -41,4 +42,4 @@ profile: profileflags ${OBJECTS}
 
 # Clean all together
 clean:
-	rm -rf bin/* *.o *.d
+	rm -rf bin *.o *.d
