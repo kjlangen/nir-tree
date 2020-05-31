@@ -1,7 +1,31 @@
 #include <rplustree/rPlusTree.h>
 
-RPlusTree::RPlusTree(unsigned int minBranchFactor, unsigned int maxBranchFactor) {
+void RPlusTree::removeSubtree(RPlusTreeNode *r) {
     // TODO
+}
+
+RPlusTreeNode *RPlusTree::chooseLeaf(Point givenPoint) {
+    // TODO
+    return nullptr;
+}
+
+Cost RPlusTree::sweep(RPlusTree::Orientation orientation, Point lowestCoordinates, float fillFactor) {
+    // TODO
+    return {};
+}
+
+Partition RPlusTree::partition(RPlusTreeNode *node) {
+    // TODO
+    return std::pair<std::vector<Rectangle>, std::vector<Rectangle>>();
+}
+
+void RPlusTree::splitNode(RPlusTreeNode *node) {
+    // TODO
+    Partition partition = this->partition(node);
+}
+
+RPlusTree::RPlusTree(unsigned int minBranchFactor, unsigned int maxBranchFactor) : minBranchFactor(minBranchFactor),
+                                                                                   maxBranchFactor(maxBranchFactor) {
 }
 
 RPlusTree::RPlusTree(RPlusTreeNode *root) {
