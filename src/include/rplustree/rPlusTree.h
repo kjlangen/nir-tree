@@ -10,42 +10,43 @@
 typedef std::pair<std::vector<Rectangle>, std::vector<Rectangle>> Partition;
 typedef std::pair<float, float> Cost;
 
-class RPlusTree {
-    unsigned minBranchFactor;
-    unsigned maxBranchFactor;
+class RPlusTree
+{
+	unsigned minBranchFactor;
+	unsigned maxBranchFactor;
 
-    enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
+	enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
 
-    RPlusTreeNode* root = new RPlusTreeNode();
+	RPlusTreeNode *root = new RPlusTreeNode();
 
-    void removeSubtree(RPlusTreeNode* r);
+	void removeSubtree(RPlusTreeNode *r);
 
-    RPlusTreeNode* chooseLeaf(Point givenPoint);
+	RPlusTreeNode *chooseLeaf(Point givenPoint);
 
-    Cost sweep(Orientation orientation, Point lowestCoordinates, float fillFactor);
+	Cost sweep(Orientation orientation, Point lowestCoordinates, float fillFactor);
 
-    Partition partition(RPlusTreeNode* node);
+	Partition partition(RPlusTreeNode *node);
 
-    void splitNode(RPlusTreeNode* node);
+	void splitNode(RPlusTreeNode *node);
 
 public:
-    RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+	RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
 
-    RPlusTree(RPlusTreeNode *root);
+	RPlusTree(RPlusTreeNode *root);
 
-    ~RPlusTree();
+	~RPlusTree();
 
-    std::vector<Point> search(Point requestedPoint);
+	std::vector<Point> search(Point requestedPoint);
 
-    std::vector<Point> search(Rectangle requestedRectangle);
+	std::vector<Point> search(Rectangle requestedRectangle);
 
-    void insert(Point givenPoint);
+	void insert(Point givenPoint);
 
-    void remove(Point givenPoint);
+	void remove(Point givenPoint);
 
-    unsigned checksum();
+	unsigned checksum();
 
-    void print();
+	void print();
 };
 
 #endif // __RPLUSTREE__

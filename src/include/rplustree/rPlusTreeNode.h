@@ -4,13 +4,14 @@
 #include <vector>
 #include <util/geometry.h>
 
-class RPlusTreeNode {
+class RPlusTreeNode
+{
 public:
-    std::vector<Rectangle> boundingBoxes;
-    std::vector<RPlusTreeNode *> children;
-    std::vector<Point> data;
-    bool isLeaf() const;
-    unsigned int numEntries() const;
+	std::vector<Rectangle> boundingBoxes;
+	std::vector<RPlusTreeNode *> children;
+	std::vector<Point> data;
+	bool isLeaf() const;
+	unsigned int numEntries() const;
 };
 
 #endif // __RPLUSTREE_NODE__
