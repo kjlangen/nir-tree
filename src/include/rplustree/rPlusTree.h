@@ -21,11 +21,11 @@ class RPlusTree
 
 	void removeSubtree(RPlusTreeNode *r);
 
-	RPlusTreeNode *chooseLeaf(Point givenPoint);
+	RPlusTreeNode *chooseLeaf(Rectangle givenRectangle);
 
-	Cost sweep(Orientation orientation, Point lowestCoordinates, float fillFactor);
+	Cost sweep(std::vector<Rectangle>& rectangles, Orientation orientation);
 
-	Partition partition(RPlusTreeNode *node);
+	Partition partition(std::vector<Rectangle>& rectangles);
 
 	void splitNode(RPlusTreeNode *node);
 
@@ -41,6 +41,8 @@ public:
 	std::vector<Point> search(Rectangle requestedRectangle);
 
 	void insert(Point givenPoint);
+
+	void insert(Rectangle givenRectangle);
 
 	void remove(Point givenPoint);
 

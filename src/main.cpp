@@ -5,6 +5,7 @@
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
 #include <bench/randomPoints.h>
+#include <rplustree/rPlusTree.h>
 
 void testLibSpatialIndex()
 {
@@ -172,6 +173,8 @@ int main(int argc, char *argv[])
 	}
     */
 
+	RPlusTree rPlusTree(3, 5);
+	rPlusTree.print();
 	// Argument parsing and switching
 	bool runUnitTests = false;
 	bool runBenchMark = false;

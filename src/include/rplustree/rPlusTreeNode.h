@@ -10,6 +10,7 @@ public:
 	std::vector<Rectangle> boundingBoxes;
 	std::vector<RPlusTreeNode *> children;
 	std::vector<Point> data;
+	RPlusTreeNode* parent;
 	bool isLeaf() const;
 	unsigned int numEntries() const;
 };
