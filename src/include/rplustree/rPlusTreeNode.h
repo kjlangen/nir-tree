@@ -8,11 +8,13 @@ class RPlusTreeNode
 {
 public:
 	std::vector<Rectangle> boundingBoxes;
-	std::vector<RPlusTreeNode *> children;
-	std::vector<Point> data;
-	RPlusTreeNode* parent;
+	std::vector<RPlusTreeNode*> children;
+	std::vector<Rectangle> data;
+	RPlusTreeNode* parent = nullptr;
 	bool isLeaf() const;
 	unsigned int numEntries() const;
+	unsigned int numChildren() const;
+	bool isRoot() const;
 };
 
 #endif // __RPLUSTREE_NODE__

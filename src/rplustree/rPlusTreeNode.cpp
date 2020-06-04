@@ -2,12 +2,21 @@
 
 bool RPlusTreeNode::isLeaf() const
 {
-	// assert(children.empty() && boundingBoxes.empty());
 	return children.empty();
 }
 
 unsigned int RPlusTreeNode::numEntries() const
 {
-	// assert(children.size() == boundingBoxes.size());
+	return data.size();
+}
+
+
+unsigned int RPlusTreeNode::numChildren() const
+{
 	return children.size();
+}
+
+bool RPlusTreeNode::isRoot() const
+{
+	return parent == nullptr;
 }

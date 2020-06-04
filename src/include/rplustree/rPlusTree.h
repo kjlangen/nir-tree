@@ -7,7 +7,13 @@
 #include <util/geometry.h>
 #include <rplustree/rPlusTreeNode.h>
 
-typedef std::pair<std::vector<Rectangle>, std::vector<Rectangle>> Partition;
+typedef struct {
+	RPlusTreeNode* leftNode = new RPlusTreeNode();
+	Rectangle leftBoundingBox;
+	RPlusTreeNode* rightNode = new RPlusTreeNode();
+	Rectangle rightBoundingBox;
+} Partition;
+
 typedef std::pair<float, float> Cost;
 
 class RPlusTree
@@ -25,9 +31,9 @@ class RPlusTree
 
 	Cost sweep(std::vector<Rectangle>& rectangles, Orientation orientation);
 
-	Partition partition(std::vector<Rectangle>& rectangles);
+	Partition splitNodeDownwards(RPlusTreeNode* node, Orientation orientation, float splitLine);
 
-	void splitNode(RPlusTreeNode *node);
+	void splitNode(RPlusTreeNode* node, Orientation orientation, float splitLine);
 
 public:
 	RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
