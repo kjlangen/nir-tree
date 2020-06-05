@@ -173,8 +173,6 @@ int main(int argc, char *argv[])
 	}
     */
 
-	RPlusTree rPlusTree(3, 5);
-	rPlusTree.print();
 	// Argument parsing and switching
 	bool runUnitTests = false;
 	bool runBenchMark = false;
