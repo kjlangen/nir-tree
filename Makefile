@@ -27,14 +27,15 @@ randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
 
 rPlusTree.o:
-	g++ ${SXX} ${FLAGS} -I ${INCLUDE} -c src/rplustree/rPlusTree.cpp
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
 
 rPlusTreeNode.o:
-	g++ ${SXX} ${FLAGS} -I ${INCLUDE} -c src/rplustree/rPlusTreeNode.cpp
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTreeNode.cpp
 
 # Build all together
 all: ${OBJECTS}
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I src/include -lspatialindex
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex
 
 # Alter flags to include profiling
 profileflags:
@@ -43,8 +44,9 @@ profileflags:
 # Build all together with profiling
 # Note: Problems will occur if files were previously compiled without -pg and were not altered since
 profile: profileflags ${OBJECTS}
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I src/include -lspatialindex
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I ${DIR} -lspatialindex
 
 # Clean all together
 clean:
-	rm -rf bin/* *.o *.d
+	rm -rf bin *.o *.d
