@@ -17,7 +17,7 @@ class RPlusTree
 
 	enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
 
-	RPlusTreeNode *root = new RPlusTreeNode();
+	RPlusTreeNode *root = new RPlusTreeNode(false);
 
 	void removeSubtree(RPlusTreeNode* r);
 
@@ -27,7 +27,7 @@ class RPlusTree
 
 	void chooseLeaves(RPlusTreeNode* node, Rectangle& givenRectangle, std::vector<RPlusTreeNode*>& leaves);
 
-	Cost sweep(std::vector<Rectangle>& rectangles, Orientation orientation);
+	Cost sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation);
 
 	Partition splitNode(RPlusTreeNode* n);
 

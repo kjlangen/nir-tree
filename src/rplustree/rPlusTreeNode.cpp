@@ -1,22 +1,23 @@
 #include <rplustree/rPlusTreeNode.h>
 
-bool RPlusTreeNode::isLeaf() const
+RPlusTreeNode::RPlusTreeNode(bool isDataNode): isDataNode(isDataNode)
 {
-	return children.empty();
-}
-
-unsigned int RPlusTreeNode::numEntries() const
-{
-	return data.size();
-}
-
-
-unsigned int RPlusTreeNode::numChildren() const
-{
-	return children.size();
 }
 
 bool RPlusTreeNode::isRoot() const
 {
 	return parent == nullptr;
+}
+
+bool RPlusTreeNode::isLeaf() const
+{
+	if (children.empty()) {
+		return true;
+	}
+	return children.at(0)->isDataNode;
+}
+
+unsigned int RPlusTreeNode::numChildren() const
+{
+	return children.size();
 }

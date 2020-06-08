@@ -44,16 +44,16 @@ void RPlusTree::chooseLeaves(RPlusTreeNode* node, Rectangle& givenRectangle, std
 	}
 }
 
-Cost RPlusTree::sweep(std::vector<Rectangle>& rectangles, Orientation orientation)
+Cost RPlusTree::sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation)
 {
-	std::sort(rectangles.begin(), rectangles.end(),
-			  [orientation](Rectangle const &r1, Rectangle const &r2) -> bool
+	std::sort(nodeList.begin(), nodeList.end(),
+			  [orientation](const RPlusTreeNode * n1, const RPlusTreeNode * n2) -> bool
 			  {
 				  if (orientation == Orientation::ALONG_X_AXIS)
 				  {
-					  return r1.lowerLeft.x < r2.lowerLeft.x;
+					  return n1->boundingBox.lowerLeft.x < n2->boundingBox.lowerLeft.x;
 				  }
-				  return r1.lowerLeft.y < r2.lowerLeft.y;
+				  return n1->boundingBox.lowerLeft.y < n2->boundingBox.lowerLeft.y;
 			  }
 	);
 
@@ -64,20 +64,20 @@ Cost RPlusTree::sweep(std::vector<Rectangle>& rectangles, Orientation orientatio
 	// intersect with the chosen split
 	if (orientation == Orientation::ALONG_X_AXIS)
 	{
-		splitLine = rectangles.at(rectangles.size() / 2).upperRight.x;
-		for (auto &rect : rectangles)
+		splitLine = nodeList.at(nodeList.size() / 2)->boundingBox.upperRight.x;
+		for (auto * node : nodeList)
 		{
-			if (rect.lowerLeft.x < splitLine && splitLine < rect.upperRight.x)
+			if (node->boundingBox.lowerLeft.x < splitLine && splitLine < node->boundingBox.upperRight.x)
 			{
 				cost += 1.0f;
 			}
 		}
 	} else
 	{
-		splitLine = rectangles.at(rectangles.size() / 2).upperRight.y;
-		for (auto &rect : rectangles)
+		splitLine = nodeList.at(nodeList.size() / 2)->boundingBox.upperRight.y;
+		for (auto * node : nodeList)
 		{
-			if (rect.lowerLeft.y < splitLine && splitLine < rect.upperRight.y)
+			if (node->boundingBox.lowerLeft.y < splitLine && splitLine < node->boundingBox.upperRight.y)
 			{
 				cost += 1.0f;
 			}
@@ -89,8 +89,39 @@ Cost RPlusTree::sweep(std::vector<Rectangle>& rectangles, Orientation orientatio
 
 Partition RPlusTree::splitNode(RPlusTreeNode* n)
 {
-	// TOOD
-	return {};
+	// create new node and set parameters
+	auto* newNode = new RPlusTreeNode(false);
+	Partition partition = {n, newNode};
+	newNode->parent = n->parent;
+	if (newNode->parent != nullptr) {
+		newNode->parent->children.push_back(newNode);
+	}
+
+	// determine optimal partition
+	Cost costX = sweep(n->children, ALONG_X_AXIS);
+	Cost costY = sweep(n->children, ALONG_Y_AXIS);
+	float splitLine = costX.first < costY.first ? costX.second : costY.second;
+	Orientation splitAxis = costX.first < costY.first ? ALONG_X_AXIS : ALONG_Y_AXIS;
+
+	// partition children
+	std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
+	n->children.clear();  // clear old entries
+	for (auto & child : childrenClone) {
+		float leftBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
+		float rightBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
+		if (leftBound <= splitLine) {
+			partition.first->children.push_back(child);
+		} else if (rightBound >= splitLine) {
+			partition.second->children.push_back(child);
+		} else {
+			partition.first->children.push_back(child);
+			partition.second->children.push_back(child);
+		}
+	}
+
+	// tighten newly created node
+	tighten(partition.second);
+	return partition;
 }
 
 RPlusTree::RPlusTree(unsigned int minBranchFactor, unsigned int maxBranchFactor) : minBranchFactor(minBranchFactor),
@@ -121,9 +152,11 @@ void RPlusTree::insert(Rectangle givenRectangle)
 	chooseLeaves(root, givenRectangle, leaves);
 
 	for (auto & leaf : leaves) {
-		leaf->data.push_back(givenRectangle);
+		auto* newDataNode = new RPlusTreeNode(true);
+		newDataNode->boundingBox = givenRectangle;
+		leaf->children.push_back(newDataNode);
 		// need to split leaf node
-		if (leaf->numEntries() > maxBranchFactor) {
+		if (leaf->numChildren() > maxBranchFactor) {
 			Partition split = splitNode(leaf);
 			adjustTree(split.first, split.second);
 		} else {

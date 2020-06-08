@@ -9,12 +9,14 @@ class RPlusTreeNode
 public:
 	Rectangle boundingBox;
 	std::vector<RPlusTreeNode*> children;
-	std::vector<Rectangle> data;
 	RPlusTreeNode* parent = nullptr;
-	bool isLeaf() const;
-	unsigned int numEntries() const;
-	unsigned int numChildren() const;
+	bool isDataNode = false;
+
+	explicit RPlusTreeNode(bool isDataNode);
+
 	bool isRoot() const;
+	bool isLeaf() const;
+	unsigned int numChildren() const;
 };
 
 #endif // __RPLUSTREE_NODE__
