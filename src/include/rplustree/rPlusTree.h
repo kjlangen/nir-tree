@@ -40,6 +40,8 @@ public:
 
 	~RPlusTree();
 
+	bool exists(Rectangle requestedRectangle);
+
 	std::vector<Point> search(Rectangle requestedRectangle);
 
 	void insert(Rectangle givenRectangle);

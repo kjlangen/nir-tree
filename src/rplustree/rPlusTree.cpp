@@ -212,6 +212,30 @@ RPlusTree::~RPlusTree()
 	// TODO
 }
 
+bool RPlusTree::exists(Rectangle requestedRectangle) {
+	RPlusTreeNode * n = root;
+	while (!n->isLeaf()) {
+		bool childFound = false;
+		for (auto & child : n->children) {
+			if (child->boundingBox.intersectsRectangle(requestedRectangle)) {
+				n = child;
+				childFound = true;
+				break;
+			}
+		}
+		if (!childFound) {
+			return false;
+		}
+	}
+
+	for (auto & data : n->children) {
+		if (data->boundingBox == requestedRectangle) {
+			return true;
+		}
+	}
+	return false;
+}
+
 std::vector<Point> RPlusTree::search(Rectangle requestedRectangle)
 {
 	// TODO
