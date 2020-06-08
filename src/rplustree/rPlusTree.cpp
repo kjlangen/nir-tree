@@ -46,8 +46,45 @@ void RPlusTree::chooseLeaves(RPlusTreeNode* node, Rectangle& givenRectangle, std
 
 Cost RPlusTree::sweep(std::vector<Rectangle>& rectangles, Orientation orientation)
 {
-	// TODO
-	return {};
+	std::sort(rectangles.begin(), rectangles.end(),
+			  [orientation](Rectangle const &r1, Rectangle const &r2) -> bool
+			  {
+				  if (orientation == Orientation::ALONG_X_AXIS)
+				  {
+					  return r1.lowerLeft.x < r2.lowerLeft.x;
+				  }
+				  return r1.lowerLeft.y < r2.lowerLeft.y;
+			  }
+	);
+
+	float splitLine;
+	float cost = 0.0f;
+
+	// For now, split using middle element and count the number of rectangles that
+	// intersect with the chosen split
+	if (orientation == Orientation::ALONG_X_AXIS)
+	{
+		splitLine = rectangles.at(rectangles.size() / 2).upperRight.x;
+		for (auto &rect : rectangles)
+		{
+			if (rect.lowerLeft.x < splitLine && splitLine < rect.upperRight.x)
+			{
+				cost += 1.0f;
+			}
+		}
+	} else
+	{
+		splitLine = rectangles.at(rectangles.size() / 2).upperRight.y;
+		for (auto &rect : rectangles)
+		{
+			if (rect.lowerLeft.y < splitLine && splitLine < rect.upperRight.y)
+			{
+				cost += 1.0f;
+			}
+		}
+	}
+
+	return {cost, splitLine};
 }
 
 Partition RPlusTree::splitNode(RPlusTreeNode* n)
