@@ -26,7 +26,30 @@ void RPlusTree::tighten(RPlusTreeNode* n)
 
 void RPlusTree::adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn)
 {
-	// TODO
+	if (n->isRoot()) {
+		if (nn != nullptr) {
+			root = new RPlusTreeNode(false);
+			root->children.push_back(n);
+			n->parent = root;
+			root->children.push_back(nn);
+			nn->parent = root;
+		}
+		tighten(root);
+		return;
+	}
+	tighten(n);
+	if (nn != nullptr) {
+		tighten(nn);
+		// propagate split upwards, if needed
+		if (n->parent->numChildren() > maxBranchFactor) {
+			Partition splits = splitNode(n->parent);
+			adjustTree(splits.first, splits.second);
+		}
+	}
+
+	if (!n->isRoot()) {
+		adjustTree(n->parent, nullptr);
+	}
 }
 
 void RPlusTree::chooseLeaves(RPlusTreeNode* node, Rectangle& givenRectangle, std::vector<RPlusTreeNode*>& leaves)
