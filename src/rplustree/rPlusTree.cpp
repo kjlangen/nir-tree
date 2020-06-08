@@ -101,6 +101,13 @@ Cost RPlusTree::sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orienta
 	return {cost, splitLine};
 }
 
+Partition RPlusTree::splitNodeAlongLine(RPlusTreeNode *n, float splitLine, RPlusTree::Orientation splitAxis)
+{
+	// TODO
+	return {};
+}
+
+
 Partition RPlusTree::splitNode(RPlusTreeNode* n)
 {
 	// create new node and set parameters
@@ -128,8 +135,11 @@ Partition RPlusTree::splitNode(RPlusTreeNode* n)
 		} else if (rightBound >= splitLine) {
 			partition.second->children.push_back(child);
 		} else {
-			partition.first->children.push_back(child);
-			partition.second->children.push_back(child);
+			Partition split = splitNodeAlongLine(child, splitLine, splitAxis);  // propagate changes downwards
+			partition.first->children.push_back(split.first);
+			split.first->parent = partition.first;
+			partition.second->children.push_back(split.second);
+			split.second->parent = partition.second;
 		}
 	}
 
