@@ -103,8 +103,34 @@ Cost RPlusTree::sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orienta
 
 Partition RPlusTree::splitNodeAlongLine(RPlusTreeNode *n, float splitLine, RPlusTree::Orientation splitAxis)
 {
-	// TODO
-	return {};
+	// duplicate data values
+	if (n->isDataNode) {
+		auto* dataClone = new RPlusTreeNode(true);
+		dataClone->boundingBox = n->boundingBox;
+		return {n, dataClone};
+	}
+
+	// otherwise partition children, recurse downwards if needed
+	// note similarity of code with `splitNode` function
+	Partition partition;
+	std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
+	n->children.clear();  // clear old entries
+	for (auto & child : childrenClone) {
+		float leftBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
+		float rightBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
+		if (leftBound <= splitLine) {
+			partition.first->children.push_back(child);
+		} else if (rightBound >= splitLine) {
+			partition.second->children.push_back(child);
+		} else {
+			Partition split = splitNodeAlongLine(child, splitLine, splitAxis);  // propagate changes downwards
+			partition.first->children.push_back(split.first);
+			split.first->parent = partition.first;
+			partition.second->children.push_back(split.second);
+			split.second->parent = partition.second;
+		}
+	}
+	return partition;
 }
 
 
