@@ -7,7 +7,21 @@ void RPlusTree::removeSubtree(RPlusTreeNode *r)
 
 void RPlusTree::tighten(RPlusTreeNode* n)
 {
-	// TODO
+	// no need to tighten bounding box
+	if (n->isDataNode) {
+		return;
+	}
+
+	// reset bounding box
+	n->boundingBox.lowerLeft.x = 0;
+	n->boundingBox.lowerLeft.y = 0;
+	n->boundingBox.upperRight.x = 0;
+	n->boundingBox.upperRight.y = 0;
+
+	// iterate through children to set new bounding box
+	for (auto & child : n->children) {
+		n->boundingBox.expand(child->boundingBox);
+	}
 }
 
 void RPlusTree::adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn)
