@@ -83,41 +83,36 @@ void RPlusTree::chooseLeaves(RPlusTreeNode* node, Rectangle& givenRectangle, std
 
 Cost RPlusTree::sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation)
 {
-	std::sort(nodeList.begin(), nodeList.end(),
-			  [orientation](const RPlusTreeNode * n1, const RPlusTreeNode * n2) -> bool
-			  {
-				  if (orientation == Orientation::ALONG_X_AXIS)
-				  {
-					  return n1->boundingBox.lowerLeft.x < n2->boundingBox.lowerLeft.x;
-				  }
-				  return n1->boundingBox.lowerLeft.y < n2->boundingBox.lowerLeft.y;
-			  }
-	);
+	std::vector<float> leftBounds;
+	std::vector<float> rightBounds;
 
-	float splitLine;
-	float cost = 0.0f;
-
-	// For now, split using middle element and count the number of rectangles that
-	// intersect with the chosen split
-	if (orientation == Orientation::ALONG_X_AXIS)
-	{
-		splitLine = nodeList.at(nodeList.size() / 2)->boundingBox.upperRight.x;
-		for (auto * node : nodeList)
-		{
-			if (node->boundingBox.lowerLeft.x < splitLine && splitLine < node->boundingBox.upperRight.x)
-			{
-				cost += 1.0f;
-			}
+	for (auto & node : nodeList) {
+		if (orientation == ALONG_X_AXIS) {
+			leftBounds.push_back(node->boundingBox.lowerLeft.x);
+			rightBounds.push_back(node->boundingBox.upperRight.x);
+		} else {
+			leftBounds.push_back(node->boundingBox.lowerLeft.y);
+			rightBounds.push_back(node->boundingBox.upperRight.y);
 		}
-	} else
-	{
-		splitLine = nodeList.at(nodeList.size() / 2)->boundingBox.upperRight.y;
-		for (auto * node : nodeList)
-		{
-			if (node->boundingBox.lowerLeft.y < splitLine && splitLine < node->boundingBox.upperRight.y)
-			{
-				cost += 1.0f;
-			}
+	}
+
+	// Sort ascending
+	std::sort(leftBounds.begin(), leftBounds.end());
+	std::sort(rightBounds.begin(), rightBounds.end());
+
+	// Determine split line
+	float splitLine = rightBounds.at(rightBounds.size() / 2);
+
+	// Edge case
+	if (rightBounds.at(0) == splitLine && splitLine == rightBounds.at(leftBounds.size()-1)) {
+		splitLine = (splitLine - leftBounds.at(0)) / 2;
+	}
+
+	// Compute cost
+	float cost = 0.0f;
+	for (int i=0; i<leftBounds.size(); i++) {
+		if (leftBounds.at(i) < splitLine && splitLine < rightBounds.at(i)) {
+			cost += 1.0f;
 		}
 	}
 
