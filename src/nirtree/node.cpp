@@ -62,33 +62,20 @@ namespace nirtree
 		return boundingBox;
 	}
 
-	// TODO: Optimize maybe
 	// TODO: Convert
-	void Node::updateBoundingBox(Node *child, Rectangle updatedBoundingBox)
-	{
-		for (unsigned i = 0; i < children.size(); ++i)
-		{
-			if (children[i] == child)
-			{
-				boundingBoxes[i] = updatedBoundingBox;
-				break;
-			}
-		}
-	}
-
 	// TODO: Optimize maybe
-	void Node::removeChild(Node *child)
-	{
-		for (unsigned i = 0; i < children.size(); ++i)
-		{
-			if (children[i] == child)
-			{
-				boundingBoxes.erase(boundingBoxes.begin() + i);
-				children.erase(children.begin() + i);
-				break;
-			}
-		}
-	}
+	// void Node::removeChild(Node *child)
+	// {
+	// 	for (unsigned i = 0; i < children.size(); ++i)
+	// 	{
+	// 		if (children[i] == child)
+	// 		{
+	// 			boundingBoxes.erase(boundingBoxes.begin() + i);
+	// 			children.erase(children.begin() + i);
+	// 			break;
+	// 		}
+	// 	}
+	// }
 
 	// TODO: Optimize maybe
 	void Node::removeData(Point givenPoint)
@@ -359,7 +346,6 @@ namespace nirtree
 		return nullptr;
 	}
 
-	// TODO: Optimize maybe
 	std::vector<Rectangle> Node::decomposeNode(IsotheticPolygon &boundingPolygon)
 	{
 		// Copy our bounding polygon to start
@@ -368,10 +354,10 @@ namespace nirtree
 		// Decompose our bounding box using code for increasing a polygon's "resolution"
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 		{
-			if (temp.intersectsRectangle(boundingBoxes[i]))
-			{
-				temp.increaseResolution(boundingBoxes[i]);
-			}
+			std::cout << "Current polygon "; temp.print(); std::cout << std::endl;
+			std::cout << "Cutting out "; boundingBoxes[i].print();
+			temp.increaseResolution(boundingBoxes[i]);
+			std::cout << std::endl << "Result "; temp.print(); std::cout << std::endl;
 		}
 
 		return temp.basicRectangles;
@@ -381,6 +367,7 @@ namespace nirtree
 	{
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
 
+		newChild->parent = this;
 		boundingBoxes.push_back(newPolygon);
 		children.push_back(newChild);
 
@@ -388,6 +375,7 @@ namespace nirtree
 		unsigned polygonIndex;
 		IsotheticPolygon ourPolygon;
 
+		std::cout << "Checking edge case" << std::endl;
 		if (parent == nullptr)
 		{
 			for (unsigned i = 0; i < children.size(); ++i)
@@ -406,18 +394,24 @@ namespace nirtree
 		}
 
 		// Decompose polygon
+		std::cout << "Decomposing node" << std::endl;
 		std::vector<Rectangle> decomposed = decomposeNode(ourPolygon);
 
 		const unsigned decomposedSize = decomposed.size();
 		const unsigned totalSize = childrenSize + decomposedSize;
 		const unsigned root = totalSize / 2;
 
+		PencilPrinter p1;
+		p1.printToPencil(decomposed);
+
 		// Build graph
+		std::cout << "Builidng graph" << std::endl;
 		bool graph[totalSize][totalSize];
 		std::memset(graph, false, totalSize * totalSize);
 		for (unsigned i = 0; i < childrenSize; ++i)
 		{
 			// Children X Children
+			std::cout << "Children X Children" << std::endl;
 			for (unsigned j = 0; j < i && j < childrenSize; ++j)
 			{
 				if (boundingBoxes[i].intersectsRectangle(boundingBoxes[j]))
@@ -426,9 +420,11 @@ namespace nirtree
 					graph[j][i] = true;
 				}
 			}
+			std::cout << "Done" << std::endl;
 
 			// Children X Decomposed Polygon
-			for (unsigned j = childrenSize; i < totalSize; ++j)
+			std::cout << "Children X Decomposed" << std::endl;
+			for (unsigned j = childrenSize; j < totalSize; ++j)
 			{
 				if (boundingBoxes[i].intersectsRectangle(decomposed[j - childrenSize]))
 				{
@@ -436,7 +432,9 @@ namespace nirtree
 					graph[j][i] = true;
 				}
 			}
+			std::cout << "Done" << std::endl;
 		}
+		std::cout << "Decomposed polygon X Decomposed polygon" << std::endl;
 		for (unsigned i = 0; i < decomposedSize; ++i)
 		{
 			// Decomposed Polygon X Decomposed Polygon
@@ -444,13 +442,27 @@ namespace nirtree
 			{
 				if (decomposed[i].intersectsRectangle(decomposed[j]))
 				{
-					graph[i][j] = true;
-					graph[j][i] = true;
+					graph[i + childrenSize][j + childrenSize] = true;
+					graph[j + childrenSize][i + childrenSize] = true;
 				}
 			}
 		}
+		std::cout << "Done" << std::endl;
+
+		std::cout << "Graph" << std::endl;
+		for (unsigned i = 0; i < totalSize; ++i)
+		{
+			std::cout << "|";
+			for (unsigned j = 0; j < totalSize; ++j)
+			{
+				std::cout << " " << graph[i][j];
+			}
+			std::cout << "| " << i << std::endl;
+		}
+		std::cout << std::endl;
 
 		// Build tree
+		std::cout << "Building tree" << std::endl;
 		bool tree[totalSize][totalSize];
 		unsigned currentVertex;
 		std::queue<unsigned> explorationQ;
@@ -499,8 +511,24 @@ namespace nirtree
 			explorationQ.pop();
 		}
 
-		// Push weights up the tree
+		std::cout << "Tree:" << std::endl;
 		for (unsigned i = 0; i < totalSize; ++i)
+		{
+			std::cout << "|";
+			for (unsigned j = 0; j < totalSize; ++j)
+			{
+				std::cout << " " << tree[i][j];
+			}
+			std::cout << "| " << i << std::endl;
+		}
+		std::cout << std::endl;
+
+		// Push weights up the tree
+		std::cout << "Pushing weights up the tree" << std::endl;
+		std::cout << "parentStack.size(): " << parentStack.size() << std::endl;
+		std::cout << "WeightStack.size(): " << weightStack.size() << std::endl;
+		std::cout << "totalSize: " << totalSize << std::endl;
+		for (;parentStack.size() && weightStack.size();)
 		{
 			weights[parentStack.top()] += weights[weightStack.top()];
 			weightStack.pop();
@@ -508,6 +536,7 @@ namespace nirtree
 		}
 
 		// Find a seperator
+		std::cout << "Finding a separator" << std::endl;
 		unsigned delta = std::numeric_limits<unsigned>::max();
 		unsigned subtreeRoot, subtreeParent;
 
@@ -543,6 +572,7 @@ namespace nirtree
 		}
 
 		// Split along seperator
+		std::cout << "Splitting along separator" << std::endl;
 		bool switchboard[totalSize];
 		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
 
@@ -567,8 +597,21 @@ namespace nirtree
 			explorationQ.pop();
 		}
 
+		std::cout << "Tree:" << std::endl;
+		for (unsigned i = 0; i < totalSize; ++i)
+		{
+			std::cout << "|";
+			for (unsigned j = 0; j < totalSize; ++j)
+			{
+				std::cout << " " << tree[i][j];
+			}
+			std::cout << "| " << i << std::endl;
+		}
+		std::cout << std::endl;
+
 		// Recompose into two polygons by building polygons representing what we have now and then
 		// reducing in size their representation
+		std::cout << "Recomposing polygons" << std::endl;
 		IsotheticPolygon currentNewPolygon;
 		IsotheticPolygon currentOldPolygon;
 		IsotheticPolygon finalNewPolygon;
@@ -613,6 +656,9 @@ namespace nirtree
 		finalOldPolygon.increaseResolution(finalNewPolygon);
 
 		// Split children in two
+		std::cout << "Splitting children" << std::endl;
+		std::vector<IsotheticPolygon> oldBoundingBoxes;
+		std::vector<IsotheticPolygon> newBoundingBoxes;
 		std::vector<Node *> oldChildren;
 		std::vector<Node *> newChildren;
 
@@ -620,28 +666,36 @@ namespace nirtree
 		{
 			if (switchboard[i])
 			{
+				newBoundingBoxes.emplace_back(boundingBoxes[i]);
 				newChildren.emplace_back(children[i]);
 			}
 			else
 			{
+				oldBoundingBoxes.emplace_back(boundingBoxes[i]);
 				oldChildren.emplace_back(children[i]);
 			}
 		}
 
 		// Update new node's children
+		newSibling->boundingBoxes.clear();
+		newSibling->boundingBoxes.swap(newBoundingBoxes);
 		newSibling->children.clear();
 		newSibling->children.swap(newChildren);
 		// Update our children
+		boundingBoxes.clear();
+		boundingBoxes.swap(oldBoundingBoxes);
 		children.clear();
 		children.swap(oldChildren);
 
 		// Update our bounding box if we are not the root
+		std::cout << "Updating bounding boxes" << std::endl;
 		if (parent != nullptr)
 		{
 			parent->boundingBoxes[polygonIndex].basicRectangles.clear();
 			parent->boundingBoxes[polygonIndex] = finalOldPolygon;
 		}
 
+		std::cout << "Return" << std::endl;
 		return {newSibling, finalNewPolygon, finalOldPolygon};
 	}
 
@@ -1352,59 +1406,29 @@ namespace nirtree
 		// std::cout << "It took " << std::chrono::duration_cast<std::chrono::microseconds>(timerEnd - timerStart).count() << "us to split." << std::endl;
 	}
 
-	// void testBoundingBox()
-	// {
-	// 	// Test set one
-	// 	Node testNode = Node();
-	// 	testNode.boundingBoxes.push_back(Rectangle(8.0, 1.0, 12.0, 5.0));
-	// 	testNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
-	// 	testNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
+	void testRemoveData()
+	{
+		// Setup a node with some data
+		Node n = Node();
 
-	// 	assert(testNode.boundingBox() == Rectangle(8.0, -6.0, 16.0, 5.0));
+		n.boundingBoxes.push_back(IsotheticPolygon(Rectangle(8.0, -6.0, 10.0, -4.0)));
+		n.data.push_back(Point(9.0, -5.0));
 
-	// 	// Test set two
-	// 	Node testNode2 = Node();
-	// 	testNode2.boundingBoxes.push_back(Rectangle(8.0, 12.0, 10.0, 14.0));
-	// 	testNode2.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
-	// 	testNode2.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
+		n.boundingBoxes.push_back(IsotheticPolygon(Rectangle(12.0, -4.0, 16.0, -2.0)));
+		n.data.push_back(Point(14.0, -3.0));
 
-	// 	assert(testNode2.boundingBox() == Rectangle(8.0, 12.0, 14.0, 14.0));
-	// }
+		n.boundingBoxes.push_back(IsotheticPolygon(Rectangle(10.0, 12.0, 12.0, 14.0)));
+		n.data.push_back(Point(11.0, 13.0));
 
-	// void testUpdateBoundingBox()
-	// {
-	// 	Node parentNode = Node();
+		n.boundingBoxes.push_back(IsotheticPolygon(Rectangle(12.0, 12.0, 14.0, 14.0)));
+		n.data.push_back(Point(13.0, 13.0));
 
-	// 	Node *child0 = new Node();
-	// 	child0->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
-	// 	parentNode.children.push_back(child0);
+		// Remove some of the data
+		n.removeData(Point(13.0, 13.0));
 
-	// 	Node *child1 = new Node();
-	// 	child1->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
-	// 	parentNode.children.push_back(child1);
-
-	// 	Node *child2 = new Node();
-	// 	child2->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
-	// 	parentNode.children.push_back(child2);
-
-	// 	Node *child3 = new Node();
-	// 	child3->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
-	// 	parentNode.children.push_back(child3);
-
-	// 	// Test the bounding box update
-	// 	parentNode.updateBoundingBox(child3, Rectangle(3.0, 3.0, 5.0, 5.0));
-	// 	assert(parentNode.boundingBoxes[3] == Rectangle(3.0, 3.0, 5.0, 5.0));
-
-	// 	// Cleanup
-	// 	delete child0;
-	// 	delete child1;
-	// 	delete child2;
-	// 	delete child3;
-	// }
+		// Test the removal
+		assert(n.data.size() == 3);
+	}
 
 	// void testRemoveChild()
 	// {
@@ -1443,88 +1467,64 @@ namespace nirtree
 	// 	delete child3;
 	// }
 
-	// void testRemoveData()
-	// {
-	// 	// Setup a node with some data
-	// 	Node parentNode = Node();
+	void testChooseLeaf()
+	{
+		// Create nodes
+		Node *root = new Node();
+		Node *left = new Node();
+		Node *right = new Node();
+		Node *leftChild0 = new Node();
+		Node *leftChild1 = new Node();
+		Node *leftChild2 = new Node();
+		Node *rightChild0 = new Node();
+		Node *rightChild1 = new Node();
+		Node *rightChild2 = new Node();
 
-	// 	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
-	// 	parentNode.data.push_back(Point(9.0, -5.0));
+		// Setup nodes
+		leftChild0->parent = left;
+		left->boundingBoxes.push_back(Rectangle(8.0, 12.0, 10.0, 14.0));
+		left->children.push_back(leftChild0);
 
-	// 	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
-	// 	parentNode.data.push_back(Point(14.0, -3.0));
+		leftChild1->parent = left;
+		left->boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
+		left->children.push_back(leftChild1);
 
-	// 	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
-	// 	parentNode.data.push_back(Point(11.0, 13.0));
+		leftChild2->parent = left;
+		left->boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
+		left->children.push_back(leftChild2);
 
-	// 	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
-	// 	parentNode.data.push_back(Point(13.0, 13.0));
+		rightChild0->parent = right;
+		right->boundingBoxes.push_back(Rectangle(8.0, 1.0, 12.0, 5.0));
+		right->children.push_back(rightChild0);
 
-	// 	// Remove some of the data
-	// 	parentNode.removeData(Point(13.0, 13.0));
+		rightChild1->parent = right;
+		right->boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
+		right->children.push_back(rightChild1);
 
-	// 	// Test the removal
-	// 	assert(parentNode.data.size() == 3);
-	// }
+		rightChild2->parent = right;
+		right->boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
+		right->children.push_back(rightChild2);
 
-	// void testChooseLeaf()
-	// {
-	// 	// Create nodes
-	// 	Node *root = new Node();
-	// 	Node *left = new Node();
-	// 	Node *right = new Node();
-	// 	Node *leftChild0 = new Node();
-	// 	Node *leftChild1 = new Node();
-	// 	Node *leftChild2 = new Node();
-	// 	Node *rightChild0 = new Node();
-	// 	Node *rightChild1 = new Node();
-	// 	Node *rightChild2 = new Node();
+		left->parent = root;
+		root->boundingBoxes.push_back(Rectangle(8.0, 12.0, 14.0, 14.0));
+		root->children.push_back(left);
 
-	// 	// Setup nodes
-	// 	leftChild0->parent = left;
-	// 	left->boundingBoxes.push_back(Rectangle(8.0, 12.0, 10.0, 14.0));
-	// 	left->children.push_back(leftChild0);
+		right->parent = root;
+		root->boundingBoxes.push_back(Rectangle(8.0, -6.0, 16.0, 5.0));
+		root->children.push_back(right);
 
-	// 	leftChild1->parent = left;
-	// 	left->boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
-	// 	left->children.push_back(leftChild1);
+		// Test that we get the correct child for the given point
+		assert(rightChild1 == root->chooseLeaf(Point(13.0, -3.0)));
+		assert(leftChild0 == root->chooseLeaf(Point(8.5, 12.5)));
+		assert(leftChild2 == root->chooseLeaf(Point(13.5, 13.5)));
+		assert(rightChild0 == root->chooseLeaf(Point(7.0, 3.0)));
+		assert(leftChild1 == root->chooseLeaf(Point(11.0, 15.0)));
+		assert(leftChild0 == root->chooseLeaf(Point(4.0, 8.0)));
 
-	// 	leftChild2->parent = left;
-	// 	left->boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
-	// 	left->children.push_back(leftChild2);
-
-	// 	rightChild0->parent = right;
-	// 	right->boundingBoxes.push_back(Rectangle(8.0, 1.0, 12.0, 5.0));
-	// 	right->children.push_back(rightChild0);
-
-	// 	rightChild1->parent = right;
-	// 	right->boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
-	// 	right->children.push_back(rightChild1);
-
-	// 	rightChild2->parent = right;
-	// 	right->boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
-	// 	right->children.push_back(rightChild2);
-
-	// 	left->parent = root;
-	// 	root->boundingBoxes.push_back(Rectangle(8.0, 12.0, 14.0, 14.0));
-	// 	root->children.push_back(left);
-
-	// 	right->parent = root;
-	// 	root->boundingBoxes.push_back(Rectangle(8.0, -6.0, 16.0, 5.0));
-	// 	root->children.push_back(right);
-
-	// 	// Test that we get the correct child for the given point
-	// 	assert(rightChild1 == root->chooseLeaf(Point(13.0, -3.0)));
-	// 	assert(leftChild0 == root->chooseLeaf(Point(8.5, 12.5)));
-	// 	assert(leftChild2 == root->chooseLeaf(Point(13.5, 13.5)));
-	// 	assert(rightChild0 == root->chooseLeaf(Point(7.0, 3.0)));
-	// 	assert(leftChild1 == root->chooseLeaf(Point(11.0, 15.0)));
-	// 	assert(leftChild0 == root->chooseLeaf(Point(4.0, 8.0)));
-
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-	// }
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+	}
 
 	// void testFindLeaf()
 	// {
@@ -1617,125 +1617,358 @@ namespace nirtree
 	// 	delete root;
 	// }
 
-	// void testSplitNode()
-	// {
-	// 	// Test set one
-	// 	// Cluster 6, n = 7
-	// 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	// 	Node *cluster6 = new Node();
-	// 	cluster6->data.push_back(Point(-2.0, -6.0));
-	// 	cluster6->data.push_back(Point(2.0, -6.0));
-	// 	cluster6->data.push_back(Point(-1.0, -7.0));
-	// 	cluster6->data.push_back(Point(1.0, -7.0));
-	// 	cluster6->data.push_back(Point(3.0, -8.0));
-	// 	cluster6->data.push_back(Point(-2.0, -9.0));
+	void testSplitNodeLeaf()
+	{
+		// // Test set one
+		// Node *cluster0 = new Node();
 
-	// 	// Split the node in two
-	// 	Node *cluster6p = cluster6->splitNode(Point(-3.0, -11.0));
+		// cluster6->data.push_back(Point(-2.0, -6.0));
+		// cluster6->data.push_back(Point(2.0, -6.0));
+		// cluster6->data.push_back(Point(-1.0, -7.0));
+		// cluster6->data.push_back(Point(1.0, -7.0));
+		// cluster6->data.push_back(Point(3.0, -8.0));
+		// cluster6->data.push_back(Point(-2.0, -9.0));
 
-	// 	// Test the split
-	// 	assert(cluster6->data.size() == 2);
-	// 	assert(cluster6->data[0] == Point(-2.0, -6.0));
-	// 	assert(cluster6->data[1] == Point(2.0, -6.0));
-	// 	assert(cluster6p->data.size() == 5);
-	// 	assert(cluster6p->data[0] == Point(-1.0, -7.0));
-	// 	assert(cluster6p->data[1] == Point(1.0, -7.0));
-	// 	assert(cluster6p->data[2] == Point(3.0, -8.0));
-	// 	assert(cluster6p->data[3] == Point(-2.0, -9.0));
-	// 	assert(cluster6p->data[4] == Point(-3.0, -11.0));
+		// // Split the node in two
+		// Node *cluster6p = cluster6->splitNode(Point(-3.0, -11.0));
 
-	// 	// Cleanup
-	// 	delete cluster6;
-	// 	delete cluster6p;
+		// // Test the split
+		// assert(cluster6->data.size() == 2);
+		// assert(cluster6->data[0] == Point(-2.0, -6.0));
+		// assert(cluster6->data[1] == Point(2.0, -6.0));
+		// assert(cluster6p->data.size() == 5);
+		// assert(cluster6p->data[0] == Point(-1.0, -7.0));
+		// assert(cluster6p->data[1] == Point(1.0, -7.0));
+		// assert(cluster6p->data[2] == Point(3.0, -8.0));
+		// assert(cluster6p->data[3] == Point(-2.0, -9.0));
+		// assert(cluster6p->data[4] == Point(-3.0, -11.0));
 
-	// 	// Test set two
-	// 	// Cluster 2, n = 8
-	// 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
-	// 	Node *cluster2 = new Node();
-	// 	cluster2->data.push_back(Point(-14.0, 8.0));
-	// 	cluster2->data.push_back(Point(-10.0, 8.0));
-	// 	cluster2->data.push_back(Point(-9.0, 10.0));
-	// 	cluster2->data.push_back(Point(-9.0, 9.0));
-	// 	cluster2->data.push_back(Point(-8.0, 10.0));
-	// 	cluster2->data.push_back(Point(-9.0, 7.0));
-	// 	cluster2->data.push_back(Point(-8.0, 8.0));
+		// // Cleanup
+		// delete cluster6;
+		// delete cluster6p;
 
-	// 	// Split the node in two
-	// 	Node *cluster2p = cluster2->splitNode(Point(-8.0, 9.0));
+		// // Test set two
+		// // Cluster 2, n = 8
+		// // (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
+		// Node *cluster2 = new Node();
+		// cluster2->data.push_back(Point(-14.0, 8.0));
+		// cluster2->data.push_back(Point(-10.0, 8.0));
+		// cluster2->data.push_back(Point(-9.0, 10.0));
+		// cluster2->data.push_back(Point(-9.0, 9.0));
+		// cluster2->data.push_back(Point(-8.0, 10.0));
+		// cluster2->data.push_back(Point(-9.0, 7.0));
+		// cluster2->data.push_back(Point(-8.0, 8.0));
 
-	// 	// Test the split
-	// 	assert(cluster2->data.size() == 2);
-	// 	assert(cluster2->data[0] == Point(-14.0, 8.0));
-	// 	assert(cluster2->data[1] == Point(-10.0, 8.0));
-	// 	assert(cluster2p->data.size() == 6);
-	// 	assert(cluster2p->data[0] == Point(-9.0, 10.0));
-	// 	assert(cluster2p->data[1] == Point(-9.0, 9.0));
-	// 	assert(cluster2p->data[2] == Point(-8.0, 10.0));
-	// 	assert(cluster2p->data[3] == Point(-9.0, 7.0));
-	// 	assert(cluster2p->data[4] == Point(-8.0, 8.0));
-	// 	assert(cluster2p->data[5] == Point(-8.0, 9.0));
+		// // Split the node in two
+		// Node *cluster2p = cluster2->splitNode(Point(-8.0, 9.0));
 
-	// 	// Cleanup
-	// 	delete cluster2;
-	// 	delete cluster2p;
+		// // Test the split
+		// assert(cluster2->data.size() == 2);
+		// assert(cluster2->data[0] == Point(-14.0, 8.0));
+		// assert(cluster2->data[1] == Point(-10.0, 8.0));
+		// assert(cluster2p->data.size() == 6);
+		// assert(cluster2p->data[0] == Point(-9.0, 10.0));
+		// assert(cluster2p->data[1] == Point(-9.0, 9.0));
+		// assert(cluster2p->data[2] == Point(-8.0, 10.0));
+		// assert(cluster2p->data[3] == Point(-9.0, 7.0));
+		// assert(cluster2p->data[4] == Point(-8.0, 8.0));
+		// assert(cluster2p->data[5] == Point(-8.0, 9.0));
 
-	// 	// Test set three
-	// 	// Cluster 3, n = 9
-	// 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
-	// 	// {(-5, 4), 1, 1}, {(-2, 4), 1, 1}, {(-1, 3), 1, 1}, {(-1, 1), 1, 1}, {(-3, 0), 1, 1},
-	// 	// {(-6, 2), 1, 1}
-	// 	Node *cluster3 = new Node();
-	// 	Node *dummys[6] = {new Node(), new Node(), new Node(), new Node(), new Node(), new Node()};
-	// 	dummys[0]->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(Rectangle(-6.0, 3.0, -4.0, 5.0));
-	// 	cluster3->children.push_back(dummys[0]);
-	// 	dummys[1]->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(Rectangle(-3.0, 3.0, -1.0, 5.0));
-	// 	cluster3->children.push_back(dummys[1]);
-	// 	dummys[2]->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(Rectangle(-2.0, 2.0, 0.0, 4.0));
-	// 	cluster3->children.push_back(dummys[2]);
-	// 	dummys[3]->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(Rectangle(-2.0, 0.0, 0.0, 2.0));
-	// 	cluster3->children.push_back(dummys[3]);
-	// 	dummys[4]->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(Rectangle(-4.0, -1.0, -2.0, 1.0));
-	// 	cluster3->children.push_back(dummys[4]);
-	// 	dummys[5]->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(Rectangle(-7.0, 1.0, -5.0, 3.0));
-	// 	cluster3->children.push_back(dummys[5]);
+		// // Cleanup
+		// delete cluster2;
+		// delete cluster2p;
 
-	// 	// Extra node causing the split
-	// 	Node *cluster3extra = new Node();
-	// 	cluster3extra->data.push_back(Point(1.0, 1.0));
-	// 	cluster3extra->data.push_back(Point(2.0, 2.0));
+		// // Test set three
+		// // Cluster 3, n = 9
+		// // (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
+		// // {(-5, 4), 1, 1}, {(-2, 4), 1, 1}, {(-1, 3), 1, 1}, {(-1, 1), 1, 1}, {(-3, 0), 1, 1},
+		// // {(-6, 2), 1, 1}
+		// Node *cluster3 = new Node();
+		// Node *dummys[6] = {new Node(), new Node(), new Node(), new Node(), new Node(), new Node()};
+		// dummys[0]->parent = cluster3;
+		// cluster3->boundingBoxes.push_back(Rectangle(-6.0, 3.0, -4.0, 5.0));
+		// cluster3->children.push_back(dummys[0]);
+		// dummys[1]->parent = cluster3;
+		// cluster3->boundingBoxes.push_back(Rectangle(-3.0, 3.0, -1.0, 5.0));
+		// cluster3->children.push_back(dummys[1]);
+		// dummys[2]->parent = cluster3;
+		// cluster3->boundingBoxes.push_back(Rectangle(-2.0, 2.0, 0.0, 4.0));
+		// cluster3->children.push_back(dummys[2]);
+		// dummys[3]->parent = cluster3;
+		// cluster3->boundingBoxes.push_back(Rectangle(-2.0, 0.0, 0.0, 2.0));
+		// cluster3->children.push_back(dummys[3]);
+		// dummys[4]->parent = cluster3;
+		// cluster3->boundingBoxes.push_back(Rectangle(-4.0, -1.0, -2.0, 1.0));
+		// cluster3->children.push_back(dummys[4]);
+		// dummys[5]->parent = cluster3;
+		// cluster3->boundingBoxes.push_back(Rectangle(-7.0, 1.0, -5.0, 3.0));
+		// cluster3->children.push_back(dummys[5]);
 
-	// 	// Test the split
-	// 	Node *cluster3p = cluster3->splitNode(cluster3extra);
+		// // Extra node causing the split
+		// Node *cluster3extra = new Node();
+		// cluster3extra->data.push_back(Point(1.0, 1.0));
+		// cluster3extra->data.push_back(Point(2.0, 2.0));
 
-	// 	assert(cluster3->children.size() == 5);
-	// 	assert(cluster3->boundingBoxes[0] == Rectangle(-4.0, -1.0, -2.0, 1.0));
-	// 	assert(cluster3->boundingBoxes[1] == Rectangle(-3.0, 3.0, -1.0, 5.0));
-	// 	assert(cluster3->boundingBoxes[2] == Rectangle(-2.0, 2.0, 0.0, 4.0));
-	// 	assert(cluster3->boundingBoxes[3] == Rectangle(-2.0, 0.0, 0.0, 2.0));
-	// 	assert(cluster3->boundingBoxes[4] == Rectangle(1.0, 1.0, 2.0, 2.0));
-	// 	assert(cluster3->children[4] == cluster3extra);
+		// // Test the split
+		// Node *cluster3p = cluster3->splitNode(cluster3extra);
 
-	// 	assert(cluster3p->children.size() == 2);
-	// 	assert(cluster3p->boundingBoxes[0] == Rectangle(-6.0, 3.0, -4.0, 5.0));
-	// 	assert(cluster3p->boundingBoxes[1] == Rectangle(-7.0, 1.0, -5.0, 3.0));
+		// assert(cluster3->children.size() == 5);
+		// assert(cluster3->boundingBoxes[0] == Rectangle(-4.0, -1.0, -2.0, 1.0));
+		// assert(cluster3->boundingBoxes[1] == Rectangle(-3.0, 3.0, -1.0, 5.0));
+		// assert(cluster3->boundingBoxes[2] == Rectangle(-2.0, 2.0, 0.0, 4.0));
+		// assert(cluster3->boundingBoxes[3] == Rectangle(-2.0, 0.0, 0.0, 2.0));
+		// assert(cluster3->boundingBoxes[4] == Rectangle(1.0, 1.0, 2.0, 2.0));
+		// assert(cluster3->children[4] == cluster3extra);
 
-	// 	// Cleanup
-	// 	delete cluster3;
-	// 	delete cluster3p;
-	// 	delete cluster3extra;
-	// 	delete dummys[0];
-	// 	delete dummys[1];
-	// 	delete dummys[2];
-	// 	delete dummys[3];
-	// 	delete dummys[4];
-	// 	delete dummys[5];
-	// }
+		// assert(cluster3p->children.size() == 2);
+		// assert(cluster3p->boundingBoxes[0] == Rectangle(-6.0, 3.0, -4.0, 5.0));
+		// assert(cluster3p->boundingBoxes[1] == Rectangle(-7.0, 1.0, -5.0, 3.0));
+
+		// // Cleanup
+		// delete cluster3;
+		// delete cluster3p;
+		// delete cluster3extra;
+		// delete dummys[0];
+		// delete dummys[1];
+		// delete dummys[2];
+		// delete dummys[3];
+		// delete dummys[4];
+		// delete dummys[5];
+	}
+
+	void testSplitNodeRoutingSimple()
+	{
+		// Test set one
+		Node *root = new Node();
+		Node *routing = new Node(3, 3, root);
+		Node *child0 = new Node(3, 3, routing);
+		Node *child1 = new Node(3, 3, routing);
+		Node *child2 = new Node(3, 3, routing);
+
+		// Organize into a tree
+		root->children.push_back(routing);
+		root->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 0.0, 500.0, 500.0)));
+		routing->children.push_back(child0);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 200.0, 100.0, 300.0)));
+		routing->children.push_back(child1);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(400.0, 200.0, 500.0, 300.0)));
+
+		// Split the node in two
+		IsotheticPolygon ip;
+		ip.basicRectangles.push_back(Rectangle(200.0, 400.0, 500.0, 500.0));
+		ip.basicRectangles.push_back(Rectangle(200.0, 100.0, 300.0, 400.0));
+		ip.basicRectangles.push_back(Rectangle(200.0, 0.0, 500.0, 100.0));
+		Node::SplitResult sr = routing->splitNode(child2, ip);
+
+		// Adjust tree
+		root->children.push_back(sr.first);
+		root->boundingBoxes.push_back(sr.second);
+
+		// Test the split
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(routing->boundingBoxes.size() == 2);
+		assert(routing->children.size() == 2);
+		assert(sr.first->boundingBoxes.size() == 1);
+		assert(sr.first->children.size() == 1);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+
+
+		// Test set two
+		root = new Node();
+		routing = new Node(3, 3, root);
+		child0 = new Node(3, 3, routing);
+		child1 = new Node(3, 3, routing);
+		child2 = new Node(3, 3, routing);
+
+		// Organize the tree
+		root->children.push_back(routing);
+		root->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 0.0, 500.0, 500.0)));
+		routing->children.push_back(child0);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 200.0, 100.0, 300.0)));
+		routing->children.push_back(child1);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(400.0, 200.0, 500.0, 300.0)));
+
+		// Split the node in two
+		sr = routing->splitNode(child2, IsotheticPolygon(Rectangle(200.0, 0.0, 300.0, 500.0)));
+
+		// Adjust the tree
+		root->children.push_back(sr.first);
+		root->boundingBoxes.push_back(sr.second);
+
+		// Test the split
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(routing->boundingBoxes.size() == 2);
+		assert(routing->children.size() == 2);
+		assert(sr.first->boundingBoxes.size() == 1);
+		assert(sr.first->children.size() == 1);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+
+
+		// Test set three
+		root = new Node();
+		routing = new Node(3, 3, root);
+		child0 = new Node(3, 3, routing);
+		child1 = new Node(3, 3, routing);
+		child2 = new Node(3, 3, routing);
+
+		// Organize the tree
+		root->children.push_back(routing);
+		root->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 0.0, 500.0, 500.0)));
+		routing->children.push_back(child0);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 200.0, 100.0, 300.0)));
+		routing->children.push_back(child1);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(400.0, 200.0, 500.0, 300.0)));
+
+		// Split the node in two
+		ip.basicRectangles.clear();
+		ip.basicRectangles.push_back(Rectangle(0.0, 400.0, 300.0, 500.0));
+		ip.basicRectangles.push_back(Rectangle(200.0, 100.0, 300.0, 400.0));
+		ip.basicRectangles.push_back(Rectangle(200.0, 0.0, 500.0, 100.0));
+		sr = routing->splitNode(child2, ip);
+
+		// Adjust the tree
+		root->children.push_back(sr.first);
+		root->boundingBoxes.push_back(sr.second);
+
+		// Test the split
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(routing->boundingBoxes.size() == 2);
+		assert(routing->children.size() == 2);
+		assert(sr.first->boundingBoxes.size() == 1);
+		assert(sr.first->children.size() == 1);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+
+
+		// Test set four
+		root = new Node();
+		routing = new Node(3, 3, root);
+		child0 = new Node(3, 3, routing);
+		child1 = new Node(3, 3, routing);
+		child2 = new Node(3, 3, routing);
+
+		// Organize the tree
+		root->children.push_back(routing);
+		root->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 0.0, 500.0, 500.0)));
+		routing->children.push_back(child0);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 200.0, 100.0, 300.0)));
+		routing->children.push_back(child1);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(400.0, 200.0, 500.0, 300.0)));
+
+		// Split the node in two
+		ip.basicRectangles.clear();
+		ip.basicRectangles.push_back(Rectangle(0.0, 400.0, 300.0, 500.0));
+		ip.basicRectangles.push_back(Rectangle(200.0, 0.0, 300.0, 400.0));
+		sr = routing->splitNode(child2, ip);
+
+		// Adjust the tree
+		root->children.push_back(sr.first);
+		root->boundingBoxes.push_back(sr.second);
+
+		// Test the split
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(routing->boundingBoxes.size() == 2);
+		assert(routing->children.size() == 2);
+		assert(sr.first->boundingBoxes.size() == 1);
+		assert(sr.first->children.size() == 1);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+
+
+		// Test set five
+		root = new Node();
+		routing = new Node(3, 3, root);
+		child0 = new Node(3, 3, routing);
+		child1 = new Node(3, 3, routing);
+
+		// Organize the tree
+		root->children.push_back(routing);
+		root->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 0.0, 800.0, 700.0)));
+		IsotheticPolygon ip0;
+		ip0.basicRectangles.push_back(Rectangle(0.0, 500.0, 400.0, 600.0));
+		ip0.basicRectangles.push_back(Rectangle(200.0, 400.0, 500.0, 500.0));
+		ip0.basicRectangles.push_back(Rectangle(200.0, 300.0, 600.0, 400.0));
+		ip0.basicRectangles.push_back(Rectangle(100.0, 200.0, 700.0, 300.0));
+		routing->boundingBoxes.push_back(ip0);
+		routing->children.push_back(child0);
+
+		// Split the node in two
+		IsotheticPolygon ip1;
+		ip1.basicRectangles.push_back(Rectangle(400.0, 600.0, 800.0, 700.0));
+		ip1.basicRectangles.push_back(Rectangle(500.0, 500.0, 800.0, 600.0));
+		ip1.basicRectangles.push_back(Rectangle(600.0, 400.0, 800.0, 500.0));
+		ip1.basicRectangles.push_back(Rectangle(700.0, 300.0, 800.0, 400.0));
+		sr = routing->splitNode(child1, ip1);
+
+		// Adjust the tree
+		root->children.push_back(sr.first);
+		root->boundingBoxes.push_back(sr.second);
+
+		// Test the split
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(routing->boundingBoxes.size() == 1);
+		assert(routing->children.size() == 1);
+		assert(sr.first->boundingBoxes.size() == 1);
+		assert(sr.first->children.size() == 1);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+
+
+		// Test set six
+		root = new Node();
+		routing = new Node(3, 3, root);
+		child0 = new Node(3, 3, routing);
+		child1 = new Node(3, 3, routing);
+		child2 = new Node(3, 3, routing);
+
+		// Organize the tree
+		root->children.push_back(routing);
+		root->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 0.0, 400.0, 700.0)));
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 600.0, 400.0, 700.0)));
+		routing->children.push_back(child0);
+		routing->boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 400.0, 400.0, 500.0)));
+		routing->children.push_back(child1);
+
+		// Split the node in two
+		ip.basicRectangles.clear();
+		ip.basicRectangles.push_back(Rectangle(100.0, 200.0, 400.0, 300.0));
+		ip.basicRectangles.push_back(Rectangle(200.0, 100.0, 400.0, 200.0));
+		ip.basicRectangles.push_back(Rectangle(300.0, 0.0, 400.0, 100.0));
+		sr = routing->splitNode(child2, ip);
+
+		// Adjust the tree
+		root->children.push_back(sr.first);
+		root->boundingBoxes.push_back(sr.second);
+
+		// Test the split
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(routing->boundingBoxes.size() == 1);
+		assert(routing->children.size() == 1);
+		assert(sr.first->boundingBoxes.size() == 2);
+		assert(sr.first->children.size() == 2);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+	}
 
 	// void testAdjustTree()
 	// {

@@ -1,5 +1,6 @@
 #ifndef __NIRNODE__
 #define __NIRNODE__
+
 #include <cassert>
 #include <vector>
 #include <stack>
@@ -13,30 +14,32 @@
 #include <chrono>
 #include <algorithm>
 #include <util/geometry.h>
+#include <nirtree/pencilPrinter.h>
 
 namespace nirtree
 {
 	class Node
 	{
-		struct ReinsertionEntry
-		{
-			IsotheticPolygon boundingBox;
-			Point data;
-			Node *child;
-			unsigned level;
-		};
+		private:
+			struct ReinsertionEntry
+			{
+				IsotheticPolygon boundingBox;
+				Point data;
+				Node *child;
+				unsigned level;
+			};
 
-		struct SplitResult
-		{
-			Node *first;
-			IsotheticPolygon second;
-			IsotheticPolygon third;
-		};
-
-		unsigned minBranchFactor;
-		unsigned maxBranchFactor;
+			unsigned minBranchFactor;
+			unsigned maxBranchFactor;
 
 		public:
+			struct SplitResult
+			{
+				Node *first;
+				IsotheticPolygon second;
+				IsotheticPolygon third;
+			};
+
 			Node *parent;
 			std::vector<IsotheticPolygon> boundingBoxes;
 			std::vector<Node *> children;
@@ -49,8 +52,7 @@ namespace nirtree
 
 			// Helper functions
 			Rectangle boundingBox();
-			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
-			void removeChild(Node *child);
+			// void removeChild(Node *child);
 			void removeData(Point givenPoint);
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
@@ -77,17 +79,16 @@ namespace nirtree
 	};
 
 	void testPlayground();
-	// void testBoundingBox();
-	// void testUpdateBoundingBox();
 	// void testRemoveChild();
-	// void testRemoveData();
-	// void testChooseLeaf();
-	// void testFindLeaf();
-	// void testSplitNode();
-	// void testAdjustTree();
+	void testRemoveData();
+	void testChooseLeaf();
+	void testFindLeaf();
+	void testSplitNodeLeaf();
+	void testSplitNodeRoutingSimple();
+	void testAdjustTree();
 	// void testCondenseTree();
-	// void testSearch();
-	// void testInsert();
+	void testSearch();
+	void testInsert();
 	// void testRemove();
 }
 

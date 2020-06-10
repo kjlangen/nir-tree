@@ -3,6 +3,7 @@
 #include <rtree/rtree.h>
 #include <nirtree/nirtree.h>
 #include <rplustree/rPlusTree.h>
+#include <nirtree/pencilPrinter.h>
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
 #include <bench/randomPoints.h>

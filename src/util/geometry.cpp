@@ -80,8 +80,8 @@ float Rectangle::area()
 // Does not work if rectangles do not intersect
 float Rectangle::computeIntersectionArea(Rectangle givenRectangle)
 {
-	return fabs(fmin(upperRight.x, givenRectangle.upperRight.x) - fmax(lowerLeft.x, givenRectangle.lowerLeft.x) *
-				fmin(upperRight.y, givenRectangle.upperRight.y) - fmax(lowerLeft.y, givenRectangle.lowerLeft.y));
+	return fabs((fmin(upperRight.x, givenRectangle.upperRight.x) - fmax(lowerLeft.x, givenRectangle.lowerLeft.x)) *
+				(fmin(upperRight.y, givenRectangle.upperRight.y) - fmax(lowerLeft.y, givenRectangle.lowerLeft.y)));
 }
 
 float Rectangle::computeExpansionArea(Point givenPoint)
@@ -186,6 +186,13 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 {
 	// Return vector
 	std::vector<Rectangle> v;
+
+	// Quick exit
+	if (!intersectsRectangle(clippingRectangle) || computeIntersectionArea(clippingRectangle) == 0)
+	{
+		v.push_back(*this);
+		return v;
+	}
 
 	// This array represents the rectangles that might have to be created when fragmenting
 	// 0 -> top slab
@@ -580,30 +587,32 @@ void IsotheticPolygon::intersection(IsotheticPolygon &constraintPolygon)
 
 void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 {
-	// Test each of the rectangles that define us, splitting them whenever necessary
-	// TODO: This for loop is based on the size of basicRectangles vector which changes inside the loop
-	for (unsigned i = 0; i < basicRectangles.size(); ++i)
-	{
-		if (clippingRectangle.intersectsRectangle(basicRectangles[i]))
-		{
-			// Break the rectangle
-			std::vector<Rectangle> v = basicRectangles[i].fragmentRectangle(clippingRectangle);
+	// Fragment each of our constiuent rectangles based on the clippingRectangle. This may result in
+	// no splitting of the constiuent rectangles and that's okay.
+	std::vector<Rectangle> extraRectangles;
 
-			// Replace the rectangle with one of its new constituent pieces and append the others
-			basicRectangles[i] = v[0];
-			for (unsigned j = 1; j < v.size(); ++j)
-			{
-				basicRectangles.push_back(v[j]);
-			}
-		}
+	for (unsigned i = basicRectangles.size() - 1; i < basicRectangles.size(); --i)
+	{
+		// Break the rectangle
+		std::vector<Rectangle> v = basicRectangles[i].fragmentRectangle(clippingRectangle);
+
+		// Add the fragments to extras
+		extraRectangles.insert(extraRectangles.end(), v.begin(), v.end());
 	}
+
+	basicRectangles.clear();
+
+	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
+	basicRectangles.swap(extraRectangles);
 }
 
 void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
 {
 	for (unsigned i = 0; i < clippingPolygon.basicRectangles.size(); ++i)
 	{
+		std::cout << "    Removing "; clippingPolygon.basicRectangles[i].print();
 		increaseResolution(clippingPolygon.basicRectangles[i]);
+		std::cout << "    Result "; print();
 	}
 }
 
