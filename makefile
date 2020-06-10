@@ -1,7 +1,7 @@
 SXX = -std=c++11 	# Standard
 FLAGS = -Wall	# Flags
 DIR = src/include 	# Include directory
-OBJECTS = geometry.o btree.o node.o rtree.o nirnode.o nirtree.o randomSquares.o randomPoints.o splitPoints.o
+OBJECTS = geometry.o btree.o node.o rtree.o nirnode.o nirtree.o randomSquares.o randomPoints.o splitPoints.o pencilPrinter.o
 
 # Build btree
 btree.o:
@@ -18,6 +18,10 @@ node.o:
 # Build rtree
 rtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/rtree.cpp
+
+# Build pencil printer
+pencilPrinter.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/pencilPrinter.cpp
 
 # Build nir tree node
 nirnode.o:

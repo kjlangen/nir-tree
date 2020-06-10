@@ -3,6 +3,7 @@
 #include <spatialindex/SpatialIndex.h>
 #include <rtree/rtree.h>
 #include <nirtree/nirtree.h>
+#include <nirtree/pencilPrinter.h>
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
 #include <bench/randomPoints.h>
@@ -148,12 +149,22 @@ void testNIRTree()
 {
 	// Unit test NIR-Tree
 	// nirtree::testPlayground();
+	nirtree::testSplitNodeRoutingSimple();
+
+	std::cout << "NIRTree tested." << std::endl;
+}
+
+void testPencilPrinter()
+{
+	// Unit test PencilPrinter
 	nirtree::testPencilIdGeneration();
 	nirtree::testSimplePrintToPencil();
+	nirtree::testRectanglesPrintToPencil();
+	nirtree::testPolygonsPrintToPencil();
 	nirtree::testMultiLevelPrintToPencil();
 	nirtree::testComplexGeometryPrintToPencil();
 
-	std::cout << "NIRTree tested." << std::endl;
+	std::cout << "PencilPrinter tested." << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -215,6 +226,7 @@ int main(int argc, char *argv[])
 		// testGeometry();
 		// testRTree();
 		testNIRTree();
+		// testPencilPrinter();
 	}
 
 	if (runBenchMark)

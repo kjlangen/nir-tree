@@ -1,5 +1,6 @@
 #ifndef __GEOMETRY__
 #define __GEOMETRY__
+
 #include <iostream>
 #include <algorithm>
 #include <cassert>
