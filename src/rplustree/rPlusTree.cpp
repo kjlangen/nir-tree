@@ -124,7 +124,25 @@ Partition RPlusTree::splitNodeAlongLine(RPlusTreeNode *n, float splitLine, RPlus
 	// duplicate data values
 	if (n->isDataNode) {
 		auto* dataClone = new RPlusTreeNode(true);
-		dataClone->boundingBox = n->boundingBox;
+		if (splitAxis == ALONG_X_AXIS) {
+			n->boundingBox = Rectangle(
+				n->boundingBox.lowerLeft.x, n->boundingBox.lowerLeft.y,
+				splitLine, n->boundingBox.upperRight.y
+			);
+			dataClone->boundingBox = Rectangle(
+				splitLine, n->boundingBox.lowerLeft.y,
+				n->boundingBox.upperRight.x, n->boundingBox.upperRight.y
+			);
+		} else {
+			n->boundingBox = Rectangle(
+				n->boundingBox.lowerLeft.x, n->boundingBox.lowerLeft.y,
+				n->boundingBox.upperRight.x, splitLine
+			);
+			dataClone->boundingBox = Rectangle(
+				n->boundingBox.lowerLeft.x, splitLine,
+				n->boundingBox.upperRight.x, n->boundingBox.upperRight.y
+			);
+		}
 		return {n, dataClone};
 	}
 
