@@ -288,8 +288,32 @@ bool RPlusTree::exists(Point requestedPoint) {
 
 std::vector<Point> RPlusTree::search(Rectangle requestedRectangle)
 {
-	// TODO
-	return std::vector<Point>();
+	std::vector<Point> result;
+	std::stack<RPlusTreeNode*> stack;
+	stack.push(root);
+	RPlusTreeNode * currentNode;
+
+	// do DFS to find all points contained in `requestedRectangle`
+	while (!stack.empty()) {
+		currentNode = stack.top();
+		stack.pop();
+
+		if (currentNode->isLeaf()) {
+			for (auto & data: currentNode->data) {
+				if (requestedRectangle.containsPoint(data)) {
+					result.push_back(data);
+				}
+			}
+		} else {
+			for (auto & child : currentNode->children) {
+				if (child->boundingBox.intersectsRectangle(requestedRectangle)) {
+					stack.push(child);
+				}
+			}
+		}
+	}
+
+	return result;
 }
 
 void RPlusTree::insert(Point givenPoint)

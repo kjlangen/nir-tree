@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <vector>
+#include <stack>
 #include <utility>
 #include <util/geometry.h>
 #include <rplustree/rPlusTreeNode.h>
