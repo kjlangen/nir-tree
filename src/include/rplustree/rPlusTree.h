@@ -17,7 +17,7 @@ class RPlusTree
 
 	enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
 
-	RPlusTreeNode *root = new RPlusTreeNode(false);
+	RPlusTreeNode *root = new RPlusTreeNode();
 
 	void removeSubtree(RPlusTreeNode* r);
 
@@ -25,7 +25,9 @@ class RPlusTree
 
 	void adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn);
 
-	void chooseLeaves(RPlusTreeNode* node, Rectangle& givenRectangle, std::vector<RPlusTreeNode*>& leaves);
+	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint);
+
+	Cost sweepData(std::vector<Point>& points, Orientation orientation);
 
 	Cost sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation);
 
@@ -40,11 +42,11 @@ public:
 
 	~RPlusTree();
 
-	bool exists(Rectangle requestedRectangle);
+	bool exists(Point requestedPoint);
 
 	std::vector<Point> search(Rectangle requestedRectangle);
 
-	void insert(Rectangle givenRectangle);
+	void insert(Point givenPoint);
 
 	void remove(Point givenPoint);
 
