@@ -12,32 +12,32 @@ Point::Point(float x, float y)
 	this->y = y;
 }
 
-bool Point::operator<(Point p)
+bool Point::operator<(Point p) const
 {
 	return x < p.x && y < p.y;
 }
 
-bool Point::operator>(Point p)
+bool Point::operator>(Point p) const
 {
 	return x > p.x && y > p.y;
 }
 
-bool Point::operator<=(Point p)
+bool Point::operator<=(Point p) const
 {
 	return x <= p.x && y <= p.y;
 }
 
-bool Point::operator>=(Point p)
+bool Point::operator>=(Point p) const
 {
 	return x >= p.x && y >= p.y;
 }
 
-bool Point::operator==(Point p)
+bool Point::operator==(Point p) const
 {
 	return x == p.x && y == p.y;
 }
 
-bool Point::operator!=(Point p)
+bool Point::operator!=(Point p) const
 {
 	return x != p.x || y != p.y;
 }
@@ -173,12 +173,12 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 	return v;
 }
 
-bool Rectangle::operator==(Rectangle r)
+bool Rectangle::operator==(Rectangle r) const
 {
 	return lowerLeft == r.lowerLeft && upperRight == r.upperRight;
 }
 
-bool Rectangle::operator!=(Rectangle r)
+bool Rectangle::operator!=(Rectangle r) const
 {
 	return lowerLeft != r.lowerLeft || upperRight != r.upperRight;
 }
@@ -346,13 +346,13 @@ void DynamicRectangle::increaseResolution(Rectangle clippingRectangle)
 	}
 }
 
-bool DynamicRectangle::operator==(DynamicRectangle r)
+bool DynamicRectangle::operator==(const DynamicRectangle& r)
 {
 	// ???
 	return false;
 }
 
-bool DynamicRectangle::operator!=(DynamicRectangle r)
+bool DynamicRectangle::operator!=(const DynamicRectangle& r)
 {
 	// ???
 	return false;
