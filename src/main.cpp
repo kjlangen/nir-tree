@@ -109,20 +109,6 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
-void testGeometry()
-{
-	// Unit test geometry functions
-	testPointEquality();
-	testRectangleArea();
-	testRectangleComputeExpansionArea();
-	testRectangleExpansion();
-	testRectangleIntersection();
-	testRectanglePointContainment();
-	testRectangleFragmentation();
-
-	std::cout << "Geometry tested." << std::endl;
-}
-
 void testRTree()
 {
 	// Unit test RTree
@@ -198,7 +184,6 @@ int main(int argc, char *argv[])
 	// First unit tests are run and then benchmarks are run
 	if (runUnitTests)
 	{
-		testGeometry();
 		testRTree();
 	}
 
