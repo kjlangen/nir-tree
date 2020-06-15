@@ -20,13 +20,23 @@ class RPlusTree
 
 	RPlusTreeNode *root = new RPlusTreeNode();
 
+	/* remove helper functions */
+
+	void reinsert(RPlusTreeNode* n, int level);
+
+	void condenseTree(RPlusTreeNode* n);
+
 	void removeSubtree(RPlusTreeNode* r);
+
+	/* general helper functions */
 
 	void tighten(RPlusTreeNode* n);
 
 	void adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn);
 
 	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint);
+
+	/* insert helper functions */
 
 	Cost sweepData(std::vector<Point>& points, Orientation orientation);
 
@@ -37,6 +47,8 @@ class RPlusTree
 	Partition splitNode(RPlusTreeNode* n);
 
 public:
+	int height() const;
+
 	RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
 
 	RPlusTree(RPlusTreeNode *root);
