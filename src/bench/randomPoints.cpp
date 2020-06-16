@@ -1,6 +1,6 @@
 #include <bench/randomPoints.h>
 
-void randomPoints()
+void randomPoints(Index& spatialIndex, unsigned benchmarkSize)
 {
 	// Setup random generators
 	std::default_random_engine generator;
@@ -19,12 +19,6 @@ void randomPoints()
 	double totalSearches = 0.0;
 	double totalRangeSearches = 0.0;
 	double totalDeletes = 0.0;
-
-	// Setup the RTree
-	RTree *rtree = new RTree(750, 1500);
-
-	// Set benchmark size
-	unsigned benchmarkSize = 2000000;
 
 	// Initialize points
 	Point *points = new Point[benchmarkSize];
@@ -63,7 +57,7 @@ void randomPoints()
 		// Insert
 		std::cout << "Point[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		rtree->insert(points[i]);
+		spatialIndex.insert(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
@@ -73,7 +67,7 @@ void randomPoints()
 	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
 
 	// Validate checksum
-	assert(rtree->checksum() == directSum);
+	assert(spatialIndex.checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for points and time their retrieval
@@ -83,7 +77,7 @@ void randomPoints()
 		// Search
 		std::cout << "Point[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		rtree->search(points[i]);
+		spatialIndex.search(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
@@ -93,7 +87,7 @@ void randomPoints()
 	std::cout << "Finished search for " << benchmarkSize << " points." << std::endl;
 
 	// Validate checksum
-	assert(rtree->checksum() == directSum);
+	assert(spatialIndex.checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for rectangles
@@ -103,7 +97,7 @@ void randomPoints()
 		// Search
 		std::cout << "searchRectangles[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		std::vector<Point> v = rtree->search(searchRectangles[i]);
+		std::vector<Point> v = spatialIndex.search(searchRectangles[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
@@ -120,7 +114,7 @@ void randomPoints()
 	std::cout << "Finished searching for 16 rectangles." << std::endl;
 
 	// Validate checksum
-	assert(rtree->checksum() == directSum);
+	assert(spatialIndex.checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Delete points and time their deletion
@@ -130,7 +124,7 @@ void randomPoints()
 		// Delete
 		std::cout << "Point[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		rtree->remove(points[i]);
+		spatialIndex.remove(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeDeletes += delta.count();
@@ -140,7 +134,7 @@ void randomPoints()
 	std::cout << "Finished deletion of " << benchmarkSize << " points." << std::endl;
 
 	// Validate checksum
-	assert(rtree->checksum() == 0);
+	assert(spatialIndex.checksum() == 0);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Statistics

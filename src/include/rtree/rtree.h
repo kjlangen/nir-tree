@@ -6,10 +6,11 @@
 #include <iostream>
 #include <utility>
 #include <util/geometry.h>
+#include <index/index.h>
 #include <rtree/node.h>
 
 // For now we will work with an RTree that only stores points
-class RTree
+class RTree: public Index
 {
 	public:
 		Node *root;
@@ -21,13 +22,13 @@ class RTree
 
 		// Datastructure interface
 		std::vector<Point> exhaustiveSearch(Point requestedPoint);
-		std::vector<Point> search(Point requestedPoint);
-		std::vector<Point> search(Rectangle requestedRectangle);
-		void insert(Point givenPoint);
-		void remove(Point givenPoint);
+		std::vector<Point> search(Point requestedPoint) override;
+		std::vector<Point> search(Rectangle requestedRectangle) override;
+		void insert(Point givenPoint) override;
+		void remove(Point givenPoint) override;
 
 		// Miscellaneous
-		unsigned checksum();
+		unsigned checksum() override;
 		void print();
 };
 

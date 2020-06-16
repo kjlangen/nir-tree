@@ -6,13 +6,13 @@
 #include <stack>
 #include <utility>
 #include <util/geometry.h>
-#include <spatialindex/spatialIndex.h>
+#include <index/index.h>
 #include <rplustree/rPlusTreeNode.h>
 
 typedef std::pair<RPlusTreeNode*, RPlusTreeNode*> Partition;
 typedef std::pair<float, float> Cost;
 
-class RPlusTree: public SpatialIndex
+class RPlusTree: public Index
 {
 	unsigned minBranchFactor;
 	unsigned maxBranchFactor;
