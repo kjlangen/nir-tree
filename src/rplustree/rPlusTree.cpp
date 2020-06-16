@@ -134,20 +134,16 @@ Cost RPlusTree::sweepData(std::vector<Point>& points, Orientation orientation)
 	});
 
 	// Determine split line
-	float splitLine, cost;
+	float splitLine, cost = 0.0f;
 	if (orientation == ALONG_X_AXIS) {
 		splitLine = points.at(points.size() / 2).x;
 		if (points.at(0).x == splitLine || splitLine == points.at(points.size()-1).x) {
 			cost = points.size();
-		} else {
-			cost = 0.0f;
 		}
 	} else {
 		splitLine = points.at(points.size() / 2).y;
 		if (points.at(0).y == splitLine || splitLine == points.at(points.size()-1).y) {
 			cost = points.size();
-		} else {
-			cost = 0.0f;
 		}
 	}
 
@@ -219,7 +215,7 @@ Partition RPlusTree::splitNodeAlongLine(RPlusTreeNode *n, float splitLine, RPlus
 		for (auto & child : childrenClone) {
 			float leftBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
 			float rightBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
-			if (leftBound <= splitLine) {
+			if (leftBound < splitLine) {
 				partition.first->children.push_back(child);
 			} else if (rightBound >= splitLine) {
 				partition.second->children.push_back(child);
@@ -256,7 +252,7 @@ Partition RPlusTree::splitNode(RPlusTreeNode* n)
 		n->data.clear();  // clear old entries
 		for (auto & point : pointsClone) {
 			float value = splitAxis == ALONG_X_AXIS ? point.x : point.y;
-			if (value <= splitLine) {
+			if (value < splitLine) {
 				partition.first->data.push_back(point);
 			} else {
 				partition.second->data.push_back(point);
