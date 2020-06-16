@@ -6,12 +6,13 @@
 #include <stack>
 #include <utility>
 #include <util/geometry.h>
+#include <spatialindex/spatialIndex.h>
 #include <rplustree/rPlusTreeNode.h>
 
 typedef std::pair<RPlusTreeNode*, RPlusTreeNode*> Partition;
 typedef std::pair<float, float> Cost;
 
-class RPlusTree
+class RPlusTree: public SpatialIndex
 {
 	unsigned minBranchFactor;
 	unsigned maxBranchFactor;
@@ -57,13 +58,13 @@ public:
 
 	bool exists(Point requestedPoint);
 
-	std::vector<Point> search(Rectangle requestedRectangle);
+	std::vector<Point> search(Rectangle requestedRectangle) override;
 
-	void insert(Point givenPoint);
+	void insert(Point givenPoint) override;
 
-	void remove(Point givenPoint);
+	void remove(Point givenPoint) override;
 
-	unsigned checksum();
+	unsigned checksum() override;
 
 	void print();
 };
