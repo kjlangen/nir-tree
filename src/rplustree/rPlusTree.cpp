@@ -410,8 +410,29 @@ void RPlusTree::remove(Point givenPoint)
 
 unsigned RPlusTree::checksum()
 {
-	// TODO
-	return 0;
+	unsigned sum = 0;
+	RPlusTreeNode* currentNode;
+
+	std::stack<RPlusTreeNode*> stack;
+	stack.push(root);
+
+	while (!stack.empty()) {
+		currentNode = stack.top();
+		stack.pop();
+
+		if (currentNode->isLeaf()) {
+			for (auto & data: currentNode->data) {
+				sum += (unsigned)data.x;
+				sum += (unsigned)data.y;
+			}
+		} else {
+			for (auto & child : currentNode->children) {
+				stack.push(child);
+			}
+		}
+	}
+
+	return sum;
 }
 
 void RPlusTree::print()
