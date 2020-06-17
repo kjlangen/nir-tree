@@ -1,9 +1,7 @@
 #include <iostream>
-#include <unistd.h>
 #include <spatialindex/SpatialIndex.h>
-#include <rtree/node.h>
-#include <util/geometry.h>
-#include <bench/randomSquares.h>
+
+#include <rtree/rtree.h>
 #include <bench/randomPoints.h>
 
 void testLibSpatialIndex()
@@ -109,94 +107,17 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
-void testRTree()
-{
-	// Unit test RTree
-	testBoundingBox();
-	testUpdateBoundingBox();
-	testRemoveChild();
-	testRemoveData();
-	testChooseLeaf();
-	testFindLeaf();
-	testSplitNode();
-	testAdjustTree();
-	testCondenseTree();
-	testSearch();
-	testInsert();
-	testRemove();
+#ifdef UNIT_TESTING
 
-	std::cout << "RTree tested." << std::endl;
-}
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
+
+#else
 
 int main(int argc, char *argv[])
 {
-	/* getopt example
-	while ((c = getopt (argc, argv, "abc:")) != -1)
-	{
-		switch (c)
-		{
-			case 'a':
-				aflag = 1;
-				break;
-			case 'b':
-				bflag = 1;
-				break;
-			case 'c':
-				cvalue = optarg;
-				break;
-			case '?':
-				if (optopt == 'c')
-					fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-				else if (isprint (optopt))
-					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-				else
-				fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-				return 1;
-			default:
-				abort();
-		}
-	}
-    */
-
-	// Argument parsing and switching
-	bool runUnitTests = false;
-	bool runBenchMark = false;
-	// string benchmark;
-	// string structure;
-
-	for (int option = getopt(argc, argv, "ub"); option != -1; option = getopt(argc, argv, "ub"))
-	{
-		switch (option)
-		{
-			case 'u':
-				runUnitTests = true;
-				break;
-			case 'b':
-				runBenchMark = true;
-				break;
-			default:
-				std::cout << "Options are:\n\t-u for unit tests\n\t-b for benchmarks" << std::endl;
-				return 0;
-		}
-	}
-
-
-	// First unit tests are run and then benchmarks are run
-	if (runUnitTests)
-	{
-		testRTree();
-	}
-
-	if (runBenchMark)
-	{
-		RTree rTree(750, 1500);
-		randomPoints(rTree, 2000000);
-	}
-
-	if (!runUnitTests && !runBenchMark)
-	{
-		std::cout << "No option selected, exiting." << std::endl;
-	}
-
+	RTree rTree(750, 1500);
+	randomPoints(rTree, 2000000);
 	return 0;
 }
+#endif
