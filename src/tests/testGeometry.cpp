@@ -124,22 +124,22 @@ TEST_CASE("testStrictRectangleIntersection")
 	// Test corner on corner intersection
 	Rectangle r1 = Rectangle(37.6, 36.1, 48.8, 47.9);
 	Rectangle r2 = Rectangle(46.0, 34.8, 72.8, 61.6);
-	REQUIRE(r1.intersectsRectangle(r2));
+	REQUIRE(r1.strictIntersectsRectangle(r2));
 
 	// Test side on side intersection
 	Rectangle r3 = Rectangle(-19.2, -0.3, 10.8, 3.7);
 	Rectangle r4 = Rectangle(-9.2, -2.0, 0.8, 2.0);
-	REQUIRE(r3.intersectsRectangle(r4));
+	REQUIRE(r3.strictIntersectsRectangle(r4));
 
 	// Test corner on corner intersection
 	Rectangle r5 = Rectangle(37.6, 36.1, 48.8, 47.9);
 	Rectangle r6 = Rectangle(48.8, 47.9, 72.8, 61.6);
-	// REQUIRE(!r5.intersectsRectangle(r6));
+	REQUIRE(!r5.strictIntersectsRectangle(r6));
 
 	// Test side on side intersection
 	Rectangle r7 = Rectangle(-19.2, -0.3, 10.8, 3.7);
 	Rectangle r8 = Rectangle(-56.4, -8.0, -19.2, 5.0);
-	// REQUIRE(!r7.intersectsRectangle(r8));
+	REQUIRE(!r7.strictIntersectsRectangle(r8));
 }
 
 TEST_CASE("testRectanglePointContainment")
