@@ -3,7 +3,7 @@
 void RPlusTree::reinsert(RPlusTreeNode *n, int level) {
 	// Find where to re-insert intermediate nodes
 	RPlusTreeNode * baseNode = root;
-	while (level > 0) {
+	while (level - 1 > 0) {
 		RPlusTreeNode * nextNode = baseNode->children.at(0);
 		float smallestExpansionArea = baseNode->children.at(0)->boundingBox.computeExpansionArea(n->boundingBox);
 		for (auto & child : baseNode->children) {
@@ -32,14 +32,20 @@ void RPlusTree::condenseTree(RPlusTreeNode *n) {
 	while (!n->isRoot() && n->numChildren() < minBranchFactor) {
 		auto iter = std::find(n->parent->children.begin(), n->parent->children.end(), n);
 		n->parent->children.erase(iter);
-		if (!n->isLeaf()) {
-			for (auto & child : n->children) {
-				reinsertion.push_back(child);
-				levels.push_back(current_height);
-			}
+		for (auto & child : n->children) {
+			reinsertion.push_back(child);
+			levels.push_back(current_height);
 		}
 		n = n->parent;
 		current_height--;
+	}
+
+	// edge case
+	if (n->isRoot() && n->numChildren() == 1) {
+		RPlusTreeNode* tempNode = root;
+		root = root->children.at(0);
+		root->parent = nullptr;
+		delete tempNode;
 	}
 
 	// Reinsert intermediate nodes
@@ -398,13 +404,18 @@ void RPlusTree::remove(Point givenPoint)
 		return;  // no need to do anything else, return
 	}
 
-	// need to remove node from tree
-	std::vector<Point> dataClone = leaf->data; // copy
-	condenseTree(leaf);
+	if (leaf != root) {
+		// need to remove node from tree
+		auto it = std::find(leaf->parent->children.begin(), leaf->parent->children.end(), leaf);
+		leaf->parent->children.erase(it);
 
-	// reinsert data points
-	for (auto & data : dataClone) {
-		insert(data);
+		std::vector<Point> dataClone = leaf->data; // copy
+		condenseTree(leaf->parent);
+
+		// reinsert data points
+		for (auto & data : dataClone) {
+			insert(data);
+		}
 	}
 }
 
