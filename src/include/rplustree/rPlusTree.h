@@ -16,20 +16,30 @@ class RPlusTree: public Index
 {
 	unsigned minBranchFactor;
 	unsigned maxBranchFactor;
-
 	enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
-
 	RPlusTreeNode *root = new RPlusTreeNode();
 
-	/* remove helper functions */
+public:
 
-	void reinsert(RPlusTreeNode* n, int level);
+	/*** constructor and destructor ***/
 
-	void condenseTree(RPlusTreeNode* n);
+	RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
 
-	void removeSubtree(RPlusTreeNode* r);
+	~RPlusTree();
 
-	/* general helper functions */
+	/*** general functions ***/
+
+	int height() const;
+
+	bool exists(Point requestedPoint);
+
+	std::vector<Point> search(Rectangle requestedRectangle) override;
+
+	unsigned checksum() override;
+
+	void print();
+
+	/*** helper functions ***/
 
 	void tighten(RPlusTreeNode* n);
 
@@ -37,7 +47,9 @@ class RPlusTree: public Index
 
 	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint);
 
-	/* insert helper functions */
+	/*** insert functions ***/
+
+	void insert(Point givenPoint) override;
 
 	Cost sweepData(std::vector<Point>& points, Orientation orientation);
 
@@ -47,26 +59,15 @@ class RPlusTree: public Index
 
 	Partition splitNode(RPlusTreeNode* n);
 
-public:
-	int height() const;
-
-	RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-
-	RPlusTree(RPlusTreeNode *root);
-
-	~RPlusTree();
-
-	bool exists(Point requestedPoint);
-
-	std::vector<Point> search(Rectangle requestedRectangle) override;
-
-	void insert(Point givenPoint) override;
+	/*** remove functions ***/
 
 	void remove(Point givenPoint) override;
 
-	unsigned checksum() override;
+	void reinsert(RPlusTreeNode* n, int level);
 
-	void print();
+	void condenseTree(RPlusTreeNode* n);
+
+	void removeSubtree(RPlusTreeNode* r);
 };
 
 #endif // __RPLUSTREE__
