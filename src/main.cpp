@@ -204,7 +204,8 @@ int main(int argc, char *argv[])
 
 	if (runBenchMark)
 	{
-		randomPoints();
+		RTree rTree(750, 1500);
+		randomPoints(rTree, 2000000);
 	}
 
 	if (!runUnitTests && !runBenchMark)
