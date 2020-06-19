@@ -1,6 +1,6 @@
 #include <bench/randomPoints.h>
 
-void randomPoints(Index& spatialIndex, unsigned benchmarkSize)
+void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequency)
 {
 	// Setup random generators
 	std::default_random_engine generator;
@@ -62,7 +62,9 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize)
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
-		// std::cout << "inserted." << delta.count() << " s" << std::endl;
+		if (i + 1 % logFrequency == 0) {
+			std::cout << "inserted." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
+		}
 	}
 	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
 
@@ -82,7 +84,9 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize)
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
-		// std::cout << "queried. " << delta.count() << " s" << std::endl;
+		if (i + 1 % logFrequency == 0) {
+			std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
+		}
 	}
 	std::cout << "Finished search for " << benchmarkSize << " points." << std::endl;
 
@@ -102,7 +106,9 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize)
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
 		totalRangeSearches += 1;
-		// std::cout << "queried. " << delta.count() << " s" << std::endl;
+		if (i + 1 % logFrequency == 0) {
+			std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
+		}
 
 		// Validate points returned in the search
 		for (unsigned j = 0; j < v.size(); ++j)
@@ -129,7 +135,9 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize)
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeDeletes += delta.count();
 		totalDeletes += 1;
-		// std::cout << "deleted." << delta.count() << " s" << std::endl;
+		if (i + 1 % logFrequency == 0) {
+			std::cout << "deleted." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
+		}
 	}
 	std::cout << "Finished deletion of " << benchmarkSize << " points." << std::endl;
 

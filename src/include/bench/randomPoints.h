@@ -6,6 +6,6 @@
 #include <rtree/rtree.h>
 #include <index/index.h>
 
-void randomPoints(Index& spatialIndex, unsigned benchmarkSize = 2000000);
+void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequency);
 
 #endif
