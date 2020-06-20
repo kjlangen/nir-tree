@@ -107,16 +107,17 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
-#ifndef UNIT_TESTING
-
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
 int main(int argc, char *argv[])
 {
+	Catch::Session session;
+#ifdef UNIT_TESTING
+	return session.run(argc, argv);
+#else
 	RTree rTree(750, 1500);
 	randomPoints(rTree, 10000, 1000);
 	return 0;
-}
-
 #endif
+}
