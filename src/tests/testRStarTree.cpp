@@ -2,7 +2,7 @@
 #include <rtree/rtree.h>
 #include <util/geometry.h>
 
-TEST_CASE("testBoundingBox")
+TEST_CASE("R*Tree: testBoundingBox")
 {
 	// Test set one
 	Node testNode = Node();
@@ -21,7 +21,7 @@ TEST_CASE("testBoundingBox")
 	REQUIRE(testNode2.boundingBox() == Rectangle(8.0, 12.0, 14.0, 14.0));
 }
 
-TEST_CASE("testUpdateBoundingBox")
+TEST_CASE("R*Tree: testUpdateBoundingBox")
 {
 	Node parentNode = Node();
 
@@ -56,7 +56,7 @@ TEST_CASE("testUpdateBoundingBox")
 	delete child3;
 }
 
-TEST_CASE("testRemoveChild")
+TEST_CASE("R*Tree: testRemoveChild")
 {
 	// Setup a node with some children
 	Node parentNode = Node();
@@ -93,7 +93,7 @@ TEST_CASE("testRemoveChild")
 	delete child3;
 }
 
-TEST_CASE("testRemoveData")
+TEST_CASE("R*Tree: testRemoveData")
 {
 	// Setup a node with some data
 	Node parentNode = Node();
@@ -117,7 +117,7 @@ TEST_CASE("testRemoveData")
 	REQUIRE(parentNode.data.size() == 3);
 }
 
-TEST_CASE("testChooseLeaf")
+TEST_CASE("R*Tree: testChooseLeaf")
 {
 	// Create nodes
 	Node *root = new Node();
@@ -176,7 +176,7 @@ TEST_CASE("testChooseLeaf")
 	delete root;
 }
 
-TEST_CASE("testFindLeaf")
+TEST_CASE("R*Tree: testFindLeaf")
 {
 	// Setup the tree
 
@@ -267,7 +267,7 @@ TEST_CASE("testFindLeaf")
 	delete root;
 }
 
-TEST_CASE("testSplitNode")
+TEST_CASE("R*Tree: testSplitNode")
 {
 	// Test set one
 	// Cluster 6, n = 7
@@ -387,7 +387,7 @@ TEST_CASE("testSplitNode")
 	delete dummys[5];
 }
 
-TEST_CASE("testAdjustTree")
+TEST_CASE("R*Tree: testAdjustTree")
 {
 	// Leaf Node and new sibling leaf
 	// Cluster 4, n = 7
@@ -445,7 +445,7 @@ TEST_CASE("testAdjustTree")
 	delete root;
 }
 
-TEST_CASE("testCondenseTree")
+TEST_CASE("R*Tree: testCondenseTree")
 {
 	// Test where the leaf is the root
 	// Cluster 6, n = 7
@@ -597,7 +597,7 @@ TEST_CASE("testCondenseTree")
 	delete root;
 }
 
-TEST_CASE("testSearch")
+TEST_CASE("R*Tree: testSearch")
 {
 	// Build the tree directly
 
@@ -723,7 +723,7 @@ TEST_CASE("testSearch")
 	delete root;
 }
 
-TEST_CASE("testInsert")
+TEST_CASE("R*Tree: testInsert")
 {
 	// Setup the tree
 	Node *root = new Node();
@@ -829,7 +829,7 @@ TEST_CASE("testInsert")
 	delete root;
 }
 
-TEST_CASE("testRemove")
+TEST_CASE("R*Tree: testRemove")
 {
 	// Cluster 5, n = 16
 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),

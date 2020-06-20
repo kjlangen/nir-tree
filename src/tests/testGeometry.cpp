@@ -1,7 +1,7 @@
 #include <catch2/catch.hpp>
 #include <util/geometry.h>
 
-TEST_CASE("testPointEquality")
+TEST_CASE("Geometry: testPointEquality")
 {
 	// Test set one
 	Point p1 = Point(0.0, 0.0);
@@ -29,7 +29,7 @@ TEST_CASE("testPointEquality")
 	REQUIRE(p9 != p10);
 }
 
-TEST_CASE("testRectangleArea")
+TEST_CASE("Geometry: testRectangleArea")
 {
 	// Test set one
 	Rectangle r1 = Rectangle(0.0, 0.0, 0.0, 0.0);
@@ -48,7 +48,7 @@ TEST_CASE("testRectangleArea")
 	REQUIRE(r4.area() == 259.8599853515625);
 }
 
-TEST_CASE("testRectangleComputeExpansionArea")
+TEST_CASE("Geometry: testRectangleComputeExpansionArea")
 {
 	// Test computing expansion area for a point
 	Rectangle r1 = Rectangle(2.0, 8.0, 4.0, 10.0);
@@ -71,7 +71,7 @@ TEST_CASE("testRectangleComputeExpansionArea")
 	REQUIRE(r6.computeExpansionArea(r7) == 0.0);
 }
 
-TEST_CASE("testRectangleExpansion")
+TEST_CASE("Geometry: testRectangleExpansion")
 {
 	// Test computing expansion for a point
 	Rectangle r1 = Rectangle(2.0, 8.0, 4.0, 10.0);
@@ -106,7 +106,7 @@ TEST_CASE("testRectangleExpansion")
 	REQUIRE(r6.upperRight == Point(3.0, 5.0));
 }
 
-TEST_CASE("testRectangleIntersection")
+TEST_CASE("Geometry: testRectangleIntersection")
 {
 	// Test corner on corner intersection
 	Rectangle r1 = Rectangle(37.6, 36.1, 48.8, 47.9);
@@ -119,7 +119,7 @@ TEST_CASE("testRectangleIntersection")
 	REQUIRE(r3.intersectsRectangle(r4));
 }
 
-TEST_CASE("testStrictRectangleIntersection")
+TEST_CASE("Geometry: testStrictRectangleIntersection")
 {
 	// Test corner on corner intersection
 	Rectangle r1 = Rectangle(37.6, 36.1, 48.8, 47.9);
@@ -142,7 +142,7 @@ TEST_CASE("testStrictRectangleIntersection")
 	REQUIRE(!r7.strictIntersectsRectangle(r8));
 }
 
-TEST_CASE("testRectanglePointContainment")
+TEST_CASE("Geometry: testRectanglePointContainment")
 {
 	// Test set one
 	Rectangle r1 = Rectangle(0.0, 0.0, 0.0, 0.0);
@@ -165,7 +165,7 @@ TEST_CASE("testRectanglePointContainment")
 	REQUIRE(r4.containsPoint(p4));
 }
 
-TEST_CASE("testRectangleFragmentation")
+TEST_CASE("Geometry: testRectangleFragmentation")
 {
 	// Test set one
 	Rectangle r1 = Rectangle(1.0, 1.0, 5.0, 5.0);
