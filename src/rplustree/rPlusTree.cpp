@@ -14,6 +14,10 @@ RPlusTree::~RPlusTree()
 
 /*** general functions ***/
 
+RPlusTreeNode * RPlusTree::getRoot() const {
+	return root;
+}
+
 int RPlusTree::height() const {
 	int height = 0;
 	RPlusTreeNode* n = root;

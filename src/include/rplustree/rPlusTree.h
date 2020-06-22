@@ -29,6 +29,8 @@ public:
 
 	/*** general functions ***/
 
+	RPlusTreeNode* getRoot() const;
+
 	int height() const;
 
 	bool exists(Point requestedPoint);
