@@ -34,7 +34,8 @@ namespace nirtree
 			std::string pencilIdGenerator();
 
 			// Template fillers
-			void fillPencilRectangle(ctemplate::TemplateDictionary* currentPage, Rectangle &r, std::string &polygonColour);
+			void fillPencilPoint(ctemplate::TemplateDictionary* currentPage, Point &p);
+			void fillPencilRectangle(ctemplate::TemplateDictionary* currentPage, Rectangle &r, std::string &polygonColour, unsigned rectangleId=0);
 			void fillPencilPage(ctemplate::TemplateDictionary* currentPage, std::string &pageId, unsigned currentLevel);
 			void fillPencilDocument(ctemplate::TemplateDictionary *document, std::string &pageId);
 			void fillPencilDocument();
@@ -44,6 +45,7 @@ namespace nirtree
 			void finalizePencilDocument(ctemplate::TemplateDictionary *document, std::string &printDirectory);
 
 			// Printers
+			void printToPencil(std::vector<Point> &points);
 			void printToPencil(std::vector<Rectangle> &rectangles);
 			void printToPencil(std::vector<IsotheticPolygon> &polygons);
 			void printToPencil(Node *root);
@@ -51,6 +53,7 @@ namespace nirtree
 
 	void testPencilIdGeneration();
 	void testSimplePrintToPencil();
+	void testPointsPrintToPencil();
 	void testRectanglesPrintToPencil();
 	void testPolygonsPrintToPencil();
 	void testMultiLevelPrintToPencil();
