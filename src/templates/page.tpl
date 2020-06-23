@@ -39,5 +39,22 @@
             </foreignObject>
         </g>
         {{/RECTANGLES}}
+        {{#POINTS}}
+        <g xmlns="http://www.w3.org/2000/svg" p:type="Shape" p:def="Evolus.Common:ms-oval" id="{{SHAPEID}}" transform="matrix(1,0,0,1,{{POSITIONX}},{{POSITIONY}})">
+            <p:metadata>
+                <p:property name="box"><![CDATA[1,1]]></p:property>
+                <p:property name="textPadding"><![CDATA[0,0.00625]]></p:property>
+                <p:property name="fillColor"><![CDATA[#000000]]></p:property>
+                <p:property name="strokeColor"><![CDATA[#000000]]></p:property>
+                <p:property name="strokeStyle"><![CDATA[2|]]></p:property>
+                <p:property name="textContent"><![CDATA[]]></p:property>
+                <p:property name="textFont"><![CDATA["Liberation Sans",Arial,sans-serif|normal|normal|13px|none|0]]></p:property>
+                <p:property name="textColor"><![CDATA[#000000FF]]></p:property>
+                <p:property name="textAlign"><![CDATA[1,1]]></p:property>
+            </p:metadata>
+            <ellipse style="stroke-linejoin: round; stroke: rgb(0, 0, 0); stroke-opacity: 1; stroke-width: 2; fill: rgb(0, 0, 0); fill-opacity: 1;" p:name="ellipse" id="{{POINTID}}" transform="translate(0,0)" cx="0.5" cy="0.5" rx="0.5" ry="0.5"/>
+            <foreignObject x="0.00625" y="1" width="0.9875" height="0" p:name="text" id="{{TEXTID}}" style="font-family: &quot;Liberation Sans&quot;, Arial, sans-serif; font-size: 13px; font-weight: normal; font-style: normal; text-decoration: none; fill: rgb(0, 0, 0); fill-opacity: 1; color: rgb(0, 0, 0); text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml"></div></foreignObject>
+        </g>
+        {{/POINTS}}
     </p:Content>
 </p:Page>

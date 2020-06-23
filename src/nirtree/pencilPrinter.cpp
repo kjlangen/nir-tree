@@ -42,7 +42,17 @@ namespace nirtree
 		return id;
 	}
 
-	void PencilPrinter::fillPencilRectangle(ctemplate::TemplateDictionary* currentPage, Rectangle &r, std::string &polygonColour)
+	void PencilPrinter::fillPencilPoint(ctemplate::TemplateDictionary* currentPage, Point &p)
+	{
+		ctemplate::TemplateDictionary *currentPoint = currentPage->AddSectionDictionary("POINTS");
+		currentPoint->SetValue("SHAPEID", pencilIdGenerator());
+		currentPoint->SetFormattedValue("POSITIONX", "%u", (unsigned)p.x);
+		currentPoint->SetFormattedValue("POSITIONY", "%u", (unsigned)p.y);
+		currentPoint->SetValue("POINTID", pencilIdGenerator());
+		currentPoint->SetValue("TEXTID", pencilIdGenerator());
+	}
+
+	void PencilPrinter::fillPencilRectangle(ctemplate::TemplateDictionary* currentPage, Rectangle &r, std::string &polygonColour, unsigned rectangleId)
 	{
 		ctemplate::TemplateDictionary *currentRectangle = currentPage->AddSectionDictionary("RECTANGLES");
 		currentRectangle->SetValue("SHAPEID", pencilIdGenerator());
@@ -51,7 +61,7 @@ namespace nirtree
 		currentRectangle->SetFormattedValue("WIDTH", "%u", (unsigned)(r.upperRight.x - r.lowerLeft.x));
 		currentRectangle->SetFormattedValue("HEIGHT", "%u", (unsigned)(r.upperRight.y - r.lowerLeft.y));
 		currentRectangle->SetValue("FILLCOLOUR", polygonColour);
-		currentRectangle->SetValue("TEXTCONTENT", "");
+		currentRectangle->SetFormattedValue("TEXTCONTENT", "%u", rectangleId);
 		currentRectangle->SetValue("RECTANGLEID", pencilIdGenerator());
 		currentRectangle->SetValue("FILTERID", pencilIdGenerator());
 		currentRectangle->SetValue("TEXTID", pencilIdGenerator());
@@ -101,6 +111,37 @@ namespace nirtree
 		std::cout << "Print Id: " <<  printDirectory << std::endl;
 	}
 
+	void PencilPrinter::printToPencil(std::vector<Point> &points)
+	{
+		// Print directory
+		std::string printDirectory = "prints/" + pencilIdGenerator();
+		mkdir(printDirectory.c_str(), 0777);
+
+		// File templates
+		ctemplate::TemplateDictionary *currentPage = new ctemplate::TemplateDictionary("page");
+		ctemplate::TemplateDictionary document("document");
+
+		// Template data
+		std::string pageId = pencilIdGenerator();
+
+		// Print the tree one level-page at a time
+		for (unsigned i = 0; i < points.size(); ++i)
+		{
+			fillPencilPoint(currentPage, points[i]);
+		}
+
+		fillPencilPage(currentPage, pageId, 0);
+
+		// Make the page a file
+		finalizePencilPage(currentPage, pageId, printDirectory);
+
+		// Record this page in the document
+		fillPencilDocument(&document, pageId);
+
+		// Finish the document
+		finalizePencilDocument(&document, printDirectory);
+	}
+
 	void PencilPrinter::printToPencil(std::vector<Rectangle> &rectangles)
 	{
 		// Print directory
@@ -118,7 +159,7 @@ namespace nirtree
 		for (unsigned i = 0; i < rectangles.size(); ++i)
 		{
 			std::string rectangleColour = pencilColourGenerator();
-			fillPencilRectangle(currentPage, rectangles[i], rectangleColour);
+			fillPencilRectangle(currentPage, rectangles[i], rectangleColour, i);
 		}
 
 		fillPencilPage(currentPage, pageId, 0);
@@ -181,6 +222,7 @@ namespace nirtree
 
 		// Template data
 		std::string pageId;
+		unsigned currentPolygon = 0;
 
 		// BFS variables
 		unsigned currentLevel = 0;
@@ -220,10 +262,19 @@ namespace nirtree
 
 				for (unsigned j = 0; j < currentContext.first->boundingBoxes[i].basicRectangles.size(); ++j)
 				{
-					fillPencilRectangle(currentPage, currentContext.first->boundingBoxes[i].basicRectangles[j], boundingBoxColour);
+					fillPencilRectangle(currentPage, currentContext.first->boundingBoxes[i].basicRectangles[j], boundingBoxColour, currentPolygon);
 				}
+
+				currentPolygon++;
 			}
 
+			// Add all of our data points to the level-page
+			for (unsigned i = 0; i < currentContext.first->data.size(); ++i)
+			{
+				fillPencilPoint(currentPage, currentContext.first->data[i]);
+			}
+
+			// Continue the level-by-level descent of the tree
 			for (unsigned i = 0; i < currentContext.first->children.size(); ++i)
 			{
 				explorationQ.push(std::pair<Node *, unsigned>(currentContext.first->children[i], currentLevel + 1));
@@ -268,6 +319,22 @@ namespace nirtree
 
 		PencilPrinter printer;
 		printer.printToPencil(rootLeaf);
+	}
+
+	void testPointsPrintToPencil()
+	{
+		std::vector<Point> points;
+		points.push_back(Point(5.0, 30.0));
+		points.push_back(Point(20.0, 60.0));
+		points.push_back(Point(22.0, 50.0));
+		points.push_back(Point(37.0, 41.0));
+		points.push_back(Point(39.0, 13.0));
+		points.push_back(Point(45.0, 23.0));
+		points.push_back(Point(20.0, 5.0));
+		points.push_back(Point(70.0, 40.0));
+
+		PencilPrinter printer;
+		printer.printToPencil(points);
 	}
 
 	void testRectanglesPrintToPencil()
