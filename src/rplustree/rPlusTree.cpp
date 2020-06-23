@@ -205,29 +205,35 @@ void RPlusTree::insert(Point givenPoint)
 
 Cost RPlusTree::sweepData(std::vector<Point>& points, Orientation orientation)
 {
-	std::sort(points.begin(), points.end(),
-			  [orientation](const Point & p1, const Point & p2) {
-				  if (orientation == ALONG_X_AXIS) {
-					  return p1.x < p2.x;
-				  }
-				  return p1.y < p2.y;
-			  });
-
-	// Determine split line
-	float splitLine, cost = 0.0f;
-	if (orientation == ALONG_X_AXIS) {
-		splitLine = points.at(points.size() / 2).x;
-		if (points.at(0).x == splitLine || splitLine == points.at(points.size()-1).x) {
-			cost = points.size();
-		}
-	} else {
-		splitLine = points.at(points.size() / 2).y;
-		if (points.at(0).y == splitLine || splitLine == points.at(points.size()-1).y) {
-			cost = points.size();
+	std::vector<float> values;
+	for (auto &p : points) {
+		if (orientation == ALONG_X_AXIS) {
+			values.push_back(p.x);
+		} else {
+			values.push_back(p.y);
 		}
 	}
+	std::sort(values.begin(), values.end());
 
-	return {cost, splitLine};
+	std::vector<float> dedup;
+	for (int i = 0; i < values.size() - 1; i++) {
+		if (values.at(i) != values.at(i + 1)) {
+			dedup.push_back(values.at(i));
+		}
+	}
+	dedup.push_back(values.at(values.size() - 1));
+
+	if (dedup.at(0) == dedup.at(dedup.size() - 1)) {
+		return {values.size(), 0.0f};
+	}
+
+	unsigned mid = dedup.size() / 2;
+	if (dedup.size() % 2 == 0) {
+		float left = dedup.at(mid);
+		float right = dedup.at(mid - 1);
+		return {0.0f, (left + right) / 2.0f };
+	}
+	return {0.0f, dedup.at(mid)};
 }
 
 Cost RPlusTree::sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation)
@@ -249,17 +255,26 @@ Cost RPlusTree::sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orienta
 	std::sort(leftBounds.begin(), leftBounds.end());
 	std::sort(rightBounds.begin(), rightBounds.end());
 
-	// Determine split line
-	float splitLine = rightBounds.at(rightBounds.size() / 2);
+	// De-duplicated left bounds
+	std::vector<float> dedup;
+	for (int i = 0; i < leftBounds.size() - 1; i++) {
+		if (leftBounds.at(i) != leftBounds.at(i + 1)) {
+			dedup.push_back(leftBounds.at(i));
+		}
+	}
+	dedup.push_back(leftBounds.at(leftBounds.size() - 1));
 
 	// Edge case
-	if (rightBounds.at(0) == splitLine && splitLine == rightBounds.at(leftBounds.size()-1)) {
-		splitLine = (splitLine - leftBounds.at(0)) / 2;
+	if (dedup.at(0) == dedup.at(dedup.size() - 1)) {
+		return {leftBounds.size(), 0.0f};
 	}
+
+	// Set split line to be middle element
+	float splitLine = dedup.at(dedup.size() / 2);
 
 	// Compute cost
 	float cost = 0.0f;
-	for (int i=0; i<leftBounds.size(); i++) {
+	for (int i = 0; i < leftBounds.size(); i++) {
 		if (leftBounds.at(i) < splitLine && splitLine < rightBounds.at(i)) {
 			cost += 1.0f;
 		}
@@ -338,6 +353,8 @@ Partition RPlusTree::splitNode(RPlusTreeNode* n)
 				partition.second->data.push_back(point);
 			}
 		}
+		// assert(partition.first->numDataEntries() > 0);
+		// assert(partition.second->numDataEntries() > 0);
 	} else {
 		// determine optimal partition
 		Cost costX = sweep(n->children, ALONG_X_AXIS);
@@ -363,6 +380,8 @@ Partition RPlusTree::splitNode(RPlusTreeNode* n)
 				split.second->parent = partition.second;
 			}
 		}
+		// assert(partition.first->numChildren() > 0);
+		// assert(partition.second->numChildren() > 0);
 	}
 
 	// tighten the new nodes
