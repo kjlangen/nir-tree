@@ -52,6 +52,36 @@ bool RPlusTree::exists(Point requestedPoint) {
 	return false;
 }
 
+std::vector<Point> RPlusTree::search(Point requestedPoint)
+{
+	std::vector<Point> result;
+	std::stack<RPlusTreeNode*> stack;
+	stack.push(root);
+	RPlusTreeNode * currentNode;
+
+	// do DFS to find all points contained in `requestedRectangle`
+	while (!stack.empty()) {
+		currentNode = stack.top();
+		stack.pop();
+
+		if (currentNode->isLeaf()) {
+			for (auto & data: currentNode->data) {
+				if (data == requestedPoint) {
+					result.push_back(data);
+				}
+			}
+		} else {
+			for (auto & child : currentNode->children) {
+				if (child->boundingBox.containsPoint(requestedPoint)) {
+					stack.push(child);
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
 std::vector<Point> RPlusTree::search(Rectangle requestedRectangle)
 {
 	std::vector<Point> result;
@@ -229,9 +259,7 @@ Cost RPlusTree::sweepData(std::vector<Point>& points, Orientation orientation)
 
 	unsigned mid = dedup.size() / 2;
 	if (dedup.size() % 2 == 0) {
-		float left = dedup.at(mid);
-		float right = dedup.at(mid - 1);
-		return {0.0f, (left + right) / 2.0f };
+		return {0.0f, (dedup.at(mid - 1) + dedup.at(mid)) / 2.0f};
 	}
 	return {0.0f, dedup.at(mid)};
 }
@@ -298,80 +326,24 @@ Partition RPlusTree::splitNodeAlongLine(RPlusTreeNode *n, float splitLine, RPlus
 		n->data.clear();  // clear old entries
 		for (auto & point : pointsClone) {
 			float value = splitAxis == ALONG_X_AXIS ? point.x : point.y;
-			if (value <= splitLine) {
-				partition.first->data.push_back(point);
-			} else {
-				partition.second->data.push_back(point);
-			}
-		}
-	} else {
-		std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
-		n->children.clear();  // clear old entries
-		for (auto & child : childrenClone) {
-			float leftBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
-			float rightBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
-			if (leftBound < splitLine) {
-				partition.first->children.push_back(child);
-			} else if (rightBound >= splitLine) {
-				partition.second->children.push_back(child);
-			} else {
-				Partition split = splitNodeAlongLine(child, splitLine, splitAxis);  // propagate changes downwards
-				partition.first->children.push_back(split.first);
-				split.first->parent = partition.first;
-				partition.second->children.push_back(split.second);
-				split.second->parent = partition.second;
-			}
-		}
-	}
-
-	return partition;
-}
-
-Partition RPlusTree::splitNode(RPlusTreeNode* n)
-{
-	// create new node and set parameters
-	auto* newNode = new RPlusTreeNode();
-	Partition partition = {n, newNode};
-	newNode->parent = n->parent;
-	if (newNode->parent != nullptr) {
-		newNode->parent->children.push_back(newNode);
-	}
-
-	if (n->isLeaf()) {
-		// determine optimal partition
-		Cost costX = sweepData(n->data, ALONG_X_AXIS);
-		Cost costY = sweepData(n->data, ALONG_Y_AXIS);
-		float splitLine = costX.first < costY.first ? costX.second : costY.second;
-		Orientation splitAxis = costX.first < costY.first ? ALONG_X_AXIS : ALONG_Y_AXIS;
-		std::vector<Point> pointsClone = n->data;  // copy
-		n->data.clear();  // clear old entries
-		for (auto & point : pointsClone) {
-			float value = splitAxis == ALONG_X_AXIS ? point.x : point.y;
 			if (value < splitLine) {
 				partition.first->data.push_back(point);
 			} else {
 				partition.second->data.push_back(point);
 			}
 		}
-		// assert(partition.first->numDataEntries() > 0);
-		// assert(partition.second->numDataEntries() > 0);
 	} else {
-		// determine optimal partition
-		Cost costX = sweep(n->children, ALONG_X_AXIS);
-		Cost costY = sweep(n->children, ALONG_Y_AXIS);
-		float splitLine = costX.first < costY.first ? costX.second : costY.second;
-		Orientation splitAxis = costX.first < costY.first ? ALONG_X_AXIS : ALONG_Y_AXIS;
-
-		// partition children
 		std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
 		n->children.clear();  // clear old entries
 		for (auto & child : childrenClone) {
-			float leftBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
-			float rightBound = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
-			if (leftBound <= splitLine) {
+			float rightEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
+			float leftEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
+			if (rightEdge < splitLine) {
 				partition.first->children.push_back(child);
-			} else if (rightBound >= splitLine) {
+				child->parent = partition.first;   // set new parent
+			} else if (splitLine <= leftEdge) {
 				partition.second->children.push_back(child);
+				child->parent = partition.second;  // set new parent
 			} else {
 				Partition split = splitNodeAlongLine(child, splitLine, splitAxis);  // propagate changes downwards
 				partition.first->children.push_back(split.first);
@@ -380,14 +352,31 @@ Partition RPlusTree::splitNode(RPlusTreeNode* n)
 				split.second->parent = partition.second;
 			}
 		}
-		// assert(partition.first->numChildren() > 0);
-		// assert(partition.second->numChildren() > 0);
 	}
 
-	// tighten the new nodes
+	// Adjust bounding boxes
 	tighten(partition.first);
 	tighten(partition.second);
 	return partition;
+}
+
+Partition RPlusTree::splitNode(RPlusTreeNode* n)
+{
+	if (n->isLeaf()) {
+		// determine optimal partition
+		Cost costX = sweepData(n->data, ALONG_X_AXIS);
+		Cost costY = sweepData(n->data, ALONG_Y_AXIS);
+		float splitLine = costX.first <= costY.first ? costX.second : costY.second;
+		Orientation splitAxis = costX.first <= costY.first ? ALONG_X_AXIS : ALONG_Y_AXIS;
+		return splitNodeAlongLine(n, splitLine, splitAxis);
+	}
+
+	// determine optimal partition
+	Cost costX = sweep(n->children, ALONG_X_AXIS);
+	Cost costY = sweep(n->children, ALONG_Y_AXIS);
+	float splitLine = costX.first <= costY.first ? costX.second : costY.second;
+	Orientation splitAxis = costX.first <= costY.first ? ALONG_X_AXIS : ALONG_Y_AXIS;
+	return splitNodeAlongLine(n, splitLine, splitAxis);
 }
 
 /*** remove functions ***/
