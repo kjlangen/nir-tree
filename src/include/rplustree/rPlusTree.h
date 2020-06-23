@@ -16,10 +16,11 @@ class RPlusTree: public Index
 {
 	unsigned minBranchFactor;
 	unsigned maxBranchFactor;
-	enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
 	RPlusTreeNode *root = new RPlusTreeNode();
 
 public:
+
+	enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
 
 	/*** constructor and destructor ***/
 
