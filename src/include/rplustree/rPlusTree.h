@@ -58,9 +58,9 @@ public:
 
 	Cost sweepData(std::vector<Point>& points, Orientation orientation);
 
-	Cost sweep(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation);
+	Cost sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation);
 
-	Partition splitNodeAlongLine(RPlusTreeNode* n, float splitLine, Orientation splitAxis);
+	Partition partition(RPlusTreeNode* n, float splitLine, Orientation splitAxis);
 
 	Partition splitNode(RPlusTreeNode* n);
 

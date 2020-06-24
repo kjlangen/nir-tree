@@ -67,12 +67,12 @@ TEST_CASE("R+Tree: testSweepCommon")
 	nodes.at(3)->boundingBox = Rectangle(5.0f, 4.0f, 9.0f, 12.0f);
 
 	// sweep along x axis
-	Cost costX = tree.sweep(nodes, RPlusTree::ALONG_X_AXIS);
+	Cost costX = tree.sweepNodes(nodes, RPlusTree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 5.0f);
 
 	// sweep along y axis
-	Cost costY = tree.sweep(nodes, RPlusTree::ALONG_Y_AXIS);
+	Cost costY = tree.sweepNodes(nodes, RPlusTree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 1.0f);
 	REQUIRE(costY.second == 4.0f);
 }
@@ -91,12 +91,12 @@ TEST_CASE("R+Tree: testSweepEdge")
 	nodes.at(2)->boundingBox = Rectangle(6.0f, 0.0f, 8.0f, 2.0f);
 
 	// sweep along x axis
-	Cost costX = tree.sweep(nodes, RPlusTree::ALONG_X_AXIS);
+	Cost costX = tree.sweepNodes(nodes, RPlusTree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 3.0f);
 
 	// sweep along y axis
-	Cost costY = tree.sweep(nodes, RPlusTree::ALONG_Y_AXIS);
+	Cost costY = tree.sweepNodes(nodes, RPlusTree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 3.0f);
 	REQUIRE(costY.second == 0.0f);
 }
