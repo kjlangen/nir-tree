@@ -6,11 +6,11 @@
 
 class Index {
 public:
-	virtual std::vector<Point> search(Point requestedPoint) { return std::vector<Point>(); };
-	virtual std::vector<Point> search(Rectangle requestedRectangle) { return std::vector<Point>(); };
-	virtual void insert(Point givenPoint) {};
-	virtual void remove(Point givenPoint) {};
-	virtual unsigned checksum() { return 0; };
+	virtual std::vector<Point> search(Point requestedPoint) { throw std::exception(); };
+	virtual std::vector<Point> search(Rectangle requestedRectangle) { throw std::exception(); };
+	virtual void insert(Point givenPoint) { throw std::exception(); };
+	virtual void remove(Point givenPoint) { throw std::exception(); };
+	virtual unsigned checksum() { throw std::exception(); };
 };
 
 #endif  // __INDEX__
