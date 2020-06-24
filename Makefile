@@ -2,7 +2,7 @@ SXX = -std=c++11 	# Standard
 FLAGS = -Wall	# Flags
 DIR = src/include 	# Include directory
 OBJECTS = geometry.o btree.o node.o rtree.o randomSquares.o randomPoints.o rPlusTree.o rPlusTreeNode.o
-TESTS = testGeometry.o testRStarTree.o
+TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
 
 .PHONY : clean tests
 
@@ -40,6 +40,9 @@ testGeometry.o:
 
 testRStarTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRStarTree.cpp
+
+testRPlusTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRPlusTree.cpp
 
 # Build all together
 all: ${OBJECTS}
