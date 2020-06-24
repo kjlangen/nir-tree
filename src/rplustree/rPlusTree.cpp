@@ -28,6 +28,29 @@ int RPlusTree::height() const {
 	return height;
 }
 
+int RPlusTree::numDataElements() const {
+	int result = 0;
+	RPlusTreeNode* currentNode;
+
+	std::stack<RPlusTreeNode*> stack;
+	stack.push(root);
+
+	while (!stack.empty()) {
+		currentNode = stack.top();
+		stack.pop();
+
+		if (currentNode->isLeaf()) {
+			result += (int)currentNode->numDataEntries();
+		} else {
+			for (auto & child : currentNode->children) {
+				stack.push(child);
+			}
+		}
+	}
+
+	return result;
+}
+
 bool RPlusTree::exists(Point requestedPoint) {
 	RPlusTreeNode * n = root;
 	while (!n->isLeaf()) {

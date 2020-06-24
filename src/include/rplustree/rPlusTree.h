@@ -34,6 +34,8 @@ public:
 
 	int height() const;
 
+	int numDataElements() const;
+
 	bool exists(Point requestedPoint);
 
 	std::vector<Point> search(Point requestedPoint) override;
