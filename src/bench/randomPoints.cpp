@@ -62,7 +62,7 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
-		if ((i + 1) % logFrequency == 0) {
+		if ((i + 1) % logFrequency == 0 || i == 0) {
 			std::cout << "inserted." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
 		}
 	}
@@ -84,7 +84,7 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
-		if ((i + 1) % logFrequency == 0) {
+		if ((i + 1) % logFrequency == 0 || i == 0) {
 			std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
 		}
 	}
@@ -106,7 +106,7 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
 		totalRangeSearches += 1;
-		if ((i + 1) % logFrequency == 0) {
+		if ((i + 1) % logFrequency == 0 || i == 0) {
 			std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
 		}
 
