@@ -369,12 +369,14 @@ void RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation splitAx
 				if (newLeftNode->numChildren() == 0 && newLeftNode->numDataEntries() == 0) {
 					delete newLeftNode;
 				} else {
+					tighten(newLeftNode);
 					childrenClone.push_back(newLeftNode);
 					vectorSize++;
 				}
 				if (newRightNode->numChildren() == 0 && newRightNode->numDataEntries() == 0) {
 					delete newRightNode;
 				} else {
+					tighten(newRightNode);
 					childrenClone.push_back(newRightNode);
 					vectorSize++;
 				}
