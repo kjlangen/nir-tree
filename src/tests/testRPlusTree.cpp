@@ -172,3 +172,45 @@ TEST_CASE("R+Tree: testInsert")
 	REQUIRE(root->children.at(1)->children.at(0)->numDataEntries() == 2);
 	REQUIRE(root->children.at(1)->children.at(1)->numDataEntries() == 2);
 }
+
+TEST_CASE("R+Tree: testSimpleRemove")
+{
+	RPlusTree tree(2, 3);
+
+	auto * cluster1a = new RPlusTreeNode();
+	cluster1a->data.emplace_back(0.0f, 0.0f);
+	cluster1a->data.emplace_back(4.0f, 4.0f);
+	tree.tighten(cluster1a);
+
+	auto * cluster1b = new RPlusTreeNode();
+	cluster1b->data.emplace_back(0.0f, 5.0f);
+	cluster1b->data.emplace_back(4.0f, 9.0f);
+	tree.tighten(cluster1b);
+
+	auto * cluster1 = new RPlusTreeNode();
+	cluster1->children.push_back(cluster1a);
+	cluster1->children.push_back(cluster1b);
+	tree.tighten(cluster1);
+
+	cluster1a->parent = cluster1;
+	cluster1b->parent = cluster1;
+
+	auto * cluster2 = new RPlusTreeNode();
+	cluster2->data.emplace_back(5.0f, 0.0f);
+	cluster2->data.emplace_back(7.0f, 9.0f);
+	tree.tighten(cluster2);
+
+	auto * root = tree.getRoot();
+	root->children.push_back(cluster1);
+	root->children.push_back(cluster2);
+	tree.tighten(root);
+
+	cluster1->parent = root;
+	cluster2->parent = root;
+
+	// end of setup
+	REQUIRE(tree.numDataElements() == 6);
+	tree.remove(Point(7.0f, 9.0f));
+	REQUIRE(tree.numDataElements() == 5);
+	REQUIRE(tree.getRoot()->numChildren() == 2);
+}
