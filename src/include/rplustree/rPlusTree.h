@@ -4,6 +4,7 @@
 #include <cassert>
 #include <vector>
 #include <stack>
+#include <queue>
 #include <utility>
 #include <util/geometry.h>
 #include <index/index.h>
@@ -77,6 +78,10 @@ public:
 	void condenseTree(RPlusTreeNode* n);
 
 	void removeSubtree(RPlusTreeNode* r);
+
+	/*** tree traversals ***/
+
+	void bfs();
 };
 
 #endif // __RPLUSTREE__

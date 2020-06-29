@@ -523,3 +523,27 @@ void RPlusTree::removeSubtree(RPlusTreeNode *r)
 {
 	// TODO
 }
+
+/*** tree traversals ***/
+
+void RPlusTree::bfs() {
+	std::queue<RPlusTreeNode*> queue;
+	queue.push(root);
+
+	RPlusTreeNode* currentNode;
+	while (!queue.empty()) {
+		currentNode = queue.front();
+		queue.pop();
+		currentNode->boundingBox.print();
+		if (currentNode->isLeaf()) {
+			for (auto & data : currentNode->data) {
+				data.print();
+			}
+			std::cout << std::endl << std::endl;
+		} else {
+			for (auto & child : currentNode->children) {
+				queue.push(child);
+			}
+		}
+	}
+}
