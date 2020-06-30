@@ -73,11 +73,7 @@ public:
 
 	void remove(Point givenPoint) override;
 
-	void reinsert(RPlusTreeNode* n, int level);
-
-	void condenseTree(RPlusTreeNode* n);
-
-	void removeSubtree(RPlusTreeNode* r);
+	void findDataPoints(RPlusTreeNode* n, std::vector<Point>& dataClone);
 
 	/*** tree traversals ***/
 
