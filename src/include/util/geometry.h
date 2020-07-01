@@ -74,12 +74,4 @@ class DynamicRectangle
 		void print();
 };
 
-void testPointEquality();
-void testRectangleArea();
-void testRectangleComputeExpansionArea();
-void testRectangleExpansion();
-void testRectangleIntersection();
-void testRectanglePointContainment();
-void testRectangleFragmentation();
-
 #endif

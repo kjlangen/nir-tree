@@ -62,17 +62,4 @@ class Node
 		void printTree(unsigned n=0);
 };
 
-void testBoundingBox();
-void testUpdateBoundingBox();
-void testRemoveChild();
-void testRemoveData();
-void testChooseLeaf();
-void testFindLeaf();
-void testSplitNode();
-void testAdjustTree();
-void testCondenseTree();
-void testSearch();
-void testInsert();
-void testRemove();
-
 #endif
