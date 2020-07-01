@@ -78,6 +78,9 @@ public:
 	/*** tree traversals ***/
 
 	void bfs();
+
+	/*** correctness checks ***/
+	void checkBoundingBoxes();
 };
 
 #endif // __RPLUSTREE__

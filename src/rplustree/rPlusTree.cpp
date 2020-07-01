@@ -532,3 +532,29 @@ void RPlusTree::bfs() {
 		}
 	}
 }
+
+/*** correctness checks ***/
+
+void RPlusTree::checkBoundingBoxes() {
+	std::vector<Point> result;
+	std::stack<RPlusTreeNode*> stack;
+	stack.push(root);
+	RPlusTreeNode * currentNode;
+
+	while (!stack.empty()) {
+		currentNode = stack.top();
+		stack.pop();
+
+		if (currentNode->isLeaf()) {
+			continue;
+		}
+		for (auto & c1 : currentNode->children) {
+			stack.push(c1);
+			for (auto & c2 : currentNode->children) {
+				if (c1 != c2) {
+					assert(!c1->boundingBox.strictIntersectsRectangle(c2->boundingBox));
+				}
+			}
+		}
+	}
+}
