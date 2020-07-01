@@ -97,6 +97,7 @@ std::vector<Point> RPlusTree::search(Point requestedPoint)
 			for (auto & child : currentNode->children) {
 				if (child->boundingBox.containsPoint(requestedPoint)) {
 					stack.push(child);
+					break;
 				}
 			}
 		}
@@ -227,8 +228,14 @@ RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint)
 	RPlusTreeNode* chosenChild = node->children.at(0);
 	float smallestExpansionArea = node->children.at(0)->boundingBox.computeExpansionArea(givenPoint);
 	for (auto & child : node->children) {
+		// containment case
+		if (child->boundingBox.containsPoint(givenPoint)) {
+			chosenChild = child;
+			break;
+		}
+		// best fit case
 		float testExpansionArea = child->boundingBox.computeExpansionArea(givenPoint);
-		if (smallestExpansionArea > testExpansionArea) {
+		if (testExpansionArea < smallestExpansionArea) {
 			smallestExpansionArea = testExpansionArea;
 			chosenChild = child;
 		}
@@ -344,42 +351,44 @@ void RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation splitAx
 				right->data.push_back(point);
 			}
 		}
-	} else {
-		std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
-		n->children.clear();  // clear old entries
-		int vectorSize = childrenClone.size();
-		for (int i = 0; i < vectorSize; i++) {
-			RPlusTreeNode* child = childrenClone.at(i);
-			float rightEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
-			float leftEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
-			if (rightEdge < splitLine) {
-				left->children.push_back(child);
-				child->parent = left;   // set new parent
-			} else if (splitLine <= leftEdge) {
-				right->children.push_back(child);
-				child->parent = right;  // set new parent
-			} else {
-				// propagate changes downwards
-				auto * newLeftNode = new RPlusTreeNode();
-				auto * newRightNode = new RPlusTreeNode();
-				partition(child, splitLine, splitAxis, newLeftNode, newRightNode);
-				delete child;  // cleanup no longer needed node
+		return;
+	}
 
-				// add new nodes to array or remove if empty
-				if (newLeftNode->numChildren() == 0 && newLeftNode->numDataEntries() == 0) {
-					delete newLeftNode;
-				} else {
-					tighten(newLeftNode);
-					childrenClone.push_back(newLeftNode);
-					vectorSize++;
-				}
-				if (newRightNode->numChildren() == 0 && newRightNode->numDataEntries() == 0) {
-					delete newRightNode;
-				} else {
-					tighten(newRightNode);
-					childrenClone.push_back(newRightNode);
-					vectorSize++;
-				}
+	// intermediate node case
+	std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
+	n->children.clear();  // clear old entries
+	int vectorSize = childrenClone.size();
+	for (int i = 0; i < vectorSize; i++) {
+		RPlusTreeNode* child = childrenClone.at(i);
+		float rightEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
+		float leftEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
+		if (rightEdge < splitLine) {
+			left->children.push_back(child);
+			child->parent = left;   // set new parent
+		} else if (splitLine <= leftEdge) {
+			right->children.push_back(child);
+			child->parent = right;  // set new parent
+		} else {
+			// propagate changes downwards
+			auto * newLeftNode = new RPlusTreeNode();
+			auto * newRightNode = new RPlusTreeNode();
+			partition(child, splitLine, splitAxis, newLeftNode, newRightNode);
+			delete child;  // cleanup no longer needed node
+
+			// add new nodes to array or remove if empty
+			if (newLeftNode->numChildren() == 0 && newLeftNode->numDataEntries() == 0) {
+				delete newLeftNode;
+			} else {
+				tighten(newLeftNode);
+				childrenClone.push_back(newLeftNode);
+				vectorSize++;
+			}
+			if (newRightNode->numChildren() == 0 && newRightNode->numDataEntries() == 0) {
+				delete newRightNode;
+			} else {
+				tighten(newRightNode);
+				childrenClone.push_back(newRightNode);
+				vectorSize++;
 			}
 		}
 	}
@@ -469,21 +478,15 @@ void RPlusTree::remove(Point givenPoint)
 void RPlusTree::findDataPoints(RPlusTreeNode *n, std::vector<Point>& dataClone) {
 	// Find out which nodes need to be re-inserted
 	std::vector<RPlusTreeNode*> reinsertion;
-	while (!n->isRoot() && n->numChildren() < minBranchFactor) {
-		auto iter = std::find(n->parent->children.begin(), n->parent->children.end(), n);
-		n->parent->children.erase(iter);
+	while (n != nullptr && n->numChildren() < minBranchFactor) {
 		for (auto & child : n->children) {
 			reinsertion.push_back(child);
 		}
+		if (n->parent != nullptr) {
+			tighten(n->parent);
+		}
+		n->children.clear();
 		n = n->parent;
-	}
-
-	// Edge case for removing root node
-	if (n->isRoot() && n->numChildren() == 1) {
-		RPlusTreeNode* tempNode = root;
-		root = root->children.at(0);
-		root->parent = nullptr;
-		delete tempNode;
 	}
 
 	// Find data to re-insert back into the tree
