@@ -2,6 +2,9 @@ SXX = -std=c++11 	# Standard
 FLAGS = -Wall	# Flags
 DIR = src/include 	# Include directory
 OBJECTS = geometry.o btree.o node.o rtree.o randomSquares.o randomPoints.o
+TESTS = testGeometry.o testRStarTree.o
+
+.PHONY : clean tests
 
 # Build btree
 btree.o:
@@ -26,9 +29,21 @@ randomSquares.o:
 randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
 
+testGeometry.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testGeometry.cpp
+
+testRStarTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRStarTree.cpp
+
 # Build all together
 all: ${OBJECTS}
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I src/include -lspatialindex
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex
+
+# unit tests
+tests: ${OBJECTS} ${TESTS}
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -DUNIT_TESTING
 
 # Alter flags to include profiling
 profileflags:
@@ -37,8 +52,9 @@ profileflags:
 # Build all together with profiling
 # Note: Problems will occur if files were previously compiled without -pg and were not altered since
 profile: profileflags ${OBJECTS}
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I src/include -lspatialindex
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I ${DIR} -lspatialindex
 
 # Clean all together
 clean:
-	rm -rf bin/* *.o *.d
+	rm -rf bin *.o *.d

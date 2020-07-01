@@ -16,12 +16,12 @@ class Point
 
 		Point();
 		Point(float x, float y);
-		bool operator<(Point p);
-		bool operator>(Point p);
-		bool operator<=(Point p);
-		bool operator>=(Point p);
-		bool operator==(Point p);
-		bool operator!=(Point p);
+		bool operator<(Point p) const;
+		bool operator>(Point p) const;
+		bool operator<=(Point p) const;
+		bool operator>=(Point p) const;
+		bool operator==(Point p) const;
+		bool operator!=(Point p) const;
 
 		void print();
 };
@@ -45,8 +45,8 @@ class Rectangle
 		bool containsPoint(Point requestedPoint);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
-		bool operator==(Rectangle r);
-		bool operator!=(Rectangle r);
+		bool operator==(Rectangle r) const;
+		bool operator!=(Rectangle r) const;
 
 		void print();
 };
