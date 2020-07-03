@@ -24,6 +24,7 @@ class Point
 		bool operator!=(Point p) const;
 
 		void print();
+		friend std::ostream& operator<<(std::ostream& os, const Point& point);
 };
 
 class Rectangle
@@ -49,6 +50,7 @@ class Rectangle
 		bool operator!=(Rectangle r) const;
 
 		void print();
+		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
 };
 
 class DynamicRectangle

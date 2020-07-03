@@ -47,6 +47,12 @@ void Point::print()
 	std::cout << "(" << x << ", " << y << ")";
 }
 
+std::ostream& operator<<(std::ostream& os, const Point& point)
+{
+	os << "(" << point.x << ", " << point.y << ")";
+	return os;
+}
+
 Rectangle::Rectangle()
 {
 	lowerLeft = Point(0.0, 0.0);
@@ -191,6 +197,12 @@ void Rectangle::print()
 	std::cout << ", ";
 	upperRight.print();
 	std::cout << "}" << std::endl;
+}
+
+std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle)
+{
+	os << "[" << rectangle.lowerLeft << "; " << rectangle.upperRight << "]";
+	return os;
 }
 
 DynamicRectangle::DynamicRectangle()
