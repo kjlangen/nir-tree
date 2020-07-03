@@ -96,6 +96,13 @@ float Rectangle::computeExpansionArea(Rectangle requestedRectangle)
 	return expandedArea - area();
 }
 
+float Rectangle::computeOverlapArea(Rectangle requestedRectangle)
+{
+	float widthOverlap = fmax(0, fmin(upperRight.x, requestedRectangle.upperRight.x) - fmax(lowerLeft.x, requestedRectangle.lowerLeft.x));
+	float heightOverlap = fmax(0, fmin(upperRight.y, requestedRectangle.upperRight.y) - fmax(lowerLeft.y, requestedRectangle.lowerLeft.y));
+	return widthOverlap * heightOverlap;
+}
+
 // TODO: Optimize
 void Rectangle::expand(Point givenPoint)
 {

@@ -221,3 +221,16 @@ TEST_CASE("Geometry: testRectangleFragmentation")
 	REQUIRE(v[2] == Rectangle(0.0, 0.0, 8.0, 2.0));
 	REQUIRE(v[3] == Rectangle(0.0, 2.0, 1.0, 4.0));
 }
+
+TEST_CASE("Geometry: testRectangleOverlap")
+{
+	Rectangle r1 = Rectangle(2.0, 2.0, 5.0, 7.0);
+	Rectangle r2 = Rectangle(3.0, 3.0, 7.0, 9.0);
+	REQUIRE(r1.computeOverlapArea(r2) == 8.0f);
+	REQUIRE(r2.computeOverlapArea(r1) == 8.0f);
+
+	Rectangle r3 = Rectangle(10.0f, 10.0f, 12.0f, 12.0f);
+	REQUIRE(r3.computeOverlapArea(r1) == 0.0f);
+	REQUIRE(r3.computeOverlapArea(r2) == 0.0f);
+	REQUIRE(r3.computeOverlapArea(r3) == r3.area());
+}

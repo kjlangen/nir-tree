@@ -39,6 +39,7 @@ class Rectangle
 		float area();
 		float computeExpansionArea(Point givenPoint);
 		float computeExpansionArea(Rectangle requestedRectangle);
+		float computeOverlapArea(Rectangle requestedRectangle);
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle requestedRectangle);
