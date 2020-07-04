@@ -21,32 +21,25 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	double totalDeletes = 0.0;
 
 	// Initialize points
-	Point *points = new Point[benchmarkSize];
+	Point points[benchmarkSize];
 	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
 		// Create the point
 		points[i] = Point(pointDist(generator), pointDist(generator));
-
 		// Compute the checksum directly
 		directSum += (unsigned)points[i].x;
 		directSum += (unsigned)points[i].y;
-
-		// Print the new point
-		// std::cout << "Point[" << i << "] "; points[i].print(); std::cout << std::endl;
 	}
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
 	// Initialize search rectangles
-	Rectangle *searchRectangles = new Rectangle[16];
+	Rectangle searchRectangles[16];
 	std::cout << "Beginning initialization of 16 rectangles..." << std::endl;
 	for (unsigned i = 0; i < 16; ++i)
 	{
 		// Create the rectangle
 		searchRectangles[i] = Rectangle(i * 1250000, i * 1250000, i * 1250000 + 1250000, i * 1250000 + 1250000);
-
-		// Print the search rectangle
-		// std::cout << "searchRectangles[" << i << "] "; searchRectangles[i].print();
 	}
 	std::cout << "Finished initialization of 16 rectangles." << std::endl;
 
@@ -54,17 +47,13 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	std::cout << "Beginning insertion of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
-		// Insert
-		// std::cout << "Point[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
 		spatialIndex.insert(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
-		if ((i + 1) % logFrequency == 0 || i == 0) {
-			std::cout << "inserted." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
-		}
+		std::cout << "inserted." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
 	}
 	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
 
@@ -76,17 +65,14 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	std::cout << "Beginning search for " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
-		// Search
-		// std::cout << "Point[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex.search(points[i]);
+		auto result = spatialIndex.search(points[i]);
+		assert(result.size() == 1 && result.at(0) == points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
-		if ((i + 1) % logFrequency == 0 || i == 0) {
-			std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
-		}
+		std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
 	}
 	std::cout << "Finished search for " << benchmarkSize << " points." << std::endl;
 
@@ -98,17 +84,13 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	std::cout << "Beginning search for 16 rectangles..." << std::endl;
 	for (unsigned i = 0; i < 16; ++i)
 	{
-		// Search
-		// std::cout << "searchRectangles[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
 		std::vector<Point> v = spatialIndex.search(searchRectangles[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
 		totalRangeSearches += 1;
-		if ((i + 1) % logFrequency == 0 || i == 0) {
-			std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
-		}
+		std::cout << "queried." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
 
 		// Validate points returned in the search
 		for (unsigned j = 0; j < v.size(); ++j)
@@ -127,17 +109,13 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	std::cout << "Beginning deletion of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
-		// Delete
-		// std::cout << "Point[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
 		spatialIndex.remove(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeDeletes += delta.count();
 		totalDeletes += 1;
-		if ((i + 1) % logFrequency == 0) {
-			std::cout << "deleted." << delta.count() << " s. Iteration = " << i + 1 << std::endl;
-		}
+		std::cout << "deleted." << delta.count() << " s. Iteration = " << i << std::endl;
 	}
 	std::cout << "Finished deletion of " << benchmarkSize << " points." << std::endl;
 
