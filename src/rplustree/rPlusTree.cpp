@@ -225,19 +225,34 @@ RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint)
 		return node;
 	}
 	// Find the bounding box with least required expansion/overlap
-	RPlusTreeNode* chosenChild = node->children.at(0);
+	RPlusTreeNode* chosenChild = nullptr;
 	float smallestExpansionArea = node->children.at(0)->boundingBox.computeExpansionArea(givenPoint);
-	for (auto & child : node->children) {
+	for (auto child : node->children) {
 		// containment case
 		if (child->boundingBox.containsPoint(givenPoint)) {
 			chosenChild = child;
 			break;
 		}
-		// best fit case
-		float testExpansionArea = child->boundingBox.computeExpansionArea(givenPoint);
-		if (testExpansionArea < smallestExpansionArea) {
-			smallestExpansionArea = testExpansionArea;
-			chosenChild = child;
+		// need to check for future overlap
+		bool noOverlap = true;
+		Rectangle newBoundingBox = child->boundingBox;
+		newBoundingBox.expand(givenPoint);
+		for (auto other : node->children) {
+			if (child != other && newBoundingBox.computeOverlapArea(other->boundingBox) != 0.0f) {
+				noOverlap = false;
+			}
+		}
+		if (noOverlap) {
+			if (chosenChild == nullptr) {
+				chosenChild = child;
+			} else {
+				// best fit case
+				float testExpansionArea = child->boundingBox.computeExpansionArea(givenPoint);
+				if (testExpansionArea < smallestExpansionArea) {
+					smallestExpansionArea = testExpansionArea;
+					chosenChild = child;
+				}
+			}
 		}
 	}
 	return chooseLeaf(chosenChild, givenPoint);
