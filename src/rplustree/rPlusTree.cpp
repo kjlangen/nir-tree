@@ -566,8 +566,8 @@ void RPlusTree::checkBoundingBoxes() {
 		for (auto & c1 : currentNode->children) {
 			stack.push(c1);
 			for (auto & c2 : currentNode->children) {
-				if (c1 != c2) {
-					assert(!c1->boundingBox.strictIntersectsRectangle(c2->boundingBox));
+				if (c1 < c2) {
+					assert(c1->boundingBox.computeOverlapArea(c2->boundingBox) == 0.0f);
 				}
 			}
 		}
