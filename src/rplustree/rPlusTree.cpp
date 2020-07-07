@@ -463,18 +463,50 @@ Partition RPlusTree::splitNodeAlongLine(RPlusTreeNode *n, float splitLine, Orien
 
 /*** remove functions ***/
 
-void RPlusTree::reinsert(RPlusTreeNode *n, int level) {
+void RPlusTree::findAllData(RPlusTreeNode* n, std::vector<Point> &dataClone) {
+	if (n->isLeaf()) {
+		dataClone.insert(dataClone.end(), n->data.begin(), n->data.end());
+		return;
+	}
+	for (auto child : n->children) {
+		findAllData(child, dataClone);
+		delete child;
+	}
+	n->children.clear();
+	n->parent = nullptr;
+}
+
+void RPlusTree::reinsert(RPlusTreeNode *n, int level, std::vector<Point>& dataClone) {
 	// Find where to re-insert intermediate nodes
 	RPlusTreeNode * baseNode = root;
 	while (!baseNode->isLeaf()) {
-		RPlusTreeNode * nextNode = baseNode->children.at(0);
+		RPlusTreeNode * nextNode = nullptr;
 		float smallestExpansionArea = baseNode->children.at(0)->boundingBox.computeExpansionArea(n->boundingBox);
 		for (auto & child : baseNode->children) {
-			float testExpansionArea = child->boundingBox.computeExpansionArea(n->boundingBox);
-			if (testExpansionArea < smallestExpansionArea) {
-				smallestExpansionArea = testExpansionArea;
-				nextNode = child;
+			// need to check for future overlap
+			bool noOverlap = true;
+			Rectangle newBoundingBox = child->boundingBox;
+			newBoundingBox.expand(n->boundingBox);
+			for (auto other : baseNode->children) {
+				if (child != other && newBoundingBox.computeOverlapArea(other->boundingBox) != 0.0f) {
+					noOverlap = false;
+				}
 			}
+			if (noOverlap) {
+				if (nextNode == nullptr) {
+					nextNode = child;
+				}
+				float testExpansionArea = child->boundingBox.computeExpansionArea(n->boundingBox);
+				if (testExpansionArea < smallestExpansionArea) {
+					smallestExpansionArea = testExpansionArea;
+					nextNode = child;
+				}
+			}
+		}
+		// Special case
+		if (nextNode == nullptr) {
+			findAllData(n, dataClone);
+			return;
 		}
 		baseNode = nextNode;
 	}
@@ -495,14 +527,16 @@ void RPlusTree::reinsert(RPlusTreeNode *n, int level) {
 	}
 }
 
-void RPlusTree::condenseTree(RPlusTreeNode *n) {
+void RPlusTree::condenseTree(RPlusTreeNode *n, std::vector<Point>& dataClone) {
 	int lvl = 0;  // number of levels above leaf
 	std::vector<int> levels;
 	std::vector<RPlusTreeNode*> reinsertion;
 	while (!n->isRoot() && n->numChildren() < minBranchFactor) {
 		auto iter = std::find(n->parent->children.begin(), n->parent->children.end(), n);
 		n->parent->children.erase(iter);
-		tighten(n->parent);  // adjust bounding box
+		if (n->parent->numChildren() > 0) {
+			tighten(n->parent);  // adjust bounding box
+		}
 		for (auto & child : n->children) {
 			reinsertion.push_back(child);
 			levels.push_back(lvl);
@@ -520,7 +554,7 @@ void RPlusTree::condenseTree(RPlusTreeNode *n) {
 
 	// Reinsert intermediate nodes
 	for (int i=0; i<reinsertion.size(); i++) {
-		reinsert(reinsertion.at(i), levels.at(i));
+		reinsert(reinsertion.at(i), levels.at(i), dataClone);
 	}
 }
 
@@ -539,7 +573,7 @@ void RPlusTree::remove(Point givenPoint)
 
 	std::vector<Point> dataClone = leaf->data; // copy
 	leaf->data.clear();
-	condenseTree(leaf);
+	condenseTree(leaf, dataClone);
 
 	// reinsert data points
 	for (auto & data : dataClone) {
@@ -562,7 +596,6 @@ void RPlusTree::bfs() {
 			for (auto & data : currentNode->data) {
 				data.print();
 			}
-			std::cout << std::endl << std::endl;
 		} else {
 			for (auto & child : currentNode->children) {
 				queue.push(child);
