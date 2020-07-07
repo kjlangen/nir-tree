@@ -486,6 +486,7 @@ void RPlusTree::reinsert(RPlusTreeNode *n, int level) {
 
 	// Add node back into tree, adjust if needed
 	baseNode->children.push_back(n);
+	n->parent = baseNode;  // adjust parent pointer
 	if (baseNode->numChildren() > maxBranchFactor) {
 		Partition split = splitNode(baseNode);
 		adjustTree(split.first, split.second);
@@ -509,6 +510,14 @@ void RPlusTree::condenseTree(RPlusTreeNode *n) {
 		n = n->parent;
 		lvl++;
 	}
+
+	// Root removal case
+	if (n->isRoot() && n->numChildren() == 1) {
+		RPlusTreeNode* tempNode = root;
+		root = root->children.at(0);
+		delete tempNode;
+	}
+
 	// Reinsert intermediate nodes
 	for (int i=0; i<reinsertion.size(); i++) {
 		reinsert(reinsertion.at(i), levels.at(i));
