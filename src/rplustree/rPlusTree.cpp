@@ -444,6 +444,9 @@ Partition RPlusTree::splitNodeAlongLine(RPlusTreeNode *n, float splitLine, Orien
 	if (numLeftElements == 0) {
 		delete result.first;
 		result.first = result.second;
+		result.first->children = result.second->children;
+		result.first->data = result.second->data;
+		result.first->parent = result.second->parent;
 		result.second = nullptr;
 	} else if (numRightElements == 0) {
 		delete result.second;
@@ -548,6 +551,7 @@ void RPlusTree::condenseTree(RPlusTreeNode *n, std::vector<Point>& dataClone) {
 		for (auto & child : n->children) {
 			reinsertion.push_back(child);
 			levels.push_back(lvl);
+			child->parent = nullptr;
 		}
 		n = n->parent;
 		lvl++;
@@ -576,7 +580,13 @@ void RPlusTree::remove(Point givenPoint)
 	}
 	leaf->data.erase(iter);  // otherwise, remove data
 
-	if (leaf->numDataEntries() >= minBranchFactor || leaf->isRoot()) {
+	// special root case
+	if (leaf->isRoot() && leaf->numChildren() == 0) {
+		return;
+	}
+
+	// simple removal case
+	if (leaf->numDataEntries() >= minBranchFactor) {
 		adjustTree(leaf, nullptr);
 		return;  // no need to do anything else, return
 	}
