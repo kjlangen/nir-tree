@@ -22,8 +22,8 @@ class RTree: public Index
 
 		// Datastructure interface
 		std::vector<Point> exhaustiveSearch(Point requestedPoint);
-		std::vector<Point> search(Point requestedPoint) override;
-		std::vector<Point> search(Rectangle requestedRectangle) override;
+		std::vector<Point> search(Point requestedPoint) const override;
+		std::vector<Point> search(Rectangle requestedRectangle) const override;
 		void insert(Point givenPoint) override;
 		void remove(Point givenPoint) override;
 
