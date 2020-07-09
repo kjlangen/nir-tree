@@ -5,27 +5,62 @@
 RPlusTree::RPlusTree(unsigned int minBranchFactor, unsigned int maxBranchFactor) : minBranchFactor(minBranchFactor),
 																				   maxBranchFactor(maxBranchFactor)
 {
+	root = new RPlusTreeNode();
 }
 
 RPlusTree::~RPlusTree()
 {
-	// TODO
+	std::stack<RPlusTreeNode*> stack;
+	stack.push(root);
+	root = nullptr;
+	RPlusTreeNode * currentNode;
+
+	while (!stack.empty()) {
+		currentNode = stack.top();
+		stack.pop();
+		for (auto & child : currentNode->children) {
+			stack.push(child);
+		}
+		delete currentNode;  // cleanup memory
+	}
 }
 
 /*** general functions ***/
+
+bool RPlusTree::isEmpty() const {
+	return root->numChildren() == 0 && root->numDataEntries() == 0;
+}
 
 RPlusTreeNode * RPlusTree::getRoot() const {
 	return root;
 }
 
 int RPlusTree::height() const {
-	int height = 0;
-	RPlusTreeNode* n = root;
-	while(!n->isLeaf()) {
-		n = n->children.at(0);
-		height++;
+	int maxHeight = 0;
+
+	RPlusTreeNode * currentNode;
+	std::stack<RPlusTreeNode*> nodes;
+
+	int currentHeight;
+	std::stack<int> heights;
+
+	nodes.push(root);
+	heights.push(0);
+	while (!nodes.empty()) {
+		currentNode = nodes.top();
+		nodes.pop();
+
+		currentHeight = heights.top();
+		heights.pop();
+
+		maxHeight = std::max(maxHeight, currentHeight);
+
+		for (auto & child : currentNode->children) {
+			nodes.push(child);
+			heights.push(currentHeight + 1);
+		}
 	}
-	return height;
+	return maxHeight;
 }
 
 int RPlusTree::numDataElements() const {
@@ -161,11 +196,6 @@ unsigned RPlusTree::checksum()
 	}
 
 	return sum;
-}
-
-void RPlusTree::print()
-{
-	// TODO
 }
 
 /*** helper functions ***/
@@ -576,29 +606,6 @@ void RPlusTree::remove(Point givenPoint)
 	}
 }
 
-/*** tree traversals ***/
-
-void RPlusTree::bfs() {
-	std::queue<RPlusTreeNode*> queue;
-	queue.push(root);
-
-	RPlusTreeNode* currentNode;
-	while (!queue.empty()) {
-		currentNode = queue.front();
-		queue.pop();
-		currentNode->boundingBox.print();
-		if (currentNode->isLeaf()) {
-			for (auto & data : currentNode->data) {
-				data.print();
-			}
-		} else {
-			for (auto & child : currentNode->children) {
-				queue.push(child);
-			}
-		}
-	}
-}
-
 /*** correctness checks ***/
 
 void RPlusTree::checkBoundingBoxes() {
@@ -622,4 +629,31 @@ void RPlusTree::checkBoundingBoxes() {
 			}
 		}
 	}
+}
+
+/*** tree traversal ***/
+
+std::ostream &operator<<(std::ostream &os, const RPlusTree &tree)
+{
+	std::queue<RPlusTreeNode*> queue;
+	queue.push(tree.getRoot());
+
+	RPlusTreeNode* currentNode;
+	while (!queue.empty()) {
+		currentNode = queue.front();
+		queue.pop();
+		if (currentNode->isLeaf()) {
+			os << currentNode->boundingBox << ": ";
+			for (auto & data : currentNode->data) {
+				os << data << ", ";
+			}
+			os << std::endl;
+		} else {
+			os << currentNode->boundingBox << std::endl;
+			for (auto & child : currentNode->children) {
+				queue.push(child);
+			}
+		}
+	}
+	return os;
 }

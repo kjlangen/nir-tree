@@ -17,7 +17,7 @@ class RPlusTree: public Index
 {
 	unsigned minBranchFactor;
 	unsigned maxBranchFactor;
-	RPlusTreeNode *root = new RPlusTreeNode();
+	RPlusTreeNode *root = nullptr;
 
 public:
 
@@ -30,6 +30,8 @@ public:
 	~RPlusTree();
 
 	/*** general functions ***/
+
+	bool isEmpty() const;
 
 	RPlusTreeNode* getRoot() const;
 
@@ -45,11 +47,9 @@ public:
 
 	unsigned checksum() override;
 
-	void print();
-
 	/*** helper functions ***/
 
-	void tighten(RPlusTreeNode* n);
+	static void tighten(RPlusTreeNode* n);
 
 	void adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn);
 
@@ -59,9 +59,9 @@ public:
 
 	void insert(Point givenPoint) override;
 
-	Cost sweepData(std::vector<Point>& points, Orientation orientation);
+	static Cost sweepData(std::vector<Point>& points, Orientation orientation);
 
-	Cost sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation);
+	static Cost sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation);
 
 	Partition partition(RPlusTreeNode* n, float splitLine, Orientation splitAxis);
 
@@ -77,12 +77,13 @@ public:
 
 	void remove(Point givenPoint) override;
 
-	/*** tree traversals ***/
-
-	void bfs();
-
 	/*** correctness checks ***/
+
 	void checkBoundingBoxes();
+
+	/*** tree traversal ***/
+
+	friend std::ostream& operator<<(std::ostream& os, const RPlusTree& tree);
 };
 
 #endif // __RPLUSTREE__
