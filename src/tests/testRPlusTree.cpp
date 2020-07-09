@@ -41,12 +41,12 @@ TEST_CASE("R+Tree: testSweepData")
 	points.emplace_back(9.0f, 0.0f);
 
 	// sweep along x axis
-	Cost costX = tree.sweepData(points, RPlusTree::ALONG_X_AXIS);
+	Cost costX = RPlusTree::sweepData(points, RPlusTree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 4.5f);
 
 	// sweep along y axis
-	Cost costY = tree.sweepData(points, RPlusTree::ALONG_Y_AXIS);
+	Cost costY = RPlusTree::sweepData(points, RPlusTree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 0.0f);
 	REQUIRE(costY.second == 2.5f);
 }
@@ -67,12 +67,12 @@ TEST_CASE("R+Tree: testSweepCommon")
 	nodes.at(3)->boundingBox = Rectangle(5.0f, 4.0f, 9.0f, 12.0f);
 
 	// sweep along x axis
-	Cost costX = tree.sweepNodes(nodes, RPlusTree::ALONG_X_AXIS);
+	Cost costX = RPlusTree::sweepNodes(nodes, RPlusTree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 5.0f);
 
 	// sweep along y axis
-	Cost costY = tree.sweepNodes(nodes, RPlusTree::ALONG_Y_AXIS);
+	Cost costY = RPlusTree::sweepNodes(nodes, RPlusTree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 1.0f);
 	REQUIRE(costY.second == 4.0f);
 }
@@ -91,12 +91,12 @@ TEST_CASE("R+Tree: testSweepEdge")
 	nodes.at(2)->boundingBox = Rectangle(6.0f, 0.0f, 8.0f, 2.0f);
 
 	// sweep along x axis
-	Cost costX = tree.sweepNodes(nodes, RPlusTree::ALONG_X_AXIS);
+	Cost costX = RPlusTree::sweepNodes(nodes, RPlusTree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 3.0f);
 
 	// sweep along y axis
-	Cost costY = tree.sweepNodes(nodes, RPlusTree::ALONG_Y_AXIS);
+	Cost costY = RPlusTree::sweepNodes(nodes, RPlusTree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 3.0f);
 	REQUIRE(costY.second == 0.0f);
 }
@@ -135,14 +135,14 @@ TEST_CASE("R+Tree: testInsert")
 	auto * cluster1 = new RPlusTreeNode();
 	cluster1->data.emplace_back(0.0f, 0.0f);
 	cluster1->data.emplace_back(4.0f, 4.0f);
-	tree.tighten(cluster1);
+	RPlusTree::tighten(cluster1);
 	root->children.push_back(cluster1);
 	cluster1->parent = root;
 
 	auto * cluster2 = new RPlusTreeNode();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(9.0f, 4.0f);
-	tree.tighten(cluster2);
+	RPlusTree::tighten(cluster2);
 	root->children.push_back(cluster2);
 	cluster2->parent = root;
 
@@ -150,12 +150,12 @@ TEST_CASE("R+Tree: testInsert")
 	cluster3->data.emplace_back(0.0f, 5.0f);
 	cluster3->data.emplace_back(4.0f, 9.0f);
 	cluster3->data.emplace_back(9.0f, 9.0f);
-	tree.tighten(cluster3);
+	RPlusTree::tighten(cluster3);
 	root->children.push_back(cluster3);
 	cluster3->parent = root;
 
 	// tighten root's bounding box
-	tree.tighten(root);
+	RPlusTree::tighten(root);
 
 	// insert new point, causing node to overflow
 	tree.insert(Point(5.0f, 5.0f));
@@ -180,17 +180,17 @@ TEST_CASE("R+Tree: testSimpleRemove")
 	auto * cluster1a = new RPlusTreeNode();
 	cluster1a->data.emplace_back(0.0f, 0.0f);
 	cluster1a->data.emplace_back(4.0f, 4.0f);
-	tree.tighten(cluster1a);
+	RPlusTree::tighten(cluster1a);
 
 	auto * cluster1b = new RPlusTreeNode();
 	cluster1b->data.emplace_back(0.0f, 5.0f);
 	cluster1b->data.emplace_back(4.0f, 9.0f);
-	tree.tighten(cluster1b);
+	RPlusTree::tighten(cluster1b);
 
 	auto * cluster1 = new RPlusTreeNode();
 	cluster1->children.push_back(cluster1a);
 	cluster1->children.push_back(cluster1b);
-	tree.tighten(cluster1);
+	RPlusTree::tighten(cluster1);
 
 	cluster1a->parent = cluster1;
 	cluster1b->parent = cluster1;
@@ -198,12 +198,12 @@ TEST_CASE("R+Tree: testSimpleRemove")
 	auto * cluster2 = new RPlusTreeNode();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(7.0f, 9.0f);
-	tree.tighten(cluster2);
+	RPlusTree::tighten(cluster2);
 
 	auto * root = tree.getRoot();
 	root->children.push_back(cluster1);
 	root->children.push_back(cluster2);
-	tree.tighten(root);
+	RPlusTree::tighten(root);
 
 	cluster1->parent = root;
 	cluster2->parent = root;
@@ -228,7 +228,7 @@ TEST_CASE("R+Tree: testChooseLeaf")
 	auto * root = tree.getRoot();
 	root->children.push_back(child1);
 	root->children.push_back(child2);
-	tree.tighten(root);
+	RPlusTree::tighten(root);
 
 	auto * leaf = tree.chooseLeaf(root, p);
 	REQUIRE(leaf == child2);
