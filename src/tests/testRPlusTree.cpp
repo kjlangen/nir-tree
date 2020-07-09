@@ -214,3 +214,22 @@ TEST_CASE("R+Tree: testSimpleRemove")
 	REQUIRE(tree.numDataElements() == 5);
 	REQUIRE(tree.getRoot()->numChildren() == 2);
 }
+
+TEST_CASE("R+Tree: testChooseLeaf")
+{
+	Point p = Point(165.0f, 181.0f);
+	RPlusTree tree(2, 3);
+
+	auto * child1 = new RPlusTreeNode();
+	child1->boundingBox = Rectangle(123.0f, 151.0f, 146.0f, 186.0f);
+	auto * child2 = new RPlusTreeNode();
+	child2->boundingBox = Rectangle(150.0f, 183.0f, 152.0f, 309.0f);
+
+	auto * root = tree.getRoot();
+	root->children.push_back(child1);
+	root->children.push_back(child2);
+	tree.tighten(root);
+
+	auto * leaf = tree.chooseLeaf(root, p);
+	REQUIRE(leaf == child2);
+}
