@@ -39,9 +39,9 @@ public:
 
 	bool exists(Point requestedPoint);
 
-	std::vector<Point> search(Point requestedPoint) override;
+	std::vector<Point> search(Point requestedPoint) const override;
 
-	std::vector<Point> search(Rectangle requestedRectangle) override;
+	std::vector<Point> search(Rectangle requestedRectangle) const override;
 
 	unsigned checksum() override;
 

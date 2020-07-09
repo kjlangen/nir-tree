@@ -75,7 +75,7 @@ bool RPlusTree::exists(Point requestedPoint) {
 	return false;
 }
 
-std::vector<Point> RPlusTree::search(Point requestedPoint)
+std::vector<Point> RPlusTree::search(Point requestedPoint) const
 {
 	std::vector<Point> result;
 	std::stack<RPlusTreeNode*> stack;
@@ -106,7 +106,7 @@ std::vector<Point> RPlusTree::search(Point requestedPoint)
 	return result;
 }
 
-std::vector<Point> RPlusTree::search(Rectangle requestedRectangle)
+std::vector<Point> RPlusTree::search(Rectangle requestedRectangle) const
 {
 	std::vector<Point> result;
 	std::stack<RPlusTreeNode*> stack;
