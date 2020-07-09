@@ -19,3 +19,22 @@ unsigned int RPlusTreeNode::numDataEntries() const
 {
 	return data.size();
 }
+
+RPlusTreeNode::RPlusTreeNode() {
+	this->parent = nullptr;
+}
+
+RPlusTreeNode::RPlusTreeNode(const RPlusTreeNode &other) {
+	this->data = other.data;
+	this->children = other.children;
+	this->parent = other.parent;
+}
+
+RPlusTreeNode & RPlusTreeNode::operator=(const RPlusTreeNode &other) {
+	if (this != &other) {
+		this->data = other.data;
+		this->children = other.children;
+		this->parent = other.parent;
+	}
+	return *this;
+}

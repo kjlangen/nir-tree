@@ -16,6 +16,10 @@ public:
 	bool isLeaf() const;
 	unsigned int numChildren() const;
 	unsigned int numDataEntries() const;
+
+	RPlusTreeNode();
+	RPlusTreeNode(const RPlusTreeNode &other);
+	RPlusTreeNode& operator=(const RPlusTreeNode &other);
 };
 
 #endif // __RPLUSTREE_NODE__
