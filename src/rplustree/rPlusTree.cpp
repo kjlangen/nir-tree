@@ -356,17 +356,12 @@ Cost RPlusTree::sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation or
 
 Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation splitAxis)
 {
-	// remove
-	if (!n->isRoot()) {
-		auto iter = std::find(n->parent->children.begin(), n->parent->children.end(), n);
-		n->parent->children.erase(iter);
-	}
-
 	auto* left = n;
 	auto* right = new RPlusTreeNode();
 	right->parent = left->parent;
 
 	if (n->isLeaf()) {
+		/*** leaf node case ***/
 		std::vector<Point> pointsClone = n->data;  // copy
 		n->data.clear();  // clear old entries
 		for (auto & point : pointsClone) {
@@ -378,7 +373,7 @@ Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation sp
 			}
 		}
 	} else {
-		// intermediate node case
+		/*** intermediate node case ***/
 		std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
 		n->children.clear();  // clear old entries
 		int vectorSize = childrenClone.size();
@@ -407,20 +402,22 @@ Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation sp
 		}
 	}
 
-	// adjust left and right after split
+	// adjust bounding boxes
+	tighten(left);
+	tighten(right);
+
+	// adjust left and right nodes after split
 	if (std::max(left->numDataEntries(), left->numChildren()) == 0) {
-		delete left;
-		tighten(right);
-		return {nullptr, right};
-	} else {
-		tighten(left);
+		// replace original pointer to left child with right child
+		std::replace(left->parent->children.begin(), left->parent->children.end(), left, right);
+		left = right;
+		right->data.clear();
+		right->children.clear();
 	}
 	if (std::max(right->numDataEntries(), right->numChildren()) == 0) {
-		delete left;
-		tighten(left);
-		return {left, nullptr};
-	} else {
-		tighten(right);
+		// delete right node if needed
+		delete right;
+		right = nullptr;
 	}
 	return {left, right};
 }
