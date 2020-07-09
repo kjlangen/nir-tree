@@ -24,6 +24,7 @@ class Point
 		bool operator!=(Point p) const;
 
 		void print();
+		friend std::ostream& operator<<(std::ostream& os, const Point& point);
 };
 
 class Rectangle
@@ -38,6 +39,7 @@ class Rectangle
 		float area();
 		float computeExpansionArea(Point givenPoint);
 		float computeExpansionArea(Rectangle requestedRectangle);
+		float computeOverlapArea(Rectangle requestedRectangle);
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle requestedRectangle);
@@ -49,6 +51,7 @@ class Rectangle
 		bool operator!=(Rectangle r) const;
 
 		void print();
+		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
 };
 
 class DynamicRectangle
@@ -68,8 +71,8 @@ class DynamicRectangle
 		bool containsPoint(Point requestedPoint);
 		void increaseResolution(Rectangle clippingRectangle);
 
-		bool operator==(DynamicRectangle r);
-		bool operator!=(DynamicRectangle r);
+		bool operator==(const DynamicRectangle& r);
+		bool operator!=(const DynamicRectangle& r);
 
 		void print();
 };
