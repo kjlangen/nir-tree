@@ -286,6 +286,16 @@ RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint)
 			}
 		}
 	}
+
+	// Special case if no appropriate node can be found
+	if (chosenChild == nullptr) {
+		auto * singletonNode = new RPlusTreeNode;
+		singletonNode->data.push_back(givenPoint);
+		tighten(singletonNode);
+		node->children.push_back(singletonNode);
+		tighten(node);
+		return node;
+	}
 	return chooseLeaf(chosenChild, givenPoint);
 }
 
@@ -295,8 +305,9 @@ void RPlusTree::insert(Point givenPoint)
 {
 	// choose the leaves where the data will go
 	RPlusTreeNode * leaf = chooseLeaf(root, givenPoint);
-	leaf->data.push_back(givenPoint);
-
+	if (leaf->isLeaf()) {
+		leaf->data.push_back(givenPoint);
+	}
 	// need to split leaf node
 	if (leaf->numDataEntries() > maxBranchFactor) {
 		Partition split = splitNode(leaf);
