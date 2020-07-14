@@ -86,59 +86,13 @@ int RPlusTree::numDataElements() const {
 	return result;
 }
 
-bool RPlusTree::exists(Point requestedPoint) {
-	RPlusTreeNode * n = root;
-	while (!n->isLeaf()) {
-		bool childFound = false;
-		for (auto & child : n->children) {
-			if (child->boundingBox.containsPoint(requestedPoint)) {
-				n = child;
-				childFound = true;
-				break;
-			}
-		}
-		if (!childFound) {
-			return false;
-		}
-	}
-
-	for (auto & data : n->data) {
-		if (data == requestedPoint) {
-			return true;
-		}
-	}
-	return false;
+bool RPlusTree::exists(Point requestedPoint) const {
+	return findLeaf(requestedPoint) != nullptr;
 }
 
 std::vector<Point> RPlusTree::search(Point requestedPoint) const
 {
-	std::vector<Point> result;
-	std::stack<RPlusTreeNode*> stack;
-	stack.push(root);
-	RPlusTreeNode * currentNode;
-
-	// do DFS to find all points contained in `requestedRectangle`
-	while (!stack.empty()) {
-		currentNode = stack.top();
-		stack.pop();
-
-		if (currentNode->isLeaf()) {
-			for (auto & data: currentNode->data) {
-				if (data == requestedPoint) {
-					result.push_back(data);
-				}
-			}
-		} else {
-			for (auto & child : currentNode->children) {
-				if (child->boundingBox.containsPoint(requestedPoint)) {
-					stack.push(child);
-					break;
-				}
-			}
-		}
-	}
-
-	return result;
+	return findLeaf(requestedPoint) == nullptr ? std::vector<Point>() : std::vector<Point>{requestedPoint};
 }
 
 std::vector<Point> RPlusTree::search(Rectangle requestedRectangle) const
@@ -250,7 +204,7 @@ void RPlusTree::adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn)
 	}
 }
 
-RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint)
+RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint) const
 {
 	if (node->isLeaf()) {
 		return node;
@@ -297,6 +251,32 @@ RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint)
 		return node;
 	}
 	return chooseLeaf(chosenChild, givenPoint);
+}
+
+RPlusTreeNode* RPlusTree::findLeaf(Point requestedPoint) const {
+	std::stack<RPlusTreeNode*> stack;
+	stack.push(root);
+	RPlusTreeNode * currentNode;
+
+	// do DFS to find all points contained in `requestedRectangle`
+	while (!stack.empty()) {
+		currentNode = stack.top();
+		stack.pop();
+
+		if (currentNode->isLeaf()) {
+			auto iter = std::find(currentNode->data.begin(), currentNode->data.end(), requestedPoint);
+			if (iter != currentNode->data.end()) {
+				return currentNode;
+			}
+		} else {
+			for (auto & child : currentNode->children) {
+				if (child->boundingBox.containsPoint(requestedPoint)) {
+					stack.push(child);
+				}
+			}
+		}
+	}
+	return nullptr;
 }
 
 /*** insert functions ***/
@@ -600,11 +580,11 @@ void RPlusTree::condenseTree(RPlusTreeNode *n, std::vector<Point>& dataClone) {
 
 void RPlusTree::remove(Point givenPoint)
 {
-	RPlusTreeNode* leaf = chooseLeaf(root, givenPoint);
-	auto iter = std::find(leaf->data.begin(), leaf->data.end(), givenPoint);
-	if (iter == leaf->data.end()) {
+	RPlusTreeNode* leaf = findLeaf(givenPoint);
+	if (leaf == nullptr) {
 		throw std::exception();  // element does not exist
 	}
+	auto iter = std::find(leaf->data.begin(), leaf->data.end(), givenPoint);
 	leaf->data.erase(iter);  // otherwise, remove data
 
 	// special root case

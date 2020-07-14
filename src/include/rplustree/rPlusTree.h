@@ -39,7 +39,7 @@ public:
 
 	int numDataElements() const;
 
-	bool exists(Point requestedPoint);
+	bool exists(Point requestedPoint) const;
 
 	std::vector<Point> search(Point requestedPoint) const override;
 
@@ -53,7 +53,9 @@ public:
 
 	void adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn);
 
-	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint);
+	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint) const;
+
+	RPlusTreeNode* findLeaf(Point requestedPoint) const;
 
 	/*** insert functions ***/
 
