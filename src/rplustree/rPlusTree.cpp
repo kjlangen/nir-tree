@@ -424,14 +424,18 @@ Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation sp
 	}
 
 	// adjust bounding boxes
-	tighten(left);
-	tighten(right);
+	if (std::max(left->numDataEntries(), left->numChildren()) > 0) {
+		tighten(left);
+	}
+	if (std::max(right->numDataEntries(), right->numChildren()) > 0) {
+		tighten(right);
+	}
 
 	// adjust left and right nodes after split
 	if (std::max(left->numDataEntries(), left->numChildren()) == 0) {
 		// replace original pointer to left child with right child
 		std::replace(left->parent->children.begin(), left->parent->children.end(), left, right);
-		left = right;
+		left = right;  // call assignment operator to copy over class attributes
 		right->data.clear();
 		right->children.clear();
 	}
