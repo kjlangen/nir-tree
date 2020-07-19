@@ -36,31 +36,13 @@ RPlusTreeNode * RPlusTree::getRoot() const {
 }
 
 int RPlusTree::height() const {
-	int maxHeight = 0;
-
-	RPlusTreeNode * currentNode;
-	std::stack<RPlusTreeNode*> nodes;
-
-	int currentHeight;
-	std::stack<int> heights;
-
-	nodes.push(root);
-	heights.push(0);
-	while (!nodes.empty()) {
-		currentNode = nodes.top();
-		nodes.pop();
-
-		currentHeight = heights.top();
-		heights.pop();
-
-		maxHeight = std::max(maxHeight, currentHeight);
-
-		for (auto & child : currentNode->children) {
-			nodes.push(child);
-			heights.push(currentHeight + 1);
-		}
+	int height = 0;
+	RPlusTreeNode* n = root;
+	while(!n->isLeaf()) {
+		n = n->children.at(0);
+		height++;
 	}
-	return maxHeight;
+	return height;
 }
 
 int RPlusTree::numDataElements() const {
