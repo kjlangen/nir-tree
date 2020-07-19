@@ -136,27 +136,6 @@ unsigned RPlusTree::checksum()
 
 /*** helper functions ***/
 
-void RPlusTree::tighten(RPlusTreeNode* n)
-{
-	if (n->isLeaf()) {
-		// reset bounding box
-		Point p = n->data.at(0);
-		n->boundingBox = Rectangle(p, p);
-		// iterate through data to set new bounding box
-		for (auto & data : n->data) {
-			n->boundingBox.expand(data);
-		}
-	} else {
-		// reset bounding box
-		Rectangle r = n->children.at(0)->boundingBox;
-		n->boundingBox = r;
-		// iterate through children to set new bounding box
-		for (auto & child : n->children) {
-			n->boundingBox.expand(child->boundingBox);
-		}
-	}
-}
-
 void RPlusTree::adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn)
 {
 	if (n->isRoot()) {
@@ -167,12 +146,12 @@ void RPlusTree::adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn)
 			root->children.push_back(nn);
 			nn->parent = root;
 		}
-		tighten(root);
+		root->tighten();
 		return;
 	}
-	tighten(n);
+	n->tighten();
 	if (nn != nullptr) {
-		tighten(nn);
+		nn->tighten();
 		nn->parent->children.push_back(nn);
 		// propagate split upwards, if needed
 		if (n->parent->numChildren() > maxBranchFactor) {
@@ -397,10 +376,10 @@ Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation sp
 
 	// adjust bounding boxes
 	if (std::max(left->numDataEntries(), left->numChildren()) > 0) {
-		tighten(left);
+		left->tighten();
 	}
 	if (std::max(right->numDataEntries(), right->numChildren()) > 0) {
-		tighten(right);
+		right->tighten();
 	}
 
 	// adjust left and right nodes after split

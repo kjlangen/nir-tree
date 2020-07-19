@@ -49,8 +49,6 @@ public:
 
 	/*** helper functions ***/
 
-	static void tighten(RPlusTreeNode* n);
-
 	void adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn);
 
 	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint) const;

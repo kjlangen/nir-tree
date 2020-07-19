@@ -16,6 +16,7 @@ public:
 	bool isLeaf() const;
 	unsigned int numChildren() const;
 	unsigned int numDataEntries() const;
+	void tighten();
 
 	RPlusTreeNode();
 	RPlusTreeNode(const RPlusTreeNode &other);

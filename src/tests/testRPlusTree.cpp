@@ -135,14 +135,14 @@ TEST_CASE("R+Tree: testInsert")
 	auto * cluster1 = new RPlusTreeNode();
 	cluster1->data.emplace_back(0.0f, 0.0f);
 	cluster1->data.emplace_back(4.0f, 4.0f);
-	RPlusTree::tighten(cluster1);
+	cluster1->tighten();
 	root->children.push_back(cluster1);
 	cluster1->parent = root;
 
 	auto * cluster2 = new RPlusTreeNode();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(9.0f, 4.0f);
-	RPlusTree::tighten(cluster2);
+	cluster2->tighten();
 	root->children.push_back(cluster2);
 	cluster2->parent = root;
 
@@ -150,12 +150,12 @@ TEST_CASE("R+Tree: testInsert")
 	cluster3->data.emplace_back(0.0f, 5.0f);
 	cluster3->data.emplace_back(4.0f, 9.0f);
 	cluster3->data.emplace_back(9.0f, 9.0f);
-	RPlusTree::tighten(cluster3);
+	cluster3->tighten();
 	root->children.push_back(cluster3);
 	cluster3->parent = root;
 
 	// tighten root's bounding box
-	RPlusTree::tighten(root);
+	root->tighten();
 
 	// insert new point, causing node to overflow
 	tree.insert(Point(5.0f, 5.0f));
@@ -180,17 +180,17 @@ TEST_CASE("R+Tree: testSimpleRemove")
 	auto * cluster1a = new RPlusTreeNode();
 	cluster1a->data.emplace_back(0.0f, 0.0f);
 	cluster1a->data.emplace_back(4.0f, 4.0f);
-	RPlusTree::tighten(cluster1a);
+	cluster1a->tighten();
 
 	auto * cluster1b = new RPlusTreeNode();
 	cluster1b->data.emplace_back(0.0f, 5.0f);
 	cluster1b->data.emplace_back(4.0f, 9.0f);
-	RPlusTree::tighten(cluster1b);
+	cluster1b->tighten();
 
 	auto * cluster1 = new RPlusTreeNode();
 	cluster1->children.push_back(cluster1a);
 	cluster1->children.push_back(cluster1b);
-	RPlusTree::tighten(cluster1);
+	cluster1->tighten();
 
 	cluster1a->parent = cluster1;
 	cluster1b->parent = cluster1;
@@ -198,12 +198,12 @@ TEST_CASE("R+Tree: testSimpleRemove")
 	auto * cluster2 = new RPlusTreeNode();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(7.0f, 9.0f);
-	RPlusTree::tighten(cluster2);
+	cluster2->tighten();
 
 	auto * root = tree.getRoot();
 	root->children.push_back(cluster1);
 	root->children.push_back(cluster2);
-	RPlusTree::tighten(root);
+	root->tighten();
 
 	cluster1->parent = root;
 	cluster2->parent = root;
@@ -228,7 +228,7 @@ TEST_CASE("R+Tree: testChooseLeaf")
 	auto * root = tree.getRoot();
 	root->children.push_back(child1);
 	root->children.push_back(child2);
-	RPlusTree::tighten(root);
+	root->tighten();
 
 	auto * leaf = tree.chooseLeaf(root, p);
 	REQUIRE(leaf == child2);
