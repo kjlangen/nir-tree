@@ -210,7 +210,7 @@ RPlusTreeNode* RPlusTree::findLeaf(Point requestedPoint) const {
 	stack.push(root);
 	RPlusTreeNode * currentNode;
 
-	// do DFS to find all points contained in `requestedRectangle`
+	// do DFS to find leaf node that contains `requestedPoint`
 	while (!stack.empty()) {
 		currentNode = stack.top();
 		stack.pop();
@@ -261,7 +261,7 @@ Cost RPlusTree::sweepData(std::vector<Point>& points, Orientation orientation)
 	std::sort(values.begin(), values.end());
 
 	std::vector<float> dedup;
-	for (int i = 0; i < values.size() - 1; i++) {
+	for (unsigned i = 0; i < values.size() - 1; i++) {
 		if (values.at(i) != values.at(i + 1)) {
 			dedup.push_back(values.at(i));
 		}
@@ -300,7 +300,7 @@ Cost RPlusTree::sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation or
 
 	// De-duplicated left bounds
 	std::vector<float> dedup;
-	for (int i = 0; i < leftBounds.size() - 1; i++) {
+	for (unsigned i = 0; i < leftBounds.size() - 1; i++) {
 		if (leftBounds.at(i) != leftBounds.at(i + 1)) {
 			dedup.push_back(leftBounds.at(i));
 		}
@@ -317,7 +317,7 @@ Cost RPlusTree::sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation or
 
 	// Compute cost
 	float cost = 0.0f;
-	for (int i = 0; i < leftBounds.size(); i++) {
+	for (unsigned i = 0; i < leftBounds.size(); i++) {
 		if (leftBounds.at(i) < splitLine && splitLine < rightBounds.at(i)) {
 			cost += 1.0f;
 		}
@@ -349,7 +349,7 @@ Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation sp
 		std::vector<RPlusTreeNode*> childrenClone = n->children;  // copy
 		n->children.clear();  // clear old entries
 		int vectorSize = childrenClone.size();
-		for (int i = 0; i < vectorSize; i++) {
+		for (unsigned i = 0; i < vectorSize; i++) {
 			RPlusTreeNode* child = childrenClone.at(i);
 			float rightEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
 			float leftEdge = splitAxis == ALONG_X_AXIS ? child->boundingBox.lowerLeft.x : child->boundingBox.lowerLeft.y;
@@ -477,7 +477,7 @@ void RPlusTree::reinsert(RPlusTreeNode *n, int level, std::vector<Point>& dataCl
 	}
 
 	// Move up the tree to the correct level
-	for (int i=0; i<level; i++) {
+	for (unsigned i=0; i<level; i++) {
 		baseNode = baseNode->parent;
 	}
 
@@ -528,7 +528,7 @@ void RPlusTree::condenseTree(RPlusTreeNode *n, std::vector<Point>& dataClone) {
 	}
 
 	// Reinsert intermediate nodes
-	for (int i=0; i<reinsertion.size(); i++) {
+	for (unsigned i=0; i<reinsertion.size(); i++) {
 		reinsert(reinsertion.at(i), levels.at(i), dataClone);
 	}
 }
