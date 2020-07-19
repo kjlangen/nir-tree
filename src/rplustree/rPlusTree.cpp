@@ -268,8 +268,9 @@ Cost RPlusTree::sweepData(std::vector<Point>& points, Orientation orientation)
 	}
 	dedup.push_back(values.at(values.size() - 1));
 
+	// Edge case: unable to find split due to distribution
 	if (dedup.at(0) == dedup.at(dedup.size() - 1)) {
-		return {values.size(), 0.0f};
+		return {values.size(), std::nanf("")};
 	}
 
 	unsigned mid = dedup.size() / 2;
@@ -307,9 +308,9 @@ Cost RPlusTree::sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation or
 	}
 	dedup.push_back(leftBounds.at(leftBounds.size() - 1));
 
-	// Edge case
+	// Edge case: unable to find split due to distribution
 	if (dedup.at(0) == dedup.at(dedup.size() - 1)) {
-		return {leftBounds.size(), 0.0f};
+		return {leftBounds.size(), std::nanf("")};
 	}
 
 	// Set split line to be middle element
@@ -410,6 +411,16 @@ Partition RPlusTree::splitNode(RPlusTreeNode* n)
 		costX = sweepNodes(n->children, ALONG_X_AXIS);
 		costY = sweepNodes(n->children, ALONG_Y_AXIS);
 	}
+
+	// handle edge case where we are unable to find split due to distribution
+	if (std::isnan(costX.second)) {
+		return partition(n, costY.second, ALONG_Y_AXIS);
+	}
+	if (std::isnan(costY.second)) {
+		return partition(n, costX.second, ALONG_X_AXIS);
+	}
+
+	// decide split based on cost
 	float splitLine = costX.first <= costY.first ? costX.second : costY.second;
 	Orientation splitAxis = costX.first <= costY.first ? ALONG_X_AXIS : ALONG_Y_AXIS;
 	return partition(n, splitLine, splitAxis);
