@@ -10,10 +10,10 @@
 #include <index/index.h>
 #include <rplustree/rPlusTreeNode.h>
 
-typedef std::pair<RPlusTreeNode*, RPlusTreeNode*> Partition;
+typedef std::pair<RPlusTreeNode *, RPlusTreeNode *> Partition;
 typedef std::pair<float, float> Cost;
 
-class RPlusTree: public Index
+class RPlusTree : public Index
 {
 	unsigned minBranchFactor;
 	unsigned maxBranchFactor;
@@ -21,7 +21,10 @@ class RPlusTree: public Index
 
 public:
 
-	enum Orientation {ALONG_X_AXIS, ALONG_Y_AXIS};
+	enum Orientation
+	{
+		ALONG_X_AXIS, ALONG_Y_AXIS
+	};
 
 	/*** constructor and destructor ***/
 
@@ -33,7 +36,7 @@ public:
 
 	bool isEmpty() const;
 
-	RPlusTreeNode* getRoot() const;
+	RPlusTreeNode *getRoot() const;
 
 	int height() const;
 
@@ -49,31 +52,31 @@ public:
 
 	/*** helper functions ***/
 
-	void adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn);
+	void adjustTree(RPlusTreeNode *n, RPlusTreeNode *nn);
 
-	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint) const;
+	RPlusTreeNode *chooseLeaf(RPlusTreeNode *node, Point &givenPoint) const;
 
-	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Rectangle& givenRectangle) const;
+	RPlusTreeNode *chooseLeaf(RPlusTreeNode *node, Rectangle &givenRectangle) const;
 
-	RPlusTreeNode* findLeaf(Point requestedPoint) const;
+	RPlusTreeNode *findLeaf(Point requestedPoint) const;
 
 	/*** insert functions ***/
 
 	void insert(Point givenPoint) override;
 
-	static Cost sweepData(std::vector<Point>& points, Orientation orientation);
+	static Cost sweepData(std::vector<Point> &points, Orientation orientation);
 
-	static Cost sweepNodes(std::vector<RPlusTreeNode*>& nodeList, Orientation orientation);
+	static Cost sweepNodes(std::vector<RPlusTreeNode *> &nodeList, Orientation orientation);
 
-	Partition partition(RPlusTreeNode* n, float splitLine, Orientation splitAxis);
+	Partition partition(RPlusTreeNode *n, float splitLine, Orientation splitAxis);
 
-	Partition splitNode(RPlusTreeNode* n);
+	Partition splitNode(RPlusTreeNode *n);
 
 	/*** remove functions ***/
 
-	void reinsert(RPlusTreeNode* n, int level, std::vector<Point>& dataClone);
+	void reinsert(RPlusTreeNode *n, int level, std::vector<Point> &dataClone);
 
-	void condenseTree(RPlusTreeNode* n, std::vector<Point>& dataClone);
+	void condenseTree(RPlusTreeNode *n, std::vector<Point> &dataClone);
 
 	void remove(Point givenPoint) override;
 
@@ -83,7 +86,7 @@ public:
 
 	/*** tree traversal ***/
 
-	friend std::ostream& operator<<(std::ostream& os, const RPlusTree& tree);
+	friend std::ostream &operator<<(std::ostream &os, const RPlusTree &tree);
 };
 
 #endif // __RPLUSTREE__
