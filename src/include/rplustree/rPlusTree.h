@@ -53,6 +53,8 @@ public:
 
 	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Point& givenPoint) const;
 
+	RPlusTreeNode* chooseLeaf(RPlusTreeNode* node, Rectangle& givenRectangle) const;
+
 	RPlusTreeNode* findLeaf(Point requestedPoint) const;
 
 	/*** insert functions ***/
@@ -68,8 +70,6 @@ public:
 	Partition splitNode(RPlusTreeNode* n);
 
 	/*** remove functions ***/
-
-	void findAllData(RPlusTreeNode* n, std::vector<Point>& dataClone);
 
 	void reinsert(RPlusTreeNode* n, int level, std::vector<Point>& dataClone);
 

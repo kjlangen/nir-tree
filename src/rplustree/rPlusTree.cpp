@@ -213,6 +213,49 @@ RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint) con
 	return chooseLeaf(chosenChildOverlap, givenPoint);
 }
 
+RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Rectangle& givenRectangle) const
+{
+	// found leaf, simple return
+	if (node->isLeaf()) {
+		return node;
+	}
+
+	// variables for overlap and no overlap cases
+	RPlusTreeNode* chosenChildNoOverlap = nullptr;
+	float smallestAreaNoOverlap = std::numeric_limits<float>::max();
+	RPlusTreeNode* chosenChildOverlap = node->children.at(0);
+	float smallestAreaOverlap = node->children.at(0)->boundingBox.computeExpansionArea(givenRectangle);
+
+	// iterate through child nodes
+	for (auto child : node->children) {
+		// need to check for future overlap
+		bool noOverlap = true;
+		Rectangle newBoundingBox = child->boundingBox;
+		newBoundingBox.expand(givenRectangle);
+		for (auto other : node->children) {
+			if (child != other && newBoundingBox.computeOverlapArea(other->boundingBox) != 0.0f) {
+				noOverlap = false;
+				break;
+			}
+		}
+		// find smallest expansion area and set variables accordingly
+		float testExpansionArea = child->boundingBox.computeExpansionArea(givenRectangle);
+		if (noOverlap && testExpansionArea < smallestAreaNoOverlap) {
+			smallestAreaNoOverlap = testExpansionArea;
+			chosenChildNoOverlap = child;
+		} else if (testExpansionArea < smallestAreaOverlap) {
+			smallestAreaOverlap = testExpansionArea;
+			chosenChildOverlap = child;
+		}
+	}
+
+	// recursive call depending on overlap condition
+	if (chosenChildNoOverlap != nullptr) {
+		return chooseLeaf(chosenChildNoOverlap, givenRectangle);
+	}
+	return chooseLeaf(chosenChildOverlap, givenRectangle);
+}
+
 RPlusTreeNode* RPlusTree::findLeaf(Point requestedPoint) const {
 	std::stack<RPlusTreeNode*> stack;
 	stack.push(root);
@@ -436,19 +479,6 @@ Partition RPlusTree::splitNode(RPlusTreeNode* n)
 
 /*** remove functions ***/
 
-void RPlusTree::findAllData(RPlusTreeNode* n, std::vector<Point> &dataClone) {
-	if (n->isLeaf()) {
-		dataClone.insert(dataClone.end(), n->data.begin(), n->data.end());
-		return;
-	}
-	for (auto child : n->children) {
-		findAllData(child, dataClone);
-		delete child;
-	}
-	n->children.clear();
-	n->parent = nullptr;
-}
-
 void RPlusTree::reinsert(RPlusTreeNode *n, int level, std::vector<Point>& dataClone) {
 	// Special single element case / empty bounding box case
 	if (n->boundingBox.lowerLeft == n->boundingBox.upperRight) {
@@ -462,50 +492,11 @@ void RPlusTree::reinsert(RPlusTreeNode *n, int level, std::vector<Point>& dataCl
 	}
 
 	// Find where to re-insert intermediate nodes
-	RPlusTreeNode * baseNode = root;
-	while (!baseNode->isLeaf()) {
-		RPlusTreeNode * nextNode = nullptr;
-		float smallestExpansionArea = baseNode->children.at(0)->boundingBox.computeExpansionArea(n->boundingBox);
-		for (auto & child : baseNode->children) {
-			// need to check for future overlap
-			bool noOverlap = true;
-			Rectangle newBoundingBox = child->boundingBox;
-			newBoundingBox.expand(n->boundingBox);
-			for (auto other : baseNode->children) {
-				if (child != other && newBoundingBox.computeOverlapArea(other->boundingBox) != 0.0f) {
-					noOverlap = false;
-				}
-			}
-			if (noOverlap) {
-				if (nextNode == nullptr) {
-					nextNode = child;
-				}
-				float testExpansionArea = child->boundingBox.computeExpansionArea(n->boundingBox);
-				if (testExpansionArea < smallestExpansionArea) {
-					smallestExpansionArea = testExpansionArea;
-					nextNode = child;
-				}
-			}
-		}
-		// Special case
-		if (nextNode == nullptr) {
-			findAllData(n, dataClone);
-			return;
-		}
-		baseNode = nextNode;
-	}
+	RPlusTreeNode* baseNode = chooseLeaf(root, n->boundingBox);
 
 	// Move up the tree to the correct level
 	for (unsigned i=0; i<level; i++) {
 		baseNode = baseNode->parent;
-	}
-
-	// Special overlapping case
-	for (auto child: baseNode->children) {
-		if (n->boundingBox.computeOverlapArea(child->boundingBox) != 0.0f) {
-			findAllData(n, dataClone);
-			return;
-		}
 	}
 
 	// Add node back into tree, adjust if needed
