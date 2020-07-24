@@ -167,16 +167,22 @@ void RPlusTree::adjustTree(RPlusTreeNode* n, RPlusTreeNode* nn)
 
 RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint) const
 {
+	// found leaf, simple return
 	if (node->isLeaf()) {
 		return node;
 	}
-	// Find the bounding box with least required expansion/overlap
-	RPlusTreeNode* chosenChild = nullptr;
-	float smallestExpansionArea = node->children.at(0)->boundingBox.computeExpansionArea(givenPoint);
+
+	// variables for overlap and no overlap cases
+	RPlusTreeNode* chosenChildNoOverlap = nullptr;
+	float smallestAreaNoOverlap = std::numeric_limits<float>::max();
+	RPlusTreeNode* chosenChildOverlap = node->children.at(0);
+	float smallestAreaOverlap = node->children.at(0)->boundingBox.computeExpansionArea(givenPoint);
+
+	// iterate through child nodes
 	for (auto child : node->children) {
-		// containment case
+		// containment case, simple break
 		if (child->boundingBox.containsPoint(givenPoint)) {
-			chosenChild = child;
+			chosenChildNoOverlap = child;
 			break;
 		}
 		// need to check for future overlap
@@ -186,23 +192,25 @@ RPlusTreeNode* RPlusTree::chooseLeaf(RPlusTreeNode* node, Point& givenPoint) con
 		for (auto other : node->children) {
 			if (child != other && newBoundingBox.computeOverlapArea(other->boundingBox) != 0.0f) {
 				noOverlap = false;
+				break;
 			}
 		}
-		if (noOverlap) {
-			if (chosenChild == nullptr) {
-				chosenChild = child;
-			} else {
-				// best fit case
-				float testExpansionArea = child->boundingBox.computeExpansionArea(givenPoint);
-				if (testExpansionArea < smallestExpansionArea) {
-					smallestExpansionArea = testExpansionArea;
-					chosenChild = child;
-				}
-			}
+		// find smallest expansion area and set variables accordingly
+		float testExpansionArea = child->boundingBox.computeExpansionArea(givenPoint);
+		if (noOverlap && testExpansionArea < smallestAreaNoOverlap) {
+			smallestAreaNoOverlap = testExpansionArea;
+			chosenChildNoOverlap = child;
+		} else if (testExpansionArea < smallestAreaOverlap) {
+			smallestAreaOverlap = testExpansionArea;
+			chosenChildOverlap = child;
 		}
 	}
-	assert(chosenChild != nullptr);
-	return chooseLeaf(chosenChild, givenPoint);
+
+	// recursive call depending on overlap condition
+	if (chosenChildNoOverlap != nullptr) {
+		return chooseLeaf(chosenChildNoOverlap, givenPoint);
+	}
+	return chooseLeaf(chosenChildOverlap, givenPoint);
 }
 
 RPlusTreeNode* RPlusTree::findLeaf(Point requestedPoint) const {
