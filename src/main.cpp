@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 	RTree rTree(750, 1500);
 	randomPoints(rTree, 10000, 1000);
 
-	RPlusTree rPlusTree(750, 1500);
+	RPlusTree::RPlusTree rPlusTree(750, 1500);
 	randomPoints(rPlusTree, 10000, 1000);
 	return 0;
 #endif
