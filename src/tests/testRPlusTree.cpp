@@ -98,7 +98,7 @@ TEST_CASE("R+Tree: testSweepEdge")
 	// sweep along y axis
 	RPlusTree::Cost costY = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 3.0f);
-	REQUIRE(costY.second == 0.0f);
+	REQUIRE(std::isnan(costY.second));
 }
 
 TEST_CASE("R+Tree: testNewChildNode")
