@@ -47,6 +47,12 @@ void Point::print()
 	std::cout << "(" << x << ", " << y << ")";
 }
 
+std::ostream& operator<<(std::ostream& os, const Point& point)
+{
+	os << "(" << point.x << ", " << point.y << ")";
+	return os;
+}
+
 Rectangle::Rectangle()
 {
 	lowerLeft = Point(0.0, 0.0);
@@ -88,6 +94,13 @@ float Rectangle::computeExpansionArea(Rectangle requestedRectangle)
 
 	// Compute the difference
 	return expandedArea - area();
+}
+
+float Rectangle::computeOverlapArea(Rectangle requestedRectangle)
+{
+	float widthOverlap = fmax(0, fmin(upperRight.x, requestedRectangle.upperRight.x) - fmax(lowerLeft.x, requestedRectangle.lowerLeft.x));
+	float heightOverlap = fmax(0, fmin(upperRight.y, requestedRectangle.upperRight.y) - fmax(lowerLeft.y, requestedRectangle.lowerLeft.y));
+	return widthOverlap * heightOverlap;
 }
 
 // TODO: Optimize
@@ -191,6 +204,12 @@ void Rectangle::print()
 	std::cout << ", ";
 	upperRight.print();
 	std::cout << "}" << std::endl;
+}
+
+std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle)
+{
+	os << "[" << rectangle.lowerLeft << "; " << rectangle.upperRight << "]";
+	return os;
 }
 
 DynamicRectangle::DynamicRectangle()
@@ -346,13 +365,13 @@ void DynamicRectangle::increaseResolution(Rectangle clippingRectangle)
 	}
 }
 
-bool DynamicRectangle::operator==(DynamicRectangle r)
+bool DynamicRectangle::operator==(const DynamicRectangle& r)
 {
 	// ???
 	return false;
 }
 
-bool DynamicRectangle::operator!=(DynamicRectangle r)
+bool DynamicRectangle::operator!=(const DynamicRectangle& r)
 {
 	// ???
 	return false;
