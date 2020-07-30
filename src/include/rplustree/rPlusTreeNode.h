@@ -6,13 +6,13 @@
 
 namespace RPlusTree
 {
-	class RPlusTreeNode
+	class Node
 	{
 	public:
 		Rectangle boundingBox;
-		std::vector<RPlusTreeNode *> children;
+		std::vector<Node *> children;
 		std::vector<Point> data;
-		RPlusTreeNode *parent = nullptr;
+		Node *parent = nullptr;
 
 		bool isRoot() const;
 
@@ -24,11 +24,11 @@ namespace RPlusTree
 
 		void tighten();
 
-		RPlusTreeNode();
+		Node();
 
-		RPlusTreeNode(const RPlusTreeNode &other);
+		Node(const Node &other);
 
-		RPlusTreeNode &operator=(const RPlusTreeNode &other);
+		Node &operator=(const Node &other);
 	};
 }
 

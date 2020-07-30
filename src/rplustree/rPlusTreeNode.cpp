@@ -1,26 +1,26 @@
 #include <rplustree/rPlusTreeNode.h>
 
-bool RPlusTree::RPlusTreeNode::isRoot() const
+bool RPlusTree::Node::isRoot() const
 {
 	return parent == nullptr;
 }
 
-bool RPlusTree::RPlusTreeNode::isLeaf() const
+bool RPlusTree::Node::isLeaf() const
 {
 	return children.empty();
 }
 
-unsigned int RPlusTree::RPlusTreeNode::numChildren() const
+unsigned int RPlusTree::Node::numChildren() const
 {
 	return children.size();
 }
 
-unsigned int RPlusTree::RPlusTreeNode::numDataEntries() const
+unsigned int RPlusTree::Node::numDataEntries() const
 {
 	return data.size();
 }
 
-void RPlusTree::RPlusTreeNode::tighten()
+void RPlusTree::Node::tighten()
 {
 	if (this->isLeaf())
 	{
@@ -46,19 +46,19 @@ void RPlusTree::RPlusTreeNode::tighten()
 	}
 }
 
-RPlusTree::RPlusTreeNode::RPlusTreeNode()
+RPlusTree::Node::Node()
 {
 	this->parent = nullptr;
 }
 
-RPlusTree::RPlusTreeNode::RPlusTreeNode(const RPlusTreeNode &other)
+RPlusTree::Node::Node(const Node &other)
 {
 	this->data = other.data;
 	this->children = other.children;
 	this->parent = other.parent;
 }
 
-RPlusTree::RPlusTreeNode &RPlusTree::RPlusTreeNode::operator=(const RPlusTreeNode &other)
+RPlusTree::Node &RPlusTree::Node::operator=(const Node &other)
 {
 	if (this != &other)
 	{

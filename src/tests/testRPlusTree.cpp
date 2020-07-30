@@ -55,11 +55,11 @@ TEST_CASE("R+Tree: testSweepCommon")
 {
 	RPlusTree::Tree tree(2, 3);
 
-	std::vector<RPlusTree::RPlusTreeNode*> nodes;
-	nodes.push_back(new RPlusTree::RPlusTreeNode());
-	nodes.push_back(new RPlusTree::RPlusTreeNode());
-	nodes.push_back(new RPlusTree::RPlusTreeNode());
-	nodes.push_back(new RPlusTree::RPlusTreeNode());
+	std::vector<RPlusTree::Node*> nodes;
+	nodes.push_back(new RPlusTree::Node());
+	nodes.push_back(new RPlusTree::Node());
+	nodes.push_back(new RPlusTree::Node());
+	nodes.push_back(new RPlusTree::Node());
 
 	nodes.at(0)->boundingBox = Rectangle(0.0f, 0.0f, 4.0f, 8.0f);
 	nodes.at(1)->boundingBox = Rectangle(0.0f, 9.0f, 4.0f, 12.0f);
@@ -81,10 +81,10 @@ TEST_CASE("R+Tree: testSweepEdge")
 {
 	RPlusTree::Tree tree(2, 3);
 
-	std::vector<RPlusTree::RPlusTreeNode*> nodes;
-	nodes.push_back(new RPlusTree::RPlusTreeNode());
-	nodes.push_back(new RPlusTree::RPlusTreeNode());
-	nodes.push_back(new RPlusTree::RPlusTreeNode());
+	std::vector<RPlusTree::Node*> nodes;
+	nodes.push_back(new RPlusTree::Node());
+	nodes.push_back(new RPlusTree::Node());
+	nodes.push_back(new RPlusTree::Node());
 
 	nodes.at(0)->boundingBox = Rectangle(0.0f, 0.0f, 2.0f, 8.0f);
 	nodes.at(1)->boundingBox = Rectangle(3.0f, 0.0f, 5.0f, 4.0f);
@@ -132,21 +132,21 @@ TEST_CASE("R+Tree: testInsert")
 	RPlusTree::Tree tree(2, 3);
 	auto * root = tree.getRoot();
 
-	auto * cluster1 = new RPlusTree::RPlusTreeNode();
+	auto * cluster1 = new RPlusTree::Node();
 	cluster1->data.emplace_back(0.0f, 0.0f);
 	cluster1->data.emplace_back(4.0f, 4.0f);
 	cluster1->tighten();
 	root->children.push_back(cluster1);
 	cluster1->parent = root;
 
-	auto * cluster2 = new RPlusTree::RPlusTreeNode();
+	auto * cluster2 = new RPlusTree::Node();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(9.0f, 4.0f);
 	cluster2->tighten();
 	root->children.push_back(cluster2);
 	cluster2->parent = root;
 
-	auto * cluster3 = new RPlusTree::RPlusTreeNode();
+	auto * cluster3 = new RPlusTree::Node();
 	cluster3->data.emplace_back(0.0f, 5.0f);
 	cluster3->data.emplace_back(4.0f, 9.0f);
 	cluster3->data.emplace_back(9.0f, 9.0f);
@@ -177,17 +177,17 @@ TEST_CASE("R+Tree: testSimpleRemove")
 {
 	RPlusTree::Tree tree(2, 3);
 
-	auto * cluster1a = new RPlusTree::RPlusTreeNode();
+	auto * cluster1a = new RPlusTree::Node();
 	cluster1a->data.emplace_back(0.0f, 0.0f);
 	cluster1a->data.emplace_back(4.0f, 4.0f);
 	cluster1a->tighten();
 
-	auto * cluster1b = new RPlusTree::RPlusTreeNode();
+	auto * cluster1b = new RPlusTree::Node();
 	cluster1b->data.emplace_back(0.0f, 5.0f);
 	cluster1b->data.emplace_back(4.0f, 9.0f);
 	cluster1b->tighten();
 
-	auto * cluster1 = new RPlusTree::RPlusTreeNode();
+	auto * cluster1 = new RPlusTree::Node();
 	cluster1->children.push_back(cluster1a);
 	cluster1->children.push_back(cluster1b);
 	cluster1->tighten();
@@ -195,7 +195,7 @@ TEST_CASE("R+Tree: testSimpleRemove")
 	cluster1a->parent = cluster1;
 	cluster1b->parent = cluster1;
 
-	auto * cluster2 = new RPlusTree::RPlusTreeNode();
+	auto * cluster2 = new RPlusTree::Node();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(7.0f, 9.0f);
 	cluster2->tighten();
@@ -220,9 +220,9 @@ TEST_CASE("R+Tree: testChooseLeaf")
 	Point p = Point(165.0f, 181.0f);
 	RPlusTree::Tree tree(2, 3);
 
-	auto * child1 = new RPlusTree::RPlusTreeNode();
+	auto * child1 = new RPlusTree::Node();
 	child1->boundingBox = Rectangle(123.0f, 151.0f, 146.0f, 186.0f);
-	auto * child2 = new RPlusTree::RPlusTreeNode();
+	auto * child2 = new RPlusTree::Node();
 	child2->boundingBox = Rectangle(150.0f, 183.0f, 152.0f, 309.0f);
 
 	auto * root = tree.getRoot();
