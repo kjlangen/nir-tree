@@ -15,7 +15,7 @@ namespace RPlusTree
 	typedef std::pair<RPlusTreeNode *, RPlusTreeNode *> Partition;
 	typedef std::pair<float, float> Cost;
 
-	class RPlusTree : public Index
+	class Tree : public Index
 	{
 		unsigned minBranchFactor;
 		unsigned maxBranchFactor;
@@ -30,9 +30,9 @@ namespace RPlusTree
 
 		/*** constructor and destructor ***/
 
-		RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+		Tree(unsigned minBranchFactor, unsigned maxBranchFactor);
 
-		~RPlusTree();
+		~Tree();
 
 		/*** general functions ***/
 
@@ -88,7 +88,7 @@ namespace RPlusTree
 
 		/*** tree traversal ***/
 
-		friend std::ostream &operator<<(std::ostream &os, const RPlusTree &tree);
+		friend std::ostream &operator<<(std::ostream &os, const Tree &tree);
 	};
 }
 

@@ -4,7 +4,7 @@
 
 TEST_CASE("R+Tree: testExistence")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 
 	Point p1(0.0f, 0.0f);
 	tree.insert(p1);
@@ -16,7 +16,7 @@ TEST_CASE("R+Tree: testExistence")
 
 TEST_CASE("R+Tree: testBoundingBox")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 
 	Point p1(0.0f, 0.0f);
 	tree.insert(p1);
@@ -31,7 +31,7 @@ TEST_CASE("R+Tree: testBoundingBox")
 
 TEST_CASE("R+Tree: testSweepData")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 
 	std::vector<Point> points;
 	points.emplace_back(0.0f, 0.0f);
@@ -41,19 +41,19 @@ TEST_CASE("R+Tree: testSweepData")
 	points.emplace_back(9.0f, 0.0f);
 
 	// sweep along x axis
-	RPlusTree::Cost costX = RPlusTree::RPlusTree::sweepData(points, RPlusTree::RPlusTree::ALONG_X_AXIS);
+	RPlusTree::Cost costX = RPlusTree::Tree::sweepData(points, RPlusTree::Tree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 4.5f);
 
 	// sweep along y axis
-	RPlusTree::Cost costY = RPlusTree::RPlusTree::sweepData(points, RPlusTree::RPlusTree::ALONG_Y_AXIS);
+	RPlusTree::Cost costY = RPlusTree::Tree::sweepData(points, RPlusTree::Tree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 0.0f);
 	REQUIRE(costY.second == 2.5f);
 }
 
 TEST_CASE("R+Tree: testSweepCommon")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 
 	std::vector<RPlusTree::RPlusTreeNode*> nodes;
 	nodes.push_back(new RPlusTree::RPlusTreeNode());
@@ -67,19 +67,19 @@ TEST_CASE("R+Tree: testSweepCommon")
 	nodes.at(3)->boundingBox = Rectangle(5.0f, 4.0f, 9.0f, 12.0f);
 
 	// sweep along x axis
-	RPlusTree::Cost costX = RPlusTree::RPlusTree::sweepNodes(nodes, RPlusTree::RPlusTree::ALONG_X_AXIS);
+	RPlusTree::Cost costX = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 5.0f);
 
 	// sweep along y axis
-	RPlusTree::Cost costY = RPlusTree::RPlusTree::sweepNodes(nodes, RPlusTree::RPlusTree::ALONG_Y_AXIS);
+	RPlusTree::Cost costY = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 1.0f);
 	REQUIRE(costY.second == 4.0f);
 }
 
 TEST_CASE("R+Tree: testSweepEdge")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 
 	std::vector<RPlusTree::RPlusTreeNode*> nodes;
 	nodes.push_back(new RPlusTree::RPlusTreeNode());
@@ -91,19 +91,19 @@ TEST_CASE("R+Tree: testSweepEdge")
 	nodes.at(2)->boundingBox = Rectangle(6.0f, 0.0f, 8.0f, 2.0f);
 
 	// sweep along x axis
-	RPlusTree::Cost costX = RPlusTree::RPlusTree::sweepNodes(nodes, RPlusTree::RPlusTree::ALONG_X_AXIS);
+	RPlusTree::Cost costX = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 3.0f);
 
 	// sweep along y axis
-	RPlusTree::Cost costY = RPlusTree::RPlusTree::sweepNodes(nodes, RPlusTree::RPlusTree::ALONG_Y_AXIS);
+	RPlusTree::Cost costY = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 3.0f);
 	REQUIRE(costY.second == 0.0f);
 }
 
 TEST_CASE("R+Tree: testNewChildNode")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 	tree.insert(Point(0.0f, 0.0f));
 	tree.insert(Point(4.0f, 5.0f));
 	tree.insert(Point(5.0f, 0.0f));
@@ -129,7 +129,7 @@ TEST_CASE("R+Tree: testNewChildNode")
 
 TEST_CASE("R+Tree: testInsert")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 	auto * root = tree.getRoot();
 
 	auto * cluster1 = new RPlusTree::RPlusTreeNode();
@@ -175,7 +175,7 @@ TEST_CASE("R+Tree: testInsert")
 
 TEST_CASE("R+Tree: testSimpleRemove")
 {
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 
 	auto * cluster1a = new RPlusTree::RPlusTreeNode();
 	cluster1a->data.emplace_back(0.0f, 0.0f);
@@ -218,7 +218,7 @@ TEST_CASE("R+Tree: testSimpleRemove")
 TEST_CASE("R+Tree: testChooseLeaf")
 {
 	Point p = Point(165.0f, 181.0f);
-	RPlusTree::RPlusTree tree(2, 3);
+	RPlusTree::Tree tree(2, 3);
 
 	auto * child1 = new RPlusTree::RPlusTreeNode();
 	child1->boundingBox = Rectangle(123.0f, 151.0f, 146.0f, 186.0f);
