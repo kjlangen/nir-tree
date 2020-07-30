@@ -6,6 +6,7 @@
 #include <nirtree/pencilPrinter.h>
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
+#include <bench/randomDisjointSquares.h>
 #include <bench/randomPoints.h>
 #include <bench/splitPoints.h>
 
@@ -122,6 +123,7 @@ void testGeometry()
 	testRectangleIntersection();
 	testRectanglePointContainment();
 	testRectangleFragmentation();
+	testIsotheticPolygonRefinement();
 
 	std::cout << "Geometry tested." << std::endl;
 }
@@ -148,8 +150,10 @@ void testRTree()
 void testNIRTree()
 {
 	// Unit test NIR-Tree
-	// nirtree::testPlayground();
-	nirtree::testSplitNodeRoutingSimple();
+	nirtree::testPlayground();
+	// nirtree::testSplitNodeLeaf();
+	// nirtree::testSplitNodeRoutingSimple();
+	// nirtree::testSplitNodeRoutingComplex();
 
 	std::cout << "NIRTree tested." << std::endl;
 }
@@ -159,6 +163,7 @@ void testPencilPrinter()
 	// Unit test PencilPrinter
 	nirtree::testPencilIdGeneration();
 	nirtree::testSimplePrintToPencil();
+	nirtree::testPointsPrintToPencil();
 	nirtree::testRectanglesPrintToPencil();
 	nirtree::testPolygonsPrintToPencil();
 	nirtree::testMultiLevelPrintToPencil();
@@ -231,8 +236,9 @@ int main(int argc, char *argv[])
 
 	if (runBenchMark)
 	{
-		// randomPoints();
-		splitPoints();
+		randomPoints();
+		// splitPoints();
+		// randomDisjointSquares();
 	}
 
 	if (!runUnitTests && !runBenchMark)

@@ -4,7 +4,7 @@ void randomPoints()
 {
 	// Setup random generators
 	std::default_random_engine generator;
-	std::uniform_real_distribution<float> pointDist(0.0, 20000000.0);
+	std::uniform_real_distribution<float> pointDist(0.0, 200000.0);
 	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (20000000.0, 20000000.0)." << std::endl;
 
 	// Setup checksums
@@ -21,10 +21,10 @@ void randomPoints()
 	double totalDeletes = 0.0;
 
 	// Setup the RTree
-	rtree::RTree *tree = new rtree::RTree(750, 1500);
+	nirtree::NIRTree *tree = new nirtree::NIRTree(7, 15);
 
 	// Set benchmark size
-	unsigned benchmarkSize = 2000000;
+	unsigned benchmarkSize = 2000;
 
 	// Initialize points
 	Point *points = new Point[benchmarkSize];
@@ -45,11 +45,12 @@ void randomPoints()
 
 	// Initialize search rectangles
 	Rectangle *searchRectangles = new Rectangle[16];
+	unsigned blockSize = benchmarkSize / 16;
 	std::cout << "Beginning initialization of 16 rectangles..." << std::endl;
 	for (unsigned i = 0; i < 16; ++i)
 	{
 		// Create the rectangle
-		searchRectangles[i] = Rectangle(i * 1250000, i * 1250000, i * 1250000 + 1250000, i * 1250000 + 1250000);
+		searchRectangles[i] = Rectangle(i * blockSize, i * blockSize, i * blockSize + blockSize, i * blockSize + blockSize);
 
 		// Print the search rectangle
 		std::cout << "searchRectangles[" << i << "] "; searchRectangles[i].print();
@@ -69,12 +70,16 @@ void randomPoints()
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
 		std::cout << "inserted." << delta.count() << " s" << std::endl;
+		tree->root->validate(nullptr, 0);
 	}
 	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
 
 	// Validate checksum
-	assert(tree->checksum() == directSum);
-	std::cout << "Checksum OK." << std::endl;
+	nirtree::PencilPrinter printer;
+	tree->print();
+	printer.printToPencil(tree->root);
+	// assert(tree->checksum() == directSum);
+	// std::cout << "Checksum OK." << std::endl;
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search for " << benchmarkSize << " points..." << std::endl;
@@ -83,7 +88,15 @@ void randomPoints()
 		// Search
 		std::cout << "Point[" << i << "] ";
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		tree->search(points[i]);
+		if (tree->search(points[i]).size() < 1)
+		{
+			std::cout << "exhaustively" << std::endl;
+			if (tree->exhaustiveSearch(points[i]).size() < 1)
+			{
+				tree->print();
+				assert(false);
+			}
+		}
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
@@ -129,6 +142,7 @@ void randomPoints()
 	{
 		// Delete
 		std::cout << "Point[" << i << "] ";
+		tree->print();
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
 		tree->remove(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();

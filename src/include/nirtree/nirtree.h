@@ -14,7 +14,7 @@
 
 namespace nirtree
 {
-	// For now we will work with a NIRTree that only stores points
+	// TODO: For now we will work with a NIRTree that only stores points
 	class NIRTree
 	{
 		public:
@@ -30,7 +30,7 @@ namespace nirtree
 			std::vector<Point> search(Point requestedPoint);
 			std::vector<Point> search(Rectangle requestedRectangle);
 			void insert(Point givenPoint);
-			// void remove(Point givenPoint);
+			void remove(Point givenPoint);
 
 			// Miscellaneous
 			unsigned checksum();

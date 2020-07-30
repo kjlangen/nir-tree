@@ -4,6 +4,7 @@
 #include <random>
 #include <chrono>
 #include <rtree/rtree.h>
+#include <nirtree/nirtree.h>
 
 void randomPoints();
 

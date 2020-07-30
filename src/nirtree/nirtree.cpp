@@ -41,10 +41,10 @@ namespace nirtree
 		root = root->insert(givenPoint);
 	}
 
-	// void NIRTree::remove(Point givenPoint)
-	// {
-	// 	root = root->remove(givenPoint);
-	// }
+	void NIRTree::remove(Point givenPoint)
+	{
+		root = root->remove(givenPoint);
+	}
 
 	unsigned NIRTree::checksum()
 	{

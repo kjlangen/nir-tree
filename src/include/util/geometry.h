@@ -3,9 +3,11 @@
 
 #include <iostream>
 #include <algorithm>
+#include <queue>
 #include <cassert>
 #include <vector>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <cfenv>
 
@@ -44,8 +46,11 @@ class Rectangle
 		void expand(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle givenRectangle);
 		bool strictIntersectsRectangle(Rectangle givenRectangle);
-		bool containsPoint(Point requestedPoint);
-		Rectangle intersectionRectangle(Rectangle clippingRectangle);
+		bool borderOnlyIntersectsRectanlge(Rectangle givenRectangle);	
+		bool containsPoint(Point givenPoint);
+		bool strictContainsPoint(Point givenPoint);
+		bool containsRectangle(Rectangle givenRectangle);
+		Rectangle intersection(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
 		bool operator==(Rectangle r);
@@ -72,14 +77,21 @@ class IsotheticPolygon
 		void expand(Rectangle givenRectangle);
 		void expand(IsotheticPolygon &targetPolygon, IsotheticPolygon &constraintPolygon);
 		bool intersectsRectangle(Rectangle &givenRectangle);
+		bool quickIntersectsRectangle(Rectangle &givenRectangle);
 		bool intersectsRectangle(IsotheticPolygon &givenPolygon);
+		bool quickIntersectsPolygon(IsotheticPolygon &givenPolygon);
 		bool containsPoint(Point requestedPoint);
 		void intersection(IsotheticPolygon &constraintPolygon);
 		void increaseResolution(Rectangle clippingRectangle);
 		void increaseResolution(IsotheticPolygon &clippingPolygon);
+		void refine();
+		void sort(bool min, unsigned d=0);
 
 		bool operator==(IsotheticPolygon r);
 		bool operator!=(IsotheticPolygon r);
+		bool unique();
+		bool infFree();
+		bool contiguous();
 
 		void print();
 };
@@ -91,5 +103,6 @@ void testRectangleExpansion();
 void testRectangleIntersection();
 void testRectanglePointContainment();
 void testRectangleFragmentation();
+void testIsotheticPolygonRefinement();
 
 #endif
