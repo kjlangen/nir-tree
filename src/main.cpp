@@ -6,6 +6,7 @@
 #include <nirtree/pencilPrinter.h>
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
+#include <bench/randomDisjointSquares.h>
 #include <bench/randomPoints.h>
 #include <bench/splitPoints.h>
 #define CATCH_CONFIG_RUNNER

@@ -14,6 +14,7 @@
 #include <chrono>
 #include <algorithm>
 #include <util/geometry.h>
+#include <util/graph.h>
 #include <nirtree/pencilPrinter.h>
 
 namespace nirtree
@@ -35,9 +36,10 @@ namespace nirtree
 		public:
 			struct SplitResult
 			{
-				Node *first;
-				IsotheticPolygon second;
-				IsotheticPolygon third;
+				Node *left;
+				IsotheticPolygon leftPolygon;
+				Node *right;
+				IsotheticPolygon rightPolygon;
 			};
 
 			Node *parent;
@@ -52,7 +54,8 @@ namespace nirtree
 
 			// Helper functions
 			Rectangle boundingBox();
-			// void removeChild(Node *child);
+			void updateChild(Node *child, IsotheticPolygon &boundingBox);
+			void removeChild(Node *child);
 			void removeData(Point givenPoint);
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
@@ -60,9 +63,9 @@ namespace nirtree
 			std::vector<Rectangle> decomposeNode(IsotheticPolygon &boundingPolygon);
 			SplitResult splitNodeSpecialCase(Point newData);
 			SplitResult splitNode(Point newData);
-			SplitResult splitNode(Node *newChild, IsotheticPolygon newPolygon);
-			SplitResult adjustTree(Node *sibling, IsotheticPolygon siblingPolygon);
-			// Node *condenseTree();
+			SplitResult splitNode(SplitResult &lowerSplit);
+			SplitResult adjustTree(SplitResult &leafSplit);
+			Node *condenseTree();
 			// Node *insert(ReinsertionEntry e);
 
 			// Data structure interface functions
@@ -70,10 +73,11 @@ namespace nirtree
 			std::vector<Point> search(Point &requestedPoint);
 			std::vector<Point> search(Rectangle &requestedRectangle);
 			Node *insert(Point givenPoint);
-			// Node *remove(Point givenPoint);
+			Node *remove(Point givenPoint);
 
 			// Miscellaneous
 			unsigned checksum();
+			bool validate(Node *expectedParent, unsigned index);
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 	};
@@ -85,6 +89,7 @@ namespace nirtree
 	void testFindLeaf();
 	void testSplitNodeLeaf();
 	void testSplitNodeRoutingSimple();
+	void testSplitNodeRoutingComplex();
 	void testAdjustTree();
 	// void testCondenseTree();
 	void testSearch();
