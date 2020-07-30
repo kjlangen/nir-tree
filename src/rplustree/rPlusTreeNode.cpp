@@ -1,26 +1,28 @@
 #include <rplustree/rPlusTreeNode.h>
 
-bool RPlusTree::Node::isRoot() const
+using namespace RPlusTree;
+
+bool Node::isRoot() const
 {
 	return parent == nullptr;
 }
 
-bool RPlusTree::Node::isLeaf() const
+bool Node::isLeaf() const
 {
 	return children.empty();
 }
 
-unsigned int RPlusTree::Node::numChildren() const
+unsigned int Node::numChildren() const
 {
 	return children.size();
 }
 
-unsigned int RPlusTree::Node::numDataEntries() const
+unsigned int Node::numDataEntries() const
 {
 	return data.size();
 }
 
-void RPlusTree::Node::tighten()
+void Node::tighten()
 {
 	if (this->isLeaf())
 	{
@@ -46,19 +48,19 @@ void RPlusTree::Node::tighten()
 	}
 }
 
-RPlusTree::Node::Node()
+Node::Node()
 {
 	this->parent = nullptr;
 }
 
-RPlusTree::Node::Node(const Node &other)
+Node::Node(const Node &other)
 {
 	this->data = other.data;
 	this->children = other.children;
 	this->parent = other.parent;
 }
 
-RPlusTree::Node &RPlusTree::Node::operator=(const Node &other)
+Node &Node::operator=(const Node &other)
 {
 	if (this != &other)
 	{
