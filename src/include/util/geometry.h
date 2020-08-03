@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <cfenv>
+#include <queue>
 
 class Point
 {
@@ -54,27 +55,41 @@ class Rectangle
 		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
 };
 
-class DynamicRectangle
+class IsotheticPolygon
 {
-	public:
-		std::vector<Rectangle> basicRectangles;
+public:
+	std::vector<Rectangle> basicRectangles;
 
-		DynamicRectangle();
-		DynamicRectangle(Rectangle baseRectangle);
-		float area();
-		float computeExpansionArea(Point givenPoint);
-		float computeExpansionArea(Rectangle requestedRectangle);
-		void expand(Point givenPoint);
-		void expand(Rectangle givenRectangle);
-		bool intersectsRectangle(Rectangle &requestedRectangle);
-		bool intersectsRectangle(DynamicRectangle &requestedRectangle);
-		bool containsPoint(Point requestedPoint);
-		void increaseResolution(Rectangle clippingRectangle);
+	IsotheticPolygon();
+	IsotheticPolygon(Rectangle baseRectangle);
+	IsotheticPolygon(const IsotheticPolygon &basePolygon);
+	float area();
+	float computeIntersectionArea(Rectangle givenRectangle);
+	float computeExpansionArea(Point givenPoint);
+	float computeExpansionArea(Rectangle givenRectangle);
+	Rectangle boundingBox();
+	void expand(Point givenPoint);
+	void expand(Point givenPoint, IsotheticPolygon &constraintPolygon);
+	void expand(Rectangle givenRectangle);
+	void expand(IsotheticPolygon &targetPolygon, IsotheticPolygon &constraintPolygon);
+	bool intersectsRectangle(Rectangle &givenRectangle);
+	bool quickIntersectsRectangle(Rectangle &givenRectangle);
+	bool intersectsRectangle(IsotheticPolygon &givenPolygon);
+	bool quickIntersectsPolygon(IsotheticPolygon &givenPolygon);
+	bool containsPoint(Point requestedPoint);
+	void intersection(IsotheticPolygon &constraintPolygon);
+	void increaseResolution(Rectangle clippingRectangle);
+	void increaseResolution(IsotheticPolygon &clippingPolygon);
+	void refine();
+	void sort(bool min, unsigned d=0);
 
-		bool operator==(const DynamicRectangle& r);
-		bool operator!=(const DynamicRectangle& r);
+	bool operator==(IsotheticPolygon r);
+	bool operator!=(IsotheticPolygon r);
+	bool unique();
+	bool infFree();
+	bool contiguous();
 
-		void print();
+	void print();
 };
 
 #endif
