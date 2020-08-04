@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 			}
 			case 's': // 's' for R* tree
 			{
-				RTree rTree(750, 1500);
+				rtree::RTree rTree(750, 1500);
 				randomPoints(rTree, 10000, 1000);
 				break;
 			}
