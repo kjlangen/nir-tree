@@ -1,5 +1,7 @@
 #include <rtree/rtree.h>
 
+using namespace rtree;
+
 RTree::RTree(unsigned minBranchFactor, unsigned maxBranchFactor)
 {
 	root = new Node(minBranchFactor, maxBranchFactor);

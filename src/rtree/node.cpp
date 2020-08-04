@@ -1,5 +1,7 @@
 #include <rtree/node.h>
 
+using namespace rtree;
+
 Node::Node()
 {
 	minBranchFactor = 3;
