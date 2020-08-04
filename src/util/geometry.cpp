@@ -1,4 +1,4 @@
-#include "util/geometry.h"
+#include <util/geometry.h>
 
 Point::Point()
 {
@@ -12,32 +12,32 @@ Point::Point(float x, float y)
 	this->y = y;
 }
 
-bool Point::operator<(Point p) const
+bool Point::operator<(Point p)
 {
 	return x < p.x && y < p.y;
 }
 
-bool Point::operator>(Point p) const
+bool Point::operator>(Point p)
 {
 	return x > p.x && y > p.y;
 }
 
-bool Point::operator<=(Point p) const
+bool Point::operator<=(Point p)
 {
 	return x <= p.x && y <= p.y;
 }
 
-bool Point::operator>=(Point p) const
+bool Point::operator>=(Point p)
 {
 	return x >= p.x && y >= p.y;
 }
 
-bool Point::operator==(Point p) const
+bool Point::operator==(Point p)
 {
 	return x == p.x && y == p.y;
 }
 
-bool Point::operator!=(Point p) const
+bool Point::operator!=(Point p)
 {
 	return x != p.x || y != p.y;
 }
@@ -55,8 +55,9 @@ std::ostream& operator<<(std::ostream& os, const Point& point)
 
 Rectangle::Rectangle()
 {
-	lowerLeft = Point(0.0, 0.0);
-	upperRight = Point(0.0, 0.0);
+	float infinity = std::numeric_limits<float>::infinity();
+	lowerLeft = Point(infinity, infinity);
+	upperRight = Point(infinity, infinity);
 }
 
 Rectangle::Rectangle(float x, float y, float xp, float yp)
@@ -76,6 +77,18 @@ float Rectangle::area()
 	return fabs((upperRight.x - lowerLeft.x) * (upperRight.y - lowerLeft.y));
 }
 
+float Rectangle::computeIntersectionArea(Rectangle givenRectangle)
+{
+	// Quick exit
+	if (!intersectsRectangle(givenRectangle))
+	{
+		return 0;
+	}
+
+	return fabs((fmin(upperRight.x, givenRectangle.upperRight.x) - fmax(lowerLeft.x, givenRectangle.lowerLeft.x)) *
+				(fmin(upperRight.y, givenRectangle.upperRight.y) - fmax(lowerLeft.y, givenRectangle.lowerLeft.y)));
+}
+
 float Rectangle::computeExpansionArea(Point givenPoint)
 {
 	// Expanded rectangle area computed directly
@@ -86,11 +99,11 @@ float Rectangle::computeExpansionArea(Point givenPoint)
 	return expandedArea - area();
 }
 
-float Rectangle::computeExpansionArea(Rectangle requestedRectangle)
+float Rectangle::computeExpansionArea(Rectangle givenRectangle)
 {
 	// Expanded rectangle area computed directly
-	float expandedArea = fabs((fmin(requestedRectangle.lowerLeft.x, lowerLeft.x) - fmax(requestedRectangle.upperRight.x, upperRight.x)) *
-							  (fmin(requestedRectangle.lowerLeft.y, lowerLeft.y) - fmax(requestedRectangle.upperRight.y, upperRight.y)));
+	float expandedArea = fabs((fmin(givenRectangle.lowerLeft.x, lowerLeft.x) - fmax(givenRectangle.upperRight.x, upperRight.x)) *
+							  (fmin(givenRectangle.lowerLeft.y, lowerLeft.y) - fmax(givenRectangle.upperRight.y, upperRight.y)));
 
 	// Compute the difference
 	return expandedArea - area();
@@ -103,95 +116,155 @@ float Rectangle::computeOverlapArea(Rectangle requestedRectangle)
 	return widthOverlap * heightOverlap;
 }
 
-// TODO: Optimize
 void Rectangle::expand(Point givenPoint)
 {
 	lowerLeft = Point(fmin(lowerLeft.x, givenPoint.x), fmin(lowerLeft.y, givenPoint.y));
 	upperRight = Point(fmax(upperRight.x, givenPoint.x), fmax(upperRight.y, givenPoint.y));
 }
 
-// TODO: Optimize computing the centre x & y coords to one computation
 void Rectangle::expand(Rectangle givenRectangle)
 {
 	lowerLeft = Point(fmin(givenRectangle.lowerLeft.x, lowerLeft.x), fmin(givenRectangle.lowerLeft.y, lowerLeft.y));
 	upperRight = Point(fmax(givenRectangle.upperRight.x, upperRight.x), fmax(givenRectangle.upperRight.y, upperRight.y));
 }
 
-bool Rectangle::intersectsRectangle(Rectangle requestedRectangle)
+bool Rectangle::intersectsRectangle(Rectangle givenRectangle)
 {
 	// Compute the range intersections
-	bool intervalX = lowerLeft.x <= requestedRectangle.upperRight.x && upperRight.x >= requestedRectangle.lowerLeft.x;
-	bool intervalY = lowerLeft.y <= requestedRectangle.upperRight.y && upperRight.y >= requestedRectangle.lowerLeft.y;
+	bool intervalX = lowerLeft.x <= givenRectangle.lowerLeft.x && givenRectangle.lowerLeft.x <= upperRight.x;
+	intervalX = intervalX || (givenRectangle.lowerLeft.x <= lowerLeft.x && lowerLeft.x <= givenRectangle.upperRight.x);
+
+	bool intervalY = lowerLeft.y <= givenRectangle.lowerLeft.y && givenRectangle.lowerLeft.y <= upperRight.y;
+	intervalY = intervalY || (givenRectangle.lowerLeft.y <= lowerLeft.y && lowerLeft.y <= givenRectangle.upperRight.y);
 
 	return intervalX && intervalY;
 }
 
-bool Rectangle::strictIntersectsRectangle(Rectangle requestedRectangle)
+bool Rectangle::strictIntersectsRectangle(Rectangle givenRectangle)
 {
-	// Compute the range intersections
-	bool intervalX = lowerLeft.x < requestedRectangle.upperRight.x && upperRight.x > requestedRectangle.lowerLeft.x;
-	bool intervalY = lowerLeft.y < requestedRectangle.upperRight.y && upperRight.y > requestedRectangle.lowerLeft.y;
+	// Compute the range intersections strictly
+	bool intervalX = lowerLeft.x < givenRectangle.lowerLeft.x && givenRectangle.lowerLeft.x < upperRight.x;
+	intervalX = intervalX || (givenRectangle.lowerLeft.x < lowerLeft.x && lowerLeft.x < givenRectangle.upperRight.x);
+
+	bool intervalY = lowerLeft.y < givenRectangle.lowerLeft.y && givenRectangle.lowerLeft.y < upperRight.y;
+	intervalY = intervalY || (givenRectangle.lowerLeft.y < lowerLeft.y && lowerLeft.y < givenRectangle.upperRight.y);
+
+	// std::cout << "xy = " << intervalX << intervalY  << std::endl;
 
 	return intervalX && intervalY;
 }
 
-bool Rectangle::containsPoint(Point requestedPoint)
+bool Rectangle::borderOnlyIntersectsRectanlge(Rectangle givenRectangle)
 {
-	return lowerLeft <= requestedPoint && requestedPoint <= upperRight;
+	bool a = lowerLeft.x == givenRectangle.upperRight.x || lowerLeft.y == givenRectangle.upperRight.y;
+	bool b = upperRight.x == givenRectangle.lowerLeft.x || upperRight.y == givenRectangle.lowerLeft.y;
+
+	return a || b;
+}
+
+bool Rectangle::containsPoint(Point givenPoint)
+{
+	return lowerLeft <= givenPoint && givenPoint <= upperRight;
+}
+
+bool Rectangle::strictContainsPoint(Point givenPoint)
+{
+	return lowerLeft < givenPoint && givenPoint < upperRight;
+}
+
+bool Rectangle::containsRectangle(Rectangle givenRectangle)
+{
+	return containsPoint(givenRectangle.lowerLeft) && containsPoint(givenRectangle.upperRight);
+}
+
+// NOTE: Will return the degenerate inf rectangle if the intersection is border-only or non-existent
+Rectangle Rectangle::intersection(Rectangle clippingRectangle)
+{
+	// Return rectangle
+	Rectangle r = Rectangle(lowerLeft, upperRight);
+
+	// Quick exit
+	if (!intersectsRectangle(clippingRectangle) || borderOnlyIntersectsRectanlge(clippingRectangle))
+	{
+		return Rectangle();
+	}
+
+	// Revise inward whenever the clippingRectangle is inside us
+	r.lowerLeft = Point(fmax(clippingRectangle.lowerLeft.x, lowerLeft.x), fmax(clippingRectangle.lowerLeft.y, lowerLeft.y));
+	r.upperRight = Point(fmin(clippingRectangle.upperRight.x, upperRight.x), fmin(clippingRectangle.upperRight.y, upperRight.y));
+
+	return r;
 }
 
 std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 {
+	// Return vector
 	std::vector<Rectangle> v;
 
-	// Enumerate each of the points of the bounding rectangle/cube/hypercube
-	Point upperLeft = Point(clippingRectangle.lowerLeft.x, clippingRectangle.upperRight.y);
-	Point lowerRight = Point(clippingRectangle.upperRight.x, clippingRectangle.lowerLeft.y);
-
-	// Upper right is inside us
-	if (containsPoint(clippingRectangle.upperRight))
+	// Quick exit
+	if (!intersectsRectangle(clippingRectangle) || borderOnlyIntersectsRectanlge(clippingRectangle))
 	{
-		// Always divide horizontally
-		v.push_back(Rectangle(lowerLeft.x, clippingRectangle.upperRight.y, upperRight.x, upperRight.y));
-		v.push_back(Rectangle(clippingRectangle.upperRight.x, lowerLeft.y, upperRight.x, clippingRectangle.upperRight.y));
+		assert(*this != Rectangle());
+		v.push_back(Rectangle(lowerLeft, upperRight));
+		return v;
 	}
 
-	// Lower right is inside us
-	if (containsPoint(lowerRight))
+	// This array represents the rectangles that might have to be created when fragmenting
+	// 0 -> top slab
+	// 2 -> bottom slab
+	// 1 -> right vertical, not intersecting the top or bottom slabs
+	// 3 -> left vertical, not intersecting the top or bottom slabs
+	Rectangle slots[] = { Rectangle(), Rectangle(), Rectangle(), Rectangle() };
+
+	// If the top slab is defined this will be revised downward
+	float maxVertical = upperRight.y;
+	float minVertical = lowerLeft.y;
+
+	// Define the top slab
+	if (lowerLeft.y < clippingRectangle.upperRight.y && clippingRectangle.upperRight.y < upperRight.y)
 	{
-		// Always divide horizontally
-		v.push_back(Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, lowerRight.y));
-		v.push_back(Rectangle(lowerRight.x, lowerRight.y, upperRight.x, upperRight.y));
+		maxVertical = clippingRectangle.upperRight.y;
+		slots[0] = Rectangle(lowerLeft.x, maxVertical, upperRight.x, upperRight.y);
 	}
 
-	// Lower left is inside us
-	if (containsPoint(clippingRectangle.lowerLeft))
+	// Define the bottom slab
+	if (lowerLeft.y < clippingRectangle.lowerLeft.y && clippingRectangle.lowerLeft.y < upperRight.y)
 	{
-		// Always divide horizontally
-		v.push_back(Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, clippingRectangle.lowerLeft.y));
-		v.push_back(Rectangle(lowerLeft.x, clippingRectangle.lowerLeft.y, clippingRectangle.lowerLeft.x, upperRight.y));
+		minVertical = clippingRectangle.lowerLeft.y;
+		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, minVertical);
 	}
 
-	// Upper left is inside us
-	if (containsPoint(upperLeft))
+	// Define the right vertical
+	if (lowerLeft.x < clippingRectangle.upperRight.x && clippingRectangle.upperRight.x < upperRight.x)
 	{
-		// Always divide horizontally
-		v.push_back(Rectangle(lowerLeft.x, upperLeft.y, upperRight.x, upperRight.y));
-		v.push_back(Rectangle(lowerLeft.x, lowerLeft.y, upperLeft.x, upperLeft.y));
+		slots[1] = Rectangle(clippingRectangle.upperRight.x, minVertical, upperRight.x, maxVertical);
 	}
 
-	// TODO: If there are too many rectangles we can safely remove one of the rectangles although
-	// it will cost us computation time to find out which we can eliminate
+	// Define the left vertical
+	if (lowerLeft.x < clippingRectangle.lowerLeft.x && clippingRectangle.lowerLeft.x < upperRight.x)
+	{
+		slots[3] = Rectangle(lowerLeft.x, minVertical, clippingRectangle.lowerLeft.x, maxVertical);
+	}
+
+	// TODO: Maybe optimize this away and just return the array?
+	Rectangle rAtInfinity = Rectangle();
+	for (unsigned i = 0; i < 4; ++i)
+	{
+		if (slots[i] != rAtInfinity)
+		{
+			v.push_back(slots[i]);
+		}
+	}
 
 	return v;
 }
 
-bool Rectangle::operator==(Rectangle r) const
+bool Rectangle::operator==(Rectangle r)
 {
 	return lowerLeft == r.lowerLeft && upperRight == r.upperRight;
 }
 
-bool Rectangle::operator!=(Rectangle r) const
+bool Rectangle::operator!=(Rectangle r)
 {
 	return lowerLeft != r.lowerLeft || upperRight != r.upperRight;
 }
@@ -518,6 +591,7 @@ bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
 	return false;
 }
 
+/*
 bool IsotheticPolygon::quickIntersectsRectangle(Rectangle &givenRectangle)
 {
 	// Compute the root
@@ -582,6 +656,7 @@ bool IsotheticPolygon::quickIntersectsRectangle(Rectangle &givenRectangle)
 		}
 	}
 }
+*/
 
 bool IsotheticPolygon::intersectsRectangle(IsotheticPolygon &givenPolygon)
 {
@@ -898,103 +973,4 @@ void IsotheticPolygon::print()
 		std::cout << '|';
 	}
 	std::cout << std::endl;
-}
-
-void testIsotheticPolygonRefinement()
-{
-	// One rectangle
-	IsotheticPolygon ip(Rectangle(10.5, 22.465, 2314.985, 845986.034));
-	ip.refine();
-	assert(ip.basicRectangles[0] == Rectangle(10.5, 22.465, 2314.985, 845986.034));
-
-	// Two rectangles that can't be combined
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(0.0, 0.0, 5.0, 5.0));
-	ip.basicRectangles.push_back(Rectangle(6.1, 6.1, 9.5, 9.5));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 2);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(0.0, 0.0, 5.0, 5.0)) != ip.basicRectangles.end());
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(6.1, 6.1, 9.5, 9.5)) != ip.basicRectangles.end());
-
-	// Two rectangles that can be combined along x
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(7.1, 7.1, 20.93, 15.0));
-	ip.basicRectangles.push_back(Rectangle(20.93, 7.1, 25.93, 15.0));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 1);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(7.1, 7.1, 25.93, 15.0)) != ip.basicRectangles.end());
-
-	// Two rectangles that can be combined along y
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(0.0, 0.0, 7058.0, 7058.0));
-	ip.basicRectangles.push_back(Rectangle(0.0, 7058.0, 7058.0, 7972.0));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 1);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(0.0, 0.0, 7058.0, 7972.0)) != ip.basicRectangles.end());
-
-	// Seven rectangles that can be combined along x
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(307.1, -20.0, 400.3, 0.0));
-	ip.basicRectangles.push_back(Rectangle(5.0, -20.0, 15.0, 0.0));
-	ip.basicRectangles.push_back(Rectangle(15.0, -20.0, 201.7, 0.0));
-	ip.basicRectangles.push_back(Rectangle(-20.0, -20.0, -5.0, 0.0));
-	ip.basicRectangles.push_back(Rectangle(201.7, -20.0, 307.1, 0.0));
-	ip.basicRectangles.push_back(Rectangle(400.3, -20.0, 453.3, 0.0));
-	ip.basicRectangles.push_back(Rectangle(-5.0, -20.0, 5.0, 0.0));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 1);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(-20.0, -20.0, 453.3, 0.0)) != ip.basicRectangles.end());
-
-	// Three rectangles that can be combined by a sweep along x then along y
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(-4096.1, -2073.4, -4056.1, -1553.4));
-	ip.basicRectangles.push_back(Rectangle(-4056.1, -2003.4, -4006.1, -1553.4));
-	ip.basicRectangles.push_back(Rectangle(-4056.1, -2073.4, -4006.1, -2003.4));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 1);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(-4096.1, -2073.4, -4006.1, -1553.4)) != ip.basicRectangles.end());
-
-	// Three rectangles that can be combined by a sweep along y then along x
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(545.0, 100.0, 745.0, 175.0));
-	ip.basicRectangles.push_back(Rectangle(545.0, 175.0, 645.0, 250.0));
-	ip.basicRectangles.push_back(Rectangle(645.0, 175.0, 745.0, 250.0));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 1);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(545.0, 100.0, 745.0, 250.0)) != ip.basicRectangles.end());
-
-	// Set of rectangles that can only be combined by iterative sweeps
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(4.0, 4.0, 9.0, 5.0));
-	ip.basicRectangles.push_back(Rectangle(0.0, 0.0, 9.0, 4.0));
-	ip.basicRectangles.push_back(Rectangle(0.0, 5.0, 9.0, 8.0));
-	ip.basicRectangles.push_back(Rectangle(0.0, 4.0, 4.0, 5.0));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 1);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(0.0, 0.0, 9.0, 8.0)) != ip.basicRectangles.end());
-
-	// Set of rectangles that can only be partially combined
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(15.0, -3.0, 17.0, 3.0));
-	ip.basicRectangles.push_back(Rectangle(13.0, 5.0, 24.0, 8.0));
-	ip.basicRectangles.push_back(Rectangle(13.0, -3.0, 15.0, 5.0));
-	ip.basicRectangles.push_back(Rectangle(15.0, 3.0, 17.0, 5.0));
-	ip.refine();
-	ip.print();
-	assert(ip.basicRectangles.size() == 2);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(13.0, -3.0, 17.0, 5.0)) != ip.basicRectangles.end());
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(13.0, 5.0, 24.0, 8.0)) != ip.basicRectangles.end());
-
-	// Set of rectangles that cannot be combined at all
-	ip.basicRectangles.clear();
-	ip.basicRectangles.push_back(Rectangle(0.0, -5.0, 2.0, 0.0));
-	ip.basicRectangles.push_back(Rectangle(-2.0, 0.0, 0.0, 5.0));
-	ip.basicRectangles.push_back(Rectangle(0.0, 0.0, 5.0, 2.0));
-	ip.basicRectangles.push_back(Rectangle(-5.0,-2.0, 0.0, 0.0));
-	ip.refine();
-	assert(ip.basicRectangles.size() == 4);
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(0.0, -5.0, 2.0, 0.0)) != ip.basicRectangles.end());
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(-2.0, 0.0, 0.0, 5.0)) != ip.basicRectangles.end());
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(0.0, 0.0, 5.0, 2.0)) != ip.basicRectangles.end());
-	assert(std::find(ip.basicRectangles.begin(), ip.basicRectangles.end(), Rectangle(-5.0,-2.0, 0.0, 0.0)) != ip.basicRectangles.end());
 }

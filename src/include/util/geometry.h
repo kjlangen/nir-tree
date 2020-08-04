@@ -1,58 +1,65 @@
 #ifndef __GEOMETRY__
 #define __GEOMETRY__
+
 #include <iostream>
 #include <algorithm>
+#include <queue>
 #include <cassert>
 #include <vector>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <cfenv>
-#include <queue>
 
 class Point
 {
-	public:
-		float x;
-		float y;
+public:
+	float x;
+	float y;
 
-		Point();
-		Point(float x, float y);
-		bool operator<(Point p) const;
-		bool operator>(Point p) const;
-		bool operator<=(Point p) const;
-		bool operator>=(Point p) const;
-		bool operator==(Point p) const;
-		bool operator!=(Point p) const;
+	Point();
+	Point(float x, float y);
+	bool operator<(Point p);
+	bool operator>(Point p);
+	bool operator<=(Point p);
+	bool operator>=(Point p);
+	bool operator==(Point p);
+	bool operator!=(Point p);
 
-		void print();
-		friend std::ostream& operator<<(std::ostream& os, const Point& point);
+	void print();
+	friend std::ostream& operator<<(std::ostream& os, const Point& point);
 };
 
 class Rectangle
 {
-	public:
-		Point lowerLeft;
-		Point upperRight;
+public:
+	Point lowerLeft;
+	Point upperRight;
 
-		Rectangle();
-		Rectangle(float x, float y, float xp, float yp);
-		Rectangle(Point lowerLeft, Point upperRight);
-		float area();
-		float computeExpansionArea(Point givenPoint);
-		float computeExpansionArea(Rectangle requestedRectangle);
-		float computeOverlapArea(Rectangle requestedRectangle);
-		void expand(Point givenPoint);
-		void expand(Rectangle givenRectangle);
-		bool intersectsRectangle(Rectangle requestedRectangle);
-		bool strictIntersectsRectangle(Rectangle requestedRectangle);
-		bool containsPoint(Point requestedPoint);
-		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
+	Rectangle();
+	Rectangle(float x, float y, float xp, float yp);
+	Rectangle(Point lowerLeft, Point upperRight);
+	float area();
+	float computeIntersectionArea(Rectangle givenRectangle);
+	float computeExpansionArea(Point givenPoint);
+	float computeExpansionArea(Rectangle givenRectangle);
+	float computeOverlapArea(Rectangle requestedRectangle);
+	void expand(Point givenPoint);
+	void expand(Rectangle givenRectangle);
+	bool intersectsRectangle(Rectangle givenRectangle);
+	bool strictIntersectsRectangle(Rectangle givenRectangle);
+	bool borderOnlyIntersectsRectanlge(Rectangle givenRectangle);
+	bool containsPoint(Point givenPoint);
+	bool strictContainsPoint(Point givenPoint);
+	bool containsRectangle(Rectangle givenRectangle);
+	Rectangle intersection(Rectangle clippingRectangle);
+	std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
-		bool operator==(Rectangle r) const;
-		bool operator!=(Rectangle r) const;
+	bool operator==(Rectangle r);
+	bool operator!=(Rectangle r);
 
-		void print();
-		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
+	void print();
+	friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
 };
 
 class IsotheticPolygon
@@ -73,7 +80,7 @@ public:
 	void expand(Rectangle givenRectangle);
 	void expand(IsotheticPolygon &targetPolygon, IsotheticPolygon &constraintPolygon);
 	bool intersectsRectangle(Rectangle &givenRectangle);
-	bool quickIntersectsRectangle(Rectangle &givenRectangle);
+	// bool quickIntersectsRectangle(Rectangle &givenRectangle);
 	bool intersectsRectangle(IsotheticPolygon &givenPolygon);
 	bool quickIntersectsPolygon(IsotheticPolygon &givenPolygon);
 	bool containsPoint(Point requestedPoint);
