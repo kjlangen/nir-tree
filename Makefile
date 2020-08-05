@@ -74,8 +74,7 @@ all: ${OBJECTS}
 # unit tests
 tests: ${OBJECTS} ${TESTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex \
- 		-lctemplate_nothreads -DUNIT_TESTING
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -lctemplate_nothreads -DUNIT_TESTING
 
 # Alter flags to include profiling
 profileflags:
