@@ -19,12 +19,12 @@ public:
 
 	Point();
 	Point(float x, float y);
-	bool operator<(Point p);
-	bool operator>(Point p);
-	bool operator<=(Point p);
-	bool operator>=(Point p);
-	bool operator==(Point p);
-	bool operator!=(Point p);
+	bool operator<(Point p) const;
+	bool operator>(Point p) const;
+	bool operator<=(Point p) const;
+	bool operator>=(Point p) const;
+	bool operator==(Point p) const;
+	bool operator!=(Point p) const;
 
 	void print();
 	friend std::ostream& operator<<(std::ostream& os, const Point& point);
@@ -55,8 +55,8 @@ public:
 	Rectangle intersection(Rectangle clippingRectangle);
 	std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
-	bool operator==(Rectangle r);
-	bool operator!=(Rectangle r);
+	bool operator==(Rectangle r) const;
+	bool operator!=(Rectangle r) const;
 
 	void print();
 	friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);

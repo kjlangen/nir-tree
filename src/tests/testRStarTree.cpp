@@ -5,7 +5,7 @@
 TEST_CASE("R*Tree: testBoundingBox")
 {
 	// Test set one
-	Node testNode = Node();
+	rtree::Node testNode = rtree::Node();
 	testNode.boundingBoxes.push_back(Rectangle(8.0, 1.0, 12.0, 5.0));
 	testNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
 	testNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
@@ -13,7 +13,7 @@ TEST_CASE("R*Tree: testBoundingBox")
 	REQUIRE(testNode.boundingBox() == Rectangle(8.0, -6.0, 16.0, 5.0));
 
 	// Test set two
-	Node testNode2 = Node();
+	rtree::Node testNode2 = rtree::Node();
 	testNode2.boundingBoxes.push_back(Rectangle(8.0, 12.0, 10.0, 14.0));
 	testNode2.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
 	testNode2.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
@@ -23,24 +23,24 @@ TEST_CASE("R*Tree: testBoundingBox")
 
 TEST_CASE("R*Tree: testUpdateBoundingBox")
 {
-	Node parentNode = Node();
+	rtree::Node parentNode = rtree::Node();
 
-	Node *child0 = new Node();
+	rtree::Node *child0 = new rtree::Node();
 	child0->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 	parentNode.children.push_back(child0);
 
-	Node *child1 = new Node();
+	rtree::Node *child1 = new rtree::Node();
 	child1->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
 	parentNode.children.push_back(child1);
 
-	Node *child2 = new Node();
+	rtree::Node *child2 = new rtree::Node();
 	child2->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
 	parentNode.children.push_back(child2);
 
-	Node *child3 = new Node();
+	rtree::Node *child3 = new rtree::Node();
 	child3->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
 	parentNode.children.push_back(child3);
@@ -58,25 +58,25 @@ TEST_CASE("R*Tree: testUpdateBoundingBox")
 
 TEST_CASE("R*Tree: testRemoveChild")
 {
-	// Setup a node with some children
-	Node parentNode = Node();
+	// Setup a rtree::Node with some children
+	rtree::Node parentNode = rtree::Node();
 
-	Node *child0 = new Node();
+	rtree::Node *child0 = new rtree::Node();
 	child0->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 	parentNode.children.push_back(child0);
 
-	Node *child1 = new Node();
+	rtree::Node *child1 = new rtree::Node();
 	child1->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
 	parentNode.children.push_back(child1);
 
-	Node *child2 = new Node();
+	rtree::Node *child2 = new rtree::Node();
 	child2->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
 	parentNode.children.push_back(child2);
 
-	Node *child3 = new Node();
+	rtree::Node *child3 = new rtree::Node();
 	child3->parent = &parentNode;
 	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
 	parentNode.children.push_back(child3);
@@ -95,8 +95,8 @@ TEST_CASE("R*Tree: testRemoveChild")
 
 TEST_CASE("R*Tree: testRemoveData")
 {
-	// Setup a node with some data
-	Node parentNode = Node();
+	// Setup a rtree::Node with some data
+	rtree::Node parentNode = rtree::Node();
 
 	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
 	parentNode.data.push_back(Point(9.0, -5.0));
@@ -119,18 +119,18 @@ TEST_CASE("R*Tree: testRemoveData")
 
 TEST_CASE("R*Tree: testChooseLeaf")
 {
-	// Create nodes
-	Node *root = new Node();
-	Node *left = new Node();
-	Node *right = new Node();
-	Node *leftChild0 = new Node();
-	Node *leftChild1 = new Node();
-	Node *leftChild2 = new Node();
-	Node *rightChild0 = new Node();
-	Node *rightChild1 = new Node();
-	Node *rightChild2 = new Node();
+	// Create rtree::Nodes
+	 rtree::Node *root = new rtree::Node();
+	 rtree::Node *left = new rtree::Node();
+	 rtree::Node *right = new rtree::Node();
+	 rtree::Node *leftChild0 = new rtree::Node();
+	 rtree::Node *leftChild1 = new rtree::Node();
+	 rtree::Node *leftChild2 = new rtree::Node();
+	 rtree::Node *rightChild0 = new rtree::Node();
+	 rtree::Node *rightChild1 = new rtree::Node();
+	 rtree::Node *rightChild2 = new rtree::Node();
 
-	// Setup nodes
+	// Setup rtree::Nodes
 	leftChild0->parent = left;
 	left->boundingBoxes.push_back(Rectangle(8.0, 12.0, 10.0, 14.0));
 	left->children.push_back(leftChild0);
@@ -182,19 +182,19 @@ TEST_CASE("R*Tree: testFindLeaf")
 
 	// Cluster 4, n = 7
 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	// Organized into two nodes
-	Node *cluster4a = new Node();
+	// Organized into two rtree::Nodes
+	rtree::Node *cluster4a = new rtree::Node();
 	cluster4a->data.push_back(Point(-10.0, -2.0));
 	cluster4a->data.push_back(Point(-12.0, -3.0));
 	cluster4a->data.push_back(Point(-11.0, -3.0));
 	cluster4a->data.push_back(Point(-10.0, -3.0));
 
-	Node *cluster4b = new Node();
+	rtree::Node *cluster4b = new rtree::Node();
 	cluster4b->data.push_back(Point(-9.0, -3.0));
 	cluster4b->data.push_back(Point(-7.0, -3.0));
 	cluster4b->data.push_back(Point(-10.0, -5.0));
 
-	Node *cluster4 = new Node();
+	rtree::Node *cluster4 = new rtree::Node();
 	cluster4a->parent = cluster4;
 	cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
 	cluster4->children.push_back(cluster4a);
@@ -206,32 +206,32 @@ TEST_CASE("R*Tree: testFindLeaf")
 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
 	// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
 	// (-14, -15), (-13, -15), (-12, -15)
-	// Organized into four nodes
-	Node *cluster5a = new Node();
+	// Organized into four rtree::Nodes
+	rtree::Node *cluster5a = new rtree::Node();
 	cluster5a->data.push_back(Point(-14.5, -13.0));
 	cluster5a->data.push_back(Point(-14.0, -13.0));
 	cluster5a->data.push_back(Point(-13.5, -13.5));
 	cluster5a->data.push_back(Point(-15.0, -14.0));
 
-	Node *cluster5b = new Node();
+	rtree::Node *cluster5b = new rtree::Node();
 	cluster5b->data.push_back(Point(-14.0, -14.0));
 	cluster5b->data.push_back(Point(-13.0, -14.0));
 	cluster5b->data.push_back(Point(-12.0, -14.0));
 	cluster5b->data.push_back(Point(-13.5, -16.0));
 
-	Node *cluster5c = new Node();
+	rtree::Node *cluster5c = new rtree::Node();
 	cluster5c->data.push_back(Point(-15.0, -14.5));
 	cluster5c->data.push_back(Point(-14.0, -14.5));
 	cluster5c->data.push_back(Point(-12.5, -14.5));
 	cluster5c->data.push_back(Point(-13.5, -15.5));
 
-	Node *cluster5d = new Node();
+	rtree::Node *cluster5d = new rtree::Node();
 	cluster5d->data.push_back(Point(-15.0, -15.0));
 	cluster5d->data.push_back(Point(-14.0, -15.0));
 	cluster5d->data.push_back(Point(-13.0, -15.0));
 	cluster5d->data.push_back(Point(-12.0, -15.0));
 
-	Node *cluster5 = new Node();
+	rtree::Node *cluster5 = new rtree::Node();
 	cluster5a->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
 	cluster5->children.push_back(cluster5a);
@@ -246,7 +246,7 @@ TEST_CASE("R*Tree: testFindLeaf")
 	cluster5->children.push_back(cluster5d);
 
 	// Root
-	Node *root = new Node();
+	rtree::Node *root = new rtree::Node();
 	cluster4->parent = root;
 	root->boundingBoxes.push_back(cluster4->boundingBox());
 	root->children.push_back(cluster4);
@@ -272,7 +272,7 @@ TEST_CASE("R*Tree: testSplitNode")
 	// Test set one
 	// Cluster 6, n = 7
 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	Node *cluster6 = new Node();
+	rtree::Node *cluster6 = new rtree::Node();
 	cluster6->data.push_back(Point(-2.0, -6.0));
 	cluster6->data.push_back(Point(2.0, -6.0));
 	cluster6->data.push_back(Point(-1.0, -7.0));
@@ -280,8 +280,8 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster6->data.push_back(Point(3.0, -8.0));
 	cluster6->data.push_back(Point(-2.0, -9.0));
 
-	// Split the node in two
-	Node *cluster6p = cluster6->splitNode(Point(-3.0, -11.0));
+	// Split the rtree::Node in two
+	rtree::Node *cluster6p = cluster6->splitNode(Point(-3.0, -11.0));
 
 	// Test the split
 	REQUIRE(cluster6->data.size() == 2);
@@ -301,7 +301,7 @@ TEST_CASE("R*Tree: testSplitNode")
 	// Test set two
 	// Cluster 2, n = 8
 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
-	Node *cluster2 = new Node();
+	rtree::Node *cluster2 = new rtree::Node();
 	cluster2->data.push_back(Point(-14.0, 8.0));
 	cluster2->data.push_back(Point(-10.0, 8.0));
 	cluster2->data.push_back(Point(-9.0, 10.0));
@@ -310,8 +310,8 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster2->data.push_back(Point(-9.0, 7.0));
 	cluster2->data.push_back(Point(-8.0, 8.0));
 
-	// Split the node in two
-	Node *cluster2p = cluster2->splitNode(Point(-8.0, 9.0));
+	// Split the rtree::Node in two
+	rtree::Node *cluster2p = cluster2->splitNode(Point(-8.0, 9.0));
 
 	// Test the split
 	REQUIRE(cluster2->data.size() == 2);
@@ -334,8 +334,8 @@ TEST_CASE("R*Tree: testSplitNode")
 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
 	// {(-5, 4), 1, 1}, {(-2, 4), 1, 1}, {(-1, 3), 1, 1}, {(-1, 1), 1, 1}, {(-3, 0), 1, 1},
 	// {(-6, 2), 1, 1}
-	Node *cluster3 = new Node();
-	Node *dummys[6] = {new Node(), new Node(), new Node(), new Node(), new Node(), new Node()};
+	rtree::Node *cluster3 = new rtree::Node();
+	rtree::Node *dummys[6] = {new rtree::Node(), new rtree::Node(), new rtree::Node(), new rtree::Node(), new rtree::Node(), new rtree::Node()};
 	dummys[0]->parent = cluster3;
 	cluster3->boundingBoxes.push_back(Rectangle(-6.0, 3.0, -4.0, 5.0));
 	cluster3->children.push_back(dummys[0]);
@@ -355,13 +355,13 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster3->boundingBoxes.push_back(Rectangle(-7.0, 1.0, -5.0, 3.0));
 	cluster3->children.push_back(dummys[5]);
 
-	// Extra node causing the split
-	Node *cluster3extra = new Node();
+	// Extra rtree::Node causing the split
+	rtree::Node *cluster3extra = new rtree::Node();
 	cluster3extra->data.push_back(Point(1.0, 1.0));
 	cluster3extra->data.push_back(Point(2.0, 2.0));
 
 	// Test the split
-	Node *cluster3p = cluster3->splitNode(cluster3extra);
+	rtree::Node *cluster3p = cluster3->splitNode(cluster3extra);
 
 	REQUIRE(cluster3->children.size() == 5);
 	REQUIRE(cluster3->boundingBoxes[0] == Rectangle(-4.0, -1.0, -2.0, 1.0));
@@ -389,23 +389,23 @@ TEST_CASE("R*Tree: testSplitNode")
 
 TEST_CASE("R*Tree: testAdjustTree")
 {
-	// Leaf Node and new sibling leaf
+	// Leaf rtree::Node and new sibling leaf
 	// Cluster 4, n = 7
 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	Node *cluster4a = new Node();
+	rtree::Node *cluster4a = new rtree::Node();
 	cluster4a->data.push_back(Point(-10.0, -2.0));
 	cluster4a->data.push_back(Point(-12.0, -3.0));
 	cluster4a->data.push_back(Point(-11.0, -3.0));
 	cluster4a->data.push_back(Point(-10.0, -3.0));
 
-	Node *cluster4b = new Node();
+	rtree::Node *cluster4b = new rtree::Node();
 	cluster4b->data.push_back(Point(-9.0, -3.0));
 	cluster4b->data.push_back(Point(-7.0, -3.0));
 	cluster4b->data.push_back(Point(-10.0, -5.0));
 
-	// Middle Node
-	Node *middle = new Node();
-	Node *dummys[4] = {new Node(), new Node(), new Node(), new Node()};
+	// Middle rtree::Node
+	rtree::Node *middle = new rtree::Node();
+	rtree::Node *dummys[4] = {new rtree::Node(), new rtree::Node(), new rtree::Node(), new rtree::Node()};
 	dummys[0]->parent = middle;
 	middle->boundingBoxes.push_back(Rectangle(-10.0, 2.0, -8.0, 4.0));
 	middle->children.push_back(dummys[0]);
@@ -422,14 +422,14 @@ TEST_CASE("R*Tree: testAdjustTree")
 	middle->boundingBoxes.push_back(Rectangle(15.0, -17.0, 17.0, -15.0));
 	middle->children.push_back(dummys[3]);
 
-	// Root Node
-	Node *root = new Node();
+	// Root rtree::Node
+	rtree::Node *root = new rtree::Node();
 	middle->parent = root;
 	root->boundingBoxes.push_back(middle->boundingBox());
 	root->children.push_back(middle);
 
 	// Adjust the tree
-	Node *result = cluster4a->adjustTree(cluster4b);
+	rtree::Node *result = cluster4a->adjustTree(cluster4b);
 
 	// Test the adjustment
 	REQUIRE(result == nullptr);
@@ -450,7 +450,7 @@ TEST_CASE("R*Tree: testCondenseTree")
 	// Test where the leaf is the root
 	// Cluster 6, n = 7
 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	Node *cluster6 = new Node();
+	rtree::Node *cluster6 = new rtree::Node();
 	cluster6->data.push_back(Point(-2.0, -6.0));
 	cluster6->data.push_back(Point(2.0, -6.0));
 	cluster6->data.push_back(Point(-1.0, -7.0));
@@ -476,7 +476,7 @@ TEST_CASE("R*Tree: testCondenseTree")
 	// Test where condensing is confined to a leaf != root
 	// Cluster 6, n = 7
 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	cluster6 = new Node();
+	cluster6 = new rtree::Node();
 	cluster6->data.push_back(Point(-2.0, -6.0));
 	cluster6->data.push_back(Point(2.0, -6.0));
 	cluster6->data.push_back(Point(-1.0, -7.0));
@@ -485,7 +485,7 @@ TEST_CASE("R*Tree: testCondenseTree")
 	cluster6->data.push_back(Point(-2.0, -9.0));
 	// (-3, -11) left out so the bounding box should change
 
-	Node *root = new Node();
+	rtree::Node *root = new rtree::Node();
 	cluster6->parent = root;
 	root->boundingBoxes.push_back(Rectangle(-3.0, -10.0, 3.0, 6.0));
 	root->children.push_back(cluster6);
@@ -511,19 +511,19 @@ TEST_CASE("R*Tree: testCondenseTree")
 	// Test where condensing is unconfined to a leaf != root
 	// Cluster 4, n = 7
 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	// Organized into two nodes
-	Node *cluster4a = new Node();
+	// Organized into two rtree::Nodes
+	rtree::Node *cluster4a = new rtree::Node();
 	cluster4a->data.push_back(Point(-10.0, -2.0));
 	cluster4a->data.push_back(Point(-12.0, -3.0));
 	cluster4a->data.push_back(Point(-11.0, -3.0));
 	cluster4a->data.push_back(Point(-10.0, -3.0));
 
-	Node *cluster4b = new Node();
+	rtree::Node *cluster4b = new rtree::Node();
 	cluster4b->data.push_back(Point(-9.0, -3.0));
 	cluster4b->data.push_back(Point(-7.0, -3.0));
 	// cluster4b->data.push_back(Point(-10.0, -5.0)); left out to precipitate condensing
 
-	Node *cluster4 = new Node();
+	rtree::Node *cluster4 = new rtree::Node();
 	cluster4a->parent = cluster4;
 	cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
 	cluster4->children.push_back(cluster4a);
@@ -535,28 +535,28 @@ TEST_CASE("R*Tree: testCondenseTree")
 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
 	// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
 	// (-14, -15), (-13, -15), (-12, -15)
-	// Organized into four nodes
-	Node *cluster5a = new Node();
+	// Organized into four rtree::Nodes
+	rtree::Node *cluster5a = new rtree::Node();
 	cluster5a->data.push_back(Point(-14.5, -13.0));
 	cluster5a->data.push_back(Point(-14.0, -13.0));
 	cluster5a->data.push_back(Point(-13.5, -13.5));
 	cluster5a->data.push_back(Point(-15.0, -14.0));
-	Node *cluster5b = new Node();
+	rtree::Node *cluster5b = new rtree::Node();
 	cluster5b->data.push_back(Point(-14.0, -14.0));
 	cluster5b->data.push_back(Point(-13.0, -14.0));
 	cluster5b->data.push_back(Point(-12.0, -14.0));
 	cluster5b->data.push_back(Point(-13.5, -16.0));
-	Node *cluster5c = new Node();
+	rtree::Node *cluster5c = new rtree::Node();
 	cluster5c->data.push_back(Point(-15.0, -14.5));
 	cluster5c->data.push_back(Point(-14.0, -14.5));
 	cluster5c->data.push_back(Point(-12.5, -14.5));
 	cluster5c->data.push_back(Point(-13.5, -15.5));
-	Node *cluster5d = new Node();
+	rtree::Node *cluster5d = new rtree::Node();
 	cluster5d->data.push_back(Point(-15.0, -15.0));
 	cluster5d->data.push_back(Point(-14.0, -15.0));
 	cluster5d->data.push_back(Point(-13.0, -15.0));
 	cluster5d->data.push_back(Point(-12.0, -15.0));
-	Node *cluster5 = new Node();
+	rtree::Node *cluster5 = new rtree::Node();
 	cluster5a->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
 	cluster5->children.push_back(cluster5a);
@@ -571,7 +571,7 @@ TEST_CASE("R*Tree: testCondenseTree")
 	cluster5->children.push_back(cluster5d);
 
 	// Root
-	root = new Node();
+	root = new rtree::Node();
 	cluster4->parent = root;
 	root->boundingBoxes.push_back(cluster4->boundingBox());
 	root->children.push_back(cluster4);
@@ -580,7 +580,7 @@ TEST_CASE("R*Tree: testCondenseTree")
 	root->children.push_back(cluster5);
 
 	// Condense the tree
-	Node *newRoot = cluster4b->condenseTree();
+	rtree::Node *newRoot = cluster4b->condenseTree();
 
 	// Test the condensing
 	REQUIRE(newRoot == root);
@@ -603,12 +603,12 @@ TEST_CASE("R*Tree: testSearch")
 
 	// Cluster 1, n = 7
 	// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12)
-	Node *cluster1a = new Node();
+	rtree::Node *cluster1a = new rtree::Node();
 	cluster1a->data.push_back(Point(-3.0, 16.0));
 	cluster1a->data.push_back(Point(-3.0, 15.0));
 	cluster1a->data.push_back(Point(-4.0, 13.0));
 
-	Node *cluster1b = new Node();
+	rtree::Node *cluster1b = new rtree::Node();
 	cluster1b->data.push_back(Point(-5.0, 12.0));
 	cluster1b->data.push_back(Point(-5.0, 15.0));
 	cluster1b->data.push_back(Point(-6.0, 14.0));
@@ -616,35 +616,35 @@ TEST_CASE("R*Tree: testSearch")
 
 	// Cluster 2, n = 8
 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
-	Node *cluster2a = new Node();
+	rtree::Node *cluster2a = new rtree::Node();
 	cluster2a->data.push_back(Point(-8.0, 10.0));
 	cluster2a->data.push_back(Point(-9.0, 10.0));
 	cluster2a->data.push_back(Point(-8.0, 9.0));
 	cluster2a->data.push_back(Point(-9.0, 9.0));
 	cluster2a->data.push_back(Point(-8.0, 8.0));
 
-	Node *cluster2b = new Node();
+	rtree::Node *cluster2b = new rtree::Node();
 	cluster2b->data.push_back(Point(-14.0, 8.0));
 	cluster2b->data.push_back(Point(-10.0, 8.0));
 	cluster2b->data.push_back(Point(-9.0, 7.0));
 
 	// Cluster 3, n = 9
 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
-	Node *cluster3a = new Node();
+	rtree::Node *cluster3a = new rtree::Node();
 	cluster3a->data.push_back(Point(-3.0, 4.0));
 	cluster3a->data.push_back(Point(-3.0, 0.0));
 	cluster3a->data.push_back(Point(-2.0, 4.0));
 	cluster3a->data.push_back(Point(-1.0, 3.0));
 	cluster3a->data.push_back(Point(-1.0, 1.0));
 
-	Node *cluster3b = new Node();
+	rtree::Node *cluster3b = new rtree::Node();
 	cluster3b->data.push_back(Point(-5.0, 4.0));
 	cluster3b->data.push_back(Point(-4.0, 3.0));
 	cluster3b->data.push_back(Point(-4.0, 1.0));
 	cluster3b->data.push_back(Point(-6.0, 2.0));
 
-	// High level nodes
-	Node *left = new Node();
+	// High level rtree::Nodes
+	rtree::Node *left = new rtree::Node();
 	cluster1a->parent = left;
 	left->boundingBoxes.push_back(cluster1a->boundingBox());
 	left->children.push_back(cluster1a);
@@ -658,7 +658,7 @@ TEST_CASE("R*Tree: testSearch")
 	left->boundingBoxes.push_back(cluster2b->boundingBox());
 	left->children.push_back(cluster2b);
 
-	Node *right = new Node();
+	rtree::Node *right = new rtree::Node();
 	cluster3a->parent = right;
 	right->boundingBoxes.push_back(cluster3a->boundingBox());
 	right->children.push_back(cluster3a);
@@ -666,7 +666,7 @@ TEST_CASE("R*Tree: testSearch")
 	right->boundingBoxes.push_back(cluster3b->boundingBox());
 	right->children.push_back(cluster3b);
 
-	Node *root = new Node();
+	rtree::Node *root = new rtree::Node();
 	left->parent = root;
 	root->boundingBoxes.push_back(left->boundingBox());
 	root->children.push_back(left);
@@ -726,7 +726,7 @@ TEST_CASE("R*Tree: testSearch")
 TEST_CASE("R*Tree: testInsert")
 {
 	// Setup the tree
-	Node *root = new Node();
+	rtree::Node *root = new rtree::Node();
 
 	// Cluster 2, n = 8
 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
@@ -835,32 +835,32 @@ TEST_CASE("R*Tree: testRemove")
 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
 	// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
 	// (-14, -15), (-13, -15), (-12, -15)
-	// Organized into four nodes
-	Node *cluster5a = new Node();
+	// Organized into four rtree::Nodes
+	rtree::Node *cluster5a = new rtree::Node();
 	cluster5a->data.push_back(Point(-14.5, -13.0));
 	cluster5a->data.push_back(Point(-14.0, -13.0));
 	cluster5a->data.push_back(Point(-13.5, -13.5));
 	cluster5a->data.push_back(Point(-15.0, -14.0));
 
-	Node *cluster5b = new Node();
+	rtree::Node *cluster5b = new rtree::Node();
 	cluster5b->data.push_back(Point(-14.0, -14.0));
 	cluster5b->data.push_back(Point(-13.0, -14.0));
 	cluster5b->data.push_back(Point(-12.0, -14.0));
 	cluster5b->data.push_back(Point(-13.5, -16.0));
 
-	Node *cluster5c = new Node();
+	rtree::Node *cluster5c = new rtree::Node();
 	cluster5c->data.push_back(Point(-15.0, -14.5));
 	cluster5c->data.push_back(Point(-14.0, -14.5));
 	cluster5c->data.push_back(Point(-12.5, -14.5));
 	cluster5c->data.push_back(Point(-13.5, -15.5));
 
-	Node *cluster5d = new Node();
+	rtree::Node *cluster5d = new rtree::Node();
 	cluster5d->data.push_back(Point(-15.0, -15.0));
 	cluster5d->data.push_back(Point(-14.0, -15.0));
 	cluster5d->data.push_back(Point(-13.0, -15.0));
 	cluster5d->data.push_back(Point(-12.0, -15.0));
 
-	Node *cluster5 = new Node();
+	rtree::Node *cluster5 = new rtree::Node();
 	cluster5a->parent = cluster5;
 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
 	cluster5->children.push_back(cluster5a);
@@ -876,22 +876,22 @@ TEST_CASE("R*Tree: testRemove")
 
 	// Cluster 3, n = 9
 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
-	Node *cluster3a = new Node();
+	rtree::Node *cluster3a = new rtree::Node();
 	cluster3a->data.push_back(Point(-5.0, 4.0));
 	cluster3a->data.push_back(Point(-3.0, 4.0));
 	cluster3a->data.push_back(Point(-2.0, 4.0));
 
-	Node *cluster3b = new Node();
+	rtree::Node *cluster3b = new rtree::Node();
 	cluster3b->data.push_back(Point(-4.0, 1.0));
 	cluster3b->data.push_back(Point(-3.0, 0.0));
 	cluster3b->data.push_back(Point(-1.0, 1.0));
 
-	Node *cluster3c = new Node();
+	rtree::Node *cluster3c = new rtree::Node();
 	cluster3c->data.push_back(Point(-4.0, 3.0));
 	cluster3c->data.push_back(Point(-1.0, 3.0));
 	cluster3c->data.push_back(Point(-6.0, 2.0));
 
-	Node *cluster3 = new Node();
+	rtree::Node *cluster3 = new rtree::Node();
 	cluster3a->parent = cluster3;
 	cluster3->boundingBoxes.push_back(cluster3a->boundingBox());
 	cluster3->children.push_back(cluster3a);
@@ -904,22 +904,22 @@ TEST_CASE("R*Tree: testRemove")
 
 	// Cluster 1, n = 7
 	// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12), + (-4.5, 15.5), (-2.0, 13.5)
-	Node *cluster1a = new Node();
+	rtree::Node *cluster1a = new rtree::Node();
 	cluster1a->data.push_back(Point(-3.0, 16.0));
 	cluster1a->data.push_back(Point(-3.0, 15.0));
 	cluster1a->data.push_back(Point(-4.0, 13.0));
 
-	Node *cluster1b = new Node();
+	rtree::Node *cluster1b = new rtree::Node();
 	cluster1b->data.push_back(Point(-5.0, 12.0));
 	cluster1b->data.push_back(Point(-5.0, 15.0));
 	cluster1b->data.push_back(Point(-6.0, 14.0));
 
-	Node *cluster1c = new Node();
+	rtree::Node *cluster1c = new rtree::Node();
 	cluster1c->data.push_back(Point(-8.0, 16.0));
 	cluster1c->data.push_back(Point(-4.5, 15.5));
 	cluster1c->data.push_back(Point(-2.0, 13.5));
 
-	Node *cluster1 = new Node();
+	rtree::Node *cluster1 = new rtree::Node();
 	cluster1a->parent = cluster1;
 	cluster1->boundingBoxes.push_back(cluster1a->boundingBox());
 	cluster1->children.push_back(cluster1a);
@@ -931,7 +931,7 @@ TEST_CASE("R*Tree: testRemove")
 	cluster1->children.push_back(cluster1c);
 
 	// Root
-	Node *root = new Node();
+	rtree::Node *root = new rtree::Node();
 	cluster3->parent = root;
 	root->boundingBoxes.push_back(cluster3->boundingBox());
 	root->children.push_back(cluster3);
@@ -980,19 +980,19 @@ TEST_CASE("R*Tree: testRemove")
 
 	// Cluster 6, n = 7
 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	Node *cluster6a = new Node();
+	rtree::Node *cluster6a = new rtree::Node();
 	cluster6a->data.push_back(Point(-2.0, -6.0));
 	cluster6a->data.push_back(Point(2.0, -6.0));
 	cluster6a->data.push_back(Point(-1.0, -7.0));
 
-	Node *cluster6b = new Node();
+	rtree::Node *cluster6b = new rtree::Node();
 	cluster6b->data.push_back(Point(1.0, -7.0));
 	cluster6b->data.push_back(Point(3.0, -8.0));
 	cluster6b->data.push_back(Point(-2.0, -9.0));
 	// (-3.0, -11.0) held out so we get a shrinking root
 
 	// Root
-	root = new Node();
+	root = new rtree::Node();
 	cluster6a->parent = root;
 	root->boundingBoxes.push_back(cluster6a->boundingBox());
 	root->children.push_back(cluster6a);
