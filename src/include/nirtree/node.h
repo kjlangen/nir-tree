@@ -80,6 +80,7 @@ namespace nirtree
 			bool validate(Node *expectedParent, unsigned index);
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
+			bool tighten();
 	};
 
 	void testPlayground();
