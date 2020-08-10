@@ -1641,14 +1641,18 @@ namespace nirtree
 		std::memset(visited, false, numRectangle * sizeof(bool));
 		bool removable[numRectangle];
 		std::memset(removable, false, numRectangle * sizeof(bool));
+		int ancestor[numRectangle];  // allow for cascading removals
+		std::memset(ancestor, 0, numRectangle * sizeof(int));
 
 		bool existsRemovable = false;
 		std::queue<int> queue;
 		queue.push(rootIndex);
 		visited[rootIndex] = true;
+		ancestor[rootIndex] = -1;
 		// run bfs to determine which bounding boxes can be removed
 		while (!queue.empty()) {
 			int current = queue.front();
+			if (current == -1) { break; } // stopping condition
 			queue.pop();
 			// see which neighbours have not been visited yet
 			bool isLeaf = true;
@@ -1657,6 +1661,7 @@ namespace nirtree
 					isLeaf = false;
 					queue.push(i);
 					visited[i] = true;
+					ancestor[i] = current;
 				}
 			}
 			// leaf situation
@@ -1664,6 +1669,7 @@ namespace nirtree
 				if (weights[current] == 0) {
 					removable[current] = true;
 					existsRemovable = true;
+					queue.push(ancestor[current]);  // re-examine parent
 				}
 			}
 		}
