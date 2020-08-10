@@ -27,9 +27,8 @@ TEST_CASE("NIRTree: testTightenPoints")
 	node.data.clear();
 	REQUIRE(node.tighten());  // true indicates change
 	REQUIRE(node.data.size() == 0);
-	REQUIRE(parent.boundingBoxes.at(0).basicRectangles.size() == 1);
-	REQUIRE(node.tighten());  // true indicates change
 	REQUIRE(parent.boundingBoxes.at(0).basicRectangles.size() == 0);
+	REQUIRE(!node.tighten());  // false indicates no change
 }
 
 TEST_CASE("NIRTree: testTightenRectNoChange")
@@ -97,9 +96,6 @@ TEST_CASE("NIRTree: testTightenRectCascade")
 	node.boundingBoxes.push_back(IsotheticPolygon(Rectangle(0.0, 23.0, 2.0, 25.0)));
 
 	// result
-	REQUIRE(node.tighten());  // true indicates change
-	REQUIRE(node.boundingBoxes.size() == 1);
-	REQUIRE(parent.boundingBoxes.at(0).basicRectangles.size() == 2);
 	REQUIRE(node.tighten());  // true indicates change
 	REQUIRE(node.boundingBoxes.size() == 1);
 	REQUIRE(parent.boundingBoxes.at(0).basicRectangles.size() == 1);
