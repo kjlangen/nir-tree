@@ -117,11 +117,29 @@ int main(int argc, char *argv[])
 #ifdef UNIT_TESTING
 	return session.run(argc, argv);
 #else
-	RTree rTree(750, 1500);
-	randomPoints(rTree, 10000, 1000);
-
-	RPlusTree rPlusTree(750, 1500);
-	randomPoints(rPlusTree, 10000, 1000);
+	int option;
+	while ((option = getopt(argc, argv, "ps")) != -1)
+	{
+		switch (option) {
+			case 'p': // 'p' for R+ tree
+			{
+				rplustree::Tree rPlusTree(750, 1500);
+				randomPoints(rPlusTree, 10000, 1000);
+				break;
+			}
+			case 's': // 's' for R* tree
+			{
+				RTree rTree(750, 1500);
+				randomPoints(rTree, 10000, 1000);
+				break;
+			}
+			default:
+			{
+				std::cout << "Options are: p (R+Tree) and s (R*Tree)" << std::endl;
+				return 1;
+			}
+		}
+	}
 	return 0;
 #endif
 }

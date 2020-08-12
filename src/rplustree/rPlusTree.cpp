@@ -1,19 +1,21 @@
 #include <rplustree/rPlusTree.h>
 
+using namespace rplustree;
+
 /*** constructor and destructor ***/
 
-RPlusTree::RPlusTree(unsigned int minBranchFactor, unsigned int maxBranchFactor) : minBranchFactor(minBranchFactor),
-																				   maxBranchFactor(maxBranchFactor)
+Tree::Tree(unsigned int minBranchFactor, unsigned int maxBranchFactor) : minBranchFactor(minBranchFactor),
+																		maxBranchFactor(maxBranchFactor)
 {
-	root = new RPlusTreeNode();
+	root = new Node();
 }
 
-RPlusTree::~RPlusTree()
+Tree::~Tree()
 {
-	std::stack<RPlusTreeNode *> stack;
+	std::stack<Node *> stack;
 	stack.push(root);
 	root = nullptr;
-	RPlusTreeNode *currentNode;
+	Node *currentNode;
 
 	while (!stack.empty())
 	{
@@ -29,20 +31,20 @@ RPlusTree::~RPlusTree()
 
 /*** general functions ***/
 
-bool RPlusTree::isEmpty() const
+bool Tree::isEmpty() const
 {
 	return root->numChildren() == 0 && root->numDataEntries() == 0;
 }
 
-RPlusTreeNode *RPlusTree::getRoot() const
+Node *Tree::getRoot() const
 {
 	return root;
 }
 
-int RPlusTree::height() const
+int Tree::height() const
 {
 	int height = 0;
-	RPlusTreeNode *n = root;
+	Node *n = root;
 	while (!n->isLeaf())
 	{
 		n = n->children.at(0);
@@ -51,12 +53,12 @@ int RPlusTree::height() const
 	return height;
 }
 
-int RPlusTree::numDataElements() const
+int Tree::numDataElements() const
 {
 	int result = 0;
-	RPlusTreeNode *currentNode;
+	Node *currentNode;
 
-	std::stack<RPlusTreeNode *> stack;
+	std::stack<Node *> stack;
 	stack.push(root);
 
 	while (!stack.empty())
@@ -80,22 +82,22 @@ int RPlusTree::numDataElements() const
 	return result;
 }
 
-bool RPlusTree::exists(Point requestedPoint) const
+bool Tree::exists(Point requestedPoint) const
 {
 	return findLeaf(requestedPoint) != nullptr;
 }
 
-std::vector<Point> RPlusTree::search(Point requestedPoint) const
+std::vector<Point> Tree::search(Point requestedPoint) const
 {
 	return findLeaf(requestedPoint) == nullptr ? std::vector<Point>() : std::vector<Point>{requestedPoint};
 }
 
-std::vector<Point> RPlusTree::search(Rectangle requestedRectangle) const
+std::vector<Point> Tree::search(Rectangle requestedRectangle) const
 {
 	std::vector<Point> result;
-	std::stack<RPlusTreeNode *> stack;
+	std::stack<Node *> stack;
 	stack.push(root);
-	RPlusTreeNode *currentNode;
+	Node *currentNode;
 
 	// do DFS to find all points contained in `requestedRectangle`
 	while (!stack.empty())
@@ -128,12 +130,12 @@ std::vector<Point> RPlusTree::search(Rectangle requestedRectangle) const
 	return result;
 }
 
-unsigned RPlusTree::checksum()
+unsigned Tree::checksum()
 {
 	unsigned sum = 0;
-	RPlusTreeNode *currentNode;
+	Node *currentNode;
 
-	std::stack<RPlusTreeNode *> stack;
+	std::stack<Node *> stack;
 	stack.push(root);
 
 	while (!stack.empty())
@@ -163,13 +165,13 @@ unsigned RPlusTree::checksum()
 
 /*** helper functions ***/
 
-void RPlusTree::adjustTree(RPlusTreeNode *n, RPlusTreeNode *nn)
+void Tree::adjustTree(Node *n, Node *nn)
 {
 	if (n->isRoot())
 	{
 		if (nn != nullptr)
 		{
-			root = new RPlusTreeNode();
+			root = new Node();
 			root->children.push_back(n);
 			n->parent = root;
 			root->children.push_back(nn);
@@ -197,7 +199,7 @@ void RPlusTree::adjustTree(RPlusTreeNode *n, RPlusTreeNode *nn)
 	}
 }
 
-RPlusTreeNode *RPlusTree::chooseLeaf(RPlusTreeNode *node, Point &givenPoint) const
+Node *Tree::chooseLeaf(Node *node, Point &givenPoint) const
 {
 	// found leaf, simple return
 	if (node->isLeaf())
@@ -206,9 +208,9 @@ RPlusTreeNode *RPlusTree::chooseLeaf(RPlusTreeNode *node, Point &givenPoint) con
 	}
 
 	// variables for overlap and no overlap cases
-	RPlusTreeNode *chosenChildNoOverlap = nullptr;
+	Node *chosenChildNoOverlap = nullptr;
 	float smallestAreaNoOverlap = std::numeric_limits<float>::max();
-	RPlusTreeNode *chosenChildOverlap = node->children.at(0);
+	Node *chosenChildOverlap = node->children.at(0);
 	float smallestAreaOverlap = node->children.at(0)->boundingBox.computeExpansionArea(givenPoint);
 
 	// iterate through child nodes
@@ -254,7 +256,7 @@ RPlusTreeNode *RPlusTree::chooseLeaf(RPlusTreeNode *node, Point &givenPoint) con
 	return chooseLeaf(chosenChildOverlap, givenPoint);
 }
 
-RPlusTreeNode *RPlusTree::chooseLeaf(RPlusTreeNode *node, Rectangle &givenRectangle) const
+Node *Tree::chooseLeaf(Node *node, Rectangle &givenRectangle) const
 {
 	// found leaf, simple return
 	if (node->isLeaf())
@@ -263,9 +265,9 @@ RPlusTreeNode *RPlusTree::chooseLeaf(RPlusTreeNode *node, Rectangle &givenRectan
 	}
 
 	// variables for overlap and no overlap cases
-	RPlusTreeNode *chosenChildNoOverlap = nullptr;
+	Node *chosenChildNoOverlap = nullptr;
 	float smallestAreaNoOverlap = std::numeric_limits<float>::max();
-	RPlusTreeNode *chosenChildOverlap = node->children.at(0);
+	Node *chosenChildOverlap = node->children.at(0);
 	float smallestAreaOverlap = node->children.at(0)->boundingBox.computeExpansionArea(givenRectangle);
 
 	// iterate through child nodes
@@ -305,11 +307,11 @@ RPlusTreeNode *RPlusTree::chooseLeaf(RPlusTreeNode *node, Rectangle &givenRectan
 	return chooseLeaf(chosenChildOverlap, givenRectangle);
 }
 
-RPlusTreeNode *RPlusTree::findLeaf(Point requestedPoint) const
+Node *Tree::findLeaf(Point requestedPoint) const
 {
-	std::stack<RPlusTreeNode *> stack;
+	std::stack<Node *> stack;
 	stack.push(root);
-	RPlusTreeNode *currentNode;
+	Node *currentNode;
 
 	// do DFS to find leaf node that contains `requestedPoint`
 	while (!stack.empty())
@@ -341,10 +343,10 @@ RPlusTreeNode *RPlusTree::findLeaf(Point requestedPoint) const
 
 /*** insert functions ***/
 
-void RPlusTree::insert(Point givenPoint)
+void Tree::insert(Point givenPoint)
 {
 	// choose the leaves where the data will go
-	RPlusTreeNode *leaf = chooseLeaf(root, givenPoint);
+	Node *leaf = chooseLeaf(root, givenPoint);
 	leaf->data.push_back(givenPoint);
 
 	// need to split leaf node
@@ -359,7 +361,7 @@ void RPlusTree::insert(Point givenPoint)
 	}
 }
 
-Cost RPlusTree::sweepData(std::vector<Point> &points, Orientation orientation)
+Cost Tree::sweepData(std::vector<Point> &points, Orientation orientation)
 {
 	std::vector<float> values;
 	for (auto &p : points)
@@ -399,7 +401,7 @@ Cost RPlusTree::sweepData(std::vector<Point> &points, Orientation orientation)
 	return {0.0f, dedup.at(mid)};
 }
 
-Cost RPlusTree::sweepNodes(std::vector<RPlusTreeNode *> &nodeList, Orientation orientation)
+Cost Tree::sweepNodes(std::vector<Node *> &nodeList, Orientation orientation)
 {
 	std::vector<float> leftBounds;
 	std::vector<float> rightBounds;
@@ -455,10 +457,10 @@ Cost RPlusTree::sweepNodes(std::vector<RPlusTreeNode *> &nodeList, Orientation o
 	return {cost, splitLine};
 }
 
-Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation splitAxis)
+Partition Tree::partition(Node *n, float splitLine, Orientation splitAxis)
 {
 	auto *left = n;
-	auto *right = new RPlusTreeNode();
+	auto *right = new Node();
 	right->parent = left->parent;
 
 	if (n->isLeaf())
@@ -482,12 +484,12 @@ Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation sp
 	else
 	{
 		/*** intermediate node case ***/
-		std::vector<RPlusTreeNode *> childrenClone = n->children;  // copy
+		std::vector<Node *> childrenClone = n->children;  // copy
 		n->children.clear();  // clear old entries
 		int vectorSize = childrenClone.size();
 		for (unsigned i = 0; i < vectorSize; i++)
 		{
-			RPlusTreeNode *child = childrenClone.at(i);
+			Node *child = childrenClone.at(i);
 			float rightEdge =
 				splitAxis == ALONG_X_AXIS ? child->boundingBox.upperRight.x : child->boundingBox.upperRight.y;
 			float leftEdge =
@@ -548,7 +550,7 @@ Partition RPlusTree::partition(RPlusTreeNode *n, float splitLine, Orientation sp
 	return {left, right};
 }
 
-Partition RPlusTree::splitNode(RPlusTreeNode *n)
+Partition Tree::splitNode(Node *n)
 {
 	Cost costX, costY;
 	if (n->isLeaf())
@@ -582,7 +584,7 @@ Partition RPlusTree::splitNode(RPlusTreeNode *n)
 
 /*** remove functions ***/
 
-void RPlusTree::reinsert(RPlusTreeNode *n, int level, std::vector<Point> &dataClone)
+void Tree::reinsert(Node *n, int level, std::vector<Point> &dataClone)
 {
 	// Special single element case / empty bounding box case
 	if (n->boundingBox.lowerLeft == n->boundingBox.upperRight)
@@ -599,7 +601,7 @@ void RPlusTree::reinsert(RPlusTreeNode *n, int level, std::vector<Point> &dataCl
 	}
 
 	// Find where to re-insert intermediate nodes
-	RPlusTreeNode *baseNode = chooseLeaf(root, n->boundingBox);
+	Node *baseNode = chooseLeaf(root, n->boundingBox);
 
 	// Move up the tree to the correct level
 	for (unsigned i = 0; i < level; i++)
@@ -621,11 +623,11 @@ void RPlusTree::reinsert(RPlusTreeNode *n, int level, std::vector<Point> &dataCl
 	}
 }
 
-void RPlusTree::condenseTree(RPlusTreeNode *n, std::vector<Point> &dataClone)
+void Tree::condenseTree(Node *n, std::vector<Point> &dataClone)
 {
 	int lvl = 0;  // number of levels above leaf
 	std::vector<int> levels;
-	std::vector<RPlusTreeNode *> reinsertion;
+	std::vector<Node *> reinsertion;
 	while (!n->isRoot() && n->numChildren() < minBranchFactor)
 	{
 		auto iter = std::find(n->parent->children.begin(), n->parent->children.end(), n);
@@ -647,7 +649,7 @@ void RPlusTree::condenseTree(RPlusTreeNode *n, std::vector<Point> &dataClone)
 	// Root removal case
 	if (n->isRoot() && n->numChildren() == 1)
 	{
-		RPlusTreeNode *tempNode = root;
+		Node *tempNode = root;
 		root = root->children.at(0);
 		root->parent = nullptr;  // set root property
 		delete tempNode;
@@ -660,9 +662,9 @@ void RPlusTree::condenseTree(RPlusTreeNode *n, std::vector<Point> &dataClone)
 	}
 }
 
-void RPlusTree::remove(Point givenPoint)
+void Tree::remove(Point givenPoint)
 {
-	RPlusTreeNode *leaf = findLeaf(givenPoint);
+	Node *leaf = findLeaf(givenPoint);
 	if (leaf == nullptr)
 	{
 		throw std::exception();  // element does not exist
@@ -696,11 +698,11 @@ void RPlusTree::remove(Point givenPoint)
 
 /*** correctness checks ***/
 
-void RPlusTree::checkBoundingBoxes()
+void Tree::checkBoundingBoxes()
 {
-	std::stack<RPlusTreeNode *> stack;
+	std::stack<Node *> stack;
 	stack.push(root);
-	RPlusTreeNode *currentNode;
+	Node *currentNode;
 
 	while (!stack.empty())
 	{
@@ -727,12 +729,12 @@ void RPlusTree::checkBoundingBoxes()
 
 /*** tree traversal ***/
 
-std::ostream &operator<<(std::ostream &os, const RPlusTree &tree)
+std::ostream &operator<<(std::ostream &os, const Tree &tree)
 {
-	std::queue<RPlusTreeNode *> queue;
+	std::queue<Node *> queue;
 	queue.push(tree.getRoot());
 
-	RPlusTreeNode *currentNode;
+	Node *currentNode;
 	while (!queue.empty())
 	{
 		currentNode = queue.front();

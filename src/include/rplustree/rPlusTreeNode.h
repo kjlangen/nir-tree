@@ -4,29 +4,32 @@
 #include <vector>
 #include <util/geometry.h>
 
-class RPlusTreeNode
+namespace rplustree
 {
-public:
-	Rectangle boundingBox;
-	std::vector<RPlusTreeNode *> children;
-	std::vector<Point> data;
-	RPlusTreeNode *parent = nullptr;
+	class Node
+	{
+	public:
+		Rectangle boundingBox;
+		std::vector<Node *> children;
+		std::vector<Point> data;
+		Node *parent = nullptr;
 
-	bool isRoot() const;
+		bool isRoot() const;
 
-	bool isLeaf() const;
+		bool isLeaf() const;
 
-	unsigned int numChildren() const;
+		unsigned int numChildren() const;
 
-	unsigned int numDataEntries() const;
+		unsigned int numDataEntries() const;
 
-	void tighten();
+		void tighten();
 
-	RPlusTreeNode();
+		Node();
 
-	RPlusTreeNode(const RPlusTreeNode &other);
+		Node(const Node &other);
 
-	RPlusTreeNode &operator=(const RPlusTreeNode &other);
-};
+		Node &operator=(const Node &other);
+	};
+}
 
 #endif // __RPLUSTREE_NODE__
