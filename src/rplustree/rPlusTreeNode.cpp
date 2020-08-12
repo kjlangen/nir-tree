@@ -1,6 +1,6 @@
 #include <rplustree/rPlusTreeNode.h>
 
-using namespace RPlusTree;
+using namespace rplustree;
 
 bool Node::isRoot() const
 {

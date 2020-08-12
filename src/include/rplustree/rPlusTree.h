@@ -10,7 +10,7 @@
 #include <index/index.h>
 #include <rplustree/rPlusTreeNode.h>
 
-namespace RPlusTree
+namespace rplustree
 {
 	typedef std::pair<Node *, Node *> Partition;
 	typedef std::pair<float, float> Cost;

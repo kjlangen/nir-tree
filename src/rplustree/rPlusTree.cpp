@@ -1,6 +1,6 @@
 #include <rplustree/rPlusTree.h>
 
-using namespace RPlusTree;
+using namespace rplustree;
 
 /*** constructor and destructor ***/
 

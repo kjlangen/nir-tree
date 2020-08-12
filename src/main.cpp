@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 		switch (option) {
 			case 'p': // 'p' for R+ tree
 			{
-				RPlusTree::Tree rPlusTree(750, 1500);
+				rplustree::Tree rPlusTree(750, 1500);
 				randomPoints(rPlusTree, 10000, 1000);
 				break;
 			}

@@ -4,7 +4,7 @@
 #include <vector>
 #include <util/geometry.h>
 
-namespace RPlusTree
+namespace rplustree
 {
 	class Node
 	{

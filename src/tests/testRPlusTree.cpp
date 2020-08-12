@@ -4,7 +4,7 @@
 
 TEST_CASE("R+Tree: testExistence")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 
 	Point p1(0.0f, 0.0f);
 	tree.insert(p1);
@@ -16,7 +16,7 @@ TEST_CASE("R+Tree: testExistence")
 
 TEST_CASE("R+Tree: testBoundingBox")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 
 	Point p1(0.0f, 0.0f);
 	tree.insert(p1);
@@ -31,7 +31,7 @@ TEST_CASE("R+Tree: testBoundingBox")
 
 TEST_CASE("R+Tree: testSweepData")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 
 	std::vector<Point> points;
 	points.emplace_back(0.0f, 0.0f);
@@ -41,25 +41,25 @@ TEST_CASE("R+Tree: testSweepData")
 	points.emplace_back(9.0f, 0.0f);
 
 	// sweep along x axis
-	RPlusTree::Cost costX = RPlusTree::Tree::sweepData(points, RPlusTree::Tree::ALONG_X_AXIS);
+	rplustree::Cost costX = rplustree::Tree::sweepData(points, rplustree::Tree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 4.5f);
 
 	// sweep along y axis
-	RPlusTree::Cost costY = RPlusTree::Tree::sweepData(points, RPlusTree::Tree::ALONG_Y_AXIS);
+	rplustree::Cost costY = rplustree::Tree::sweepData(points, rplustree::Tree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 0.0f);
 	REQUIRE(costY.second == 2.5f);
 }
 
 TEST_CASE("R+Tree: testSweepCommon")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 
-	std::vector<RPlusTree::Node*> nodes;
-	nodes.push_back(new RPlusTree::Node());
-	nodes.push_back(new RPlusTree::Node());
-	nodes.push_back(new RPlusTree::Node());
-	nodes.push_back(new RPlusTree::Node());
+	std::vector<rplustree::Node*> nodes;
+	nodes.push_back(new rplustree::Node());
+	nodes.push_back(new rplustree::Node());
+	nodes.push_back(new rplustree::Node());
+	nodes.push_back(new rplustree::Node());
 
 	nodes.at(0)->boundingBox = Rectangle(0.0f, 0.0f, 4.0f, 8.0f);
 	nodes.at(1)->boundingBox = Rectangle(0.0f, 9.0f, 4.0f, 12.0f);
@@ -67,43 +67,43 @@ TEST_CASE("R+Tree: testSweepCommon")
 	nodes.at(3)->boundingBox = Rectangle(5.0f, 4.0f, 9.0f, 12.0f);
 
 	// sweep along x axis
-	RPlusTree::Cost costX = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_X_AXIS);
+	rplustree::Cost costX = rplustree::Tree::sweepNodes(nodes, rplustree::Tree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 5.0f);
 
 	// sweep along y axis
-	RPlusTree::Cost costY = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_Y_AXIS);
+	rplustree::Cost costY = rplustree::Tree::sweepNodes(nodes, rplustree::Tree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 1.0f);
 	REQUIRE(costY.second == 4.0f);
 }
 
 TEST_CASE("R+Tree: testSweepEdge")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 
-	std::vector<RPlusTree::Node*> nodes;
-	nodes.push_back(new RPlusTree::Node());
-	nodes.push_back(new RPlusTree::Node());
-	nodes.push_back(new RPlusTree::Node());
+	std::vector<rplustree::Node*> nodes;
+	nodes.push_back(new rplustree::Node());
+	nodes.push_back(new rplustree::Node());
+	nodes.push_back(new rplustree::Node());
 
 	nodes.at(0)->boundingBox = Rectangle(0.0f, 0.0f, 2.0f, 8.0f);
 	nodes.at(1)->boundingBox = Rectangle(3.0f, 0.0f, 5.0f, 4.0f);
 	nodes.at(2)->boundingBox = Rectangle(6.0f, 0.0f, 8.0f, 2.0f);
 
 	// sweep along x axis
-	RPlusTree::Cost costX = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_X_AXIS);
+	rplustree::Cost costX = rplustree::Tree::sweepNodes(nodes, rplustree::Tree::ALONG_X_AXIS);
 	REQUIRE(costX.first == 0.0f);
 	REQUIRE(costX.second == 3.0f);
 
 	// sweep along y axis
-	RPlusTree::Cost costY = RPlusTree::Tree::sweepNodes(nodes, RPlusTree::Tree::ALONG_Y_AXIS);
+	rplustree::Cost costY = rplustree::Tree::sweepNodes(nodes, rplustree::Tree::ALONG_Y_AXIS);
 	REQUIRE(costY.first == 3.0f);
 	REQUIRE(std::isnan(costY.second));
 }
 
 TEST_CASE("R+Tree: testNewChildNode")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 	tree.insert(Point(0.0f, 0.0f));
 	tree.insert(Point(4.0f, 5.0f));
 	tree.insert(Point(5.0f, 0.0f));
@@ -129,24 +129,24 @@ TEST_CASE("R+Tree: testNewChildNode")
 
 TEST_CASE("R+Tree: testInsert")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 	auto * root = tree.getRoot();
 
-	auto * cluster1 = new RPlusTree::Node();
+	auto * cluster1 = new rplustree::Node();
 	cluster1->data.emplace_back(0.0f, 0.0f);
 	cluster1->data.emplace_back(4.0f, 4.0f);
 	cluster1->tighten();
 	root->children.push_back(cluster1);
 	cluster1->parent = root;
 
-	auto * cluster2 = new RPlusTree::Node();
+	auto * cluster2 = new rplustree::Node();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(9.0f, 4.0f);
 	cluster2->tighten();
 	root->children.push_back(cluster2);
 	cluster2->parent = root;
 
-	auto * cluster3 = new RPlusTree::Node();
+	auto * cluster3 = new rplustree::Node();
 	cluster3->data.emplace_back(0.0f, 5.0f);
 	cluster3->data.emplace_back(4.0f, 9.0f);
 	cluster3->data.emplace_back(9.0f, 9.0f);
@@ -175,19 +175,19 @@ TEST_CASE("R+Tree: testInsert")
 
 TEST_CASE("R+Tree: testSimpleRemove")
 {
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 
-	auto * cluster1a = new RPlusTree::Node();
+	auto * cluster1a = new rplustree::Node();
 	cluster1a->data.emplace_back(0.0f, 0.0f);
 	cluster1a->data.emplace_back(4.0f, 4.0f);
 	cluster1a->tighten();
 
-	auto * cluster1b = new RPlusTree::Node();
+	auto * cluster1b = new rplustree::Node();
 	cluster1b->data.emplace_back(0.0f, 5.0f);
 	cluster1b->data.emplace_back(4.0f, 9.0f);
 	cluster1b->tighten();
 
-	auto * cluster1 = new RPlusTree::Node();
+	auto * cluster1 = new rplustree::Node();
 	cluster1->children.push_back(cluster1a);
 	cluster1->children.push_back(cluster1b);
 	cluster1->tighten();
@@ -195,7 +195,7 @@ TEST_CASE("R+Tree: testSimpleRemove")
 	cluster1a->parent = cluster1;
 	cluster1b->parent = cluster1;
 
-	auto * cluster2 = new RPlusTree::Node();
+	auto * cluster2 = new rplustree::Node();
 	cluster2->data.emplace_back(5.0f, 0.0f);
 	cluster2->data.emplace_back(7.0f, 9.0f);
 	cluster2->tighten();
@@ -218,11 +218,11 @@ TEST_CASE("R+Tree: testSimpleRemove")
 TEST_CASE("R+Tree: testChooseLeaf")
 {
 	Point p = Point(165.0f, 181.0f);
-	RPlusTree::Tree tree(2, 3);
+	rplustree::Tree tree(2, 3);
 
-	auto * child1 = new RPlusTree::Node();
+	auto * child1 = new rplustree::Node();
 	child1->boundingBox = Rectangle(123.0f, 151.0f, 146.0f, 186.0f);
-	auto * child2 = new RPlusTree::Node();
+	auto * child2 = new rplustree::Node();
 	child2->boundingBox = Rectangle(150.0f, 183.0f, 152.0f, 309.0f);
 
 	auto * root = tree.getRoot();
