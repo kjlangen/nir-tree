@@ -1463,6 +1463,76 @@ namespace nirtree
 		}
 	}
 
+	Node * Node::remove2(Point givenPoint)
+	{
+		// stores metadata
+		std::vector<Node*> searchPath;
+		std::vector<int> childIndexes;
+		std::vector<int> parentIndexes;
+
+		// initial values
+		searchPath.push_back(this);
+		childIndexes.push_back(-1);
+		parentIndexes.push_back(-1);
+
+		// find and delete data entry, save path from root to leaf
+		bool found = false;
+		int currentIndex = 0;
+		while (currentIndex < searchPath.size()) {
+			Node * currentNode = searchPath.at(currentIndex);
+			if (currentNode->children.empty()) {
+				auto it = std::find(currentNode->data.begin(), currentNode->data.end(), givenPoint);
+				if (it != currentNode->data.end()) {
+					currentNode->data.erase(
+						std::remove(currentNode->data.begin(), currentNode->data.end(), givenPoint),
+						currentNode->data.end()
+					);  // removes data
+					found = true;
+					break;
+				}
+			} else {
+				for (unsigned i = 0; i < currentNode->boundingBoxes.size(); i++) {
+					if (currentNode->boundingBoxes.at(i).containsPoint(givenPoint)) {
+						searchPath.push_back(currentNode->children.at(i));  // save node
+						childIndexes.push_back(i);                          // save index
+						parentIndexes.push_back(currentIndex);              // save index
+					}
+				}
+			}
+			currentIndex++;
+		}
+
+		// element not found, no change needed
+		if (!found) { return this; }
+
+		// tighten the nodes along path in reverse order (from leaf to root's children)
+		bool prevTighten = true;
+		while (currentIndex > 0) {
+			if (!prevTighten) { return this; }
+			prevTighten = searchPath.at(currentIndex)->tighten();
+			Node * parentNode = searchPath.at(parentIndexes.at(currentIndex));
+			int childIndex = childIndexes.at(currentIndex);
+			// remove node from parent if bounding area is zero
+			if (parentNode->boundingBoxes.at(childIndex).area() == 0.0) {
+				parentNode->children.at(childIndex) = parentNode->children.back();
+				parentNode->children.pop_back();             // remove child
+				parentNode->boundingBoxes.at(childIndex) = parentNode->boundingBoxes.back();
+				parentNode->boundingBoxes.pop_back();        // remove bounding box
+				delete searchPath.at(currentIndex);          // free memory
+			}
+			currentIndex = parentIndexes.at(currentIndex);
+		}
+
+		// root removal case
+		if (this->children.size() == 1) {
+			Node *newRoot = this->children.at(0);
+			delete this;  // remove current root
+			newRoot->parent = nullptr;
+			return newRoot;
+		}
+		return this;
+	}
+
 	unsigned Node::checksum()
 	{
 		unsigned sum = 0;

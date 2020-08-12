@@ -74,6 +74,7 @@ namespace nirtree
 			std::vector<Point> search(Rectangle &requestedRectangle);
 			Node *insert(Point givenPoint);
 			Node *remove(Point givenPoint);
+			Node *remove2(Point givenPoint);
 
 			// Miscellaneous
 			unsigned checksum();
