@@ -13,25 +13,25 @@
 class Graph
 {
 	private:
-		struct TaggedRectangle
-		{
-			Rectangle r;
-			unsigned tag;
-		};
-
-		unsigned long vertices;
+		unsigned vertices;
 		bool *g;
-
-		// Rectangles
-		void weightSubtree(float *weights, TaggedRectangle *vTagged, unsigned lBound, unsigned rBound);
-		void querySubtree(TaggedRectangle queryRectangle, float *weights, TaggedRectangle *vTagged, unsigned lBound, unsigned rBound);
+		unsigned removedVertices;
+		bool *gRemoved;
 
 	public:
+		// Constructors and destructors
 		Graph(const unsigned n);
 		Graph(std::vector<Rectangle> &v);
 		Graph(std::vector<IsotheticPolygon> &v);
 		~Graph();
 
+		// High-level graph operations
+		bool contiguous();
+		bool contiguous(unsigned skipVertex);
+		unsigned components(unsigned *labels);
+		void remove(unsigned givenVertex);
+
+		// Graph access
 		bool *operator[](unsigned i);	
 };
 #endif

@@ -1,207 +1,233 @@
 #include <util/graph.h>
 
-void Graph::weightSubtree(float *weights, TaggedRectangle *vTagged, unsigned lBound, unsigned rBound)
-{
-	if (lBound == rBound)
-	{
-		// Leaf => lBound == rBound == root
-		weights[lBound] = vTagged[lBound].r.upperRight.x;
-	}
-	else
-	{
-		unsigned root = (rBound + lBound) / 2;
-		weights[root] = vTagged[root].r.upperRight.x;
-
-		// Recurse left
-		if (root != lBound)
-		{
-			weightSubtree(weights, vTagged, lBound, root - 1);
-			weights[root] = std::fmax(weights[root], weights[(root - 1) / 2]);
-		}
-
-		// Recurse right
-		if (root != rBound)
-		{
-			weightSubtree(weights, vTagged, root + 1, rBound);
-			weights[root] = std::fmax(weights[root], weights[(rBound + root + 1) / 2]);
-		}
-	}
-}
-
-void Graph::querySubtree(TaggedRectangle queryRectangle, float *weights, TaggedRectangle *vTagged, unsigned lBound, unsigned rBound)
-{
-	// Compute the root
-	// unsigned root = (rBound + lBound) / 2;
-	unsigned *lstack = new unsigned[vertices];
-	unsigned *rstack = new unsigned[vertices];
-	unsigned topOfStack = 1;
-	unsigned root;
-
-	// Prime the stack
-	lstack[0] = lBound;
-	rstack[0] = rBound;
-
-	// DFS for intersections
-	for (;topOfStack != 0;)
-	{
-		// std::cout << "topOfStack = " << topOfStack << std::endl;
-		lBound = lstack[topOfStack - 1];
-		rBound = rstack[topOfStack - 1];
-		root = (lBound + rBound) / 2;
-		topOfStack--;
-		// std::cout << "lBound = " << lBound << std::endl;
-		// std::cout << "rBound = " << rBound << std::endl;
-		// std::cout << "root = " << root << std::endl;
-		// std::cout << "topOfStack = " << topOfStack << std::endl;
-
-		// Check against root
-		// std::cout << "DFS1" << std::endl;
-		if (queryRectangle.r.intersectsRectangle(vTagged[root].r) && queryRectangle.r != vTagged[root].r)
-		{
-			// std::cout << "DFS2" << std::endl;
-			// std::cout << "queryRectangle.tag = " << queryRectangle.tag << std::endl;
-			// std::cout << "vTagged[root].tag = " << vTagged[root].tag << std::endl;
-			// std::cout << "vertices = " << vertices << std::endl;
-			// std::cout << "comp0 = " << (queryRectangle.tag * vertices + vTagged[root].tag <= vertices) << std::endl;
-			// std::cout << "comp1 = " << (vTagged[root].tag * vertices + queryRectangle.tag <= vertices) << std::endl;			
-			assert((queryRectangle.tag * vertices + vTagged[root].tag) <= vertices * vertices);
-			assert((vTagged[root].tag * vertices + queryRectangle.tag) <= vertices * vertices);
-			g[queryRectangle.tag * vertices + vTagged[root].tag] = true;
-			g[vTagged[root].tag * vertices + queryRectangle.tag] = true;
-			// std::cout << "DFS2.1" << std::endl;
-		}
-
-		// std::cout << "DFS3" << std::endl;
-		if (lBound == rBound)
-		{
-			continue;
-		}
-
-		// Might intersect things on the left
-		// std::cout << "DFS4" << std::endl;
-		if (root != lBound && queryRectangle.r.lowerLeft.x <= vTagged[root].r.lowerLeft.x)
-		{
-			// std::cout << "DFS5" << std::endl;
-			// Go Left
-			lstack[topOfStack] = lBound;
-			rstack[topOfStack] = root - 1;
-			++topOfStack;
-			// querySubtree(queryRectangle, weights, vTagged, lBound, root - 1);
-		}
-
-		// Might intersect things on the right
-		// std::cout << "DFS6" << std::endl;
-		if (root != rBound && queryRectangle.r.upperRight.x >= vTagged[root].r.lowerLeft.x && queryRectangle.r.lowerLeft.x <= weights[root])
-		{
-			// std::cout << "DFS7" << std::endl;
-			// Go Right
-			lstack[topOfStack] = root + 1;
-			rstack[topOfStack] = rBound;
-			++topOfStack;
-			// querySubtree(queryRectangle, weights, vTagged, root + 1, rBound);
-		}
-	}
-}
-
 Graph::Graph(const unsigned n)
 {
 	vertices = n;
 	g = new bool[n * n];
 	std::memset(g, false, n * n);
+	removedVertices = 0;
+	gRemoved = new bool[n];
+	std::memset(gRemoved, false, n);
 }
 
 // TODO: Remove this comment
 // Lambda example: [](Point a, Point b){return a.x < b.x;}
+// std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+// std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+// std::cout << "Allocate & clear = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
 Graph::Graph(std::vector<Rectangle> &v)
 {
+	// Record the size of the graph
 	vertices = v.size();
-	std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+
+	// Sort the rectangles for (I think) better intersection performance
+	// std::sort(v.begin(), v.end(), [](Rectangle a, Rectangle b){return a.lowerLeft.x < b.lowerLeft.x;});
+
+	// Build the graph
 	g = new bool[vertices * vertices];
 	std::memset(g, false, vertices * vertices);
-	std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-	std::cout << "Allocate & clear = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-	// std::cout << "Ok 0" << std::endl;
-
-	// Tag
-	begin = std::chrono::high_resolution_clock::now();
-	TaggedRectangle *vTagged = new TaggedRectangle[vertices];
-	// std::cout << "Ok 1" << std::endl;
 	for (unsigned i = 0; i < vertices; ++i)
 	{
-		vTagged[i] = {v[i], i};
+		for (unsigned j = 0; j < i; ++j)
+		{
+			if (v[i].intersectsRectangle(v[j]))
+			{
+				g[i * vertices + j] = true;
+				g[j * vertices + i] = true;
+			}
+		}
 	}
-	end = std::chrono::high_resolution_clock::now();
-	std::cout << "Tag = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-	// std::cout << "Ok 2" << std::endl;
 
-	// Sort
-	begin = std::chrono::high_resolution_clock::now();
-	std::sort(vTagged, vTagged + sizeof(vTagged)/sizeof(vTagged[0]), [](TaggedRectangle a, TaggedRectangle b){return a.r.lowerLeft.x < b.r.lowerLeft.x;});
-	end = std::chrono::high_resolution_clock::now();
-	std::cout << "Sort = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-	// std::cout << "Ok 3" << std::endl;
+	removedVertices = 0;
 
-	// Weight
-	// std::cout << "Graph constructor weighting interval tree." << std::endl;
-	begin = std::chrono::high_resolution_clock::now();
-	float *weights = new float[vertices];
-	// std::cout << "Ok 4" << std::endl;
-	weightSubtree(weights, vTagged, 0, vertices - 1);
-	// std::cout << "Ok 5" << std::endl;
-	end = std::chrono::high_resolution_clock::now();
-	std::cout << "Weight = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-	// Query & Record
-	// std::cout << "Graph constructor querying interval tree." << std::endl;
-	begin = std::chrono::high_resolution_clock::now();
-	for (unsigned i = 0; i < vertices; ++i)
-	{
-		querySubtree(vTagged[i], weights, vTagged, 0, vertices - 1);
-	}
-	end = std::chrono::high_resolution_clock::now();
-	std::cout << "Query = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-	// std::cout << "Graph construction complete!" << std::endl;
+	gRemoved = new bool[vertices];
+	std::memset(gRemoved, false, vertices);
 }
 
 Graph::Graph(std::vector<IsotheticPolygon> &v)
 {
-	// vertices = v.size();
-	// g = new bool[v.size() * v.size()];
-	// std::memset(g, false, vertices * vertices);
-	// unsigned basicRectanglesCount = 0;
+	removedVertices = 0;
 
-	// // Tag
-	// std::vector<TaggedRectangle> vTagged(vertices);
-	// for (unsigned i = 0; i < vertices; ++i)
-	// {
-	// 	for (auto basicRectangle : v[i].basicRectangles)
-	// 	{
-	// 		vTagged.push_back({basicRectangle, i});
-	// 		++basicRectanglesCount;
-	// 	}
-	// }
+	// Record the size of the graph
+	vertices = v.size();
 
-	// // Sort
-	// std::sort(vTagged.begin(), vTagged.end(), [](TaggedRectangle a, TaggedRectangle b){return a.r.lowerLeft.x < b.r.lowerLeft.x;});
+	// Build the graph
+	g = new bool[vertices * vertices];
+	std::memset(g, false, vertices * vertices);
+	for (unsigned i = 0; i < vertices; ++i)
+	{
+		for (unsigned j = 0; j < i; ++j)
+		{
+			if (v[i].intersectsPolygon(v[j]))
+			{
+				g[i * vertices + j] = true;
+				g[j * vertices + i] = true;
+			}
+		}
+	}
 
-	// // Weight
-	// // std::cout << "Graph constructor weighting interval tree." << std::endl;
-	// std::vector<float> weights(basicRectanglesCount, 0.0);
-	// weightSubtree(weights, vTagged, 0, basicRectanglesCount - 1);
+	removedVertices = 0;
 
-	// // Query & Record
-	// // std::cout << "Graph constructor querying interval tree." << std::endl;
-	// for (unsigned i = 0; i < basicRectanglesCount; ++i)
-	// {
-	// 	querySubtree(vTagged[i], weights, vTagged, 0, basicRectanglesCount - 1);
-	// }
-	// std::cout << "Graph construction complete!" << std::endl;
+	gRemoved = new bool[vertices];
+	std::memset(gRemoved, false, vertices);
 }
 
 Graph::~Graph()
 {
 	delete [] g;
+}
+
+
+bool Graph::contiguous()
+{
+	// BFS variables
+	unsigned root; for (root = 0; gRemoved[root]; ++root){}
+	unsigned currentVertex;
+	std::queue<unsigned> explorationQ;
+	bool explored[vertices];
+	std::memset(explored, false, vertices);
+	unsigned explorationCount = 0;
+
+	// BFS, counting number of visited vertices which if the corresponding geometry is contigous
+	// will be equal to vertices
+	explorationQ.push(root);
+	for (;explorationQ.size();)
+	{
+		currentVertex = explorationQ.front();
+		explorationQ.pop();
+
+		if (explored[currentVertex])
+		{
+			continue;
+		}
+
+		explored[currentVertex] = true;
+		++explorationCount;
+
+		// Go to all of currentVertex's neighbours
+		for (unsigned neighbouringVertex = 0; neighbouringVertex < vertices; ++neighbouringVertex)
+		{
+			if (g[currentVertex * vertices + neighbouringVertex] && !explored[neighbouringVertex])
+			{
+				explorationQ.push(neighbouringVertex);
+			}
+		}
+	}
+
+	return explorationCount == vertices - removedVertices;
+}
+
+bool Graph::contiguous(unsigned skipVertex)
+{
+	// BFS variables
+	unsigned root; for (root = 0; gRemoved[root] || root == skipVertex; ++root){}
+	unsigned currentVertex;
+	std::queue<unsigned> explorationQ;
+	bool explored[vertices];
+	std::memset(explored, false, vertices);
+	unsigned explorationCount = 0;
+
+	// BFS, counting number of visited vertices which if the corresponding geometry is contigous
+	// will be equal to vertices
+	explorationQ.push(root);
+	for (;explorationQ.size();)
+	{
+		currentVertex = explorationQ.front();
+		explorationQ.pop();
+
+		if (explored[currentVertex])
+		{
+			continue;
+		}
+
+		explored[currentVertex] = true;
+		++explorationCount;
+
+		// Go to all of currentVertex's neighbours
+		for (unsigned neighbouringVertex = 0; neighbouringVertex < vertices; ++neighbouringVertex)
+		{
+			if (neighbouringVertex != skipVertex && g[currentVertex * vertices + neighbouringVertex] && !explored[neighbouringVertex])
+			{
+				explorationQ.push(neighbouringVertex);
+			}
+		}
+	}
+
+	return explorationCount == vertices - 1 - removedVertices;
+}
+
+unsigned Graph::components(unsigned *labels)
+{
+	// BFS variables
+	unsigned root;
+	unsigned currentVertex;
+	bool explored[vertices];
+	std::queue<unsigned> explorationQ;
+
+	unsigned componentNumber = 0;
+	std::memset(labels, 0, vertices * sizeof(unsigned));
+	std::memset(explored, false, vertices);
+
+	// Loop until all components have been labeled
+	for (unsigned labelledSoFar = 0; labelledSoFar != vertices - removedVertices;)
+	{
+		// std::cout << "A" << std::endl;
+		// Increase the number of components
+		++componentNumber;
+
+		// Find the next unlabeled component
+		for (root = 0; labels[root] != 0 || gRemoved[root]; ++root)
+		{
+			// std::cout << "B" << std::endl;
+		}
+
+		// std::cout << "root = " << root << std::endl;
+
+		// Propagate labels to that component
+		explorationQ.push(root);
+		for (;explorationQ.size();)
+		{
+			// std::cout << "C" << std::endl;
+			currentVertex = explorationQ.front();
+			explorationQ.pop();
+
+			if (explored[currentVertex])
+			{
+				continue;
+			}
+
+			explored[currentVertex] = true;
+			labels[currentVertex] = componentNumber;
+			++labelledSoFar;
+
+			// Go to all of currentVertex's neighbours
+			for (unsigned neighbouringVertex = 0; neighbouringVertex < vertices; ++neighbouringVertex)
+			{
+				if (g[currentVertex * vertices + neighbouringVertex] && !explored[neighbouringVertex])
+				{
+					// std::cout << "Pushing " << neighbouringVertex << " from " << currentVertex << std::endl;
+					explorationQ.push(neighbouringVertex);
+				}
+			}
+
+			// std::cout << "Node " << currentVertex << " finished" << std::endl;
+		}
+	}
+
+	return componentNumber;
+}
+
+void Graph::remove(unsigned givenVertex)
+{
+	std::memset(&g[givenVertex * vertices], false, vertices);
+	for (unsigned i = 0; i < vertices; ++i)
+	{
+		g[i * vertices + givenVertex] = false;
+	}
+
+	++removedVertices;
+	gRemoved[givenVertex] = true;
 }
 
 bool *Graph::operator[](unsigned i)

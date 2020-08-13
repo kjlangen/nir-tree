@@ -44,6 +44,7 @@ bool Point::operator!=(Point p)
 
 void Point::print()
 {
+	std::cout.precision(std::numeric_limits<double>::max_digits10+3);
 	std::cout << "(" << x << ", " << y << ")";
 }
 
@@ -115,6 +116,40 @@ void Rectangle::expand(Rectangle givenRectangle)
 	upperRight = Point(fmax(givenRectangle.upperRight.x, upperRight.x), fmax(givenRectangle.upperRight.y, upperRight.y));
 }
 
+void Rectangle::shrink(std::vector<Rectangle> &pointSet, std::vector<Point> &constraintSet)
+{
+	// Start by covering the constraints. If we remain unchanged great we are done!
+	Rectangle intermediate;
+
+	for (unsigned i = 0; i < constraintSet.size(); ++i)
+	{
+		intermediate.lowerLeft.x = fmin(intermediate.lowerLeft.x, constraintSet[i].x);
+		intermediate.lowerLeft.y = fmin(intermediate.lowerLeft.y, constraintSet[i].y);
+		intermediate.upperRight.x = fmax(intermediate.upperRight.x, constraintSet[i].x);
+		intermediate.upperRight.y = fmax(intermediate.upperRight.y, constraintSet[i].y);
+	}
+
+	if (intermediate == *this)
+	{
+		return;
+	}
+
+	// The rectangle has shrunk so now it must be made to touch each pin somewhere
+}
+
+void Rectangle::shrink(std::vector<Rectangle> &pointSet, std::vector<Rectangle> &constraintSet)
+{
+	// Start by covering the constraints. If we remain unchanged great we are done!
+}
+
+bool Rectangle::alignedOpposingBorders(Rectangle givenRectangle)
+{
+	bool a = lowerLeft.x == givenRectangle.upperRight.x || lowerLeft.y == givenRectangle.upperRight.y;
+	bool b = upperRight.x == givenRectangle.lowerLeft.x || upperRight.y == givenRectangle.lowerLeft.y;
+
+	return (a || b);
+}
+
 bool Rectangle::intersectsRectangle(Rectangle givenRectangle)
 {
 	// Compute the range intersections
@@ -143,10 +178,7 @@ bool Rectangle::strictIntersectsRectangle(Rectangle givenRectangle)
 
 bool Rectangle::borderOnlyIntersectsRectanlge(Rectangle givenRectangle)
 {
-	bool a = lowerLeft.x == givenRectangle.upperRight.x || lowerLeft.y == givenRectangle.upperRight.y;
-	bool b = upperRight.x == givenRectangle.lowerLeft.x || upperRight.y == givenRectangle.lowerLeft.y;
-
-	return a || b;
+	return intersectsRectangle(givenRectangle) && alignedOpposingBorders(givenRectangle);
 }
 
 bool Rectangle::containsPoint(Point givenPoint)
@@ -426,7 +458,7 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	basicRectangles[minIndex].expand(givenPoint);
 	assert(unique());
 	assert(basicRectangles[minIndex].containsPoint(givenPoint));
-	assert(contiguous());
+	// assert(contiguous());
 
 	// By expanding naively the expanded rectangle could intersect some of our own rectangles.
 	// To fix this take the expanded rectangle out of the polygon, treat it as a clipping
@@ -438,7 +470,7 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	assert(unique());
 
 	basicRectangles.push_back(swap);
-	assert(contiguous());
+	// assert(contiguous());
 	basicRectangles.pop_back();
 
 	increaseResolution(swap);
@@ -446,7 +478,7 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	assert(swap.containsPoint(givenPoint));
 	assert(unique());
 	basicRectangles.push_back(swap);
-	assert(contiguous());
+	// assert(contiguous());
 	basicRectangles.pop_back();
 	// basicRectangles.push_back(swap);
 	// assert(unique());
@@ -455,21 +487,21 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	assert(constraintPolygon.containsPoint(givenPoint));
 	Rectangle swapIntersectionPiece;
 	Rectangle rAtInfinity = Rectangle();
-	// std::cout << "swap "; swap.print();
+	std::cout << "swap "; swap.print();
 	for (unsigned i = 0; i < constraintPolygon.basicRectangles.size(); ++i)
 	{
 		swapIntersectionPiece = swap.intersection(constraintPolygon.basicRectangles[i]);
+		std::cout << "constraintRectanlge "; constraintPolygon.basicRectangles[i].print();
+		std::cout << "swapIntersectionPiece "; swapIntersectionPiece.print();
 		if (swapIntersectionPiece != rAtInfinity)
 		{
-			// std::cout << "constraintRectanlge "; constraintPolygon.basicRectangles[i].print();
-			// std::cout << "swapIntersectionPiece "; swapIntersectionPiece.print();
 			// std::cout << "Pushing swapIntersectionPiece" << std::endl;
 			basicRectangles.push_back(swapIntersectionPiece);
 		}
 	}
 	assert(containsPoint(givenPoint));
 	assert(unique());
-	assert(contiguous());
+	// assert(contiguous());
 
 	// Cleanup
 	refine();
@@ -567,6 +599,10 @@ bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
 		{
 			return true;
 		}
+		else if (givenRectangle.upperRight.x < basicRectangles[i].lowerLeft.x)
+		{
+			return false;
+		}
 	}
 
 	return false;
@@ -575,14 +611,16 @@ bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
 bool IsotheticPolygon::quickIntersectsRectangle(Rectangle &givenRectangle)
 {
 	// Compute the root
-	unsigned lstack[basicRectangles.size()];
-	unsigned rstack[basicRectangles.size()];
+	unsigned basicsSize = basicRectangles.size();
+	unsigned lBound, rBound;
+	unsigned lstack[basicsSize];
+	unsigned rstack[basicsSize];
 	unsigned topOfStack = 1;
 	unsigned root;
 
 	// Prime the stack
 	lstack[0] = 0;
-	rstack[0] = basicRectangles.size() - 1;
+	rstack[0] = basicsSize - 1;
 
 	// DFS for intersections
 	for (;topOfStack != 0;)
@@ -606,14 +644,14 @@ bool IsotheticPolygon::quickIntersectsRectangle(Rectangle &givenRectangle)
 
 		// std::cout << "DFS3" << std::endl;
 		// Check for leaf
-		if (lBound == rBound)
-		{
-			continue;
-		}
+		// if (lBound == rBound)
+		// {
+		// 	continue;
+		// }
 
 		// Might intersect things on the left
 		// std::cout << "DFS4" << std::endl;
-		if (root != lBound && queryRectangle.r.lowerLeft.x <= vTagged[root].r.lowerLeft.x)
+		if (root != lBound)
 		{
 			// std::cout << "DFS5" << std::endl;
 			// Go Left
@@ -625,7 +663,7 @@ bool IsotheticPolygon::quickIntersectsRectangle(Rectangle &givenRectangle)
 
 		// Might intersect things on the right
 		// std::cout << "DFS6" << std::endl;
-		if (root != rBound && queryRectangle.r.upperRight.x >= vTagged[root].r.lowerLeft.x && queryRectangle.r.lowerLeft.x <= weights[root])
+		if (root != rBound && givenRectangle.upperRight.x >= basicRectangles[root].lowerLeft.x)
 		{
 			// std::cout << "DFS7" << std::endl;
 			// Go Right
@@ -635,9 +673,11 @@ bool IsotheticPolygon::quickIntersectsRectangle(Rectangle &givenRectangle)
 			// querySubtree(queryRectangle, weights, vTagged, root + 1, rBound);
 		}
 	}
+
+	return false;
 }
 
-bool IsotheticPolygon::intersectsRectangle(IsotheticPolygon &givenPolygon)
+bool IsotheticPolygon::intersectsPolygon(IsotheticPolygon &givenPolygon)
 {
 	// Short circuit checking if we find a positive
 	for (unsigned i = 0; i < basicRectangles.size(); ++i)
@@ -649,6 +689,47 @@ bool IsotheticPolygon::intersectsRectangle(IsotheticPolygon &givenPolygon)
 	}
 
 	return false;
+}
+
+bool IsotheticPolygon::quickIntersectsPolygon(IsotheticPolygon &givenPolygon)
+{
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	{
+		if (givenPolygon.quickIntersectsRectangle(basicRectangles[i]))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool IsotheticPolygon::borderOnlyIntersectsRectanlge(Rectangle givenRectangle)
+{
+	// Final decision
+	bool result = false;
+
+	// Lower left and upper right border conditions
+	bool ll, ur;
+
+	for (auto r : basicRectangles)
+	{
+		if (!r.intersectsRectangle(givenRectangle))
+		{
+			continue;
+		}
+		else if (!r.alignedOpposingBorders(givenRectangle))
+		{
+			result = false;
+			break;
+		}
+		else
+		{
+			result = true;
+		}
+	}
+
+	return result;
 }
 
 bool IsotheticPolygon::containsPoint(Point requestedPoint)
@@ -663,6 +744,22 @@ bool IsotheticPolygon::containsPoint(Point requestedPoint)
 	}
 
 	return false;
+}
+
+std::vector<Rectangle> IsotheticPolygon::intersection(Rectangle givenRectangle)
+{
+	std::vector<Rectangle> v;
+
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	{
+		Rectangle r = basicRectangles[i].intersection(givenRectangle);
+		if (r != Rectangle())
+		{
+			v.push_back(r);
+		}
+	}
+
+	return v;
 }
 
 void IsotheticPolygon::intersection(IsotheticPolygon &constraintPolygon)
@@ -939,6 +1036,7 @@ bool IsotheticPolygon::contiguous()
 
 void IsotheticPolygon::print()
 {
+	std::cout.precision(std::numeric_limits<double>::max_digits10+3);
 	std::cout << "IsotheticPolygon |";
 	unsigned i;
 	for (i = 0; i < basicRectangles.size(); ++i)

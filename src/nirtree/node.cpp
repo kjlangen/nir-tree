@@ -134,7 +134,7 @@ namespace nirtree
 
 		for (;!context.empty();)
 		{
-			validate(nullptr, 0);
+			// validate(nullptr, 0);
 			currentContext = context.top();
 			context.pop();
 
@@ -234,17 +234,25 @@ namespace nirtree
 				// CL3 [Choose subtree]
 				// Find the bounding box with least required expansion/overlap?
 				// TODO: Break ties by using smallest area
-				unsigned smallestExpansionIndex = 0;
-				float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
+				unsigned smallestExpansionIndex; // = 0;
+				// float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
+				// for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
+				// {
+				// 	float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
+				// 	if (smallestExpansionArea > testExpansionArea)
+				// 	{
+				// 		smallestExpansionIndex = i;
+				// 		smallestExpansionArea = testExpansionArea;
+				// 	}
+				// }
+
+				std::vector<unsigned> indexPriorityList;
 				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
 				{
-					float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
-					if (smallestExpansionArea > testExpansionArea)
-					{
-						smallestExpansionIndex = i;
-						smallestExpansionArea = testExpansionArea;
-					}
+					indexPriorityList.push_back(i);
 				}
+
+				std::sort(indexPriorityList.begin(), indexPriorityList.end(), [node, givenPoint](unsigned a, unsigned b){return node->boundingBoxes[a].computeExpansionArea(givenPoint) < node->boundingBoxes[b].computeExpansionArea(givenPoint);});
 
 				// std::cout << "Chose index " << smallestExpansionIndex << std::endl;
 
@@ -256,47 +264,67 @@ namespace nirtree
 				// assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
 				// std::cout << "Chose successfully" << std::endl;
 
-				// CL3.1 Expand the chosen bounding polygon to cover the new point and keep it
-				// within the area defined by our bounding polygon. The root has no bounding polygon
-				if (node->parent == nullptr)
-				{
-					node->boundingBoxes[smallestExpansionIndex].expand(givenPoint);
-					// assert(node->boundingBoxes[smallestExpansionIndex].unique());
-				}
-				else
-				{
-					node->boundingBoxes[smallestExpansionIndex].expand(givenPoint, node->parent->boundingBoxes[prevSmallestExpansionIndex]);
-					// assert(node->boundingBoxes[smallestExpansionIndex].unique());
-				}
+				IsotheticPolygon backupPolygon;
 
-				// std::cout << "Expanded to ";
-				// std::cout << "B: node->boundingBoxes[" << smallestExpansionIndex << "].size() = " << node->boundingBoxes[smallestExpansionIndex].basicRectangles.size() << std::endl;
-				// node->boundingBoxes[smallestExpansionIndex].print();
-				// p.printToPencil(node->boundingBoxes);
-				// assert(node->boundingBoxes[smallestExpansionIndex].unique());
-				// assert(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
-				// assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
-				// std::cout << "Expanded successfully" << std::endl;
-
-				// CL3.2 Trim back the chosen bounding polygon so it plays nice with the other
-				// children
-				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
+				for (unsigned i = 0; i < indexPriorityList.size(); ++i)
 				{
-					if (i == smallestExpansionIndex)
+					std::cout << "chose " << i << " for expansion" << std::endl;
+					smallestExpansionIndex = indexPriorityList[i];
+					backupPolygon = node->boundingBoxes[smallestExpansionIndex];
+
+					// CL3.1 Expand the chosen bounding polygon to cover the new point and keep it
+					// within the area defined by our bounding polygon. The root has no bounding polygon
+					if (node->parent == nullptr)
 					{
-						continue;
+						node->boundingBoxes[smallestExpansionIndex].expand(givenPoint);
+						// assert(node->boundingBoxes[smallestExpansionIndex].unique());
+					}
+					else
+					{
+						node->boundingBoxes[smallestExpansionIndex].expand(givenPoint, node->parent->boundingBoxes[prevSmallestExpansionIndex]);
+						// assert(node->boundingBoxes[smallestExpansionIndex].unique());
 					}
 
-					// std::cout << "Pre chooseLeaf increaseRes" << std::endl;
-					node->boundingBoxes[smallestExpansionIndex].increaseResolution(node->boundingBoxes[i]);
-					// std::cout << "Post chooseLeaf increaseRes" << std::endl;
-					// if (!node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint))
-					// {
-					// 	std::cout << "i = " << i << std::endl;
-					// 	std::cout << "node->boundingBoxes[i] = "; node->boundingBoxes[i].print();
-					// 	std::cout << "node->boundingBoxes[smallestExpansionIndex] = "; node->boundingBoxes[smallestExpansionIndex].print();
-					// }
+					// std::cout << "Expanded to ";
+					// std::cout << "B: node->boundingBoxes[" << smallestExpansionIndex << "].size() = " << node->boundingBoxes[smallestExpansionIndex].basicRectangles.size() << std::endl;
+					// node->boundingBoxes[smallestExpansionIndex].print();
+					// p.printToPencil(node->boundingBoxes);
+					// assert(node->boundingBoxes[smallestExpansionIndex].unique());
 					// assert(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
+					// assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
+					// std::cout << "Expanded successfully" << std::endl;
+
+					// CL3.2 Trim back the chosen bounding polygon so it plays nice with the other
+					// children
+					for (unsigned j = 0; j < node->boundingBoxes.size(); ++j)
+					{
+						if (j == smallestExpansionIndex)
+						{
+							continue;
+						}
+
+						// std::cout << "Pre chooseLeaf increaseRes" << std::endl;
+						node->boundingBoxes[smallestExpansionIndex].increaseResolution(node->boundingBoxes[j]);
+						// std::cout << "Post chooseLeaf increaseRes" << std::endl;
+						// if (!node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint))
+						// {
+						// 	std::cout << "i = " << i << std::endl;
+						// 	std::cout << "node->boundingBoxes[i] = "; node->boundingBoxes[i].print();
+						// 	std::cout << "node->boundingBoxes[smallestExpansionIndex] = "; node->boundingBoxes[smallestExpansionIndex].print();
+						// }
+						// assert(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
+					}
+
+					// If our initial choice is contiguous then great we can move on, otherwise try
+					// every other node in descending order of required expansion area
+					if (node->boundingBoxes[smallestExpansionIndex].contiguous())
+					{
+						break;
+					}
+					else
+					{
+						node->boundingBoxes[smallestExpansionIndex] = backupPolygon;
+					}
 				}
 
 				// std::cout << "Trimmed back to ";
@@ -309,6 +337,7 @@ namespace nirtree
 				// std::cout << "Trimmed successfully" << std::endl;
 
 				// CL4 [Descend until a leaf is reached]
+				assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
 				node = node->children[smallestExpansionIndex];
 				prevSmallestExpansionIndex = smallestExpansionIndex;
 			}
@@ -359,6 +388,7 @@ namespace nirtree
 	// TODO: Optimize
 	Node *Node::findLeaf(Point givenPoint)
 	{
+		std::cout << "Given point = "; givenPoint.print();
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
@@ -368,9 +398,11 @@ namespace nirtree
 		{
 			currentContext = context.top();
 			context.pop();
+			std::cout << "Current find leaf context = " << (void *)currentContext << std::endl;
 
 			if (currentContext->children.size() == 0)
 			{
+				std::cout << "FL2 size = " << currentContext->boundingBoxes.size() << std::endl;
 				// FL2 [Search leaf node for record]
 				// Check each entry to see if it matches E
 				for (unsigned i = 0; i < currentContext->data.size(); ++i)
@@ -383,12 +415,15 @@ namespace nirtree
 			}
 			else
 			{
+				std::cout << "FL1 size = " << currentContext->boundingBoxes.size() << std::endl;
 				// FL1 [Search subtrees]
 				// Determine which branches we need to follow
 				for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
 				{
+					std::cout << "Considering " << i << std::endl;
 					if (currentContext->boundingBoxes[i].containsPoint(givenPoint))
 					{
+						std::cout << "Pushing " << (void *)currentContext->children[i] << std::endl;
 						// Add the child to the nodes we will consider
 						context.push(currentContext->children[i]);
 					}
@@ -493,7 +528,7 @@ namespace nirtree
 			// std::cout << "Children X Children" << std::endl;
 			for (unsigned j = 0; j < i && j < childrenSize; ++j)
 			{
-				if (boundingBoxes[i].intersectsRectangle(boundingBoxes[j]))
+				if (boundingBoxes[i].intersectsPolygon(boundingBoxes[j]))
 				{
 					graph[i][j] = true;
 					graph[j][i] = true;
@@ -1382,18 +1417,303 @@ namespace nirtree
 	// 	}
 	// }
 
-	// To be called on a leaf
-	Node *Node::condenseTree()
+	bool Node::condenseLeaf(Point givenPoint)
 	{
+		// std::chrono::high_resolution_clock::time_point begin;
+		// std::chrono::high_resolution_clock::time_point end;
+		
+		// begin = std::chrono::high_resolution_clock::now();
+		// Find ourselves, much like a teenager :P
+		unsigned polygonIndex;
+		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
+		// end = std::chrono::high_resolution_clock::now();
+		// std::cout << "Find time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// std::cout << "Found ourselves" << std::endl;
+
+		auto &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
+		unsigned basicsSize = basics.size();
+
+		// begin = std::chrono::high_resolution_clock::now();
+		std::vector<unsigned> S;
+
+		for (unsigned i = 0; i < basicsSize; ++i)
+		{
+			if (basics[i].containsPoint(givenPoint))
+			{
+				S.push_back(i);
+			}
+		}
+		// end = std::chrono::high_resolution_clock::now();
+		// std::cout << "R contains points time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// Build a graph
+		// begin = std::chrono::high_resolution_clock::now();
+		Graph g(basics);
+		// end = std::chrono::high_resolution_clock::now();
+		// std::cout << "Graph build time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// begin = std::chrono::high_resolution_clock::now();
+		// // Determine the weight of each rectangle
+		// unsigned weights[basicsSize];
+		// std::memset(weights, 0, basicsSize * sizeof(unsigned));
+		// for (unsigned i = 0; i < basicsSize; ++i)
+		// {
+		// 	for (unsigned j = 0; j < data.size(); ++j)
+		// 	{
+		// 		if (basics[i].containsPoint(data[j]))
+		// 		{
+		// 			++weights[i];
+		// 		}
+		// 	}
+		// }
+		// end = std::chrono::high_resolution_clock::now();
+		// std::cout << "Weight time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// // std::cout << "Finished weights" << std::endl;
+		// // for (unsigned i = 0; i < basicsSize; ++i)
+		// // {
+		// // 	std::cout << weights[i] << ' ';
+		// // }
+		// // std::cout << std::endl;
+
+		// // Build a graph
+		// begin = std::chrono::high_resolution_clock::now();
+		// Graph g(basics);
+		// end = std::chrono::high_resolution_clock::now();
+		// std::cout << "Graph build time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// // std::cout << "Finished graph building" << std::endl;
+
+		// // For each weight 0 rectangle see if we can remove it
+		// begin = std::chrono::high_resolution_clock::now();
+		// std::vector<Rectangle> swap;
+		// for (unsigned i = 0; i < basicsSize; ++i)
+		// {
+		// 	// std::cout << "Checking rectangle " << i << std::endl;
+		// 	if (weights[i] == 0 && g.contiguous(i))
+		// 	{
+		// 		// std::cout << "Removing rectangle" << i << std::endl;
+		// 		g.remove(i);
+		// 		// std::cout << "Done removing rectangle " << i << std::endl;
+		// 	}
+		// 	else
+		// 	{
+		// 		swap.push_back(basics[i]);
+		// 	}
+		// }
+		// end = std::chrono::high_resolution_clock::now();
+		// std::cout << "Remove time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// // std::cout << "Finished removal" << std::endl;
+
+
+		// begin = std::chrono::high_resolution_clock::now();
+		// if (swap.size() < basicsSize)
+		// {
+		// 	basics.swap(swap);
+		// 	end = std::chrono::high_resolution_clock::now();
+		// 	std::cout << "SwapA time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+		// 	return true;
+		// }
+		// end = std::chrono::high_resolution_clock::now();
+		// std::cout << "SwapB time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// return false;
+
+		// Decide how to shrink rectangles in S
+		unsigned deletedCount = 0;
+		for (unsigned i = 0; i < S.size(); ++i)
+		{
+			// Call the current rectangle R
+			// begin = std::chrono::high_resolution_clock::now();
+			unsigned R = S[i];
+
+			// unsigned labels[basicsSize]; // Label each vertex with a component number
+			// std::memset(labels, 0, basicsSize * sizeof(unsigned));
+			// unsigned componentCount = g.components(labels);
+			// end = std::chrono::high_resolution_clock::now();
+			// std::cout << "Label time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+			
+			// Now pin R to one rectangle in every component it touches
+			// begin = std::chrono::high_resolution_clock::now();
+			// std::vector<Rectangle> pinSet;
+			// for (unsigned nextRequiredComponent = 1; nextRequiredComponent <= componentCount; ++nextRequiredComponent)
+			// {
+			// 	for (unsigned j = 0; j < basicsSize; ++j)
+			// 	{
+			// 		if (g[R][j] && labels[j] == nextRequiredComponent)
+			// 		{
+			// 			pinSet.push_back(basics[j]);
+			// 			break;
+			// 		}
+			// 	}
+			// }
+			// end = std::chrono::high_resolution_clock::now();
+			// std::cout << "Pin time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+			// Now record every point R covers
+			// begin = std::chrono::high_resolution_clock::now();
+			std::vector<Point> pointSet;
+			for (unsigned j = 0; j < data.size(); ++j)
+			{
+				if (basics[R].containsPoint(data[j]))
+				{
+					pointSet.push_back(data[j]);
+				}
+			}
+			// end = std::chrono::high_resolution_clock::now();
+			// std::cout << "Point time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+			// Depending on whether or not R is a bridge we may be able to delete it
+			if (pointSet.size() == 0 && g.contiguous(R) /*componentCount == 1*/)
+			{
+				// Delete R and then check if its neighbours can be deleted
+				basics[R] = Rectangle();//basics[basicsSize - 1];
+				g.remove(R);
+				++deletedCount;
+				// basics.pop_back();
+				// std::cout << "Deleted R = " << R << std::endl;
+			}
+			else
+			{
+				// Shrink R as much as possible under the restrictions of the pin set and the points
+				// it still must cover
+				// basics[R].shrink(pinSet, pointSet);
+			}
+		}
+
+		// Cleanup
+		parent->boundingBoxes[polygonIndex].sort(true);
+		basics.resize(basics.size() - deletedCount);
+
+		return deletedCount > 0;
+	}
+
+	bool Node::condenseNode(IsotheticPolygon &givenPolygon)
+	{
+		// Find ourselves, much like a teenager :P
+		unsigned polygonIndex;
+		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
+
+		auto &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
+		unsigned basicsSize = basics.size();
+
+		// Determine the set of rectangles which intersect the changed polygon
+		std::vector<unsigned> S;
+
+		for (unsigned i = 0; i < basicsSize; ++i)
+		{
+			if (givenPolygon.intersectsRectangle(basics[i]))
+			{
+				S.push_back(i);
+			}
+		}
+
+		// Build a graph
+		Graph g(basics);
+
+		// Decide how to shrink rectangles in S
+		unsigned deletedCount = 0;
+		for (unsigned i = 0; i < S.size(); ++i)
+		{
+			// Call the current rectangle R
+			// begin = std::chrono::high_resolution_clock::now();
+			unsigned R = S[i];
+
+			// unsigned labels[basicsSize]; // Label each vertex with a component number
+			// std::memset(labels, 0, basicsSize * sizeof(unsigned));
+			// unsigned componentCount = g.components(labels);
+			// end = std::chrono::high_resolution_clock::now();
+			// std::cout << "Label time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+			
+			// Now pin R to one rectangle in every component it touches
+			// begin = std::chrono::high_resolution_clock::now();
+			// std::vector<Rectangle> pinSet;
+			// for (unsigned nextRequiredComponent = 1; nextRequiredComponent <= componentCount; ++nextRequiredComponent)
+			// {
+			// 	for (unsigned j = 0; j < basicsSize; ++j)
+			// 	{
+			// 		if (g[R][j] && labels[j] == nextRequiredComponent)
+			// 		{
+			// 			pinSet.push_back(basics[j]);
+			// 			break;
+			// 		}
+			// 	}
+			// }
+			// end = std::chrono::high_resolution_clock::now();
+			// std::cout << "Pin time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+			// Now record every object R covers
+			// begin = std::chrono::high_resolution_clock::now();
+			std::vector<Rectangle> coverSet;
+			for (unsigned j = 0; j < children.size(); ++j)
+			{
+				if (boundingBoxes[j].intersectsRectangle(basics[R]))
+				{
+					coverSet.push_back(Rectangle());
+				}
+				// std::vector<Rectangle> v = boundingBoxes[j].intersection(basics[R]);
+				// coverSet.insert(coverSet.end(), v.begin(), v.end());
+			}
+			// end = std::chrono::high_resolution_clock::now();
+			// std::cout << "Cover time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+			// Depending on whether or not R is a bridge we may be able to delete it
+			if (coverSet.size() == 0 && g.contiguous(R) /*&& coverSet.size() == 0*/)
+			{
+				// Delete R and then check if its neighbours can be deleted
+				basics[R] = Rectangle();
+				g.remove(R);
+				++deletedCount;
+				// basics.pop_back();
+				// std::cout << "Deleted R = " << R << std::endl;
+			}
+			else
+			{
+				// Shrink R as much as possible under the restrictions of the pin set and the points
+				// it still must cover
+				// basics[R].shrink(pinSet, pointSet);
+			}
+		}
+
+		// Cleanup
+		parent->boundingBoxes[polygonIndex].sort(true);
+		basics.resize(basics.size() - deletedCount);
+
+		return deletedCount > 0;
+	}
+
+	// To be called on a leaf
+	Node *Node::condenseTree(Point givenPoint)
+	{
+		// std::cout << "Condensing" << std::endl;
 		// CT1 [Initialize]
 		Node *node = this;
+		IsotheticPolygon givenPolygon;
+		bool continueCondensing = true;
 
 		for (;node->parent != nullptr;)
 		{
-			// TODO: Shrink bounding box. How???
+			if (data.size() > 0)
+			{
+				// std::cout << "Condensing leaf" << std::endl;
+				continueCondensing = node->condenseLeaf(givenPoint);
+			}
+			else if (children.size() > 0)
+			{
+				// std::cout << "Condensing node" << std::endl;
+				continueCondensing = node->condenseNode(givenPolygon);
+			}
 
+			// Finish early if no condensing happens at a level because this means no condensing is
+			// needed at higher levels
 			if (node->boundingBoxes.size() == 0 && node->data.size() == 0)
 			{
+				// std::cout << "Deleting empty and continuing" << std::endl;
+				unsigned polygonIndex; for(polygonIndex = 0; node->parent->children[polygonIndex] != node; ++polygonIndex){}
+				givenPolygon = node->parent->boundingBoxes[polygonIndex];
+
 				// Remove ourselves from our parent
 				node->parent->removeChild(node);
 
@@ -1406,59 +1726,76 @@ namespace nirtree
 				// Garbage collect current node
 				delete garbage;
 			}
+			else if (continueCondensing)
+			{
+				// std::cout << "Continue condensing" << std::endl;
+				unsigned polygonIndex; for(polygonIndex = 0; node->parent->children[polygonIndex] != node; ++polygonIndex){}
+				givenPolygon = node->parent->boundingBoxes[polygonIndex];
+
+				// Move up a level
+				node = node->parent;
+			}
 			else
 			{
-				// TODO: Maybe add early stop since there are no more deletes to propagate?
-				node = node->parent;
+				// std::cout << "Early exit" << std::endl;
+				return node;
 			}
 		}
 
+		// std::cout << "Regular exit" << std::endl;
 		return node;
 	}
 
 	// // Always called on root, this = root
 	Node *Node::remove(Point givenPoint)
 	{
-		std::cout << "Removing "; givenPoint.print(); std::cout << std::endl;
-		std::cout << "CHKPT0" << std::endl;
+		PencilPrinter pr;
+		pr.printToPencil(this);
+		// std::cout << "Removing "; givenPoint.print(); std::cout << std::endl;
+		// std::cout << "CHKPT0" << std::endl;
 		// D1 [Find node containing record]
 		Node *leaf = findLeaf(givenPoint);
-		validate(nullptr, 0);
+		// validate(nullptr, 0);
 
-		std::cout << "CHKPT1" << std::endl;
-
+		// std::cout << "CHKPT1" << std::endl;
 		if (leaf == nullptr)
 		{
+			this->printTree();
+			std::cout << "Leaf was nullptr" << std::endl;
 			return nullptr;
 		}
 
-		std::cout << "CHKPT2" << std::endl;
+		// std::cout << "CHKPT2" << std::endl;
 
 		// D2 [Delete record]
 		// leaf->parent->updateBoundingBox(leaf, givenPoint);
 		leaf->removeData(givenPoint);
-		validate(nullptr, 0);
-		std::cout << "CHKPT3" << std::endl;
+		// validate(nullptr, 0);
+		// std::cout << "CHKPT3" << std::endl;
 
 		// D3 [Propagate changes]
-		Node *root = leaf->condenseTree();
-		validate(nullptr, 0);
-		std::cout << "CHKPT4" << std::endl;
+		leaf->condenseTree(givenPoint);
+		// this->printTree();
+		// validate(nullptr, 0);
+		// std::cout << "CHKPT4" << std::endl;
+
+		pr.printToPencil(this);
 
 		// D4 [Shorten tree]
+		Node *root = this;
 		if (root->children.size() == 1)
 		{
-			std::cout << "CHKPT5" << std::endl;
+			// std::cout << "CHKPT5" << std::endl;
 			Node *newRoot = root->children[0];
 			delete root;
 			newRoot->parent = nullptr;
-			newRoot->validate(nullptr, 0);
+			// newRoot->validate(nullptr, 0);
 			return newRoot;
 		}
 		else
 		{
-			validate(nullptr, 0);
-			std::cout << "CHKPT6" << std::endl;
+			// validate(nullptr, 0);
+			// std::cout << "CHKPT6" << std::endl;
 			return root;
 		}
 	}
@@ -1504,6 +1841,12 @@ namespace nirtree
 		{
 			for (unsigned i = 0; i < data.size(); ++i)
 			{
+				if (!parent->boundingBoxes[index].contiguous())
+				{
+					parent->boundingBoxes[index].print();
+					std::cout << " not contiguous" << std::endl;
+					assert(parent->boundingBoxes[index].contiguous());
+				}
 				if (!parent->boundingBoxes[index].containsPoint(data[i]))
 				{
 					parent->boundingBoxes[index].print();
@@ -1528,7 +1871,7 @@ namespace nirtree
 	{
 		std::string indendtation(n * 4, ' ');
 		std::cout << indendtation << "Node " << (void *)this << std::endl;
-		std::cout << indendtation << "{" << std::endl;
+		std::cout << indendtation << "(" << std::endl;
 		std::cout << indendtation << "    Parent: " << (void *)parent << std::endl;
 		std::cout << indendtation << "    Bounding Boxes: " << std::endl;
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
@@ -1546,7 +1889,7 @@ namespace nirtree
 		{
 			data[i].print();
 		}
-		std::cout << std::endl << indendtation << "}" << std::endl;
+		std::cout << std::endl << indendtation << ")" << std::endl;
 	}
 
 	void Node::printTree(unsigned n)
@@ -1555,6 +1898,8 @@ namespace nirtree
 		print(n);
 
 		// Print any of our children with one more level of indentation
+		std::string indendtation(n * 4, ' ');
+		std::cout << std::endl << indendtation << "{" << std::endl;
 		if (children.size() > 0)
 		{
 			for (unsigned i = 0; i < boundingBoxes.size(); ++i)
@@ -1563,52 +1908,60 @@ namespace nirtree
 				children[i]->printTree(n + 1);
 			}
 		}
+		std::cout << std::endl << indendtation << "}" << std::endl;
 	}
 
 	void testPlayground()
 	{
 		// Setup
-		std::vector<Rectangle> v;
-		const float sizeF = 300.0;
-		const unsigned sizeU = 300;
+		Node *a = new Node(30, 30);
+		Node *b = new Node(30, 30, a);
 
-		for (float i = 0.0; i < sizeF; i += 1.0)
+		IsotheticPolygon bPoly;
+		for (float i = 0; i < 18.0; ++i)
 		{
-			for (float j = 0.0; j < sizeF; j += 1.0)
+			for (float j = 0; j < 18.0; ++j)
 			{
-				v.push_back(Rectangle(j, i, j + 1.0, i + 1.0));
+				bPoly.basicRectangles.push_back(Rectangle(i * 12.0, j * 6.0, i * 12.0 + 12.0, j * 6.0 + 6.0));
+			}
+		}
+		bPoly.sort(true);
+
+		a->boundingBoxes.push_back(bPoly);
+		a->children.push_back(b);
+
+		for (float i = 0; i < 18.0; ++i)
+		{
+			for (float j = 0; j < 18.0; ++j)
+			{
+				b->data.push_back(Point(i * 12.0 + 2.0, j * 6.0 + 1.0));
+				b->data.push_back(Point(i * 12.0 + 6.0, j * 6.0 + 3.0));
+				b->data.push_back(Point(i * 12.0 + 10.0, j * 6.0 + 5.0));
 			}
 		}
 
-		// Build graph new way
-		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		Graph g1(v);
-		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-		std::cout << "New time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+		std::cout << "Finished Setup" << std::endl;
+		a->printTree();
+		std::cout << "b->size = " << a->boundingBoxes[0].basicRectangles.size() << std::endl;
 
-		// Build graph old way
-		begin = std::chrono::high_resolution_clock::now();
-		auto g0 = new std::multimap<unsigned, unsigned>();// bool[sizeU * sizeU];
-		// std::memset(g0, false, sizeU * sizeU);
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Allocate & clear 2.0 = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-		for (unsigned i = 0; i < sizeU; ++i)
+		for (float i = 0; i < 18.0; ++i)
 		{
-			for (unsigned j = 0; j < i; ++j)
+			for (float j = 0; j < 18.0; ++j)
 			{
-				if (v[i].intersectsRectangle(v[j]))
-				{
-					g0->insert(std::pair<unsigned, unsigned>(i, j));
-					// g0[i * sizeU + j] = true;
-					// g0[j * sizeU + i] = true;
-				}
+				a = a->remove(Point(i * 12.0 + 2.0, j * 6.0 + 1.0));
+				a = a->remove(Point(i * 12.0 + 6.0, j * 6.0 + 3.0));
+				a = a->remove(Point(i * 12.0 + 10.0, j * 6.0 + 5.0));
 			}
 		}
-		end = std::chrono::high_resolution_clock::now();
-		std::cout << "Old time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
-		// Assert correctness
-		// assert(memcmp(g0, g1[0], sizeU * sizeU));
+		a->printTree();
+
+		// std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+		// b->condenseLeaf(Point(7 * 12 + 10.0, 7 * 6.0 + 5.0));
+		// std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+		// std::cout << "Condense Leaf time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
+
+		// std::cout << "b->size = " << a->boundingBoxes[0].basicRectangles.size() << std::endl;
 	}
 
 	void testRemoveData()

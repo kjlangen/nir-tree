@@ -65,7 +65,9 @@ namespace nirtree
 			SplitResult splitNode(Point newData);
 			SplitResult splitNode(SplitResult &lowerSplit);
 			SplitResult adjustTree(SplitResult &leafSplit);
-			Node *condenseTree();
+			bool condenseLeaf(Point givenPoint);
+			bool condenseNode(IsotheticPolygon &givenPolygon);
+			Node *condenseTree(Point givenPoint);
 			// Node *insert(ReinsertionEntry e);
 
 			// Data structure interface functions
