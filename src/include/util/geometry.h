@@ -45,9 +45,12 @@ class Rectangle
 		float computeExpansionArea(Rectangle givenRectangle);
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
+		void shrink(std::vector<Rectangle> &pinSet, std::vector<Point> &constraintSet);
+		void shrink(std::vector<Rectangle> &pinSet, std::vector<Rectangle> &constraintSet);
+		bool alignedOpposingBorders(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle givenRectangle);
 		bool strictIntersectsRectangle(Rectangle givenRectangle);
-		bool borderOnlyIntersectsRectanlge(Rectangle givenRectangle);	
+		bool borderOnlyIntersectsRectanlge(Rectangle givenRectangle);
 		bool containsPoint(Point givenPoint);
 		bool strictContainsPoint(Point givenPoint);
 		bool containsRectangle(Rectangle givenRectangle);
@@ -80,9 +83,11 @@ class IsotheticPolygon
 		void expand(IsotheticPolygon &targetPolygon, IsotheticPolygon &constraintPolygon);
 		bool intersectsRectangle(Rectangle &givenRectangle);
 		bool quickIntersectsRectangle(Rectangle &givenRectangle);
-		bool intersectsRectangle(IsotheticPolygon &givenPolygon);
+		bool intersectsPolygon(IsotheticPolygon &givenPolygon);
 		bool quickIntersectsPolygon(IsotheticPolygon &givenPolygon);
+		bool borderOnlyIntersectsRectanlge(Rectangle givenRectangle);
 		bool containsPoint(Point requestedPoint);
+		std::vector<Rectangle> intersection(Rectangle givenRectangle);
 		void intersection(IsotheticPolygon &constraintPolygon);
 		void increaseResolution(Rectangle clippingRectangle);
 		void increaseResolution(IsotheticPolygon &clippingPolygon);
