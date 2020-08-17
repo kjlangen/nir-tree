@@ -1695,16 +1695,17 @@ namespace nirtree
 		if (!existsEmpty) { return false; }
 
 		// create connectivity graph
-		bool graph[numRectangle][numRectangle];
-		std::memset(graph, false, numRectangle * numRectangle * sizeof(bool));
-		for (unsigned i = 0; i < numRectangle; ++i) {
+		typedef std::pair<int, int> edge;
+		std::vector<edge> edges;
+		for (unsigned i = 0; i < numRectangle; i++) {
 			for (unsigned j = 0; j < i; ++j) {
 				if (boundingRectangles[i].intersectsRectangle(boundingRectangles[j])) {
-					graph[i][j] = true;
-					graph[j][i] = true;
+					edges.emplace_back(std::make_pair(std::min(i, j), std::max(i, j)));
 				}
 			}
 		}
+		// sort edges for binary search later
+		std::sort(edges.begin(), edges.end());
 
 		// arrays to help with traversal
 		bool visited[numRectangle];
@@ -1727,7 +1728,9 @@ namespace nirtree
 			// see which neighbours have not been visited yet
 			bool isLeaf = true;
 			for (int i=0; i<numRectangle; i++) {
-				if (current != i && graph[current][i] && !visited[i]) {
+				edge e = std::make_pair(std::min(i, current), std::max(i, current));
+				bool connection = std::binary_search(edges.begin(), edges.end(), e);
+				if (current != i && connection && !visited[i]) {
 					isLeaf = false;
 					queue.push(i);
 					visited[i] = true;
