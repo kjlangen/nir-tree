@@ -43,7 +43,7 @@ namespace nirtree
 
 	void NIRTree::remove(Point givenPoint)
 	{
-		root = root->remove(givenPoint);
+		root = root->remove2(givenPoint);
 	}
 
 	unsigned NIRTree::checksum()
