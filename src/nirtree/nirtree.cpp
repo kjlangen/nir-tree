@@ -26,12 +26,12 @@ namespace nirtree
 		return v;
 	}
 
-	std::vector<Point> NIRTree::search(Point requestedPoint)
+	std::vector<Point> NIRTree::search(Point requestedPoint) const
 	{
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> NIRTree::search(Rectangle requestedRectangle)
+	std::vector<Point> NIRTree::search(Rectangle requestedRectangle) const
 	{
 		return root->search(requestedRectangle);
 	}
