@@ -4,6 +4,7 @@
 #include <rtree/rtree.h>
 #include <bench/randomPoints.h>
 #include <rplustree/rPlusTree.h>
+#include <nirtree/nirtree.h>
 
 void testLibSpatialIndex()
 {
@@ -117,29 +118,71 @@ int main(int argc, char *argv[])
 #ifdef UNIT_TESTING
 	return session.run(argc, argv);
 #else
-	int option;
-	while ((option = getopt(argc, argv, "ps")) != -1)
+	// process command line options
+	int option, mode = -1, a = 750, b = 1500, s = 10000, l = 1000;
+	while ((option = getopt(argc, argv, "m:a:b:s:l:")) != -1)
 	{
 		switch (option) {
-			case 'p': // 'p' for R+ tree
+			case 'm': // mode: tree type
 			{
-				rplustree::Tree rPlusTree(750, 1500);
-				randomPoints(rPlusTree, 10000, 1000);
+				mode = atoi(optarg);
 				break;
 			}
-			case 's': // 's' for R* tree
+			case 'a': // a: min branch factor
 			{
-				rtree::RTree rTree(750, 1500);
-				randomPoints(rTree, 10000, 1000);
+				a = atoi(optarg);
+				break;
+			}
+			case 'b': // b: max branch factor
+			{
+				b = atoi(optarg);
+				break;
+			}
+			case 's': // s: benchmark size
+			{
+				s = atoi(optarg);
+				break;
+			}
+			case 'l': // l: log frequency
+			{
+				l = atoi(optarg);
 				break;
 			}
 			default:
 			{
-				std::cout << "Options are: p (R+Tree) and s (R*Tree)" << std::endl;
+				std::cout << "Unknown option. Exiting." << std::endl;
 				return 1;
 			}
 		}
 	}
+
+	// run benchmarking
+	switch (mode) {
+		case 1:
+		{
+			rplustree::Tree rPlusTree(a, b);
+			randomPoints(rPlusTree, s, l);
+			break;
+		}
+		case 2:
+		{
+			rtree::RTree rTree(a, b);
+			randomPoints(rTree, s, l);
+			break;
+		}
+		case 3:
+		{
+			nirtree::NIRTree nirTree(a, b);
+			randomPoints(nirTree, s, l);
+			break;
+		}
+		default:
+		{
+			std::cout << "Tree not selected. Exiting." << std::endl;
+			return 1;
+		}
+	}
+
 	return 0;
 #endif
 }
