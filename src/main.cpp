@@ -112,6 +112,15 @@ void testLibSpatialIndex()
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
+void parameters(int mode, int a, int b, int s, int l) {
+	// print test parameters
+	std::cout << "### TEST PARAMETERS ###" << std::endl;
+	std::cout << "  mode = " << mode << std::endl;
+	std::cout << "  a = " << a << "; b =" << b << std::endl;
+	std::cout << "  s = " << s << "; l =" << l << std::endl;
+	std::cout << "### ### ### ### ### ###" << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
 	Catch::Session session;
@@ -155,6 +164,9 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+
+	// print test parameters
+	parameters(mode, a, b, s, l);
 
 	// run benchmarking
 	switch (mode) {
