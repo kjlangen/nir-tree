@@ -134,7 +134,7 @@ namespace nirtree
 
 		for (;!context.empty();)
 		{
-			validate(nullptr, 0);
+			// validate(nullptr, 0);
 			currentContext = context.top();
 			context.pop();
 
@@ -177,7 +177,7 @@ namespace nirtree
 
 		for (;!context.empty();)
 		{
-			validate(nullptr, 0);
+			// validate(nullptr, 0);
 			currentContext = context.top();
 			context.pop();
 
@@ -1419,46 +1419,46 @@ namespace nirtree
 	// // Always called on root, this = root
 	Node *Node::remove(Point givenPoint)
 	{
-		std::cout << "Removing "; givenPoint.print(); std::cout << std::endl;
-		std::cout << "CHKPT0" << std::endl;
+		// std::cout << "Removing "; givenPoint.print(); std::cout << std::endl;
+		// std::cout << "CHKPT0" << std::endl;
 		// D1 [Find node containing record]
 		Node *leaf = findLeaf(givenPoint);
-		validate(nullptr, 0);
+		// validate(nullptr, 0);
 
-		std::cout << "CHKPT1" << std::endl;
+		// std::cout << "CHKPT1" << std::endl;
 
 		if (leaf == nullptr)
 		{
 			return nullptr;
 		}
 
-		std::cout << "CHKPT2" << std::endl;
+		// std::cout << "CHKPT2" << std::endl;
 
 		// D2 [Delete record]
 		// leaf->parent->updateBoundingBox(leaf, givenPoint);
 		leaf->removeData(givenPoint);
-		validate(nullptr, 0);
-		std::cout << "CHKPT3" << std::endl;
+		// validate(nullptr, 0);
+		// std::cout << "CHKPT3" << std::endl;
 
 		// D3 [Propagate changes]
 		Node *root = leaf->condenseTree();
-		validate(nullptr, 0);
-		std::cout << "CHKPT4" << std::endl;
+		// validate(nullptr, 0);
+		// std::cout << "CHKPT4" << std::endl;
 
 		// D4 [Shorten tree]
 		if (root->children.size() == 1)
 		{
-			std::cout << "CHKPT5" << std::endl;
+			// std::cout << "CHKPT5" << std::endl;
 			Node *newRoot = root->children[0];
 			delete root;
 			newRoot->parent = nullptr;
-			newRoot->validate(nullptr, 0);
+			// newRoot->validate(nullptr, 0);
 			return newRoot;
 		}
 		else
 		{
-			validate(nullptr, 0);
-			std::cout << "CHKPT6" << std::endl;
+			// validate(nullptr, 0);
+			// std::cout << "CHKPT6" << std::endl;
 			return root;
 		}
 	}
