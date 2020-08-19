@@ -112,12 +112,14 @@ void testLibSpatialIndex()
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
-void parameters(int mode, int a, int b, int s, int l) {
-	// print test parameters
+enum TreeType { NONE = 0, R_PLUS_TREE, R_STAR_TREE, NIR_TREE };
+
+void parameters(TreeType type, int a, int b, int s, int l) {
+	std::string treeTypes[] = {"NONE", "R_PLUS_TREE", "R_STAR_TREE", "NIR_TREE"};
 	std::cout << "### TEST PARAMETERS ###" << std::endl;
-	std::cout << "  mode = " << mode << std::endl;
-	std::cout << "  a = " << a << "; b =" << b << std::endl;
-	std::cout << "  s = " << s << "; l =" << l << std::endl;
+	std::cout << "  tree = " << treeTypes[type] << std::endl;
+	std::cout << "  a = " << a << "; b = " << b << std::endl;
+	std::cout << "  s = " << s << "; l = " << l << std::endl;
 	std::cout << "### ### ### ### ### ###" << std::endl;
 }
 
@@ -128,13 +130,14 @@ int main(int argc, char *argv[])
 	return session.run(argc, argv);
 #else
 	// process command line options
-	int option, mode = -1, a = 750, b = 1500, s = 10000, l = 1000;
-	while ((option = getopt(argc, argv, "m:a:b:s:l:")) != -1)
+	int option, a = 750, b = 1500, s = 10000, l = 1000;
+	TreeType type = NONE;
+	while ((option = getopt(argc, argv, "t:a:b:s:l:")) != -1)
 	{
 		switch (option) {
-			case 'm': // mode: tree type
+			case 't': // t: tree type
 			{
-				mode = atoi(optarg);
+				type = (TreeType)atoi(optarg);
 				break;
 			}
 			case 'a': // a: min branch factor
@@ -166,23 +169,23 @@ int main(int argc, char *argv[])
 	}
 
 	// print test parameters
-	parameters(mode, a, b, s, l);
+	parameters(type, a, b, s, l);
 
 	// run benchmarking
-	switch (mode) {
-		case 1:
+	switch (type) {
+		case R_PLUS_TREE:
 		{
 			rplustree::Tree rPlusTree(a, b);
 			randomPoints(rPlusTree, s, l);
 			break;
 		}
-		case 2:
+		case R_STAR_TREE:
 		{
 			rtree::RTree rTree(a, b);
 			randomPoints(rTree, s, l);
 			break;
 		}
-		case 3:
+		case NIR_TREE:
 		{
 			nirtree::NIRTree nirTree(a, b);
 			randomPoints(nirTree, s, l);
