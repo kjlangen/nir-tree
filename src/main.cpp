@@ -115,31 +115,50 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
+void parameters(int mode, int a, int b, int s, int l) {
+	// print test parameters
+	std::cout << "### TEST PARAMETERS ###" << std::endl;
+	std::cout << "  mode = " << mode << std::endl;
+	std::cout << "  a = " << a << "; b =" << b << std::endl;
+	std::cout << "  s = " << s << "; l =" << l << std::endl;
+	std::cout << "### ### ### ### ### ###" << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
 	Catch::Session session;
 #ifdef UNIT_TESTING
 	return session.run(argc, argv);
 #else
-	int option;
-	while ((option = getopt(argc, argv, "ps")) != -1)
+	int mode;
+	while ((mode = getopt(argc, argv, "ps")) != -1)
 	{
-		switch (option) {
-			case 'p': // 'p' for R+ tree
+		// print test parameters
+		parameters(mode, a, b, s, l);
+
+		// run benchmarking
+		switch (mode) {
+			case 1:
 			{
-				rplustree::Tree rpt(750, 1500);
-				randomPoints(rpt, 10000, 1000);
+				rplustree::Tree rPlusTree(a, b);
+				randomPoints(rPlusTree, s, l);
 				break;
 			}
-			case 's': // 's' for R* tree
+			case 2:
 			{
-				rtree::RTree rt(750, 1500);
-				randomPoints(rt, 10000, 1000);
+				rtree::RTree rTree(a, b);
+				randomPoints(rTree, s, l);
+				break;
+			}
+			case 3:
+			{
+				nirtree::NIRTree nirTree(a, b);
+				randomPoints(nirTree, s, l);
 				break;
 			}
 			default:
 			{
-				std::cout << "Options are: p (R+Tree) and s (R*Tree)" << std::endl;
+				std::cout << "Tree not selected. Exiting." << std::endl;
 				return 1;
 			}
 		}
