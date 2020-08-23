@@ -59,14 +59,12 @@ void randomDisjointSquares()
 	nirtree::PencilPrinter p;
 	p.printToPencil(n);
 
-	nirtree::Node *f = new nirtree::Node(3, 3);
 	rtree::Node *ff = new rtree::Node(3, 3);
 	ff->data.push_back(Point(200.0, 200.0));
 	ff->data.push_back(Point(210.0, 210.0));
 
 	std::cout << "Beginning split of NIR node..." << std::endl;
 	std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-	// n->splitNode(f, IsotheticPolygon(Rectangle(200.0, 200.0, 210.0, 210.0)));
 	std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 	deltaNIR = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 	std::cout << "Finished split of NIR node." << std::endl;

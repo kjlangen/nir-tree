@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <util/geometry.h>
 #include <util/graph.h>
+#include <util/debug.h>
 #include <nirtree/pencilPrinter.h>
 
 namespace nirtree
@@ -68,7 +69,7 @@ namespace nirtree
 			bool condenseLeaf(Point givenPoint);
 			bool condenseNode(IsotheticPolygon &givenPolygon);
 			Node *condenseTree(Point givenPoint);
-			// Node *insert(ReinsertionEntry e);
+			Node *insert(ReinsertionEntry e);
 
 			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
@@ -85,18 +86,17 @@ namespace nirtree
 	};
 
 	void testPlayground();
-	// void testRemoveChild();
+	void testRemoveChild();
 	void testRemoveData();
 	void testChooseLeaf();
 	void testFindLeaf();
 	void testSplitNodeLeaf();
 	void testSplitNodeRoutingSimple();
 	void testSplitNodeRoutingComplex();
-	void testAdjustTree();
-	// void testCondenseTree();
+	void testCondenseTree();
 	void testSearch();
 	void testInsert();
-	// void testRemove();
+	void testRemove();
 }
 
 #endif

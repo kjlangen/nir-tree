@@ -68,15 +68,19 @@ testRStarTree.o:
 testRPlusTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRPlusTree.cpp
 
-# Build all together
-all: ${OBJECTS}
-	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads
-
-# unit tests
+# Unit tests
 tests: ${OBJECTS} ${TESTS}
 	mkdir -p bin
 	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -lctemplate_nothreads -DUNIT_TESTING
+
+# Clean all together
+clean:
+	rm -rf bin/* *.o *.d
+
+# Build all together
+all: clean ${OBJECTS}
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads
 
 # Alter flags to include profiling
 profileflags:
@@ -84,10 +88,16 @@ profileflags:
 
 # Build all together with profiling
 # Note: Problems will occur if files were previously compiled without -pg and were not altered since
-profile: profileflags ${OBJECTS}
+profile: clean profileflags ${OBJECTS}
 	mkdir -p bin
 	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I ${DIR} -lspatialindex -lctemplate_nothreads
 
-# Clean all together
-clean:
-	rm -rf bin *.o *.d
+# Alter flags to include debugging
+debugflags:
+	$(eval FLAGS += -DDEBUG)
+
+#Build all together with debugging
+# Note: Problems will occur if files were previously compiled without -pg and were not altered since
+debug: clean debugflags ${OBJECTS}
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/debug -I ${DIR} -lspatialindex -lctemplate_nothreads

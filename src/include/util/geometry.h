@@ -10,6 +10,7 @@
 #include <cstring>
 #include <limits>
 #include <cfenv>
+#include <util/debug.h>
 
 class Point
 {
@@ -79,12 +80,8 @@ class IsotheticPolygon
 		Rectangle boundingBox();
 		void expand(Point givenPoint);
 		void expand(Point givenPoint, IsotheticPolygon &constraintPolygon);
-		void expand(Rectangle givenRectangle);
-		void expand(IsotheticPolygon &targetPolygon, IsotheticPolygon &constraintPolygon);
 		bool intersectsRectangle(Rectangle &givenRectangle);
-		bool quickIntersectsRectangle(Rectangle &givenRectangle);
 		bool intersectsPolygon(IsotheticPolygon &givenPolygon);
-		bool quickIntersectsPolygon(IsotheticPolygon &givenPolygon);
 		bool borderOnlyIntersectsRectanlge(Rectangle givenRectangle);
 		bool containsPoint(Point requestedPoint);
 		std::vector<Rectangle> intersection(Rectangle givenRectangle);
