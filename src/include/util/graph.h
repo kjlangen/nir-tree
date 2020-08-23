@@ -5,14 +5,23 @@
 #include <utility>
 #include <cstring>
 #include <vector>
+#include <set>
 #include <stack>
 #include <iostream>
 #include <chrono>
 #include <util/geometry.h>
+#include <util/debug.h>
 
 class Graph
 {
 	private:
+		struct SchedulePoint
+		{
+			unsigned coord;
+			unsigned index;
+			bool start;
+		};
+
 		unsigned vertices;
 		bool *g;
 		unsigned removedVertices;

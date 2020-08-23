@@ -4,8 +4,8 @@ namespace nirtree
 {
 	Node::Node()
 	{
-		minBranchFactor = 3;
-		maxBranchFactor = 5;
+		minBranchFactor = 0;
+		maxBranchFactor = 0;
 		parent = nullptr;
 		boundingBoxes.resize(0);
 		children.resize(0);
@@ -22,6 +22,7 @@ namespace nirtree
 		data.resize(0);
 	}
 
+	// TODO: Memory management here
 	void Node::deleteSubtrees()
 	{
 		if (children.size() == 0)
@@ -134,7 +135,7 @@ namespace nirtree
 
 		for (;!context.empty();)
 		{
-			// validate(nullptr, 0);
+			DEXEC(validate(nullptr, 0));
 			currentContext = context.top();
 			context.pop();
 
@@ -177,7 +178,7 @@ namespace nirtree
 
 		for (;!context.empty();)
 		{
-			validate(nullptr, 0);
+			DEXEC(validate(nullptr, 0));
 			currentContext = context.top();
 			context.pop();
 
@@ -210,15 +211,14 @@ namespace nirtree
 	}
 
 	// Always called on root, this = root
-	// TODO: Write the analogous chooseLeaf(Rectangle searchRectangle)
-	// This top-to-bottom sweep is only for adjusting bounding boxes to contain the point and choosing
-	// a particular leaf
+	// This top-to-bottom sweep is only for adjusting bounding boxes to contain the point and
+	// choosing a particular leaf
 	Node *Node::chooseLeaf(Point givenPoint)
 	{
 		// CL1 [Initialize]
 		Node *node = this;
 		unsigned prevSmallestExpansionIndex = 0;
-		// PencilPrinter p;
+		DEXEC(PencilPrinter p);
 
 		for (;;)
 		{
@@ -229,23 +229,6 @@ namespace nirtree
 			}
 			else
 			{
-				// assert(node->parent == nullptr || node->parent->boundingBoxes[prevSmallestExpansionIndex].containsPoint(givenPoint));
-				// node->print();
-				// CL3 [Choose subtree]
-				// Find the bounding box with least required expansion/overlap?
-				// TODO: Break ties by using smallest area
-				unsigned smallestExpansionIndex; // = 0;
-				// float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
-				// for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
-				// {
-				// 	float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
-				// 	if (smallestExpansionArea > testExpansionArea)
-				// 	{
-				// 		smallestExpansionIndex = i;
-				// 		smallestExpansionArea = testExpansionArea;
-				// 	}
-				// }
-
 				std::vector<unsigned> indexPriorityList;
 				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
 				{
@@ -254,21 +237,12 @@ namespace nirtree
 
 				std::sort(indexPriorityList.begin(), indexPriorityList.end(), [node, givenPoint](unsigned a, unsigned b){return node->boundingBoxes[a].computeExpansionArea(givenPoint) < node->boundingBoxes[b].computeExpansionArea(givenPoint);});
 
-				// std::cout << "Chose index " << smallestExpansionIndex << std::endl;
-
-				// std::cout << "A: node->boundingBoxes[" << smallestExpansionIndex << "].size() = " << node->boundingBoxes[smallestExpansionIndex].basicRectangles.size() << std::endl;
-				// std::cout << "Chose ";
-				// node->boundingBoxes[smallestExpansionIndex].print();
-				// p.printToPencil(node->boundingBoxes);
-				// assert(node->boundingBoxes[smallestExpansionIndex].unique());
-				// assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
-				// std::cout << "Chose successfully" << std::endl;
-
 				IsotheticPolygon backupPolygon;
+				unsigned smallestExpansionIndex = 0;
 
 				for (unsigned i = 0; i < indexPriorityList.size(); ++i)
 				{
-					std::cout << "chose " << i << " for expansion" << std::endl;
+					DPRINT3("chose ", i, " for expansion");
 					smallestExpansionIndex = indexPriorityList[i];
 					backupPolygon = node->boundingBoxes[smallestExpansionIndex];
 
@@ -277,22 +251,19 @@ namespace nirtree
 					if (node->parent == nullptr)
 					{
 						node->boundingBoxes[smallestExpansionIndex].expand(givenPoint);
-						// assert(node->boundingBoxes[smallestExpansionIndex].unique());
+						DASSERT(node->boundingBoxes[smallestExpansionIndex].unique());
 					}
 					else
 					{
 						node->boundingBoxes[smallestExpansionIndex].expand(givenPoint, node->parent->boundingBoxes[prevSmallestExpansionIndex]);
-						// assert(node->boundingBoxes[smallestExpansionIndex].unique());
+						DASSERT(node->boundingBoxes[smallestExpansionIndex].unique());
 					}
 
-					// std::cout << "Expanded to ";
-					// std::cout << "B: node->boundingBoxes[" << smallestExpansionIndex << "].size() = " << node->boundingBoxes[smallestExpansionIndex].basicRectangles.size() << std::endl;
-					// node->boundingBoxes[smallestExpansionIndex].print();
-					// p.printToPencil(node->boundingBoxes);
-					// assert(node->boundingBoxes[smallestExpansionIndex].unique());
-					// assert(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
-					// assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
-					// std::cout << "Expanded successfully" << std::endl;
+					DEXEC(p.printToPencil(node->boundingBoxes));
+					DASSERT(node->boundingBoxes[smallestExpansionIndex].unique());
+					DASSERT(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
+					DASSERT(node->boundingBoxes[smallestExpansionIndex].contiguous());
+					DPRINT1("Expanded successfully");
 
 					// CL3.2 Trim back the chosen bounding polygon so it plays nice with the other
 					// children
@@ -303,16 +274,15 @@ namespace nirtree
 							continue;
 						}
 
-						// std::cout << "Pre chooseLeaf increaseRes" << std::endl;
+						DPRINT1("Pre chooseLeaf increaseRes");
 						node->boundingBoxes[smallestExpansionIndex].increaseResolution(node->boundingBoxes[j]);
-						// std::cout << "Post chooseLeaf increaseRes" << std::endl;
-						// if (!node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint))
-						// {
-						// 	std::cout << "i = " << i << std::endl;
-						// 	std::cout << "node->boundingBoxes[i] = "; node->boundingBoxes[i].print();
-						// 	std::cout << "node->boundingBoxes[smallestExpansionIndex] = "; node->boundingBoxes[smallestExpansionIndex].print();
-						// }
-						// assert(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
+						DPRINT1("Post chooseLeaf increaseRes");
+						DPRINT2("i = ", i);
+						DPRINT1("node->boundingBoxes[i] = ");
+						DEXEC(node->boundingBoxes[i].print());
+						DPRINT1("node->boundingBoxes[smallestExpansionIndex] = ");
+						DEXEC(node->boundingBoxes[smallestExpansionIndex].print());
+						DASSERT(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
 					}
 
 					// If our initial choice is contiguous then great we can move on, otherwise try
@@ -327,17 +297,17 @@ namespace nirtree
 					}
 				}
 
-				// std::cout << "Trimmed back to ";
-				// std::cout << "C: node->boundingBoxes[" << smallestExpansionIndex << "].size() = " << node->boundingBoxes[smallestExpansionIndex].basicRectangles.size() << std::endl;
-				// node->boundingBoxes[smallestExpansionIndex].print();
-				// p.printToPencil(node->boundingBoxes);
-				// assert(node->boundingBoxes[smallestExpansionIndex].unique());
-				// assert(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
-				// assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
-				// std::cout << "Trimmed successfully" << std::endl;
+				DPRINT1("Trimmed back to ");
+				DPRINT4("C: node->boundingBoxes[", smallestExpansionIndex, "].size() = ", node->boundingBoxes[smallestExpansionIndex].basicRectangles.size());
+				DEXEC(node->boundingBoxes[smallestExpansionIndex].print());
+				DEXEC(p.printToPencil(node->boundingBoxes));
+				DASSERT(node->boundingBoxes[smallestExpansionIndex].unique());
+				DASSERT(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
+				DASSERT(node->boundingBoxes[smallestExpansionIndex].contiguous());
+				DPRINT1("Trimmed successfully");
 
 				// CL4 [Descend until a leaf is reached]
-				assert(node->boundingBoxes[smallestExpansionIndex].contiguous());
+				DASSERT(node->boundingBoxes[smallestExpansionIndex].contiguous());
 				node = node->children[smallestExpansionIndex];
 				prevSmallestExpansionIndex = smallestExpansionIndex;
 			}
@@ -345,50 +315,16 @@ namespace nirtree
 	}
 
 	// Always called on root, this = root
-	// Node *Node::chooseNode(ReinsertionEntry e)
-	// {
-	// 	// CL1 [Initialize]
-	// 	Node *node = this;
+	Node *Node::chooseNode(ReinsertionEntry e)
+	{
+		return this;
+	}
 
-	// 	for (;;)
-	// 	{
-	// 		// CL2 [Leaf check]
-	// 		if (node->children.size() == 0)
-	// 		{
-	// 			for (unsigned i = 0; i < e.level; ++i)
-	// 			{
-	// 				node = node->parent;
-	// 			}
-
-	// 			return node;
-	// 		}
-	// 		else
-	// 		{
-	// 			// CL3 [Choose subtree]
-	// 			// Find the bounding box with least required expansion/overlap?
-	// 			// TODO: Break ties by using smallest area
-	// 			unsigned smallestExpansionIndex = 0;
-	// 			float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(e.boundingBox);
-	// 			for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
-	// 			{
-	// 				float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(e.boundingBox);
-	// 				if (smallestExpansionArea > testExpansionArea)
-	// 				{
-	// 					smallestExpansionIndex = i;
-	// 					smallestExpansionArea = testExpansionArea;
-	// 				}
-	// 			}
-
-	// 			// CL4 [Descend until a leaf is reached]
-	// 			node = node->children[smallestExpansionIndex];
-	// 		}
-	// 	}
-	// }
-
-	// TODO: Optimize
 	Node *Node::findLeaf(Point givenPoint)
 	{
-		std::cout << "Given point = "; givenPoint.print();
+		DPRINT1("Given point = ");
+		DEXEC(givenPoint.print());
+
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
@@ -398,11 +334,11 @@ namespace nirtree
 		{
 			currentContext = context.top();
 			context.pop();
-			std::cout << "Current find leaf context = " << (void *)currentContext << std::endl;
+			DPRINT2("Current find leaf context = ", (void *)currentContext);
 
 			if (currentContext->children.size() == 0)
 			{
-				std::cout << "FL2 size = " << currentContext->boundingBoxes.size() << std::endl;
+				DPRINT2("FL2 size = ", currentContext->boundingBoxes.size());
 				// FL2 [Search leaf node for record]
 				// Check each entry to see if it matches E
 				for (unsigned i = 0; i < currentContext->data.size(); ++i)
@@ -415,15 +351,15 @@ namespace nirtree
 			}
 			else
 			{
-				std::cout << "FL1 size = " << currentContext->boundingBoxes.size() << std::endl;
+				DPRINT2("FL1 size = ", currentContext->boundingBoxes.size());
 				// FL1 [Search subtrees]
 				// Determine which branches we need to follow
 				for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
 				{
-					std::cout << "Considering " << i << std::endl;
+					DPRINT2("Considering ", i);
 					if (currentContext->boundingBoxes[i].containsPoint(givenPoint))
 					{
-						std::cout << "Pushing " << (void *)currentContext->children[i] << std::endl;
+						DPRINT2("Pushing ", (void *)currentContext->children[i]);
 						// Add the child to the nodes we will consider
 						context.push(currentContext->children[i]);
 					}
@@ -442,12 +378,15 @@ namespace nirtree
 		// Decompose our bounding box using code for increasing a polygon's "resolution"
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 		{
-			// std::cout << "Current polygon "; temp.print(); std::cout << std::endl;
-			// std::cout << "Cutting out "; boundingBoxes[i].print();
-			// std::cout << "Pre decompose increaseRes" << std::endl;
+			DPRINT1("Current polygon ");
+			DEXEC(temp.print());
+			DPRINT1("Cutting out ");
+			DEXEC(boundingBoxes[i].print());
+			DPRINT1("Pre decompose increaseRes");
 			temp.increaseResolution(boundingBoxes[i]);
-			// std::cout << "Post decompose increaseRes" << std::endl;
-			// std::cout << std::endl << "Result "; temp.print(); std::cout << std::endl;
+			DPRINT1("Post decompose increaseRes");
+			DPRINT1("Result ");
+			DEXEC(temp.print());
 		}
 
 		return temp.basicRectangles;
@@ -455,14 +394,14 @@ namespace nirtree
 
 	Node::SplitResult Node::splitNode(SplitResult &lowerSplit)
 	{
-		// std::cout << "Split starting" << std::endl;
+		DPRINT1("Split starting");
 		// Setup the split
 		Node *left = new Node(minBranchFactor, maxBranchFactor, parent);
 		Node *right = new Node(minBranchFactor, maxBranchFactor, parent);
 
 		// Insert the lower split as if we had capacity
-		// lowerSplit.leftPolygon.print();
-		// lowerSplit.rightPolygon.print();
+		DEXEC(lowerSplit.leftPolygon.print());
+		DEXEC(lowerSplit.rightPolygon.print());
 		boundingBoxes.push_back(lowerSplit.leftPolygon);
 		children.push_back(lowerSplit.left);
 		boundingBoxes.push_back(lowerSplit.rightPolygon);
@@ -472,10 +411,10 @@ namespace nirtree
 		unsigned polygonIndex;
 		IsotheticPolygon unsplitPolygon;
 
-		// std::cout << "Checking edge case" << std::endl;
+		DPRINT1("Checking edge case");
 		if (parent == nullptr)
 		{
-			// std::cout << "CHKPT13" << std::endl;
+			DPRINT1("CHKPT13");
 			assert(boundingBoxes.size() != 0);
 			Rectangle r = boundingBoxes[0].boundingBox();
 			for (unsigned i = 0; i < children.size(); ++i)
@@ -483,8 +422,9 @@ namespace nirtree
 				r.expand(boundingBoxes[i].boundingBox());
 			}
 			unsplitPolygon = IsotheticPolygon(r);
-			// std::cout << "unsplitPolygon: "; unsplitPolygon.print();
-			// std::cout << "CHKPT15" << std::endl;
+			DPRINT1("unsplitPolygon: ");
+			DEXEC(unsplitPolygon.print());
+			DPRINT1("CHKPT15");
 		}
 		else
 		{
@@ -494,38 +434,26 @@ namespace nirtree
 		}
 
 		// Decompose polygon
-		// std::cout << "Decomposing node" << std::endl;
-		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+		DPRINT1("Decomposing node");
 		std::vector<Rectangle> decomposed = decomposeNode(unsplitPolygon);
-		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Decompose time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
 		const unsigned decomposedSize = decomposed.size();
 		const unsigned totalSize = childrenSize + decomposedSize;
 		const unsigned root = totalSize / 2;
 
-		// PencilPrinter p1;
-		// p1.printToPencil(decomposed);
+		DEXEC(PencilPrinter p1);
+		DEXEC(p1.printToPencil(decomposed));
 
-		begin = std::chrono::high_resolution_clock::now();
 		// Build graph
-		// std::cout << "Builidng graph" << std::endl;
-		// std::cout << "totalSize = " << totalSize << std::endl;
-		// std::vector<IsotheticPolygon> u(boundingBoxes.size() + decomposed.size());
-		// u.insert(u.end(), boundingBoxes.begin(), boundingBoxes.end());
-		// for (auto decompositionRectangle : decomposed)
-		// {
-		// 	u.push_back(IsotheticPolygon(decompositionRectangle));
-		// }
-		// Graph graph(u);
+		DPRINT1("Building graph");
+		DPRINT2("totalSize = ", totalSize);
 		bool graph[totalSize][totalSize];
-		// std::cout << "CHKPT1" << std::endl;
 		std::memset(graph, false, totalSize * totalSize);
-		// std::cout << "CHKPT2" << std::endl;
+
 		for (unsigned i = 0; i < childrenSize; ++i)
 		{
 			// Children X Children
-			// std::cout << "Children X Children" << std::endl;
+			DPRINT1("Children X Children");
 			for (unsigned j = 0; j < i && j < childrenSize; ++j)
 			{
 				if (boundingBoxes[i].intersectsPolygon(boundingBoxes[j]))
@@ -534,10 +462,10 @@ namespace nirtree
 					graph[j][i] = true;
 				}
 			}
-			// std::cout << "Done" << std::endl;
+			DPRINT1("Done");
 
 			// Children X Decomposed Polygon
-			// std::cout << "Children X Decomposed" << std::endl;
+			DPRINT1("Children X Decomposed");
 			for (unsigned j = childrenSize; j < totalSize; ++j)
 			{
 				if (boundingBoxes[i].intersectsRectangle(decomposed[j - childrenSize]))
@@ -546,9 +474,9 @@ namespace nirtree
 					graph[j][i] = true;
 				}
 			}
-			// std::cout << "Done" << std::endl;
+			DPRINT1("Done");
 		}
-		// std::cout << "Decomposed polygon X Decomposed polygon" << std::endl;
+		DPRINT1("Decomposed polygon X Decomposed polygon");
 		for (unsigned i = 0; i < decomposedSize; ++i)
 		{
 			// Decomposed Polygon X Decomposed Polygon
@@ -561,24 +489,10 @@ namespace nirtree
 				}
 			}
 		}
-		end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Graph build time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-		// std::cout << "Done" << std::endl;
-
-		// std::cout << "Graph" << std::endl;
-		// for (unsigned i = 0; i < totalSize; ++i)
-		// {
-		// 	std::cout << "|";
-		// 	for (unsigned j = 0; j < totalSize; ++j)
-		// 	{
-		// 		std::cout << " " << graph[i][j];
-		// 	}
-		// 	std::cout << "| " << i << std::endl;
-		// }
-		// std::cout << std::endl;
+		DPRINT1("Done");
 
 		// Build tree
-		// std::cout << "Building tree" << std::endl;
+		DPRINT1("Building tree");
 		bool tree[totalSize][totalSize];
 		unsigned currentVertex;
 		std::queue<unsigned> explorationQ;
@@ -631,23 +545,11 @@ namespace nirtree
 			explored[currentVertex] = true;
 		}
 
-		// std::cout << "Tree:" << std::endl;
-		// for (unsigned i = 0; i < totalSize; ++i)
-		// {
-		// 	std::cout << "|";
-		// 	for (unsigned j = 0; j < totalSize; ++j)
-		// 	{
-		// 		std::cout << " " << tree[i][j];
-		// 	}
-		// 	std::cout << "| " << i << std::endl;
-		// }
-		// std::cout << std::endl;
-
 		// Push weights up the tree
-		// std::cout << "Pushing weights up the tree" << std::endl;
-		// std::cout << "parentStack.size(): " << parentStack.size() << std::endl;
-		// std::cout << "WeightStack.size(): " << weightStack.size() << std::endl;
-		// std::cout << "totalSize: " << totalSize << std::endl;
+		DPRINT1("Pushing weights up the tree");
+		DPRINT2("parentStack.size(): ", parentStack.size());
+		DPRINT2("WeightStack.size(): ", weightStack.size());
+		DPRINT2("totalSize: ", totalSize);
 		for (;parentStack.size() && weightStack.size();)
 		{
 			weights[parentStack.top()] += weights[weightStack.top()];
@@ -655,10 +557,11 @@ namespace nirtree
 			parentStack.pop();
 		}
 
-		// Find a seperator
-		// std::cout << "Finding a separator" << std::endl;
+		// Find a separator
+		DPRINT1("Finding a separator");
 		unsigned delta = std::numeric_limits<unsigned>::max();
-		unsigned subtreeRoot, subtreeParent;
+		unsigned subtreeRoot = 0;
+		unsigned subtreeParent = 0;
 
 		std::memset(explored, false, totalSize);
 
@@ -680,8 +583,6 @@ namespace nirtree
 					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
 					// If yes that means that the subtree rooted at neighbouring vertex is more
 					// balanced than any of our previous splits.
-					// TODO: The math here can be simplified, I'm sure of it, we know total weight
-					// and so we should be able to do some set-complement-y stuff...
 					unsigned componentTwoWeight = weights[neighbouringVertex];
 					unsigned componentOneWeight = weights[root] - componentTwoWeight;
 					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
@@ -698,68 +599,51 @@ namespace nirtree
 		}
 
 		// Split along separator
-		// std::cout << "Splitting along separator" << std::endl;
+		DPRINT1("Splitting along separator");
 		bool switchboard[totalSize];
 		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
-		// std::cout << "CHKPT15" << std::endl;
+		DPRINT1("CHKPT15");
 
 		std::memset(switchboard, false, totalSize);
 		std::memset(explored, false, totalSize);
-		// std::cout << "CHKPT16" << std::endl;
+		DPRINT1("CHKPT16");
 
 		switchboard[subtreeRoot] = true;
-		// std::cout << "CHKPT17" << std::endl;
+		DPRINT1("CHKPT17");
 
 		explorationQ.push(subtreeRoot);
-		// std::cout << "CHKPT18" << std::endl;
+		DPRINT1("CHKPT18");
 		for (;explorationQ.size();)
 		{
 			currentVertex = explorationQ.front();
 			explorationQ.pop();
-			// std::cout << "CHKPT19" << std::endl;
+			DPRINT1("CHKPT19");
 
 			if (explored[currentVertex])
 			{
 				continue;
 			}
-			// std::cout << "CHKPT20" << std::endl;
+			DPRINT1("CHKPT20");
 
 			for (unsigned neighbouringVertex = 0; neighbouringVertex < totalSize; ++neighbouringVertex)
 			{
-				// std::cout << "CHKPT21" << std::endl;
+				DPRINT1("CHKPT21");
 				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
 				{
-					// std::cout << "CHKPT22" << std::endl;
+					DPRINT1("CHKPT22");
 					switchboard[neighbouringVertex] = true;
 					explorationQ.push(neighbouringVertex);
-					// std::cout << "CHKPT23" << std::endl;
+					DPRINT1("CHKPT23");
 				}
-				// std::cout << "CHKPT24" << std::endl;
+				DPRINT1("CHKPT24");
 			}
 			explored[currentVertex] = true;
-			// std::cout << "CHKPT25" << std::endl;
+			DPRINT1("CHKPT25");
 		}
-		end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Graph time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
-		// std::cout << "Tree:" << std::endl;
-		// for (unsigned i = 0; i < totalSize; ++i)
-		// {
-		// 	std::cout << "|";
-		// 	for (unsigned j = 0; j < totalSize; ++j)
-		// 	{
-		// 		std::cout << " " << tree[i][j];
-		// 	}
-		// 	std::cout << "| " << i << std::endl;
-		// }
-		// std::cout << std::endl;
-
-		begin = std::chrono::high_resolution_clock::now();
 		// Recompose into two polygons by building polygons representing what we have now and then
 		// reducing in size their representation
-		// std::cout << "Recomposing polygons" << std::endl;
-		// IsotheticPolygon currentNewPolygon;
-		// IsotheticPolygon currentOldPolygon;
+		DPRINT1("Recomposing polygons");
 		IsotheticPolygon leftPolygon;
 		IsotheticPolygon rightPolygon;
 
@@ -789,56 +673,19 @@ namespace nirtree
 			}
 		}
 
-		// std::cout << "Decomposition union in two groups" << std::endl;
-		// currentOldPolygon.print();
-		// currentNewPolygon.print();
-
-		// leftPolygon.basicRectangles.push_back(currentNewPolygon.boundingBox());
-		// rightPolygon.basicRectangles.push_back(currentOldPolygon.boundingBox());
-
-		// // std::cout << "L/R polygons start" << std::endl;
-		// // leftPolygon.print();
-		// // rightPolygon.print();
-
-		// // Intersect with original polygon => No going outside original boundaries
-		// std::cout << "CHKPT0" << std::endl;
-		// assert(leftPolygon.infFree());
-		// assert(rightPolygon.infFree());
-		// std::cout << "CHKPT1" << std::endl;
-		// leftPolygon.intersection(unsplitPolygon);
-		// assert(leftPolygon.infFree());
-		// rightPolygon.intersection(unsplitPolygon);
-		// assert(rightPolygon.infFree());
-
-		// // std::cout << "L/R polygons post intersection with original polygon" << std::endl;
-		// // leftPolygon.print();
-		// // rightPolygon.print();
-
-		// std::cout << "Pre splitNode increaseRes" << std::endl;
-		// // Remove from the new polygon the old polygon defined by the separator found earlier
-		// leftPolygon.increaseResolution(currentOldPolygon);
-		// // Remove from the old polygon the new polygon defined by the separator found earlier (use finalNewPolygon b/c it is smaller)
-		// rightPolygon.increaseResolution(leftPolygon);
-		// std::cout << "Post splitNode increaseRes" << std::endl;
-
-		PencilPrinter pp;
-		pp.printToPencil(leftPolygon.basicRectangles);
 		leftPolygon.refine();
-		pp.printToPencil(leftPolygon.basicRectangles);
-		pp.printToPencil(rightPolygon.basicRectangles);
 		rightPolygon.refine();
-		pp.printToPencil(rightPolygon.basicRectangles);
 
 		// Because we touch the polygon's rectangles directly we must leave them in a valid sorted state
 		leftPolygon.sort(true);
 		rightPolygon.sort(true);
 
-		// std::cout << "L/R polygons post increase resolution" << std::endl;
-		// leftPolygon.print();
-		// rightPolygon.print();
+		DPRINT1("L/R polygons post increase resolution");
+		DEXEC(leftPolygon.print());
+		DEXEC(rightPolygon.print());
 
 		// Split children in two
-		// std::cout << "Splitting children" << std::endl;
+		DPRINT1("Splitting children");
 		left->boundingBoxes.clear();
 		left->children.clear();
 		right->boundingBoxes.clear();
@@ -859,10 +706,8 @@ namespace nirtree
 				right->children[right->children.size() - 1]->parent = right;
 			}
 		}
-		end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Move time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
-		// std::cout << "Return" << std::endl;
+		DPRINT1("Return");
 		return {left, leftPolygon, right, rightPolygon};
 	}
 
@@ -911,28 +756,26 @@ namespace nirtree
 		};
 	}
 
-	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
-	// with sets will necessitate rewriting the entire R-Tree with sets.
 	// TODO: START Make sure isothetic polygon constituent rectangles are always sorted forever and for always from here down
 	Node::SplitResult Node::splitNode(Point newData)
 	{
 		// Special case where the leaf to be split is the root
 		if (parent == nullptr)
 		{
-			// std::cout << "Nullptr case" << std::endl;
+			DPRINT1("nullptr case");
 			return splitNodeSpecialCase(newData);
 		}
 
 		unsigned polygonIndex;
 		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
-		// parent->boundingBoxes[polygonIndex].print();
+		DEXEC(parent->boundingBoxes[polygonIndex].print());
 		std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
 		const unsigned basicsSize = basics.size();
 
 		// Special case where the leaf is bounded by a simple rectangle
 		if (basicsSize == 1)
 		{
-			// std::cout << "basicsSize = 1 case" << std::endl;
+			DPRINT1("basicsSize = 1 case");
 			return splitNodeSpecialCase(newData);
 		}
 
@@ -942,13 +785,11 @@ namespace nirtree
 		const unsigned dataSize = data.size();
 		const unsigned root = basicsSize / 2;
 
-		// PencilPrinter p;
-		// p.printToPencil(basics);
+		DEXEC(PencilPrinter p);
+		DEXEC(p.printToPencil(basics));
 		
 		// Build graph
-		// std::cout << "Building graph..." << std::endl;
-		// Graph graph(basicsSize);
-		// Graph graph(basics);
+		DPRINT1("Building graph...");
 		bool graph[basicsSize][basicsSize];
 		std::memset(graph, false, basicsSize * basicsSize);
 		for (unsigned i = 0; i < basicsSize; ++i)
@@ -963,21 +804,8 @@ namespace nirtree
 			}
 		}
 
-		// Printing...
-		// std::cout << "Base Graph" << std::endl;
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << i << " | ";
-		// 	for (unsigned j = 0; j < basics.size(); ++j)
-		// 	{
-		// 		std::cout << graph[i][j] << " ";
-		// 	}
-		// 	std::cout << "| " << i << std::endl;
-		// }
-		// std::cout << std::endl;
-
 		// Build tree
-		// std::cout << "Building tree..." << std::endl;
+		DPRINT1("Building tree...");
 		bool tree[basicsSize][basicsSize];
 		unsigned currentVertex;
 		std::queue<unsigned> explorationQ;
@@ -991,14 +819,6 @@ namespace nirtree
 		std::memset(explored, false, basicsSize);
 		std::memset(connected, false, basicsSize);
 		std::memset(weights, 0, basicsSize * sizeof(unsigned));
-
-		// Printing...
-		// std::cout << "weights (cleared) = [";
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << " " << weights[i];
-		// }
-		// std::cout << " ]" << std::endl;
 
 		explorationQ.push(root);
 		for (;explorationQ.size();)
@@ -1041,49 +861,12 @@ namespace nirtree
 			explored[currentVertex] = true;
 		}
 
-		// Printing...
-		// std::cout << "Tree Graph" << std::endl;
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << i << " | ";
-		// 	for (unsigned j = 0; j < basics.size(); ++j)
-		// 	{
-		// 		std::cout << tree[i][j] << " ";
-		// 	}
-		// 	std::cout << "| " << i << std::endl;
-		// }
-		// std::cout << std::endl;
-
-		// Printing...
-		// std::cout << "explored = [";
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << " " << explored[i];
-		// }
-		// std::cout << " ]" << std::endl;
-
-		// Printing...
-		// std::cout << "connected = [";
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << " " << connected[i];
-		// }
-		// std::cout << " ]" << std::endl;
-
-		// Printing...
-		// std::cout << "weights = [";
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << " " << weights[i];
-		// }
-		// std::cout << " ]" << std::endl;
-
 		// Weight the tree so we can quickly find a separator
-		// std::cout << "Combining weights..." << std::endl;
-		// std::cout << "basicsSize = " << basicsSize << std::endl;
-		// std::cout << "parentStack.size() = " << parentStack.size() << std::endl;
-		// assert(parentStack.size() == weightStack.size());
-		// assert(basicsSize - 1 == parentStack.size());
+		DPRINT1("Combining weights...");
+		DPRINT2("basicsSize = ", basicsSize);
+		DPRINT2("parentStack.size() = ", parentStack.size());
+		DASSERT(parentStack.size() == weightStack.size());
+		DASSERT(basicsSize - 1 == parentStack.size());
 		for (unsigned i = 0; i < basicsSize - 1; ++i)
 		{
 			weights[parentStack.top()] += weights[weightStack.top()];
@@ -1091,18 +874,11 @@ namespace nirtree
 			parentStack.pop();
 		}
 
-		// Printing...
-		// std::cout << "weights = [";
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << " " << weights[i];
-		// }
-		// std::cout << " ]" << std::endl;
-
 		// Find a separator
-		// std::cout << "Finding a separator..." << std::endl;
+		DPRINT1("Finding a separator...");
 		unsigned delta = std::numeric_limits<unsigned>::max();
-		unsigned subtreeRoot, subtreeParent;
+		unsigned subtreeRoot = 0;
+		unsigned subtreeParent = 0;
 
 		std::memset(explored, false, basicsSize);
 
@@ -1124,8 +900,6 @@ namespace nirtree
 					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
 					// If yes that means that the subtree rooted at neighbouring vertex is more
 					// balanced than any of our previous splits.
-					// TODO: The math here can be simplified, I'm sure of it, we know total weight
-					// and so we should be able to do some set-complement-y stuff...
 					unsigned componentTwoWeight = weights[neighbouringVertex];
 					unsigned componentOneWeight = weights[root] - componentTwoWeight;
 					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
@@ -1141,8 +915,8 @@ namespace nirtree
 			explored[currentVertex] = true;
 		}
 
-		// Split along seperator
-		// std::cout << "Splitting along separator..." << std::endl;
+		// Split along separator
+		DPRINT1("Splitting along separator...");
 		bool switchboard[basicsSize];
 		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
 
@@ -1172,24 +946,6 @@ namespace nirtree
 			}
 			explored[currentVertex] = true;
 		}
-
-		// Printing...
-		// std::cout << "Separated Graph" << std::endl;
-		// for (unsigned i = 0; i < basics.size(); ++i)
-		// {
-		// 	std::cout << i << " | ";
-		// 	for (unsigned j = 0; j < basics.size(); ++j)
-		// 	{
-		// 		std::cout << tree[i][j] << " ";
-		// 	}
-		// 	std::cout << "| " << i << std::endl;
-		// }
-		// std::cout << std::endl;
-
-		// Break the tree into two components
-		// TODO: Optimize, fairly certain swapping could be made faster
-		// std::cout << "Splitting and swapping..." << std::endl;
-
 
 		// Break the bounding polygon in two
 		IsotheticPolygon leftPolygon;
@@ -1239,57 +995,57 @@ namespace nirtree
 
 		for (;;)
 		{
-			// std::cout << "CHKPT5" << std::endl;
+			DPRINT1("CHKPT5");
 			if (node == nullptr)
 			{
-				// std::cout << "CHKPT6" << std::endl;
+				DPRINT1("CHKPT6");
 				// Stop if at the top of the tree
 				return lowerSplit;
 			}
 			else if (node->children.size() + 2 <= node->maxBranchFactor)
 			{
-				// std::cout << "CHKPT7" << std::endl;
+				DPRINT1("CHKPT7");
 				// Add additional children gracefully
 				node->boundingBoxes.push_back(lowerSplit.leftPolygon);
 				node->children.push_back(lowerSplit.left);
 				node->boundingBoxes.push_back(lowerSplit.rightPolygon);
 				node->children.push_back(lowerSplit.right);
-				// assert(node->boundingBoxes.size() <= node->maxBranchFactor);
-				// assert(node->children.size() <= node->maxBranchFactor);
-				// std::cout << "CHKPT8" << std::endl;
+				DASSERT(node->boundingBoxes.size() <= node->maxBranchFactor);
+				DASSERT(node->children.size() <= node->maxBranchFactor);
+				DPRINT1("CHKPT8");
 
 				// Stop there is no split on this level
 				return {nullptr, IsotheticPolygon(), nullptr, IsotheticPolygon()};
 			}
 			else
 			{
-				// std::cout << "CHKPT9" << std::endl;
+				DPRINT1("CHKPT9");
 				// Split this node
-				// std::cout << "Before routing split" << std::endl;
-				// node->printTree();
+				DPRINT1("Before routing split");
+				DEXEC(node->printTree());
 				lowerSplit = node->splitNode(lowerSplit);
-				// std::cout << "After routing split" << std::endl;
-				// assert(lowerSplit.left->boundingBoxes.size() <= node->maxBranchFactor);
-				// assert(lowerSplit.left->children.size() <= node->maxBranchFactor);
-				// assert(lowerSplit.right->boundingBoxes.size() <= node->maxBranchFactor);
-				// assert(lowerSplit.right->children.size() <= node->maxBranchFactor);
+				DPRINT1("After routing split");
+				DASSERT(lowerSplit.left->boundingBoxes.size() <= node->maxBranchFactor);
+				DASSERT(lowerSplit.left->children.size() <= node->maxBranchFactor);
+				DASSERT(lowerSplit.right->boundingBoxes.size() <= node->maxBranchFactor);
+				DASSERT(lowerSplit.right->children.size() <= node->maxBranchFactor);
 
-				// std::cout << "CHKPT10" << std::endl;
+				DPRINT1("CHKPT10");
 				// Remove the single old over-capacity node from the tree
 				if (node->parent != nullptr)
 				{
-					// std::cout << "node->parent->printTree" << std::endl;
-					// node->parent->printTree();
-					// std::cout << "CHKPT11" << std::endl;
+					DPRINT1("node->parent->printTree");
+					DEXEC(node->parent->printTree());
+					DPRINT1("CHKPT11");
 					node->parent->removeChild(node);
 				}
-				// std::cout << "Left ";
-				// lowerSplit.leftPolygon.print();
-				// lowerSplit.left->printTree();
-				// std::cout << "Right ";
-				// lowerSplit.rightPolygon.print();
-				// lowerSplit.right->printTree();
-				// std::cout << "CHKPT12" << std::endl;
+				DPRINT1("Left ");
+				DEXEC(lowerSplit.leftPolygon.print());
+				DEXEC(lowerSplit.left->printTree());
+				DPRINT1("Right ");
+				DEXEC(lowerSplit.rightPolygon.print());
+				DEXEC(lowerSplit.right->printTree());
+				DPRINT1("CHKPT12");
 				// Continue to move up the tree
 				node = lowerSplit.left->parent;
 			}
@@ -1301,140 +1057,76 @@ namespace nirtree
 	// Always called on root, this = root
 	Node *Node::insert(Point givenPoint)
 	{
-		// std::cout << "Inserting "; givenPoint.print(); std::cout << std::endl;
-		// PencilPrinter p;
-		// p.printToPencil(this);
+		DPRINT1("Inserting ");
+		DEXEC(givenPoint.print());
+
 		// I1 [Find position for new record]
-		// std::cout << "Before the leaf choosing" << std::endl;
-		// printTree();
+		DPRINT1("Before the leaf choosing");
 		Node *leaf = chooseLeaf(givenPoint);
-		// std::cout << "After the leaf choosing" << std::endl;
-		// printTree();
-		// validate(nullptr, 0);
-		// std::cout << "I1 complete" << std::endl;
-		// printTree();
+		DPRINT1("After the leaf choosing");
 
 		// I2 [Add record to leaf node]
 		if (leaf->data.size() < leaf->maxBranchFactor)
 		{
-			// std::cout << "CHKPT0" << std::endl;
+			DPRINT1("CHKPT0");
 			leaf->data.push_back(givenPoint);
-			// validate(nullptr, 0);
-			// std::cout << "I2a complete" << std::endl;
+			DPRINT1("I2a complete");
 		}
 		else
 		{
-			// std::cout << "CHKPT1" << std::endl;
+			DPRINT1("CHKPT1");
 			SplitResult sr = leaf->splitNode(givenPoint);
-			// validate(nullptr, 0);
-			// std::cout << "I2b complete" << std::endl;
+			DPRINT1("I2b complete");
 
 			if (sr.left->parent != nullptr)
 			{
-				// std::cout << "CHKPT2" << std::endl;
+				DPRINT1("CHKPT2");
 				sr.left->parent->removeChild(leaf);
-				// validate(nullptr, 0);
-				// std::cout << "CHKPT3" << std::endl;
+				DPRINT1("CHKPT3");
 				// I3 [Propogate changes upward]
 				sr = sr.left->parent->adjustTree(sr);
-				// validate(nullptr, 0);
-				// std::cout << "I3 complete" << std::endl;
+				DPRINT1("I3 complete");
 			}
-
-			// validate(nullptr, 0);
 
 			// I4 [Grow tree taller]
 			if (sr.left != nullptr && sr.right != nullptr)
 			{
-				// std::cout << "CHKPT4" << std::endl;
+				DPRINT1("CHKPT4");
 				Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
 
 				sr.left->parent = newRoot;
 				newRoot->boundingBoxes.push_back(sr.leftPolygon);
 				newRoot->children.push_back(sr.left);
-				// std::cout << "CHKPT5" << std::endl;
+				DPRINT1("CHKPT5");
 				sr.right->parent = newRoot;
 				newRoot->boundingBoxes.push_back(sr.rightPolygon);
 				newRoot->children.push_back(sr.right);
-				// std::cout << "I4a complete" << std::endl;
-				// newRoot->validate(nullptr, 0);
+				DPRINT1("I4a complete");
+
 				return newRoot;
 			}
 		}
 
-		// std::cout << "I4b complete" << std::endl;
-		// validate(nullptr, 0);
+		DPRINT1("I4b complete");
 		return this;
 	}
 
 	// Always called on root, this = root
-	// TODO: Convert
-	// Node *Node::insert(ReinsertionEntry e)
-	// {
-	// 	// If reinserting a leaf then use normal insert
-	// 	if (e.level == 0)
-	// 	{
-	// 		return insert(e.data);
-	// 	}
-
-	// 	// I1 [Find position for new record]
-	// 	Node *node = chooseNode(e);
-	// 	Node *siblingNode = nullptr;
-
-	// 	// I2 [Add record to node]
-	// 	if (node->children.size() < node->maxBranchFactor)
-	// 	{
-	// 		e.child->parent = node;
-	// 		node->boundingBoxes.push_back(e.boundingBox);
-	// 		node->children.push_back(e.child);
-	// 	}
-	// 	else
-	// 	{
-	// 		siblingNode = node->splitNode(e.child);
-	// 	}
-
-	// 	// I3 [Propogate changes upward]
-	// 	siblingNode = node->adjustTree(siblingNode);
-
-	// 	// I4 [Grow tree taller]
-	// 	if (siblingNode != nullptr)
-	// 	{
-	// 		Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
-
-	// 		this->parent = newRoot;
-	// 		newRoot->boundingBoxes.push_back(this->boundingBox());
-	// 		newRoot->children.push_back(this);
-
-	// 		siblingNode->parent = newRoot;
-	// 		newRoot->boundingBoxes.push_back(siblingNode->boundingBox());
-	// 		newRoot->children.push_back(siblingNode);
-
-	// 		return newRoot;
-	// 	}
-	// 	else
-	// 	{
-	// 		return this;
-	// 	}
-	// }
+	Node *Node::insert(ReinsertionEntry e)
+	{
+		return this;
+	}
 
 	bool Node::condenseLeaf(Point givenPoint)
 	{
-		// std::chrono::high_resolution_clock::time_point begin;
-		// std::chrono::high_resolution_clock::time_point end;
-		
-		// begin = std::chrono::high_resolution_clock::now();
 		// Find ourselves, much like a teenager :P
 		unsigned polygonIndex;
 		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Find time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-		// std::cout << "Found ourselves" << std::endl;
+		DPRINT1("Found ourselves");
 
 		auto &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
 		unsigned basicsSize = basics.size();
 
-		// begin = std::chrono::high_resolution_clock::now();
 		std::vector<unsigned> S;
 
 		for (unsigned i = 0; i < basicsSize; ++i)
@@ -1444,116 +1136,18 @@ namespace nirtree
 				S.push_back(i);
 			}
 		}
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "R contains points time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
 		// Build a graph
-		// begin = std::chrono::high_resolution_clock::now();
 		Graph g(basics);
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Graph build time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-		// begin = std::chrono::high_resolution_clock::now();
-		// // Determine the weight of each rectangle
-		// unsigned weights[basicsSize];
-		// std::memset(weights, 0, basicsSize * sizeof(unsigned));
-		// for (unsigned i = 0; i < basicsSize; ++i)
-		// {
-		// 	for (unsigned j = 0; j < data.size(); ++j)
-		// 	{
-		// 		if (basics[i].containsPoint(data[j]))
-		// 		{
-		// 			++weights[i];
-		// 		}
-		// 	}
-		// }
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Weight time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-		// // std::cout << "Finished weights" << std::endl;
-		// // for (unsigned i = 0; i < basicsSize; ++i)
-		// // {
-		// // 	std::cout << weights[i] << ' ';
-		// // }
-		// // std::cout << std::endl;
-
-		// // Build a graph
-		// begin = std::chrono::high_resolution_clock::now();
-		// Graph g(basics);
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Graph build time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-		// // std::cout << "Finished graph building" << std::endl;
-
-		// // For each weight 0 rectangle see if we can remove it
-		// begin = std::chrono::high_resolution_clock::now();
-		// std::vector<Rectangle> swap;
-		// for (unsigned i = 0; i < basicsSize; ++i)
-		// {
-		// 	// std::cout << "Checking rectangle " << i << std::endl;
-		// 	if (weights[i] == 0 && g.contiguous(i))
-		// 	{
-		// 		// std::cout << "Removing rectangle" << i << std::endl;
-		// 		g.remove(i);
-		// 		// std::cout << "Done removing rectangle " << i << std::endl;
-		// 	}
-		// 	else
-		// 	{
-		// 		swap.push_back(basics[i]);
-		// 	}
-		// }
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Remove time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-		// // std::cout << "Finished removal" << std::endl;
-
-
-		// begin = std::chrono::high_resolution_clock::now();
-		// if (swap.size() < basicsSize)
-		// {
-		// 	basics.swap(swap);
-		// 	end = std::chrono::high_resolution_clock::now();
-		// 	std::cout << "SwapA time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-		// 	return true;
-		// }
-		// end = std::chrono::high_resolution_clock::now();
-		// std::cout << "SwapB time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-		// return false;
 
 		// Decide how to shrink rectangles in S
 		unsigned deletedCount = 0;
 		for (unsigned i = 0; i < S.size(); ++i)
 		{
 			// Call the current rectangle R
-			// begin = std::chrono::high_resolution_clock::now();
 			unsigned R = S[i];
 
-			// unsigned labels[basicsSize]; // Label each vertex with a component number
-			// std::memset(labels, 0, basicsSize * sizeof(unsigned));
-			// unsigned componentCount = g.components(labels);
-			// end = std::chrono::high_resolution_clock::now();
-			// std::cout << "Label time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-			
-			// Now pin R to one rectangle in every component it touches
-			// begin = std::chrono::high_resolution_clock::now();
-			// std::vector<Rectangle> pinSet;
-			// for (unsigned nextRequiredComponent = 1; nextRequiredComponent <= componentCount; ++nextRequiredComponent)
-			// {
-			// 	for (unsigned j = 0; j < basicsSize; ++j)
-			// 	{
-			// 		if (g[R][j] && labels[j] == nextRequiredComponent)
-			// 		{
-			// 			pinSet.push_back(basics[j]);
-			// 			break;
-			// 		}
-			// 	}
-			// }
-			// end = std::chrono::high_resolution_clock::now();
-			// std::cout << "Pin time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
 			// Now record every point R covers
-			// begin = std::chrono::high_resolution_clock::now();
 			std::vector<Point> pointSet;
 			for (unsigned j = 0; j < data.size(); ++j)
 			{
@@ -1562,24 +1156,20 @@ namespace nirtree
 					pointSet.push_back(data[j]);
 				}
 			}
-			// end = std::chrono::high_resolution_clock::now();
-			// std::cout << "Point time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
 			// Depending on whether or not R is a bridge we may be able to delete it
-			if (pointSet.size() == 0 && g.contiguous(R) /*componentCount == 1*/)
+			if (pointSet.size() == 0 && g.contiguous(R))
 			{
 				// Delete R and then check if its neighbours can be deleted
-				basics[R] = Rectangle();//basics[basicsSize - 1];
+				basics[R] = Rectangle();
 				g.remove(R);
 				++deletedCount;
-				// basics.pop_back();
-				// std::cout << "Deleted R = " << R << std::endl;
+				DPRINT2("Deleted R = ", R);
 			}
 			else
 			{
 				// Shrink R as much as possible under the restrictions of the pin set and the points
 				// it still must cover
-				// basics[R].shrink(pinSet, pointSet);
 			}
 		}
 
@@ -1618,34 +1208,9 @@ namespace nirtree
 		for (unsigned i = 0; i < S.size(); ++i)
 		{
 			// Call the current rectangle R
-			// begin = std::chrono::high_resolution_clock::now();
 			unsigned R = S[i];
 
-			// unsigned labels[basicsSize]; // Label each vertex with a component number
-			// std::memset(labels, 0, basicsSize * sizeof(unsigned));
-			// unsigned componentCount = g.components(labels);
-			// end = std::chrono::high_resolution_clock::now();
-			// std::cout << "Label time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-			
-			// Now pin R to one rectangle in every component it touches
-			// begin = std::chrono::high_resolution_clock::now();
-			// std::vector<Rectangle> pinSet;
-			// for (unsigned nextRequiredComponent = 1; nextRequiredComponent <= componentCount; ++nextRequiredComponent)
-			// {
-			// 	for (unsigned j = 0; j < basicsSize; ++j)
-			// 	{
-			// 		if (g[R][j] && labels[j] == nextRequiredComponent)
-			// 		{
-			// 			pinSet.push_back(basics[j]);
-			// 			break;
-			// 		}
-			// 	}
-			// }
-			// end = std::chrono::high_resolution_clock::now();
-			// std::cout << "Pin time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
 			// Now record every object R covers
-			// begin = std::chrono::high_resolution_clock::now();
 			std::vector<Rectangle> coverSet;
 			for (unsigned j = 0; j < children.size(); ++j)
 			{
@@ -1653,27 +1218,21 @@ namespace nirtree
 				{
 					coverSet.push_back(Rectangle());
 				}
-				// std::vector<Rectangle> v = boundingBoxes[j].intersection(basics[R]);
-				// coverSet.insert(coverSet.end(), v.begin(), v.end());
 			}
-			// end = std::chrono::high_resolution_clock::now();
-			// std::cout << "Cover time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
 
 			// Depending on whether or not R is a bridge we may be able to delete it
-			if (coverSet.size() == 0 && g.contiguous(R) /*&& coverSet.size() == 0*/)
+			if (coverSet.size() == 0 && g.contiguous(R))
 			{
 				// Delete R and then check if its neighbours can be deleted
 				basics[R] = Rectangle();
 				g.remove(R);
 				++deletedCount;
-				// basics.pop_back();
-				// std::cout << "Deleted R = " << R << std::endl;
+				DPRINT2("Deleted R = ", R);
 			}
 			else
 			{
 				// Shrink R as much as possible under the restrictions of the pin set and the points
 				// it still must cover
-				// basics[R].shrink(pinSet, pointSet);
 			}
 		}
 
@@ -1687,7 +1246,7 @@ namespace nirtree
 	// To be called on a leaf
 	Node *Node::condenseTree(Point givenPoint)
 	{
-		// std::cout << "Condensing" << std::endl;
+		DPRINT1("Condensing");
 		// CT1 [Initialize]
 		Node *node = this;
 		IsotheticPolygon givenPolygon;
@@ -1697,12 +1256,12 @@ namespace nirtree
 		{
 			if (data.size() > 0)
 			{
-				// std::cout << "Condensing leaf" << std::endl;
+				DPRINT1("Condensing leaf");
 				continueCondensing = node->condenseLeaf(givenPoint);
 			}
 			else if (children.size() > 0)
 			{
-				// std::cout << "Condensing node" << std::endl;
+				DPRINT1("Condensing node");
 				continueCondensing = node->condenseNode(givenPolygon);
 			}
 
@@ -1710,7 +1269,7 @@ namespace nirtree
 			// needed at higher levels
 			if (node->boundingBoxes.size() == 0 && node->data.size() == 0)
 			{
-				// std::cout << "Deleting empty and continuing" << std::endl;
+				DPRINT1("Deleting empty and continuing");
 				unsigned polygonIndex; for(polygonIndex = 0; node->parent->children[polygonIndex] != node; ++polygonIndex){}
 				givenPolygon = node->parent->boundingBoxes[polygonIndex];
 
@@ -1728,7 +1287,7 @@ namespace nirtree
 			}
 			else if (continueCondensing)
 			{
-				// std::cout << "Continue condensing" << std::endl;
+				DPRINT1("Continue condensing");
 				unsigned polygonIndex; for(polygonIndex = 0; node->parent->children[polygonIndex] != node; ++polygonIndex){}
 				givenPolygon = node->parent->boundingBoxes[polygonIndex];
 
@@ -1737,65 +1296,59 @@ namespace nirtree
 			}
 			else
 			{
-				// std::cout << "Early exit" << std::endl;
+				DPRINT1("Early exit");
 				return node;
 			}
 		}
 
-		// std::cout << "Regular exit" << std::endl;
+		DPRINT1("Regular exit");
 		return node;
 	}
 
-	// // Always called on root, this = root
+	// Always called on root, this = root
 	Node *Node::remove(Point givenPoint)
 	{
-		PencilPrinter pr;
-		pr.printToPencil(this);
-		// std::cout << "Removing "; givenPoint.print(); std::cout << std::endl;
-		// std::cout << "CHKPT0" << std::endl;
+		DEXEC(PencilPrinter pr);
+		DEXEC(pr.printToPencil(this));
+		DPRINT1("Removing ");
+		DEXEC(givenPoint.print());
+		DPRINT1("CHKPT0");
 		// D1 [Find node containing record]
 		Node *leaf = findLeaf(givenPoint);
-		// validate(nullptr, 0);
 
-		// std::cout << "CHKPT1" << std::endl;
+		DPRINT1("CHKPT1");
 		if (leaf == nullptr)
 		{
 			this->printTree();
-			std::cout << "Leaf was nullptr" << std::endl;
+			DPRINT1("Leaf was nullptr");
 			return nullptr;
 		}
 
-		// std::cout << "CHKPT2" << std::endl;
+		DPRINT1("CHKPT2");
 
 		// D2 [Delete record]
-		// leaf->parent->updateBoundingBox(leaf, givenPoint);
 		leaf->removeData(givenPoint);
-		// validate(nullptr, 0);
-		// std::cout << "CHKPT3" << std::endl;
+		DPRINT1("CHKPT3");
 
 		// D3 [Propagate changes]
 		leaf->condenseTree(givenPoint);
-		// this->printTree();
-		// validate(nullptr, 0);
-		// std::cout << "CHKPT4" << std::endl;
+		DPRINT1("CHKPT4");
 
-		pr.printToPencil(this);
+		DEXEC(pr.printToPencil(this));
 
 		// D4 [Shorten tree]
 		Node *root = this;
 		if (root->children.size() == 1)
 		{
-			// std::cout << "CHKPT5" << std::endl;
+			DPRINT1("CHKPT5");
 			Node *newRoot = root->children[0];
 			delete root;
 			newRoot->parent = nullptr;
-			// newRoot->validate(nullptr, 0);
 			return newRoot;
 		}
 		else
 		{
-			// validate(nullptr, 0);
-			// std::cout << "CHKPT6" << std::endl;
+			DPRINT1("CHKPT6");
 			return root;
 		}
 	}
@@ -1913,55 +1466,6 @@ namespace nirtree
 
 	void testPlayground()
 	{
-		// Setup
-		Node *a = new Node(30, 30);
-		Node *b = new Node(30, 30, a);
-
-		IsotheticPolygon bPoly;
-		for (float i = 0; i < 18.0; ++i)
-		{
-			for (float j = 0; j < 18.0; ++j)
-			{
-				bPoly.basicRectangles.push_back(Rectangle(i * 12.0, j * 6.0, i * 12.0 + 12.0, j * 6.0 + 6.0));
-			}
-		}
-		bPoly.sort(true);
-
-		a->boundingBoxes.push_back(bPoly);
-		a->children.push_back(b);
-
-		for (float i = 0; i < 18.0; ++i)
-		{
-			for (float j = 0; j < 18.0; ++j)
-			{
-				b->data.push_back(Point(i * 12.0 + 2.0, j * 6.0 + 1.0));
-				b->data.push_back(Point(i * 12.0 + 6.0, j * 6.0 + 3.0));
-				b->data.push_back(Point(i * 12.0 + 10.0, j * 6.0 + 5.0));
-			}
-		}
-
-		std::cout << "Finished Setup" << std::endl;
-		a->printTree();
-		std::cout << "b->size = " << a->boundingBoxes[0].basicRectangles.size() << std::endl;
-
-		for (float i = 0; i < 18.0; ++i)
-		{
-			for (float j = 0; j < 18.0; ++j)
-			{
-				a = a->remove(Point(i * 12.0 + 2.0, j * 6.0 + 1.0));
-				a = a->remove(Point(i * 12.0 + 6.0, j * 6.0 + 3.0));
-				a = a->remove(Point(i * 12.0 + 10.0, j * 6.0 + 5.0));
-			}
-		}
-
-		a->printTree();
-
-		// std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		// b->condenseLeaf(Point(7 * 12 + 10.0, 7 * 6.0 + 5.0));
-		// std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-		// std::cout << "Condense Leaf time = " << std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count() << "s" << std::endl;
-
-		// std::cout << "b->size = " << a->boundingBoxes[0].basicRectangles.size() << std::endl;
 	}
 
 	void testRemoveData()
@@ -1988,42 +1492,42 @@ namespace nirtree
 		assert(n.data.size() == 3);
 	}
 
-	// void testRemoveChild()
-	// {
-	// 	// Setup a node with some children
-	// 	Node parentNode = Node();
+	void testRemoveChild()
+	{
+		// Setup a node with some children
+		Node parentNode = Node();
 
-	// 	Node *child0 = new Node();
-	// 	child0->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
-	// 	parentNode.children.push_back(child0);
+		Node *child0 = new Node();
+		child0->parent = &parentNode;
+		parentNode.boundingBoxes.push_back(Rectangle(8.0, -6.0, 10.0, -4.0));
+		parentNode.children.push_back(child0);
 
-	// 	Node *child1 = new Node();
-	// 	child1->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
-	// 	parentNode.children.push_back(child1);
+		Node *child1 = new Node();
+		child1->parent = &parentNode;
+		parentNode.boundingBoxes.push_back(Rectangle(12.0, -4.0, 16.0, -2.0));
+		parentNode.children.push_back(child1);
 
-	// 	Node *child2 = new Node();
-	// 	child2->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
-	// 	parentNode.children.push_back(child2);
+		Node *child2 = new Node();
+		child2->parent = &parentNode;
+		parentNode.boundingBoxes.push_back(Rectangle(10.0, 12.0, 12.0, 14.0));
+		parentNode.children.push_back(child2);
 
-	// 	Node *child3 = new Node();
-	// 	child3->parent = &parentNode;
-	// 	parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
-	// 	parentNode.children.push_back(child3);
+		Node *child3 = new Node();
+		child3->parent = &parentNode;
+		parentNode.boundingBoxes.push_back(Rectangle(12.0, 12.0, 14.0, 14.0));
+		parentNode.children.push_back(child3);
 
-	// 	// Remove one of the children
-	// 	parentNode.removeChild(child3);
-	// 	assert(parentNode.boundingBoxes.size() == 3);
-	// 	assert(parentNode.children.size() == 3);
+		// Remove one of the children
+		parentNode.removeChild(child3);
+		assert(parentNode.boundingBoxes.size() == 3);
+		assert(parentNode.children.size() == 3);
 
-	// 	// Cleanup
-	// 	delete child0;
-	// 	delete child1;
-	// 	delete child2;
-	// 	delete child3;
-	// }
+		// Cleanup
+		delete child0;
+		delete child1;
+		delete child2;
+		delete child3;
+	}
 
 	void testChooseLeaf()
 	{
@@ -2084,96 +1588,96 @@ namespace nirtree
 		delete root;
 	}
 
-	// void testFindLeaf()
-	// {
-	// 	// Setup the tree
+	void testFindLeaf()
+	{
+		// Setup the tree
 
-	// 	// Cluster 4, n = 7
-	// 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	// 	// Organized into two nodes
-	// 	Node *cluster4a = new Node();
-	// 	cluster4a->data.push_back(Point(-10.0, -2.0));
-	// 	cluster4a->data.push_back(Point(-12.0, -3.0));
-	// 	cluster4a->data.push_back(Point(-11.0, -3.0));
-	// 	cluster4a->data.push_back(Point(-10.0, -3.0));
+		// Cluster 4, n = 7
+		// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
+		// Organized into two nodes
+		Node *cluster4a = new Node();
+		cluster4a->data.push_back(Point(-10.0, -2.0));
+		cluster4a->data.push_back(Point(-12.0, -3.0));
+		cluster4a->data.push_back(Point(-11.0, -3.0));
+		cluster4a->data.push_back(Point(-10.0, -3.0));
 
-	// 	Node *cluster4b = new Node();
-	// 	cluster4b->data.push_back(Point(-9.0, -3.0));
-	// 	cluster4b->data.push_back(Point(-7.0, -3.0));
-	// 	cluster4b->data.push_back(Point(-10.0, -5.0));
+		Node *cluster4b = new Node();
+		cluster4b->data.push_back(Point(-9.0, -3.0));
+		cluster4b->data.push_back(Point(-7.0, -3.0));
+		cluster4b->data.push_back(Point(-10.0, -5.0));
 
-	// 	Node *cluster4 = new Node();
-	// 	cluster4a->parent = cluster4;
-	// 	cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
-	// 	cluster4->children.push_back(cluster4a);
-	// 	cluster4b->parent = cluster4;
-	// 	cluster4->boundingBoxes.push_back(cluster4b->boundingBox());
-	// 	cluster4->children.push_back(cluster4b);
+		Node *cluster4 = new Node();
+		cluster4a->parent = cluster4;
+		cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
+		cluster4->children.push_back(cluster4a);
+		cluster4b->parent = cluster4;
+		cluster4->boundingBoxes.push_back(cluster4b->boundingBox());
+		cluster4->children.push_back(cluster4b);
 
-	// 	// Cluster 5, n = 16
-	// 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
-	// 	// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
-	// 	// (-14, -15), (-13, -15), (-12, -15)
-	// 	// Organized into four nodes
-	// 	Node *cluster5a = new Node();
-	// 	cluster5a->data.push_back(Point(-14.5, -13.0));
-	// 	cluster5a->data.push_back(Point(-14.0, -13.0));
-	// 	cluster5a->data.push_back(Point(-13.5, -13.5));
-	// 	cluster5a->data.push_back(Point(-15.0, -14.0));
+		// Cluster 5, n = 16
+		// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
+		// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
+		// (-14, -15), (-13, -15), (-12, -15)
+		// Organized into four nodes
+		Node *cluster5a = new Node();
+		cluster5a->data.push_back(Point(-14.5, -13.0));
+		cluster5a->data.push_back(Point(-14.0, -13.0));
+		cluster5a->data.push_back(Point(-13.5, -13.5));
+		cluster5a->data.push_back(Point(-15.0, -14.0));
 
-	// 	Node *cluster5b = new Node();
-	// 	cluster5b->data.push_back(Point(-14.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-13.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-12.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-13.5, -16.0));
+		Node *cluster5b = new Node();
+		cluster5b->data.push_back(Point(-14.0, -14.0));
+		cluster5b->data.push_back(Point(-13.0, -14.0));
+		cluster5b->data.push_back(Point(-12.0, -14.0));
+		cluster5b->data.push_back(Point(-13.5, -16.0));
 
-	// 	Node *cluster5c = new Node();
-	// 	cluster5c->data.push_back(Point(-15.0, -14.5));
-	// 	cluster5c->data.push_back(Point(-14.0, -14.5));
-	// 	cluster5c->data.push_back(Point(-12.5, -14.5));
-	// 	cluster5c->data.push_back(Point(-13.5, -15.5));
+		Node *cluster5c = new Node();
+		cluster5c->data.push_back(Point(-15.0, -14.5));
+		cluster5c->data.push_back(Point(-14.0, -14.5));
+		cluster5c->data.push_back(Point(-12.5, -14.5));
+		cluster5c->data.push_back(Point(-13.5, -15.5));
 
-	// 	Node *cluster5d = new Node();
-	// 	cluster5d->data.push_back(Point(-15.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-14.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-13.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-12.0, -15.0));
+		Node *cluster5d = new Node();
+		cluster5d->data.push_back(Point(-15.0, -15.0));
+		cluster5d->data.push_back(Point(-14.0, -15.0));
+		cluster5d->data.push_back(Point(-13.0, -15.0));
+		cluster5d->data.push_back(Point(-12.0, -15.0));
 
-	// 	Node *cluster5 = new Node();
-	// 	cluster5a->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
-	// 	cluster5->children.push_back(cluster5a);
-	// 	cluster5b->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
-	// 	cluster5->children.push_back(cluster5b);
-	// 	cluster5c->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
-	// 	cluster5->children.push_back(cluster5c);
-	// 	cluster5d->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
-	// 	cluster5->children.push_back(cluster5d);
+		Node *cluster5 = new Node();
+		cluster5a->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
+		cluster5->children.push_back(cluster5a);
+		cluster5b->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
+		cluster5->children.push_back(cluster5b);
+		cluster5c->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
+		cluster5->children.push_back(cluster5c);
+		cluster5d->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
+		cluster5->children.push_back(cluster5d);
 
-	// 	// Root
-	// 	Node *root = new Node();
-	// 	cluster4->parent = root;
-	// 	root->boundingBoxes.push_back(cluster4->boundingBox());
-	// 	root->children.push_back(cluster4);
-	// 	cluster5->parent = root;
-	// 	root->boundingBoxes.push_back(cluster5->boundingBox());
-	// 	root->children.push_back(cluster5);
+		// Root
+		Node *root = new Node();
+		cluster4->parent = root;
+		root->boundingBoxes.push_back(cluster4->boundingBox());
+		root->children.push_back(cluster4);
+		cluster5->parent = root;
+		root->boundingBoxes.push_back(cluster5->boundingBox());
+		root->children.push_back(cluster5);
 
-	// 	// Test finding leaves
-	// 	assert(root->findLeaf(Point(-11.0, -3.0)) == cluster4a);
-	// 	assert(root->findLeaf(Point(-9.0, -3.0)) == cluster4b);
-	// 	assert(root->findLeaf(Point(-13.5, -13.5)) == cluster5a);
-	// 	assert(root->findLeaf(Point(-12.0, -14.0)) == cluster5b);
-	// 	assert(root->findLeaf(Point(-12.5, -14.5)) == cluster5c);
-	// 	assert(root->findLeaf(Point(-13.0, -15.0)) == cluster5d);
+		// Test finding leaves
+		assert(root->findLeaf(Point(-11.0, -3.0)) == cluster4a);
+		assert(root->findLeaf(Point(-9.0, -3.0)) == cluster4b);
+		assert(root->findLeaf(Point(-13.5, -13.5)) == cluster5a);
+		assert(root->findLeaf(Point(-12.0, -14.0)) == cluster5b);
+		assert(root->findLeaf(Point(-12.5, -14.5)) == cluster5c);
+		assert(root->findLeaf(Point(-13.0, -15.0)) == cluster5d);
 
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-	// }
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+	}
 
 	void testSplitNodeLeaf()
 	{
@@ -2470,7 +1974,7 @@ namespace nirtree
 		Node *routing = new Node(3, 3, root);
 		Node *child0 = new Node(3, 3, routing);
 		Node *child1 = new Node(3, 3, routing);
-		Node *child2 = new Node(3, 3, routing);
+		// Node *child2 = new Node(3, 3, routing);
 
 		// Organize into a tree
 		root->children.push_back(routing);
@@ -2507,7 +2011,7 @@ namespace nirtree
 		routing = new Node(3, 3, root);
 		child0 = new Node(3, 3, routing);
 		child1 = new Node(3, 3, routing);
-		child2 = new Node(3, 3, routing);
+		// child2 = new Node(3, 3, routing);
 
 		// Organize the tree
 		root->children.push_back(routing);
@@ -2540,7 +2044,7 @@ namespace nirtree
 		routing = new Node(3, 3, root);
 		child0 = new Node(3, 3, routing);
 		child1 = new Node(3, 3, routing);
-		child2 = new Node(3, 3, routing);
+		// child2 = new Node(3, 3, routing);
 
 		// Organize the tree
 		root->children.push_back(routing);
@@ -2577,7 +2081,7 @@ namespace nirtree
 		routing = new Node(3, 3, root);
 		child0 = new Node(3, 3, routing);
 		child1 = new Node(3, 3, routing);
-		child2 = new Node(3, 3, routing);
+		// child2 = new Node(3, 3, routing);
 
 		// Organize the tree
 		root->children.push_back(routing);
@@ -2653,7 +2157,7 @@ namespace nirtree
 		routing = new Node(3, 3, root);
 		child0 = new Node(3, 3, routing);
 		child1 = new Node(3, 3, routing);
-		child2 = new Node(3, 3, routing);
+		// child2 = new Node(3, 3, routing);
 
 		// Organize the tree
 		root->children.push_back(routing);
@@ -3221,630 +2725,572 @@ namespace nirtree
 		// delete sr.right;
 	}
 
-	// void testAdjustTree()
-	// {
-	// 	// Leaf Node and new sibling leaf
-	// 	// Cluster 4, n = 7
-	// 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	// 	Node *cluster4a = new Node();
-	// 	cluster4a->data.push_back(Point(-10.0, -2.0));
-	// 	cluster4a->data.push_back(Point(-12.0, -3.0));
-	// 	cluster4a->data.push_back(Point(-11.0, -3.0));
-	// 	cluster4a->data.push_back(Point(-10.0, -3.0));
-
-	// 	Node *cluster4b = new Node();
-	// 	cluster4b->data.push_back(Point(-9.0, -3.0));
-	// 	cluster4b->data.push_back(Point(-7.0, -3.0));
-	// 	cluster4b->data.push_back(Point(-10.0, -5.0));
-
-	// 	// Middle Node
-	// 	Node *middle = new Node();
-	// 	Node *dummys[4] = {new Node(), new Node(), new Node(), new Node()};
-	// 	dummys[0]->parent = middle;
-	// 	middle->boundingBoxes.push_back(Rectangle(-10.0, 2.0, -8.0, 4.0));
-	// 	middle->children.push_back(dummys[0]);
-	// 	dummys[1]->parent = middle;
-	// 	middle->boundingBoxes.push_back(Rectangle(-12.0, -10.0, -10.0, -8.0));
-	// 	middle->children.push_back(dummys[1]);
-	// 	cluster4a->parent = middle;
-	// 	middle->boundingBoxes.push_back(Rectangle(-12.0, -5.0, -7.0, -2.0));
-	// 	middle->children.push_back(cluster4a);
-	// 	dummys[2]->parent = middle;
-	// 	middle->boundingBoxes.push_back(Rectangle(6.0, 6.0, 8.0, 8.0));
-	// 	middle->children.push_back(dummys[2]);
-	// 	dummys[3]->parent = middle;
-	// 	middle->boundingBoxes.push_back(Rectangle(15.0, -17.0, 17.0, -15.0));
-	// 	middle->children.push_back(dummys[3]);
-
-	// 	// Root Node
-	// 	Node *root = new Node();
-	// 	middle->parent = root;
-	// 	root->boundingBoxes.push_back(middle->boundingBox());
-	// 	root->children.push_back(middle);
-
-	// 	// Adjust the tree
-	// 	Node *result = cluster4a->adjustTree(cluster4b);
-
-	// 	// Test the adjustment
-	// 	assert(result == nullptr);
-	// 	assert(root->children.size() == 2);
-	// 	assert(root->boundingBoxes[0] == Rectangle(-12.0, -10.0, -7.0, 4.0));
-	// 	assert(root->boundingBoxes[1] == Rectangle(6.0, -17.0, 17.0, 8.0));
-	// 	assert(middle->children.size() == 4);
-	// 	assert(middle->boundingBoxes[2] == Rectangle(-12.0, -3.0, -10.0, -2.0));
-	// 	assert(middle->boundingBoxes[3] == Rectangle(-10.0, -5.0, -7.0, -3.0));
-
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-	// }
-
-	// void testCondenseTree()
-	// {
-	// 	// Test where the leaf is the root
-	// 	// Cluster 6, n = 7
-	// 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	// 	Node *cluster6 = new Node();
-	// 	cluster6->data.push_back(Point(-2.0, -6.0));
-	// 	cluster6->data.push_back(Point(2.0, -6.0));
-	// 	cluster6->data.push_back(Point(-1.0, -7.0));
-	// 	cluster6->data.push_back(Point(1.0, -7.0));
-	// 	cluster6->data.push_back(Point(3.0, -8.0));
-	// 	cluster6->data.push_back(Point(-2.0, -9.0));
-	// 	cluster6->data.push_back(Point(-3.0, -11.0));
-
-	// 	// Condense the tree
-	// 	cluster6->condenseTree();
-
-	// 	// Test the condensing
-	// 	assert(cluster6->parent == nullptr);
-	// 	assert(cluster6->boundingBoxes.size() == 0);
-	// 	assert(cluster6->children.size() == 0);
-	// 	assert(cluster6->data.size() == 7);
-	// 	assert(cluster6->data[0] == Point(-2.0, -6.0));
-	// 	assert(cluster6->data[6] == Point(-3.0, -11.0));
-
-	// 	// Cleanup
-	// 	delete cluster6;
-
-	// 	// Test where condensing is confined to a leaf != root
-	// 	// Cluster 6, n = 7
-	// 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	// 	cluster6 = new Node();
-	// 	cluster6->data.push_back(Point(-2.0, -6.0));
-	// 	cluster6->data.push_back(Point(2.0, -6.0));
-	// 	cluster6->data.push_back(Point(-1.0, -7.0));
-	// 	cluster6->data.push_back(Point(1.0, -7.0));
-	// 	cluster6->data.push_back(Point(3.0, -8.0));
-	// 	cluster6->data.push_back(Point(-2.0, -9.0));
-	// 	// (-3, -11) left out so the bounding box should change
-
-	// 	Node *root = new Node();
-	// 	cluster6->parent = root;
-	// 	root->boundingBoxes.push_back(Rectangle(-3.0, -10.0, 3.0, 6.0));
-	// 	root->children.push_back(cluster6);
-
-	// 	// Condense the tree
-	// 	cluster6->condenseTree();
-
-	// 	// Test the condensing
-	// 	assert(root->parent == nullptr);
-	// 	assert(root->boundingBoxes.size() == 1);
-	// 	assert(root->children.size() == 1);
-	// 	assert(root->boundingBoxes[0] == Rectangle(-2.0, -9.0, 3.0, -6.0));
-	// 	assert(root->children[0] == cluster6);
-	// 	assert(cluster6->parent == root);
-	// 	assert(cluster6->boundingBoxes.size() == 0);
-	// 	assert(cluster6->children.size() == 0);
-	// 	assert(cluster6->data.size() == 6);
-
-	// 	// Cleanup
-	// 	delete cluster6;
-	// 	delete root;
-
-	// 	// Test where condensing is unconfined to a leaf != root
-	// 	// Cluster 4, n = 7
-	// 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	// 	// Organized into two nodes
-	// 	Node *cluster4a = new Node();
-	// 	cluster4a->data.push_back(Point(-10.0, -2.0));
-	// 	cluster4a->data.push_back(Point(-12.0, -3.0));
-	// 	cluster4a->data.push_back(Point(-11.0, -3.0));
-	// 	cluster4a->data.push_back(Point(-10.0, -3.0));
-
-	// 	Node *cluster4b = new Node();
-	// 	cluster4b->data.push_back(Point(-9.0, -3.0));
-	// 	cluster4b->data.push_back(Point(-7.0, -3.0));
-	// 	// cluster4b->data.push_back(Point(-10.0, -5.0)); left out to precipitate condensing
-
-	// 	Node *cluster4 = new Node();
-	// 	cluster4a->parent = cluster4;
-	// 	cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
-	// 	cluster4->children.push_back(cluster4a);
-	// 	cluster4b->parent = cluster4;
-	// 	cluster4->boundingBoxes.push_back(cluster4b->boundingBox());
-	// 	cluster4->children.push_back(cluster4b);
-
-	// 	// Cluster 5, n = 16
-	// 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
-	// 	// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
-	// 	// (-14, -15), (-13, -15), (-12, -15)
-	// 	// Organized into four nodes
-	// 	Node *cluster5a = new Node();
-	// 	cluster5a->data.push_back(Point(-14.5, -13.0));
-	// 	cluster5a->data.push_back(Point(-14.0, -13.0));
-	// 	cluster5a->data.push_back(Point(-13.5, -13.5));
-	// 	cluster5a->data.push_back(Point(-15.0, -14.0));
-	// 	Node *cluster5b = new Node();
-	// 	cluster5b->data.push_back(Point(-14.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-13.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-12.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-13.5, -16.0));
-	// 	Node *cluster5c = new Node();
-	// 	cluster5c->data.push_back(Point(-15.0, -14.5));
-	// 	cluster5c->data.push_back(Point(-14.0, -14.5));
-	// 	cluster5c->data.push_back(Point(-12.5, -14.5));
-	// 	cluster5c->data.push_back(Point(-13.5, -15.5));
-	// 	Node *cluster5d = new Node();
-	// 	cluster5d->data.push_back(Point(-15.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-14.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-13.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-12.0, -15.0));
-	// 	Node *cluster5 = new Node();
-	// 	cluster5a->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
-	// 	cluster5->children.push_back(cluster5a);
-	// 	cluster5b->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
-	// 	cluster5->children.push_back(cluster5b);
-	// 	cluster5c->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
-	// 	cluster5->children.push_back(cluster5c);
-	// 	cluster5d->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
-	// 	cluster5->children.push_back(cluster5d);
-
-	// 	// Root
-	// 	root = new Node();
-	// 	cluster4->parent = root;
-	// 	root->boundingBoxes.push_back(cluster4->boundingBox());
-	// 	root->children.push_back(cluster4);
-	// 	cluster5->parent = root;
-	// 	root->boundingBoxes.push_back(cluster5->boundingBox());
-	// 	root->children.push_back(cluster5);
-
-	// 	// Condense the tree
-	// 	Node *newRoot = cluster4b->condenseTree();
-
-	// 	// Test the condensing
-	// 	assert(newRoot == root);
-	// 	assert(root->boundingBoxes.size() == 2);
-	// 	assert(root->children.size() == 2);
-	// 	assert(root->children[0]->children.size() == 4);
-	// 	assert(root->children[1]->children.size() == 2);
-	// 	assert(root->children[1]->children[0]->data.size() == 2);
-	// 	assert(root->children[1]->children[0]->data[0] == Point(-9.0, -3.0));
-	// 	assert(root->children[1]->children[0]->data[1] == Point(-7.0, -3.0));
-
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-	// }
-
-	// void testSearch()
-	// {
-	// 	// Build the tree directly
-
-	// 	// Cluster 1, n = 7
-	// 	// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12)
-	// 	Node *cluster1a = new Node();
-	// 	cluster1a->data.push_back(Point(-3.0, 16.0));
-	// 	cluster1a->data.push_back(Point(-3.0, 15.0));
-	// 	cluster1a->data.push_back(Point(-4.0, 13.0));
-
-	// 	Node *cluster1b = new Node();
-	// 	cluster1b->data.push_back(Point(-5.0, 12.0));
-	// 	cluster1b->data.push_back(Point(-5.0, 15.0));
-	// 	cluster1b->data.push_back(Point(-6.0, 14.0));
-	// 	cluster1b->data.push_back(Point(-8.0, 16.0));
-
-	// 	// Cluster 2, n = 8
-	// 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
-	// 	Node *cluster2a = new Node();
-	// 	cluster2a->data.push_back(Point(-8.0, 10.0));
-	// 	cluster2a->data.push_back(Point(-9.0, 10.0));
-	// 	cluster2a->data.push_back(Point(-8.0, 9.0));
-	// 	cluster2a->data.push_back(Point(-9.0, 9.0));
-	// 	cluster2a->data.push_back(Point(-8.0, 8.0));
-
-	// 	Node *cluster2b = new Node();
-	// 	cluster2b->data.push_back(Point(-14.0, 8.0));
-	// 	cluster2b->data.push_back(Point(-10.0, 8.0));
-	// 	cluster2b->data.push_back(Point(-9.0, 7.0));
-
-	// 	// Cluster 3, n = 9
-	// 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
-	// 	Node *cluster3a = new Node();
-	// 	cluster3a->data.push_back(Point(-3.0, 4.0));
-	// 	cluster3a->data.push_back(Point(-3.0, 0.0));
-	// 	cluster3a->data.push_back(Point(-2.0, 4.0));
-	// 	cluster3a->data.push_back(Point(-1.0, 3.0));
-	// 	cluster3a->data.push_back(Point(-1.0, 1.0));
-
-	// 	Node *cluster3b = new Node();
-	// 	cluster3b->data.push_back(Point(-5.0, 4.0));
-	// 	cluster3b->data.push_back(Point(-4.0, 3.0));
-	// 	cluster3b->data.push_back(Point(-4.0, 1.0));
-	// 	cluster3b->data.push_back(Point(-6.0, 2.0));
-
-	// 	// High level nodes
-	// 	Node *left = new Node();
-	// 	cluster1a->parent = left;
-	// 	left->boundingBoxes.push_back(cluster1a->boundingBox());
-	// 	left->children.push_back(cluster1a);
-	// 	cluster1b->parent = left;
-	// 	left->boundingBoxes.push_back(cluster1b->boundingBox());
-	// 	left->children.push_back(cluster1b);
-	// 	cluster2a->parent = left;
-	// 	left->boundingBoxes.push_back(cluster2a->boundingBox());
-	// 	left->children.push_back(cluster2a);
-	// 	cluster2b->parent = left;
-	// 	left->boundingBoxes.push_back(cluster2b->boundingBox());
-	// 	left->children.push_back(cluster2b);
-
-	// 	Node *right = new Node();
-	// 	cluster3a->parent = right;
-	// 	right->boundingBoxes.push_back(cluster3a->boundingBox());
-	// 	right->children.push_back(cluster3a);
-	// 	cluster3b->parent = right;
-	// 	right->boundingBoxes.push_back(cluster3b->boundingBox());
-	// 	right->children.push_back(cluster3b);
-
-	// 	Node *root = new Node();
-	// 	left->parent = root;
-	// 	root->boundingBoxes.push_back(left->boundingBox());
-	// 	root->children.push_back(left);
-	// 	right->parent = root;
-	// 	root->boundingBoxes.push_back(right->boundingBox());
-	// 	root->children.push_back(right);
-
-	// 	// Test search
-
-	// 	// Test set one
-	// 	Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
-	// 	std::vector<Point> v1 = root->search(sr1);
-	// 	assert(v1.size() == 3);
-	// 	assert(v1[0] == Point(-8.0, 10.0));
-	// 	assert(v1[1] == Point(-9.0, 10.0));
-	// 	assert(v1[2] == Point(-5.0, 12.0));
-
-	// 	// Test set two
-	// 	Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
-	// 	std::vector<Point> v2 = root->search(sr2);
-	// 	assert(v2.size() == 2);
-	// 	assert(v2[0] == Point(-5.0, 4.0));
-	// 	assert(v2[1] == Point(-8.0, 8.0));
-
-	// 	// Test set three
-	// 	Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
-	// 	std::vector<Point> v3 = root->search(sr3);
-	// 	assert(v3.size() == 12);
-	// 	assert(v3[0] == Point(-5.0, 4.0));
-	// 	assert(v3[1] == Point(-4.0, 3.0));
-	// 	assert(v3[2] == Point(-4.0, 1.0));
-	// 	assert(v3[3] == Point(-6.0, 2.0));
-	// 	assert(v3[4] == Point(-8.0, 10.0));
-	// 	assert(v3[5] == Point(-8.0, 9.0));
-	// 	assert(v3[6] == Point(-8.0, 8.0));
-	// 	assert(v3[7] == Point(-5.0, 12.0));
-	// 	assert(v3[8] == Point(-5.0, 15.0));
-	// 	assert(v3[9] == Point(-6.0, 14.0));
-	// 	assert(v3[10] == Point(-8.0, 16.0));
-	// 	assert(v3[11] == Point(-4.0, 13.0));
-
-	// 	// Test set four
-	// 	Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
-	// 	std::vector<Point> v4 = root->search(sr4);
-	// 	assert(v4.size() == 0);
-
-	// 	// Test set five
-	// 	Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
-	// 	std::vector<Point> v5 = root->search(sr5);
-	// 	assert(v5.size() == 0);
-
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-	// }
-
-	// void testInsert()
-	// {
-	// 	// Setup the tree
-	// 	Node *root = new Node();
-
-	// 	// Cluster 2, n = 8
-	// 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
-	// 	root = root->insert(Point(-14.0, 8.0));
-	// 	root = root->insert(Point(-10.0, 8.0));
-	// 	root = root->insert(Point(-9.0, 10.0));
-	// 	root = root->insert(Point(-9.0, 9.0));
-	// 	root = root->insert(Point(-8.0, 10.0));
-	// 	root = root->insert(Point(-9.0, 7.0));
-	// 	root = root->insert(Point(-8.0, 8.0));
-	// 	root = root->insert(Point(-8.0, 9.0));
-
-	// 	// Test set one
-	// 	assert(root->boundingBoxes.size() == 2);
-	// 	assert(root->children.size() == 2);
-	// 	assert(root->children[0]->parent == root);
-	// 	assert(root->children[0]->boundingBoxes.size() == 0);
-	// 	assert(root->children[0]->children.size() == 0);
-	// 	assert(root->children[0]->data.size() == 3);
-	// 	assert(root->children[1]->parent == root);
-	// 	assert(root->children[1]->boundingBoxes.size() == 0);
-	// 	assert(root->children[1]->children.size() == 0);
-	// 	assert(root->children[1]->data.size() == 5);
-
-	// 	// Cluster 1, n = 7
-	// 	// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12)
-	// 	root = root->insert(Point(-8.0, 16.0));
-	// 	root = root->insert(Point(-3.0, 16.0));
-	// 	root = root->insert(Point(-5.0, 15.0));
-	// 	root = root->insert(Point(-3.0, 15.0));
-	// 	root = root->insert(Point(-6.0, 14.0));
-	// 	root = root->insert(Point(-4.0, 13.0));
-	// 	root = root->insert(Point(-5.0, 12.0));
-
-	// 	// Test set two
-	// 	assert(root->boundingBoxes.size() == 2);
-	// 	assert(root->children.size() == 2);
-	// 	assert(root->children[0]->parent == root);
-	// 	assert(root->children[0]->boundingBoxes.size() == 3);
-	// 	assert(root->children[0]->children.size() == 3);
-	// 	assert(root->children[0]->data.size() == 0);
-	// 	assert(root->children[1]->parent == root);
-	// 	assert(root->children[1]->boundingBoxes.size() == 3);
-	// 	assert(root->children[1]->children.size() == 3);
-	// 	assert(root->children[1]->data.size() == 0);
-
-	// 	// Cluster 4, n = 7
-	// 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-	// 	root = root->insert(Point(-10.0, -2.0));
-	// 	root = root->insert(Point(-12.0, -3.0));
-	// 	root = root->insert(Point(-11.0, -3.0));
-	// 	root = root->insert(Point(-10.0, -3.0));
-	// 	root = root->insert(Point(-10.0, -3.0));
-	// 	root = root->insert(Point(-9.0, -3.0));
-	// 	root = root->insert(Point(-7.0, -3.0));
-	// 	root = root->insert(Point(-10.0, -5.0));
-
-	// 	// Test set three
-	// 	assert(root->boundingBoxes.size() == 2);
-	// 	assert(root->children.size() == 2);
-	// 	assert(root->children[0]->parent == root);
-	// 	assert(root->children[0]->boundingBoxes.size() == 5);
-	// 	assert(root->children[0]->children.size() == 5);
-	// 	assert(root->children[0]->data.size() == 0);
-	// 	assert(root->children[1]->parent == root);
-	// 	assert(root->children[1]->boundingBoxes.size() == 3);
-	// 	assert(root->children[1]->children.size() == 3);
-	// 	assert(root->children[1]->data.size() == 0);
-
-	// 	// Cluster 3, n = 9
-	// 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
-	// 	root = root->insert(Point(-5.0, 4.0));
-	// 	root = root->insert(Point(-3.0, 4.0));
-	// 	root = root->insert(Point(-2.0, 4.0));
-	// 	root = root->insert(Point(-4.0, 3.0));
-	// 	root = root->insert(Point(-1.0, 3.0));
-	// 	root = root->insert(Point(-6.0, 2.0));
-	// 	root = root->insert(Point(-4.0, 1.0));
-	// 	root = root->insert(Point(-3.0, 0.0));
-	// 	root = root->insert(Point(-1.0, 1.0));
-
-	// 	// Test set four
-	// 	assert(root->boundingBoxes.size() == 3);
-	// 	assert(root->children.size() == 3);
-	// 	assert(root->children[0]->parent == root);
-	// 	assert(root->children[0]->boundingBoxes.size() == 5);
-	// 	assert(root->children[0]->children.size() == 5);
-	// 	assert(root->children[0]->data.size() == 0);
-	// 	assert(root->children[1]->parent == root);
-	// 	assert(root->children[1]->boundingBoxes.size() == 3);
-	// 	assert(root->children[1]->children.size() == 3);
-	// 	assert(root->children[1]->data.size() == 0);
-	// 	assert(root->children[2]->parent == root);
-	// 	assert(root->children[2]->boundingBoxes.size() == 3);
-	// 	assert(root->children[2]->children.size() == 3);
-	// 	assert(root->children[2]->data.size() == 0);
-
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-	// }
-
-	// void testRemove()
-	// {
-	// 	// Cluster 5, n = 16
-	// 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
-	// 	// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
-	// 	// (-14, -15), (-13, -15), (-12, -15)
-	// 	// Organized into four nodes
-	// 	Node *cluster5a = new Node();
-	// 	cluster5a->data.push_back(Point(-14.5, -13.0));
-	// 	cluster5a->data.push_back(Point(-14.0, -13.0));
-	// 	cluster5a->data.push_back(Point(-13.5, -13.5));
-	// 	cluster5a->data.push_back(Point(-15.0, -14.0));
-
-	// 	Node *cluster5b = new Node();
-	// 	cluster5b->data.push_back(Point(-14.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-13.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-12.0, -14.0));
-	// 	cluster5b->data.push_back(Point(-13.5, -16.0));
-
-	// 	Node *cluster5c = new Node();
-	// 	cluster5c->data.push_back(Point(-15.0, -14.5));
-	// 	cluster5c->data.push_back(Point(-14.0, -14.5));
-	// 	cluster5c->data.push_back(Point(-12.5, -14.5));
-	// 	cluster5c->data.push_back(Point(-13.5, -15.5));
-
-	// 	Node *cluster5d = new Node();
-	// 	cluster5d->data.push_back(Point(-15.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-14.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-13.0, -15.0));
-	// 	cluster5d->data.push_back(Point(-12.0, -15.0));
-
-	// 	Node *cluster5 = new Node();
-	// 	cluster5a->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
-	// 	cluster5->children.push_back(cluster5a);
-	// 	cluster5b->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
-	// 	cluster5->children.push_back(cluster5b);
-	// 	cluster5c->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
-	// 	cluster5->children.push_back(cluster5c);
-	// 	cluster5c->parent = cluster5;
-	// 	cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
-	// 	cluster5->children.push_back(cluster5d);
-
-	// 	// Cluster 3, n = 9
-	// 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
-	// 	Node *cluster3a = new Node();
-	// 	cluster3a->data.push_back(Point(-5.0, 4.0));
-	// 	cluster3a->data.push_back(Point(-3.0, 4.0));
-	// 	cluster3a->data.push_back(Point(-2.0, 4.0));
-
-	// 	Node *cluster3b = new Node();
-	// 	cluster3b->data.push_back(Point(-4.0, 1.0));
-	// 	cluster3b->data.push_back(Point(-3.0, 0.0));
-	// 	cluster3b->data.push_back(Point(-1.0, 1.0));
-
-	// 	Node *cluster3c = new Node();
-	// 	cluster3c->data.push_back(Point(-4.0, 3.0));
-	// 	cluster3c->data.push_back(Point(-1.0, 3.0));
-	// 	cluster3c->data.push_back(Point(-6.0, 2.0));
-
-	// 	Node *cluster3 = new Node();
-	// 	cluster3a->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(cluster3a->boundingBox());
-	// 	cluster3->children.push_back(cluster3a);
-	// 	cluster3b->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(cluster3b->boundingBox());
-	// 	cluster3->children.push_back(cluster3b);
-	// 	cluster3c->parent = cluster3;
-	// 	cluster3->boundingBoxes.push_back(cluster3c->boundingBox());
-	// 	cluster3->children.push_back(cluster3c);
-
-	// 	// Cluster 1, n = 7
-	// 	// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12), + (-4.5, 15.5), (-2.0, 13.5)
-	// 	Node *cluster1a = new Node();
-	// 	cluster1a->data.push_back(Point(-3.0, 16.0));
-	// 	cluster1a->data.push_back(Point(-3.0, 15.0));
-	// 	cluster1a->data.push_back(Point(-4.0, 13.0));
-
-	// 	Node *cluster1b = new Node();
-	// 	cluster1b->data.push_back(Point(-5.0, 12.0));
-	// 	cluster1b->data.push_back(Point(-5.0, 15.0));
-	// 	cluster1b->data.push_back(Point(-6.0, 14.0));
-
-	// 	Node *cluster1c = new Node();
-	// 	cluster1c->data.push_back(Point(-8.0, 16.0));
-	// 	cluster1c->data.push_back(Point(-4.5, 15.5));
-	// 	cluster1c->data.push_back(Point(-2.0, 13.5));
-
-	// 	Node *cluster1 = new Node();
-	// 	cluster1a->parent = cluster1;
-	// 	cluster1->boundingBoxes.push_back(cluster1a->boundingBox());
-	// 	cluster1->children.push_back(cluster1a);
-	// 	cluster1b->parent = cluster1;
-	// 	cluster1->boundingBoxes.push_back(cluster1b->boundingBox());
-	// 	cluster1->children.push_back(cluster1b);
-	// 	cluster1c->parent = cluster1;
-	// 	cluster1->boundingBoxes.push_back(cluster1c->boundingBox());
-	// 	cluster1->children.push_back(cluster1c);
-
-	// 	// Root
-	// 	Node *root = new Node();
-	// 	cluster3->parent = root;
-	// 	root->boundingBoxes.push_back(cluster3->boundingBox());
-	// 	root->children.push_back(cluster3);
-	// 	cluster5->parent = root;
-	// 	root->boundingBoxes.push_back(cluster5->boundingBox());
-	// 	root->children.push_back(cluster5);
-	// 	cluster1->parent = root;
-	// 	root->boundingBoxes.push_back(cluster1->boundingBox());
-	// 	root->children.push_back(cluster1);
-
-	// 	assert(root->boundingBoxes.size() == 3);
-
-	// 	// Remove an element, no other changes in tree
-	// 	root->remove(Point(-12.0, -15.0));
-
-	// 	// Test the removal
-	// 	assert(cluster5d->data.size() == 3);
-	// 	assert(cluster5d->data[0] == Point(-15.0, -15.0));
-	// 	assert(cluster5d->data[1] == Point(-14.0, -15.0));
-	// 	assert(cluster5d->data[2] == Point(-13.0, -15.0));
-	// 	assert(cluster5->parent == root);
-	// 	assert(cluster5->boundingBoxes.size() == 4);
-	// 	assert(cluster5->children.size() == 4);
-	// 	assert(root->parent == nullptr);
-	// 	assert(root->boundingBoxes.size() == 3);
-	// 	assert(root->children.size() == 3);
-
-	// 	// Remove an element, parent is altered
-	// 	root->remove(Point(-6.0, 2.0));
-
-	// 	// Test the removal
-	// 	assert(root->boundingBoxes.size() == 2);
-	// 	assert(root->children.size() == 2);
-	// 	assert(root->children[0]->parent == root);
-	// 	assert(root->children[0]->boundingBoxes.size() == 4);
-	// 	assert(root->children[0]->children.size() == 4);
-	// 	assert(root->children[1]->parent == root);
-	// 	assert(root->children[1]->boundingBoxes.size() == 5);
-	// 	assert(root->children[1]->children.size() == 5);
-
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-
-	// 	// Remove an element, tree shrinks
-
-	// 	// Cluster 6, n = 7
-	// 	// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
-	// 	Node *cluster6a = new Node();
-	// 	cluster6a->data.push_back(Point(-2.0, -6.0));
-	// 	cluster6a->data.push_back(Point(2.0, -6.0));
-	// 	cluster6a->data.push_back(Point(-1.0, -7.0));
-
-	// 	Node *cluster6b = new Node();
-	// 	cluster6b->data.push_back(Point(1.0, -7.0));
-	// 	cluster6b->data.push_back(Point(3.0, -8.0));
-	// 	cluster6b->data.push_back(Point(-2.0, -9.0));
-	// 	// (-3.0, -11.0) held out so we get a shrinking root
-
-	// 	// Root
-	// 	root = new Node();
-	// 	cluster6a->parent = root;
-	// 	root->boundingBoxes.push_back(cluster6a->boundingBox());
-	// 	root->children.push_back(cluster6a);
-	// 	cluster6b->parent = root;
-	// 	root->boundingBoxes.push_back(cluster6b->boundingBox());
-	// 	root->children.push_back(cluster6b);
-
-	// 	// Remove an element, the tree should shrink and cluster6a should be the new root
-	// 	root = root->remove(Point(3.0, -8.0));
-
-	// 	// Test the removal
-	// 	assert(root == cluster6a);
-	// 	assert(root->boundingBoxes.size() == 0);
-	// 	assert(root->children.size() == 0);
-	// 	assert(root->data.size() == 5);
-
-	// 	// Cleanup
-	// 	root->deleteSubtrees();
-	// 	delete root;
-	// }
+	void testCondenseTree()
+	{
+		// Test where the leaf is the root
+		// Cluster 6, n = 7
+		// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
+		Node *cluster6 = new Node();
+		cluster6->data.push_back(Point(-2.0, -6.0));
+		cluster6->data.push_back(Point(2.0, -6.0));
+		cluster6->data.push_back(Point(-1.0, -7.0));
+		cluster6->data.push_back(Point(1.0, -7.0));
+		cluster6->data.push_back(Point(3.0, -8.0));
+		cluster6->data.push_back(Point(-2.0, -9.0));
+		cluster6->data.push_back(Point(-3.0, -11.0));
+
+		// Condense the tree
+		// cluster6->condenseTree();
+
+		// Test the condensing
+		assert(cluster6->parent == nullptr);
+		assert(cluster6->boundingBoxes.size() == 0);
+		assert(cluster6->children.size() == 0);
+		assert(cluster6->data.size() == 7);
+		assert(cluster6->data[0] == Point(-2.0, -6.0));
+		assert(cluster6->data[6] == Point(-3.0, -11.0));
+
+		// Cleanup
+		delete cluster6;
+
+		// Test where condensing is confined to a leaf != root
+		// Cluster 6, n = 7
+		// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
+		cluster6 = new Node();
+		cluster6->data.push_back(Point(-2.0, -6.0));
+		cluster6->data.push_back(Point(2.0, -6.0));
+		cluster6->data.push_back(Point(-1.0, -7.0));
+		cluster6->data.push_back(Point(1.0, -7.0));
+		cluster6->data.push_back(Point(3.0, -8.0));
+		cluster6->data.push_back(Point(-2.0, -9.0));
+		// (-3, -11) left out so the bounding box should change
+
+		Node *root = new Node();
+		cluster6->parent = root;
+		root->boundingBoxes.push_back(Rectangle(-3.0, -10.0, 3.0, 6.0));
+		root->children.push_back(cluster6);
+
+		// Condense the tree
+		// cluster6->condenseTree();
+
+		// Test the condensing
+		assert(root->parent == nullptr);
+		assert(root->boundingBoxes.size() == 1);
+		assert(root->children.size() == 1);
+		assert(root->boundingBoxes[0] == Rectangle(-2.0, -9.0, 3.0, -6.0));
+		assert(root->children[0] == cluster6);
+		assert(cluster6->parent == root);
+		assert(cluster6->boundingBoxes.size() == 0);
+		assert(cluster6->children.size() == 0);
+		assert(cluster6->data.size() == 6);
+
+		// Cleanup
+		delete cluster6;
+		delete root;
+
+		// Test where condensing is unconfined to a leaf != root
+		// Cluster 4, n = 7
+		// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
+		// Organized into two nodes
+		Node *cluster4a = new Node();
+		cluster4a->data.push_back(Point(-10.0, -2.0));
+		cluster4a->data.push_back(Point(-12.0, -3.0));
+		cluster4a->data.push_back(Point(-11.0, -3.0));
+		cluster4a->data.push_back(Point(-10.0, -3.0));
+
+		Node *cluster4b = new Node();
+		cluster4b->data.push_back(Point(-9.0, -3.0));
+		cluster4b->data.push_back(Point(-7.0, -3.0));
+		cluster4b->data.push_back(Point(-10.0, -5.0));
+
+		Node *cluster4 = new Node();
+		cluster4a->parent = cluster4;
+		cluster4->boundingBoxes.push_back(cluster4a->boundingBox());
+		cluster4->children.push_back(cluster4a);
+		cluster4b->parent = cluster4;
+		cluster4->boundingBoxes.push_back(cluster4b->boundingBox());
+		cluster4->children.push_back(cluster4b);
+
+		// Cluster 5, n = 16
+		// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
+		// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
+		// (-14, -15), (-13, -15), (-12, -15)
+		// Organized into four nodes
+		Node *cluster5a = new Node();
+		cluster5a->data.push_back(Point(-14.5, -13.0));
+		cluster5a->data.push_back(Point(-14.0, -13.0));
+		cluster5a->data.push_back(Point(-13.5, -13.5));
+		cluster5a->data.push_back(Point(-15.0, -14.0));
+		Node *cluster5b = new Node();
+		cluster5b->data.push_back(Point(-14.0, -14.0));
+		cluster5b->data.push_back(Point(-13.0, -14.0));
+		cluster5b->data.push_back(Point(-12.0, -14.0));
+		cluster5b->data.push_back(Point(-13.5, -16.0));
+		Node *cluster5c = new Node();
+		cluster5c->data.push_back(Point(-15.0, -14.5));
+		cluster5c->data.push_back(Point(-14.0, -14.5));
+		cluster5c->data.push_back(Point(-12.5, -14.5));
+		cluster5c->data.push_back(Point(-13.5, -15.5));
+		Node *cluster5d = new Node();
+		cluster5d->data.push_back(Point(-15.0, -15.0));
+		cluster5d->data.push_back(Point(-14.0, -15.0));
+		cluster5d->data.push_back(Point(-13.0, -15.0));
+		cluster5d->data.push_back(Point(-12.0, -15.0));
+		Node *cluster5 = new Node();
+		cluster5a->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
+		cluster5->children.push_back(cluster5a);
+		cluster5b->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
+		cluster5->children.push_back(cluster5b);
+		cluster5c->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
+		cluster5->children.push_back(cluster5c);
+		cluster5d->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
+		cluster5->children.push_back(cluster5d);
+
+		// Root
+		root = new Node();
+		cluster4->parent = root;
+		root->boundingBoxes.push_back(cluster4->boundingBox());
+		root->children.push_back(cluster4);
+		cluster5->parent = root;
+		root->boundingBoxes.push_back(cluster5->boundingBox());
+		root->children.push_back(cluster5);
+
+		// Condense the tree
+		// Node *newRoot = cluster4b->condenseTree();
+
+		// Test the condensing
+		// assert(newRoot == root);
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(root->children[0]->children.size() == 4);
+		assert(root->children[1]->children.size() == 2);
+		assert(root->children[1]->children[0]->data.size() == 2);
+		assert(root->children[1]->children[0]->data[0] == Point(-9.0, -3.0));
+		assert(root->children[1]->children[0]->data[1] == Point(-7.0, -3.0));
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+	}
+
+	void testSearch()
+	{
+		// Build the tree directly
+
+		// Cluster 1, n = 7
+		// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12)
+		Node *cluster1a = new Node();
+		cluster1a->data.push_back(Point(-3.0, 16.0));
+		cluster1a->data.push_back(Point(-3.0, 15.0));
+		cluster1a->data.push_back(Point(-4.0, 13.0));
+
+		Node *cluster1b = new Node();
+		cluster1b->data.push_back(Point(-5.0, 12.0));
+		cluster1b->data.push_back(Point(-5.0, 15.0));
+		cluster1b->data.push_back(Point(-6.0, 14.0));
+		cluster1b->data.push_back(Point(-8.0, 16.0));
+
+		// Cluster 2, n = 8
+		// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
+		Node *cluster2a = new Node();
+		cluster2a->data.push_back(Point(-8.0, 10.0));
+		cluster2a->data.push_back(Point(-9.0, 10.0));
+		cluster2a->data.push_back(Point(-8.0, 9.0));
+		cluster2a->data.push_back(Point(-9.0, 9.0));
+		cluster2a->data.push_back(Point(-8.0, 8.0));
+
+		Node *cluster2b = new Node();
+		cluster2b->data.push_back(Point(-14.0, 8.0));
+		cluster2b->data.push_back(Point(-10.0, 8.0));
+		cluster2b->data.push_back(Point(-9.0, 7.0));
+
+		// Cluster 3, n = 9
+		// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
+		Node *cluster3a = new Node();
+		cluster3a->data.push_back(Point(-3.0, 4.0));
+		cluster3a->data.push_back(Point(-3.0, 0.0));
+		cluster3a->data.push_back(Point(-2.0, 4.0));
+		cluster3a->data.push_back(Point(-1.0, 3.0));
+		cluster3a->data.push_back(Point(-1.0, 1.0));
+
+		Node *cluster3b = new Node();
+		cluster3b->data.push_back(Point(-5.0, 4.0));
+		cluster3b->data.push_back(Point(-4.0, 3.0));
+		cluster3b->data.push_back(Point(-4.0, 1.0));
+		cluster3b->data.push_back(Point(-6.0, 2.0));
+
+		// High level nodes
+		Node *left = new Node();
+		cluster1a->parent = left;
+		left->boundingBoxes.push_back(cluster1a->boundingBox());
+		left->children.push_back(cluster1a);
+		cluster1b->parent = left;
+		left->boundingBoxes.push_back(cluster1b->boundingBox());
+		left->children.push_back(cluster1b);
+		cluster2a->parent = left;
+		left->boundingBoxes.push_back(cluster2a->boundingBox());
+		left->children.push_back(cluster2a);
+		cluster2b->parent = left;
+		left->boundingBoxes.push_back(cluster2b->boundingBox());
+		left->children.push_back(cluster2b);
+
+		Node *right = new Node();
+		cluster3a->parent = right;
+		right->boundingBoxes.push_back(cluster3a->boundingBox());
+		right->children.push_back(cluster3a);
+		cluster3b->parent = right;
+		right->boundingBoxes.push_back(cluster3b->boundingBox());
+		right->children.push_back(cluster3b);
+
+		Node *root = new Node();
+		left->parent = root;
+		root->boundingBoxes.push_back(left->boundingBox());
+		root->children.push_back(left);
+		right->parent = root;
+		root->boundingBoxes.push_back(right->boundingBox());
+		root->children.push_back(right);
+
+		// Test search
+
+		// Test set one
+		Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+		std::vector<Point> v1 = root->search(sr1);
+		assert(v1.size() == 3);
+		assert(v1[0] == Point(-8.0, 10.0));
+		assert(v1[1] == Point(-9.0, 10.0));
+		assert(v1[2] == Point(-5.0, 12.0));
+
+		// Test set two
+		Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+		std::vector<Point> v2 = root->search(sr2);
+		assert(v2.size() == 2);
+		assert(v2[0] == Point(-5.0, 4.0));
+		assert(v2[1] == Point(-8.0, 8.0));
+
+		// Test set three
+		Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+		std::vector<Point> v3 = root->search(sr3);
+		assert(v3.size() == 12);
+		assert(v3[0] == Point(-5.0, 4.0));
+		assert(v3[1] == Point(-4.0, 3.0));
+		assert(v3[2] == Point(-4.0, 1.0));
+		assert(v3[3] == Point(-6.0, 2.0));
+		assert(v3[4] == Point(-8.0, 10.0));
+		assert(v3[5] == Point(-8.0, 9.0));
+		assert(v3[6] == Point(-8.0, 8.0));
+		assert(v3[7] == Point(-5.0, 12.0));
+		assert(v3[8] == Point(-5.0, 15.0));
+		assert(v3[9] == Point(-6.0, 14.0));
+		assert(v3[10] == Point(-8.0, 16.0));
+		assert(v3[11] == Point(-4.0, 13.0));
+
+		// Test set four
+		Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+		std::vector<Point> v4 = root->search(sr4);
+		assert(v4.size() == 0);
+
+		// Test set five
+		Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+		std::vector<Point> v5 = root->search(sr5);
+		assert(v5.size() == 0);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+	}
+
+	void testInsert()
+	{
+		// Setup the tree
+		Node *root = new Node();
+
+		// Cluster 2, n = 8
+		// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
+		root = root->insert(Point(-14.0, 8.0));
+		root = root->insert(Point(-10.0, 8.0));
+		root = root->insert(Point(-9.0, 10.0));
+		root = root->insert(Point(-9.0, 9.0));
+		root = root->insert(Point(-8.0, 10.0));
+		root = root->insert(Point(-9.0, 7.0));
+		root = root->insert(Point(-8.0, 8.0));
+		root = root->insert(Point(-8.0, 9.0));
+
+		// Test set one
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(root->children[0]->parent == root);
+		assert(root->children[0]->boundingBoxes.size() == 0);
+		assert(root->children[0]->children.size() == 0);
+		assert(root->children[0]->data.size() == 3);
+		assert(root->children[1]->parent == root);
+		assert(root->children[1]->boundingBoxes.size() == 0);
+		assert(root->children[1]->children.size() == 0);
+		assert(root->children[1]->data.size() == 5);
+
+		// Cluster 1, n = 7
+		// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12)
+		root = root->insert(Point(-8.0, 16.0));
+		root = root->insert(Point(-3.0, 16.0));
+		root = root->insert(Point(-5.0, 15.0));
+		root = root->insert(Point(-3.0, 15.0));
+		root = root->insert(Point(-6.0, 14.0));
+		root = root->insert(Point(-4.0, 13.0));
+		root = root->insert(Point(-5.0, 12.0));
+
+		// Test set two
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(root->children[0]->parent == root);
+		assert(root->children[0]->boundingBoxes.size() == 3);
+		assert(root->children[0]->children.size() == 3);
+		assert(root->children[0]->data.size() == 0);
+		assert(root->children[1]->parent == root);
+		assert(root->children[1]->boundingBoxes.size() == 3);
+		assert(root->children[1]->children.size() == 3);
+		assert(root->children[1]->data.size() == 0);
+
+		// Cluster 4, n = 7
+		// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
+		root = root->insert(Point(-10.0, -2.0));
+		root = root->insert(Point(-12.0, -3.0));
+		root = root->insert(Point(-11.0, -3.0));
+		root = root->insert(Point(-10.0, -3.0));
+		root = root->insert(Point(-10.0, -3.0));
+		root = root->insert(Point(-9.0, -3.0));
+		root = root->insert(Point(-7.0, -3.0));
+		root = root->insert(Point(-10.0, -5.0));
+
+		// Test set three
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(root->children[0]->parent == root);
+		assert(root->children[0]->boundingBoxes.size() == 5);
+		assert(root->children[0]->children.size() == 5);
+		assert(root->children[0]->data.size() == 0);
+		assert(root->children[1]->parent == root);
+		assert(root->children[1]->boundingBoxes.size() == 3);
+		assert(root->children[1]->children.size() == 3);
+		assert(root->children[1]->data.size() == 0);
+
+		// Cluster 3, n = 9
+		// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
+		root = root->insert(Point(-5.0, 4.0));
+		root = root->insert(Point(-3.0, 4.0));
+		root = root->insert(Point(-2.0, 4.0));
+		root = root->insert(Point(-4.0, 3.0));
+		root = root->insert(Point(-1.0, 3.0));
+		root = root->insert(Point(-6.0, 2.0));
+		root = root->insert(Point(-4.0, 1.0));
+		root = root->insert(Point(-3.0, 0.0));
+		root = root->insert(Point(-1.0, 1.0));
+
+		// Test set four
+		assert(root->boundingBoxes.size() == 3);
+		assert(root->children.size() == 3);
+		assert(root->children[0]->parent == root);
+		assert(root->children[0]->boundingBoxes.size() == 5);
+		assert(root->children[0]->children.size() == 5);
+		assert(root->children[0]->data.size() == 0);
+		assert(root->children[1]->parent == root);
+		assert(root->children[1]->boundingBoxes.size() == 3);
+		assert(root->children[1]->children.size() == 3);
+		assert(root->children[1]->data.size() == 0);
+		assert(root->children[2]->parent == root);
+		assert(root->children[2]->boundingBoxes.size() == 3);
+		assert(root->children[2]->children.size() == 3);
+		assert(root->children[2]->data.size() == 0);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+	}
+
+	void testRemove()
+	{
+		// Cluster 5, n = 16
+		// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
+		// (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
+		// (-14, -15), (-13, -15), (-12, -15)
+		// Organized into four nodes
+		Node *cluster5a = new Node();
+		cluster5a->data.push_back(Point(-14.5, -13.0));
+		cluster5a->data.push_back(Point(-14.0, -13.0));
+		cluster5a->data.push_back(Point(-13.5, -13.5));
+		cluster5a->data.push_back(Point(-15.0, -14.0));
+
+		Node *cluster5b = new Node();
+		cluster5b->data.push_back(Point(-14.0, -14.0));
+		cluster5b->data.push_back(Point(-13.0, -14.0));
+		cluster5b->data.push_back(Point(-12.0, -14.0));
+		cluster5b->data.push_back(Point(-13.5, -16.0));
+
+		Node *cluster5c = new Node();
+		cluster5c->data.push_back(Point(-15.0, -14.5));
+		cluster5c->data.push_back(Point(-14.0, -14.5));
+		cluster5c->data.push_back(Point(-12.5, -14.5));
+		cluster5c->data.push_back(Point(-13.5, -15.5));
+
+		Node *cluster5d = new Node();
+		cluster5d->data.push_back(Point(-15.0, -15.0));
+		cluster5d->data.push_back(Point(-14.0, -15.0));
+		cluster5d->data.push_back(Point(-13.0, -15.0));
+		cluster5d->data.push_back(Point(-12.0, -15.0));
+
+		Node *cluster5 = new Node();
+		cluster5a->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5a->boundingBox());
+		cluster5->children.push_back(cluster5a);
+		cluster5b->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5b->boundingBox());
+		cluster5->children.push_back(cluster5b);
+		cluster5c->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5c->boundingBox());
+		cluster5->children.push_back(cluster5c);
+		cluster5c->parent = cluster5;
+		cluster5->boundingBoxes.push_back(cluster5d->boundingBox());
+		cluster5->children.push_back(cluster5d);
+
+		// Cluster 3, n = 9
+		// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
+		Node *cluster3a = new Node();
+		cluster3a->data.push_back(Point(-5.0, 4.0));
+		cluster3a->data.push_back(Point(-3.0, 4.0));
+		cluster3a->data.push_back(Point(-2.0, 4.0));
+
+		Node *cluster3b = new Node();
+		cluster3b->data.push_back(Point(-4.0, 1.0));
+		cluster3b->data.push_back(Point(-3.0, 0.0));
+		cluster3b->data.push_back(Point(-1.0, 1.0));
+
+		Node *cluster3c = new Node();
+		cluster3c->data.push_back(Point(-4.0, 3.0));
+		cluster3c->data.push_back(Point(-1.0, 3.0));
+		cluster3c->data.push_back(Point(-6.0, 2.0));
+
+		Node *cluster3 = new Node();
+		cluster3a->parent = cluster3;
+		cluster3->boundingBoxes.push_back(cluster3a->boundingBox());
+		cluster3->children.push_back(cluster3a);
+		cluster3b->parent = cluster3;
+		cluster3->boundingBoxes.push_back(cluster3b->boundingBox());
+		cluster3->children.push_back(cluster3b);
+		cluster3c->parent = cluster3;
+		cluster3->boundingBoxes.push_back(cluster3c->boundingBox());
+		cluster3->children.push_back(cluster3c);
+
+		// Cluster 1, n = 7
+		// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12), + (-4.5, 15.5), (-2.0, 13.5)
+		Node *cluster1a = new Node();
+		cluster1a->data.push_back(Point(-3.0, 16.0));
+		cluster1a->data.push_back(Point(-3.0, 15.0));
+		cluster1a->data.push_back(Point(-4.0, 13.0));
+
+		Node *cluster1b = new Node();
+		cluster1b->data.push_back(Point(-5.0, 12.0));
+		cluster1b->data.push_back(Point(-5.0, 15.0));
+		cluster1b->data.push_back(Point(-6.0, 14.0));
+
+		Node *cluster1c = new Node();
+		cluster1c->data.push_back(Point(-8.0, 16.0));
+		cluster1c->data.push_back(Point(-4.5, 15.5));
+		cluster1c->data.push_back(Point(-2.0, 13.5));
+
+		Node *cluster1 = new Node();
+		cluster1a->parent = cluster1;
+		cluster1->boundingBoxes.push_back(cluster1a->boundingBox());
+		cluster1->children.push_back(cluster1a);
+		cluster1b->parent = cluster1;
+		cluster1->boundingBoxes.push_back(cluster1b->boundingBox());
+		cluster1->children.push_back(cluster1b);
+		cluster1c->parent = cluster1;
+		cluster1->boundingBoxes.push_back(cluster1c->boundingBox());
+		cluster1->children.push_back(cluster1c);
+
+		// Root
+		Node *root = new Node();
+		cluster3->parent = root;
+		root->boundingBoxes.push_back(cluster3->boundingBox());
+		root->children.push_back(cluster3);
+		cluster5->parent = root;
+		root->boundingBoxes.push_back(cluster5->boundingBox());
+		root->children.push_back(cluster5);
+		cluster1->parent = root;
+		root->boundingBoxes.push_back(cluster1->boundingBox());
+		root->children.push_back(cluster1);
+
+		assert(root->boundingBoxes.size() == 3);
+
+		// Remove an element, no other changes in tree
+		root->remove(Point(-12.0, -15.0));
+
+		// Test the removal
+		assert(cluster5d->data.size() == 3);
+		assert(cluster5d->data[0] == Point(-15.0, -15.0));
+		assert(cluster5d->data[1] == Point(-14.0, -15.0));
+		assert(cluster5d->data[2] == Point(-13.0, -15.0));
+		assert(cluster5->parent == root);
+		assert(cluster5->boundingBoxes.size() == 4);
+		assert(cluster5->children.size() == 4);
+		assert(root->parent == nullptr);
+		assert(root->boundingBoxes.size() == 3);
+		assert(root->children.size() == 3);
+
+		// Remove an element, parent is altered
+		root->remove(Point(-6.0, 2.0));
+
+		// Test the removal
+		assert(root->boundingBoxes.size() == 2);
+		assert(root->children.size() == 2);
+		assert(root->children[0]->parent == root);
+		assert(root->children[0]->boundingBoxes.size() == 4);
+		assert(root->children[0]->children.size() == 4);
+		assert(root->children[1]->parent == root);
+		assert(root->children[1]->boundingBoxes.size() == 5);
+		assert(root->children[1]->children.size() == 5);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+
+		// Remove an element, tree shrinks
+
+		// Cluster 6, n = 7
+		// (-2, -6), (2, -6), (-1, -7), (1, -7), (3, -8), (-2, -9), (-3, -11)
+		Node *cluster6a = new Node();
+		cluster6a->data.push_back(Point(-2.0, -6.0));
+		cluster6a->data.push_back(Point(2.0, -6.0));
+		cluster6a->data.push_back(Point(-1.0, -7.0));
+
+		Node *cluster6b = new Node();
+		cluster6b->data.push_back(Point(1.0, -7.0));
+		cluster6b->data.push_back(Point(3.0, -8.0));
+		cluster6b->data.push_back(Point(-2.0, -9.0));
+		// (-3.0, -11.0) held out so we get a shrinking root
+
+		// Root
+		root = new Node();
+		cluster6a->parent = root;
+		root->boundingBoxes.push_back(cluster6a->boundingBox());
+		root->children.push_back(cluster6a);
+		cluster6b->parent = root;
+		root->boundingBoxes.push_back(cluster6b->boundingBox());
+		root->children.push_back(cluster6b);
+
+		// Remove an element, the tree should shrink and cluster6a should be the new root
+		root = root->remove(Point(3.0, -8.0));
+
+		// Test the removal
+		assert(root == cluster6a);
+		assert(root->boundingBoxes.size() == 0);
+		assert(root->children.size() == 0);
+		assert(root->data.size() == 5);
+
+		// Cleanup
+		root->deleteSubtrees();
+		delete root;
+	}
 }

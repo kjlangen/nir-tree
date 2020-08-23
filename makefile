@@ -47,8 +47,12 @@ randomPoints.o:
 splitPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/splitPoints.cpp
 
+# Clean all together
+clean:
+	rm -rf bin/* *.o *.d
+
 # Build all together
-all: ${OBJECTS}
+all: clean ${OBJECTS}
 	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I src/include -lspatialindex -lctemplate_nothreads
 
 # Alter flags to include profiling
@@ -57,9 +61,14 @@ profileflags:
 
 # Build all together with profiling
 # Note: Problems will occur if files were previously compiled without -pg and were not altered since
-profile: profileflags ${OBJECTS}
+profile: clean profileflags ${OBJECTS}
 	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I src/include -lspatialindex -lctemplate_nothreads
 
-# Clean all together
-clean:
-	rm -rf bin/* *.o *.d
+# Alter flags to include debugging
+debugflags:
+	$(eval FLAGS += -DDEBUG)
+
+#Build all together with debugging
+# Note: Problems will occur if files were previously compiled without -pg and were not altered since
+debug: clean debugflags ${OBJECTS}
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/debug -I src/include -lspatialindex -lctemplate_nothreads
