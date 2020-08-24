@@ -127,14 +127,14 @@ int main(int argc, char *argv[])
 		switch (option) {
 			case 'p': // 'p' for R+ tree
 			{
-				rplustree::Tree rPlusTree(750, 1500);
-				randomPoints(rPlusTree, 10000, 1000);
+				rplustree::Tree rpt(750, 1500);
+				randomPoints(rpt, 10000, 1000);
 				break;
 			}
 			case 's': // 's' for R* tree
 			{
-				RTree rTree(750, 1500);
-				randomPoints(rTree, 10000, 1000);
+				rtree::RTree rt(750, 1500);
+				randomPoints(rt, 10000, 1000);
 				break;
 			}
 			default:

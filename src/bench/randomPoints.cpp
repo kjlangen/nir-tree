@@ -64,7 +64,6 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
 		std::cout << "inserted." << delta.count() << " s" << std::endl;
-		tree->root->validate(nullptr, 0);
 	}
 	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
 
@@ -125,7 +124,6 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	{
 		// Delete
 		std::cout << "Point[" << i << "] ";
-		// tree->print();
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
 		spatialIndex.remove(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
@@ -133,8 +131,6 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 		totalTimeDeletes += delta.count();
 		totalDeletes += 1;
 		std::cout << "deleted." << delta.count() << " s" << std::endl;
-		// tree->print();
-		tree->root->validate(nullptr, 0);
 	}
 	std::cout << "Finished deletion of " << benchmarkSize << " points." << std::endl;
 
