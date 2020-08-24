@@ -132,39 +132,73 @@ int main(int argc, char *argv[])
 #ifdef UNIT_TESTING
 	return session.run(argc, argv);
 #else
-	// process command line options
+	// Process command line options
 	int option, a = 750, b = 1500, s = 10000, l = 1000;
 	TreeType type = NONE;
 	while ((option = getopt(argc, argv, "t:a:b:s:l:")) != -1)
 	{
-		// print test parameters
-		parameters(type, a, b, s, l);
-
-		// run benchmarking
-		switch (type) {
-			case R_PLUS_TREE:
+		switch (option)
+		{
+			case 't': // Tree type
 			{
-				rplustree::Tree rPlusTree(a, b);
-				randomPoints(rPlusTree, s, l);
+				type = (TreeType)atoi(optarg);
 				break;
 			}
-			case R_STAR_TREE:
+			case 'a': // Minimum branch factor
 			{
-				rtree::RTree rTree(a, b);
-				randomPoints(rTree, s, l);
+				a = atoi(optarg);
 				break;
 			}
-			case NIR_TREE:
+			case 'b': // Maximum branch factor
 			{
-				nirtree::NIRTree nirTree(a, b);
-				randomPoints(nirTree, s, l);
+				b = atoi(optarg);
+				break;	
+			}
+			case 's': // Benchmark size
+			{
+				s = atoi(optarg);
+				break;
+			}
+			case 'l': // Log frequency
+			{
+				l = atoi(optarg);
 				break;
 			}
 			default:
 			{
-				std::cout << "Tree not selected. Exiting." << std::endl;
-				return 1;
+				std::cout << "Bad option. Exiting." << std::endl;
+				return;
 			}
+		}
+	}
+
+	// Print test parameters
+	parameters(type, a, b, s, l);
+
+	// Run benchmarking
+	switch (type) {
+		case R_PLUS_TREE:
+		{
+			rplustree::Tree rpt(a, b);
+			randomPoints(rpt, s, l);
+			break;
+		}
+		case R_STAR_TREE:
+		{
+			rtree::RTree rt(a, b);
+			randomPoints(rt, s, l);
+			break;
+		}
+		case NIR_TREE:
+		{
+			nirtree::NIRTree nt(a, b);
+			randomPoints(nt, s, l);
+			break;
+		}
+		default:
+		{
+			std::cout << "Tree not selected. Exiting." << std::endl;
+			return;
 		}
 	}
 #endif
