@@ -1319,7 +1319,7 @@ namespace nirtree
 		DPRINT1("CHKPT1");
 		if (leaf == nullptr)
 		{
-			this->printTree();
+			DEXEC(this->printTree());
 			DPRINT1("Leaf was nullptr");
 			return nullptr;
 		}
