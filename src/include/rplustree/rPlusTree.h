@@ -15,81 +15,55 @@ namespace rplustree
 	typedef std::pair<Node *, Node *> Partition;
 	typedef std::pair<float, float> Cost;
 
-	class Tree : public Index
+	class RPlusTree: public Index
 	{
 		unsigned minBranchFactor;
 		unsigned maxBranchFactor;
 		Node *root = nullptr;
 
-	public:
+		public:
+			enum Orientation
+			{
+				ALONG_X_AXIS, ALONG_Y_AXIS
+			};
 
-		enum Orientation
-		{
-			ALONG_X_AXIS, ALONG_Y_AXIS
-		};
+			// Constructors and Destructors
+			RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+			~RPlusTree();
 
-		/*** constructor and destructor ***/
+			// Helper functions
+			bool isEmpty();
+			Node *getRoot();
+			unsigned height();
+			unsigned numDataElements();
+			bool exists(Point requestedPoint);
+			void adjustTree(Node *n, Node *nn);
+			Node *chooseLeaf(Node *node, Point &givenPoint);
+			Node *chooseLeaf(Node *node, Rectangle &givenRectangle);
+			Node *findLeaf(Point requestedPoint);
 
-		Tree(unsigned minBranchFactor, unsigned maxBranchFactor);
+			// Insert helper functions
+			static Cost sweepData(std::vector<Point> &points, Orientation orientation);
+			static Cost sweepNodes(std::vector<Node *> &nodeList, Orientation orientation);
+			Partition partition(Node *n, float splitLine, Orientation splitAxis);
+			Partition splitNode(Node *n);
 
-		~Tree();
+			// Delete helper functions
+			void reinsert(Node *n, unsigned level, std::vector<Point> &dataClone);
+			void condenseTree(Node *n, std::vector<Point> &dataClone);
 
-		/*** general functions ***/
+			// Datastructure interface
+			std::vector<Point> exhaustiveSearch(Point requestedPoint) override;
+			std::vector<Point> search(Point requestedPoint) override;
+			std::vector<Point> search(Rectangle requestedRectangle) override;
+			void insert(Point givenPoint) override;
+			void remove(Point givenPoint) override;
 
-		bool isEmpty() const;
-
-		Node *getRoot() const;
-
-		int height() const;
-
-		int numDataElements() const;
-
-		bool exists(Point requestedPoint) const;
-
-		std::vector<Point> search(Point requestedPoint) const override;
-
-		std::vector<Point> search(Rectangle requestedRectangle) const override;
-
-		unsigned checksum() override;
-
-		/*** helper functions ***/
-
-		void adjustTree(Node *n, Node *nn);
-
-		Node *chooseLeaf(Node *node, Point &givenPoint) const;
-
-		Node *chooseLeaf(Node *node, Rectangle &givenRectangle) const;
-
-		Node *findLeaf(Point requestedPoint) const;
-
-		/*** insert functions ***/
-
-		void insert(Point givenPoint) override;
-
-		static Cost sweepData(std::vector<Point> &points, Orientation orientation);
-
-		static Cost sweepNodes(std::vector<Node *> &nodeList, Orientation orientation);
-
-		Partition partition(Node *n, float splitLine, Orientation splitAxis);
-
-		Partition splitNode(Node *n);
-
-		/*** remove functions ***/
-
-		void reinsert(Node *n, unsigned level, std::vector<Point> &dataClone);
-
-		void condenseTree(Node *n, std::vector<Point> &dataClone);
-
-		void remove(Point givenPoint) override;
-
-		/*** correctness checks ***/
-
-		void checkBoundingBoxes();
-
-		/*** tree traversal ***/
-
-		friend std::ostream &operator<<(std::ostream &os, const Tree &tree);
+			// Miscellaneous
+			void checkBoundingBoxes();
+			unsigned checksum() override;
+			friend std::ostream &operator<<(std::ostream &os, RPlusTree &tree);
 	};
 }
 
-#endif // __RPLUSTREE__
+#endif

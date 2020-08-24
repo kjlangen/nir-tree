@@ -23,6 +23,8 @@ namespace nirtree
 	class Node
 	{
 		private:
+			typedef std::pair<unsigned, unsigned> edge;
+
 			struct ReinsertionEntry
 			{
 				IsotheticPolygon boundingBox;

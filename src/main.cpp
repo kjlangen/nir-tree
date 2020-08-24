@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 	switch (type) {
 		case R_PLUS_TREE:
 		{
-			rplustree::Tree rpt(a, b);
+			rplustree::RPlusTree rpt(a, b);
 			randomPoints(rpt, s, l);
 			break;
 		}
