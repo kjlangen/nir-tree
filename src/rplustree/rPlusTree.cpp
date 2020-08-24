@@ -228,7 +228,7 @@ Node *Tree::chooseLeaf(Node *node, Point &givenPoint) const
 		newBoundingBox.expand(givenPoint);
 		for (auto other : node->children)
 		{
-			if (child != other && newBoundingBox.computeOverlapArea(other->boundingBox) != 0.0f)
+			if (child != other && newBoundingBox.computeIntersectionArea(other->boundingBox) != 0.0f)
 			{
 				noOverlap = false;
 				break;
@@ -279,7 +279,7 @@ Node *Tree::chooseLeaf(Node *node, Rectangle &givenRectangle) const
 		newBoundingBox.expand(givenRectangle);
 		for (auto other : node->children)
 		{
-			if (child != other && newBoundingBox.computeOverlapArea(other->boundingBox) != 0.0f)
+			if (child != other && newBoundingBox.computeIntersectionArea(other->boundingBox) != 0.0f)
 			{
 				noOverlap = false;
 				break;
@@ -486,7 +486,7 @@ Partition Tree::partition(Node *n, float splitLine, Orientation splitAxis)
 		/*** intermediate node case ***/
 		std::vector<Node *> childrenClone = n->children;  // copy
 		n->children.clear();  // clear old entries
-		int vectorSize = childrenClone.size();
+		unsigned vectorSize = childrenClone.size();
 		for (unsigned i = 0; i < vectorSize; i++)
 		{
 			Node *child = childrenClone.at(i);
@@ -584,7 +584,7 @@ Partition Tree::splitNode(Node *n)
 
 /*** remove functions ***/
 
-void Tree::reinsert(Node *n, int level, std::vector<Point> &dataClone)
+void Tree::reinsert(Node *n, unsigned level, std::vector<Point> &dataClone)
 {
 	// Special single element case / empty bounding box case
 	if (n->boundingBox.lowerLeft == n->boundingBox.upperRight)
@@ -720,7 +720,7 @@ void Tree::checkBoundingBoxes()
 			{
 				if (c1 < c2)
 				{
-					assert(c1->boundingBox.computeOverlapArea(c2->boundingBox) == 0.0f);
+					assert(c1->boundingBox.computeIntersectionArea(c2->boundingBox) == 0.0f);
 				}
 			}
 		}

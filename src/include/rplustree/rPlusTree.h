@@ -76,7 +76,7 @@ namespace rplustree
 
 		/*** remove functions ***/
 
-		void reinsert(Node *n, int level, std::vector<Point> &dataClone);
+		void reinsert(Node *n, unsigned level, std::vector<Point> &dataClone);
 
 		void condenseTree(Node *n, std::vector<Point> &dataClone);
 

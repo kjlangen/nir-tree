@@ -1,55 +1,58 @@
 #include <rtree/rtree.h>
 
-RTree::RTree(unsigned minBranchFactor, unsigned maxBranchFactor)
+namespace rtree
 {
-	root = new Node(minBranchFactor, maxBranchFactor);
-}
+	RTree::RTree(unsigned minBranchFactor, unsigned maxBranchFactor)
+	{
+		root = new Node(minBranchFactor, maxBranchFactor);
+	}
 
-RTree::RTree(Node *root)
-{
-	this->root = root;
-}
+	RTree::RTree(Node *root)
+	{
+		this->root = root;
+	}
 
-RTree::~RTree()
-{
-	root->deleteSubtrees();
-	delete root;
-}
+	RTree::~RTree()
+	{
+		root->deleteSubtrees();
+		delete root;
+	}
 
-std::vector<Point> RTree::exhaustiveSearch(Point requestedPoint)
-{
-	std::vector<Point> v;
-	root->exhaustiveSearch(requestedPoint, v);
+	std::vector<Point> RTree::exhaustiveSearch(Point requestedPoint)
+	{
+		std::vector<Point> v;
+		root->exhaustiveSearch(requestedPoint, v);
 
-	return v;
-}
+		return v;
+	}
 
-std::vector<Point> RTree::search(Point requestedPoint) const
-{
-	return root->search(requestedPoint);
-}
+	std::vector<Point> RTree::search(Point requestedPoint) const
+	{
+		return root->search(requestedPoint);
+	}
 
-std::vector<Point> RTree::search(Rectangle requestedRectangle) const
-{
-	return root->search(requestedRectangle);
-}
+	std::vector<Point> RTree::search(Rectangle requestedRectangle) const
+	{
+		return root->search(requestedRectangle);
+	}
 
-void RTree::insert(Point givenPoint)
-{
-	root = root->insert(givenPoint);
-}
+	void RTree::insert(Point givenPoint)
+	{
+		root = root->insert(givenPoint);
+	}
 
-void RTree::remove(Point givenPoint)
-{
-	root = root->remove(givenPoint);
-}
+	void RTree::remove(Point givenPoint)
+	{
+		root = root->remove(givenPoint);
+	}
 
-unsigned RTree::checksum()
-{
-	return root->checksum();
-}
+	unsigned RTree::checksum()
+	{
+		return root->checksum();
+	}
 
-void RTree::print()
-{
-	root->printTree();
+	void RTree::print()
+	{
+		root->printTree();
+	}
 }

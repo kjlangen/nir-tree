@@ -1,7 +1,7 @@
 SXX = -std=c++11 	# Standard
-FLAGS = -Wall	# Flags
+FLAGS = -Wall -O1	# Flags
 DIR = src/include 	# Include directory
-OBJECTS = geometry.o btree.o node.o rtree.o randomSquares.o randomPoints.o rPlusTree.o rPlusTreeNode.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o randomSquares.o randomPoints.o randomDisjointSquares.o splitPoints.o pencilPrinter.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
 
 .PHONY : clean tests
@@ -14,6 +14,9 @@ btree.o:
 geometry.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/geometry.cpp
 
+graph.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/graph.cpp
+
 # Build node
 node.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/node.cpp
@@ -22,19 +25,40 @@ node.o:
 rtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/rtree.cpp
 
+# Build rplustree node
+rPlusTreeNode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTreeNode.cpp
+
+# Build rplustree
+rPlusTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
+
+# Build pencil printer
+pencilPrinter.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/pencilPrinter.cpp
+
+# Build nirtree node
+nirnode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/node.cpp -o nirnode.o
+
+# Build nirtree
+nirtree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/nirtree.cpp
+
 # Build benchmarks
 randomSquares.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomSquares.cpp
 
+randomDisjointSquares.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomDisjointSquares.cpp
+
 randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
 
-rPlusTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
+splitPoints.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/splitPoints.cpp
 
-rPlusTreeNode.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTreeNode.cpp
-
+# Build tests
 testGeometry.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testGeometry.cpp
 
@@ -44,15 +68,19 @@ testRStarTree.o:
 testRPlusTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRPlusTree.cpp
 
-# Build all together
-all: ${OBJECTS}
-	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex
-
-# unit tests
+# Unit tests
 tests: ${OBJECTS} ${TESTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -DUNIT_TESTING
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -lctemplate_nothreads -DUNIT_TESTING
+
+# Clean all together
+clean:
+	rm -rf bin/* *.o *.d
+
+# Build all together
+all: clean ${OBJECTS}
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads
 
 # Alter flags to include profiling
 profileflags:
@@ -60,10 +88,16 @@ profileflags:
 
 # Build all together with profiling
 # Note: Problems will occur if files were previously compiled without -pg and were not altered since
-profile: profileflags ${OBJECTS}
+profile: clean profileflags ${OBJECTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I ${DIR} -lspatialindex
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I ${DIR} -lspatialindex -lctemplate_nothreads
 
-# Clean all together
-clean:
-	rm -rf bin *.o *.d
+# Alter flags to include debugging
+debugflags:
+	$(eval FLAGS += -DDEBUG)
+
+#Build all together with debugging
+# Note: Problems will occur if files were previously compiled without -pg and were not altered since
+debug: clean debugflags ${OBJECTS}
+	mkdir -p bin
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/debug -I ${DIR} -lspatialindex -lctemplate_nothreads

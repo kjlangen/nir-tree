@@ -1,9 +1,16 @@
 #include <iostream>
 #include <spatialindex/SpatialIndex.h>
-
 #include <rtree/rtree.h>
-#include <bench/randomPoints.h>
+#include <nirtree/nirtree.h>
 #include <rplustree/rPlusTree.h>
+#include <nirtree/pencilPrinter.h>
+#include <util/geometry.h>
+#include <bench/randomSquares.h>
+#include <bench/randomDisjointSquares.h>
+#include <bench/randomPoints.h>
+#include <bench/splitPoints.h>
+#define CATCH_CONFIG_RUNNER
+#include <catch2/catch.hpp>
 
 void testLibSpatialIndex()
 {
@@ -108,9 +115,6 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
-#define CATCH_CONFIG_RUNNER
-#include <catch2/catch.hpp>
-
 int main(int argc, char *argv[])
 {
 	Catch::Session session;
@@ -123,14 +127,14 @@ int main(int argc, char *argv[])
 		switch (option) {
 			case 'p': // 'p' for R+ tree
 			{
-				rplustree::Tree rPlusTree(750, 1500);
-				randomPoints(rPlusTree, 10000, 1000);
+				rplustree::Tree rpt(750, 1500);
+				randomPoints(rpt, 10000, 1000);
 				break;
 			}
 			case 's': // 's' for R* tree
 			{
-				RTree rTree(750, 1500);
-				randomPoints(rTree, 10000, 1000);
+				rtree::RTree rt(750, 1500);
+				randomPoints(rt, 10000, 1000);
 				break;
 			}
 			default:
@@ -140,6 +144,5 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	return 0;
 #endif
 }

@@ -4,7 +4,7 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 {
 	// Setup random generators
 	std::default_random_engine generator;
-	std::uniform_real_distribution<float> pointDist(0.0, 20000000.0);
+	std::uniform_real_distribution<float> pointDist(0.0, 200000.0);
 	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (20000000.0, 20000000.0)." << std::endl;
 
 	// Setup checksums
@@ -39,11 +39,12 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 
 	// Initialize search rectangles
 	Rectangle *searchRectangles = new Rectangle[16];
+	unsigned blockSize = benchmarkSize / 16;
 	std::cout << "Beginning initialization of 16 rectangles..." << std::endl;
 	for (unsigned i = 0; i < 16; ++i)
 	{
 		// Create the rectangle
-		searchRectangles[i] = Rectangle(i * 1250000, i * 1250000, i * 1250000 + 1250000, i * 1250000 + 1250000);
+		searchRectangles[i] = Rectangle(i * blockSize, i * blockSize, i * blockSize + blockSize, i * blockSize + blockSize);
 
 		// Print the search rectangle
 		std::cout << "searchRectangles[" << i << "] "; searchRectangles[i].print();
