@@ -115,33 +115,90 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
+enum TreeType { NONE = 0, R_PLUS_TREE, R_STAR_TREE, NIR_TREE };
+
+void parameters(TreeType type, int a, int b, int s, int l) {
+	std::string treeTypes[] = {"NONE", "R_PLUS_TREE", "R_STAR_TREE", "NIR_TREE"};
+	std::cout << "### TEST PARAMETERS ###" << std::endl;
+	std::cout << "  tree = " << treeTypes[type] << std::endl;
+	std::cout << "  a = " << a << "; b = " << b << std::endl;
+	std::cout << "  s = " << s << "; l = " << l << std::endl;
+	std::cout << "### ### ### ### ### ###" << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
 	Catch::Session session;
 #ifdef UNIT_TESTING
 	return session.run(argc, argv);
 #else
-	int option;
-	while ((option = getopt(argc, argv, "ps")) != -1)
+	// Process command line options
+	int option, a = 750, b = 1500, s = 10000, l = 1000;
+	TreeType type = NONE;
+	while ((option = getopt(argc, argv, "t:a:b:s:l:")) != -1)
 	{
-		switch (option) {
-			case 'p': // 'p' for R+ tree
+		switch (option)
+		{
+			case 't': // Tree type
 			{
-				rplustree::Tree rpt(750, 1500);
-				randomPoints(rpt, 10000, 1000);
+				type = (TreeType)atoi(optarg);
 				break;
 			}
-			case 's': // 's' for R* tree
+			case 'a': // Minimum branch factor
 			{
-				rtree::RTree rt(750, 1500);
-				randomPoints(rt, 10000, 1000);
+				a = atoi(optarg);
+				break;
+			}
+			case 'b': // Maximum branch factor
+			{
+				b = atoi(optarg);
+				break;	
+			}
+			case 's': // Benchmark size
+			{
+				s = atoi(optarg);
+				break;
+			}
+			case 'l': // Log frequency
+			{
+				l = atoi(optarg);
 				break;
 			}
 			default:
 			{
-				std::cout << "Options are: p (R+Tree) and s (R*Tree)" << std::endl;
+				std::cout << "Bad option. Exiting." << std::endl;
 				return 1;
 			}
+		}
+	}
+
+	// Print test parameters
+	parameters(type, a, b, s, l);
+
+	// Run benchmarking
+	switch (type) {
+		case R_PLUS_TREE:
+		{
+			rplustree::Tree rpt(a, b);
+			randomPoints(rpt, s, l);
+			break;
+		}
+		case R_STAR_TREE:
+		{
+			rtree::RTree rt(a, b);
+			randomPoints(rt, s, l);
+			break;
+		}
+		case NIR_TREE:
+		{
+			nirtree::NIRTree nt(a, b);
+			randomPoints(nt, s, l);
+			break;
+		}
+		default:
+		{
+			std::cout << "Tree not selected. Exiting." << std::endl;
+			return 1;
 		}
 	}
 #endif

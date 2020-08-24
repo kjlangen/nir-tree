@@ -1353,6 +1353,76 @@ namespace nirtree
 		}
 	}
 
+	Node * Node::remove2(Point givenPoint)
+	{
+		// stores metadata
+		std::vector<Node*> searchPath;
+		std::vector<unsigned> childIndexes;
+		std::vector<unsigned> parentIndexes;
+
+		// initial values
+		searchPath.push_back(this);
+		childIndexes.push_back(-1);
+		parentIndexes.push_back(-1);
+
+		// find and delete data entry, save path from root to leaf
+		bool found = false;
+		unsigned currentIndex = 0;
+		while (currentIndex < searchPath.size()) {
+			Node * currentNode = searchPath.at(currentIndex);
+			if (currentNode->children.empty()) {
+				auto it = std::find(currentNode->data.begin(), currentNode->data.end(), givenPoint);
+				if (it != currentNode->data.end()) {
+					currentNode->data.erase(
+						std::remove(currentNode->data.begin(), currentNode->data.end(), givenPoint),
+						currentNode->data.end()
+					);  // removes data
+					found = true;
+					break;
+				}
+			} else {
+				for (unsigned i = 0; i < currentNode->boundingBoxes.size(); i++) {
+					if (currentNode->boundingBoxes.at(i).containsPoint(givenPoint)) {
+						searchPath.push_back(currentNode->children.at(i));  // save node
+						childIndexes.push_back(i);                          // save index
+						parentIndexes.push_back(currentIndex);              // save index
+					}
+				}
+			}
+			currentIndex++;
+		}
+
+		// element not found, no change needed
+		if (!found) { return this; }
+
+		// tighten the nodes along path in reverse order (from leaf to root's children)
+		bool prevTighten = true;
+		while (currentIndex > 0) {
+			if (!prevTighten) { return this; }
+			prevTighten = searchPath.at(currentIndex)->tighten();
+			Node * parentNode = searchPath.at(parentIndexes.at(currentIndex));
+			unsigned childIndex = childIndexes.at(currentIndex);
+			// remove node from parent if bounding area is zero
+			if (parentNode->boundingBoxes.at(childIndex).area() == 0.0) {
+				parentNode->children.at(childIndex) = parentNode->children.back();
+				parentNode->children.pop_back();             // remove child
+				parentNode->boundingBoxes.at(childIndex) = parentNode->boundingBoxes.back();
+				parentNode->boundingBoxes.pop_back();        // remove bounding box
+				delete searchPath.at(currentIndex);          // free memory
+			}
+			currentIndex = parentIndexes.at(currentIndex);
+		}
+
+		// root removal case
+		if (this->children.size() == 1) {
+			Node *newRoot = this->children.at(0);
+			delete this;  // remove current root
+			newRoot->parent = nullptr;
+			return newRoot;
+		}
+		return this;
+	}
+
 	unsigned Node::checksum()
 	{
 		unsigned sum = 0;
@@ -1462,6 +1532,134 @@ namespace nirtree
 			}
 		}
 		std::cout << std::endl << indendtation << "}" << std::endl;
+	}
+
+	bool Node::tighten()
+	{
+		// method returns whether node was tightened (true) or not (false)
+		if (parent == nullptr) {
+			return false;  // special root case
+		}
+
+		// find current node's polygon representation
+		unsigned polygonIndex;
+		for (polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
+		auto boundingRectangles = parent->boundingBoxes[polygonIndex].basicRectangles;
+		unsigned numRectangle = boundingRectangles.size();
+
+		// get number of elements (points/rectangles) in each bounding rectangle
+		unsigned weights[numRectangle];
+		std::memset(weights, 0, numRectangle * sizeof(unsigned));
+		unsigned rootIndex = 0, maxValue = 0;  // store index with highest value
+		if (!data.empty()) {
+			// leaf node
+			for (unsigned i = 0; i < numRectangle; i++) {
+				auto parentRect = boundingRectangles.at(i);
+				for (auto point: data) {
+					if (parentRect.containsPoint(point)) {
+						weights[i]++;
+						if (weights[i] > maxValue) {
+							rootIndex = i;
+							maxValue = weights[i];
+						}
+					}
+				}
+			}
+
+		} else {
+			// intermediate node
+			for (unsigned i = 0; i < numRectangle; i++) {
+				auto parentRect = boundingRectangles.at(i);
+				for (const auto& polygon: boundingBoxes) {
+					for (auto childRect: polygon.basicRectangles) {
+						if (parentRect.computeIntersectionArea(childRect) != 0.0) {
+							weights[i]++;
+							if (weights[i] > maxValue) {
+								rootIndex = i;
+								maxValue = weights[i];
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// quick return if no rectangles are empty
+		unsigned existsEmpty = false;
+		for (unsigned i = 0; i < numRectangle; i++) {
+			if (weights[i] == 0) {
+				existsEmpty = true;
+			}
+		}
+		if (!existsEmpty) { return false; }
+
+		// create connectivity graph
+		typedef std::pair<unsigned, unsigned> edge;
+		std::vector<edge> edges;
+		for (unsigned i = 0; i < numRectangle; i++) {
+			for (unsigned j = 0; j < i; ++j) {
+				if (boundingRectangles[i].intersectsRectangle(boundingRectangles[j])) {
+					edges.emplace_back(std::make_pair(std::min(i, j), std::max(i, j)));
+				}
+			}
+		}
+		// sort edges for binary search later
+		std::sort(edges.begin(), edges.end());
+
+		// arrays to help with traversal
+		bool visited[numRectangle];
+		std::memset(visited, false, numRectangle * sizeof(bool));
+		bool removable[numRectangle];
+		std::memset(removable, false, numRectangle * sizeof(bool));
+		unsigned ancestor[numRectangle];  // allow for cascading removals
+		std::memset(ancestor, 0, numRectangle * sizeof(unsigned));
+
+		bool existsRemovable = false;
+		std::queue<unsigned> queue;
+		queue.push(rootIndex);
+		visited[rootIndex] = true;
+		ancestor[rootIndex] = rootIndex;
+		// run bfs to determine which bounding boxes can be removed
+		while (!queue.empty()) {
+			unsigned current = queue.front();
+			queue.pop();
+			// see which neighbours have not been visited yet
+			bool isLeaf = true;
+			for (unsigned i=0; i<numRectangle; i++) {
+				edge e = std::make_pair(std::min(i, current), std::max(i, current));
+				bool connection = std::binary_search(edges.begin(), edges.end(), e);
+				if (current != i && connection && !visited[i]) {
+					isLeaf = false;
+					queue.push(i);
+					visited[i] = true;
+					ancestor[i] = current;
+				}
+			}
+			// leaf situation
+			if (isLeaf) {
+				if (weights[current] == 0) {
+					removable[current] = true;
+					existsRemovable = true;
+					if (current != rootIndex)
+					{
+						queue.push(ancestor[current]);  // re-examine parent
+					}
+				}
+			}
+		}
+
+		// early return if no rectangles can be removed
+		if (!existsRemovable) { return false; }
+
+		// copy over rectangles that can't be deleted
+		std::vector<Rectangle> newBoundingRects;
+		for (unsigned i=0; i<numRectangle; i++) {
+			if (!removable[i]) {
+				newBoundingRects.push_back(boundingRectangles.at(i));
+			}
+		}
+		parent->boundingBoxes[polygonIndex].basicRectangles = newBoundingRects;  // overwrite previous
+		return true;
 	}
 
 	void testPlayground()

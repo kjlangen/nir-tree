@@ -77,12 +77,14 @@ namespace nirtree
 			std::vector<Point> search(Rectangle &requestedRectangle);
 			Node *insert(Point givenPoint);
 			Node *remove(Point givenPoint);
+			Node *remove2(Point givenPoint);
 
 			// Miscellaneous
 			unsigned checksum();
 			bool validate(Node *expectedParent, unsigned index);
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
+			bool tighten();
 	};
 
 	void testPlayground();
