@@ -8,28 +8,26 @@ namespace rplustree
 {
 	class Node
 	{
-	public:
-		Rectangle boundingBox;
-		std::vector<Node *> children;
-		std::vector<Point> data;
-		Node *parent = nullptr;
+		public:
+			Rectangle boundingBox;
+			std::vector<Node *> children;
+			std::vector<Point> data;
+			Node *parent = nullptr;
 
-		bool isRoot() const;
+			// Constructors and Destructors
+			Node();
+			Node(const Node &other);
 
-		bool isLeaf() const;
+			// Helper functions
+			bool isRoot();
+			bool isLeaf();
+			unsigned numChildren();
+			unsigned numDataEntries();
+			void tighten();
 
-		unsigned int numChildren() const;
-
-		unsigned int numDataEntries() const;
-
-		void tighten();
-
-		Node();
-
-		Node(const Node &other);
-
-		Node &operator=(const Node &other);
+			// Miscellaneous
+			Node &operator=(const Node &other);
 	};
 }
 
-#endif // __RPLUSTREE_NODE__
+#endif

@@ -1,72 +1,74 @@
 #include <rplustree/rPlusTreeNode.h>
 
-using namespace rplustree;
-
-bool Node::isRoot() const
+namespace rplustree
 {
-	return parent == nullptr;
-}
-
-bool Node::isLeaf() const
-{
-	return children.empty();
-}
-
-unsigned int Node::numChildren() const
-{
-	return children.size();
-}
-
-unsigned int Node::numDataEntries() const
-{
-	return data.size();
-}
-
-void Node::tighten()
-{
-	if (this->isLeaf())
+	Node::Node()
 	{
-		// reset bounding box
-		Point p = this->data.at(0);
-		this->boundingBox = Rectangle(p, p);
-		// iterate through data to set new bounding box
-		for (auto dt : this->data)
+		parent = nullptr;
+	}
+
+	Node::Node(const Node &other)
+	{
+		data = other.data;
+		children = other.children;
+		parent = other.parent;
+	}
+
+	bool Node::isRoot()
+	{
+		return parent == nullptr;
+	}
+
+	bool Node::isLeaf()
+	{
+		return children.empty();
+	}
+
+	unsigned Node::numChildren()
+	{
+		return children.size();
+	}
+
+	unsigned Node::numDataEntries()
+	{
+		return data.size();
+	}
+
+	void Node::tighten()
+	{
+		if (isLeaf())
 		{
-			this->boundingBox.expand(dt);
+			// Reset bounding box
+			boundingBox = Rectangle(data[0], data[0]);
+
+			// Iterate through data to set new bounding box
+			for (auto dataPoint : data)
+			{
+				boundingBox.expand(dataPoint);
+			}
+		}
+		else
+		{
+			// Reset bounding box
+			boundingBox = children[0]->boundingBox;
+			
+			// Iterate through children to set new bounding box
+			for (auto &child : children)
+			{
+				boundingBox.expand(child->boundingBox);
+			}
 		}
 	}
-	else
+
+	Node &Node::operator=(const Node &other)
 	{
-		// reset bounding box
-		Rectangle r = this->children.at(0)->boundingBox;
-		this->boundingBox = r;
-		// iterate through children to set new bounding box
-		for (auto &child : this->children)
+		if (this != &other)
 		{
-			this->boundingBox.expand(child->boundingBox);
+			data = other.data;
+			children = other.children;
+			parent = other.parent;
 		}
+
+		return *this;
 	}
-}
-
-Node::Node()
-{
-	this->parent = nullptr;
-}
-
-Node::Node(const Node &other)
-{
-	this->data = other.data;
-	this->children = other.children;
-	this->parent = other.parent;
-}
-
-Node &Node::operator=(const Node &other)
-{
-	if (this != &other)
-	{
-		this->data = other.data;
-		this->children = other.children;
-		this->parent = other.parent;
-	}
-	return *this;
 }
