@@ -1357,8 +1357,8 @@ namespace nirtree
 	{
 		// stores metadata
 		std::vector<Node*> searchPath;
-		std::vector<int> childIndexes;
-		std::vector<int> parentIndexes;
+		std::vector<unsigned> childIndexes;
+		std::vector<unsigned> parentIndexes;
 
 		// initial values
 		searchPath.push_back(this);
@@ -1367,7 +1367,7 @@ namespace nirtree
 
 		// find and delete data entry, save path from root to leaf
 		bool found = false;
-		int currentIndex = 0;
+		unsigned currentIndex = 0;
 		while (currentIndex < searchPath.size()) {
 			Node * currentNode = searchPath.at(currentIndex);
 			if (currentNode->children.empty()) {
@@ -1401,7 +1401,7 @@ namespace nirtree
 			if (!prevTighten) { return this; }
 			prevTighten = searchPath.at(currentIndex)->tighten();
 			Node * parentNode = searchPath.at(parentIndexes.at(currentIndex));
-			int childIndex = childIndexes.at(currentIndex);
+			unsigned childIndex = childIndexes.at(currentIndex);
 			// remove node from parent if bounding area is zero
 			if (parentNode->boundingBoxes.at(childIndex).area() == 0.0) {
 				parentNode->children.at(childIndex) = parentNode->children.back();
@@ -1545,11 +1545,11 @@ namespace nirtree
 		unsigned polygonIndex;
 		for (polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
 		auto boundingRectangles = parent->boundingBoxes[polygonIndex].basicRectangles;
-		int numRectangle = boundingRectangles.size();
+		unsigned numRectangle = boundingRectangles.size();
 
 		// get number of elements (points/rectangles) in each bounding rectangle
-		int weights[numRectangle];
-		std::memset(weights, 0, numRectangle * sizeof(int));
+		unsigned weights[numRectangle];
+		std::memset(weights, 0, numRectangle * sizeof(unsigned));
 		unsigned rootIndex = 0, maxValue = 0;  // store index with highest value
 		if (!data.empty()) {
 			// leaf node
@@ -1572,7 +1572,7 @@ namespace nirtree
 				auto parentRect = boundingRectangles.at(i);
 				for (const auto& polygon: boundingBoxes) {
 					for (auto childRect: polygon.basicRectangles) {
-						if (parentRect.computeOverlapArea(childRect) != 0.0) {
+						if (parentRect.computeIntersectionArea(childRect) != 0.0) {
 							weights[i]++;
 							if (weights[i] > maxValue) {
 								rootIndex = i;
@@ -1585,8 +1585,8 @@ namespace nirtree
 		}
 
 		// quick return if no rectangles are empty
-		int existsEmpty = false;
-		for (int i=0; i<numRectangle; i++) {
+		unsigned existsEmpty = false;
+		for (unsigned i = 0; i < numRectangle; i++) {
 			if (weights[i] == 0) {
 				existsEmpty = true;
 			}
@@ -1594,7 +1594,7 @@ namespace nirtree
 		if (!existsEmpty) { return false; }
 
 		// create connectivity graph
-		typedef std::pair<int, int> edge;
+		typedef std::pair<unsigned, unsigned> edge;
 		std::vector<edge> edges;
 		for (unsigned i = 0; i < numRectangle; i++) {
 			for (unsigned j = 0; j < i; ++j) {
@@ -1611,22 +1611,21 @@ namespace nirtree
 		std::memset(visited, false, numRectangle * sizeof(bool));
 		bool removable[numRectangle];
 		std::memset(removable, false, numRectangle * sizeof(bool));
-		int ancestor[numRectangle];  // allow for cascading removals
-		std::memset(ancestor, 0, numRectangle * sizeof(int));
+		unsigned ancestor[numRectangle];  // allow for cascading removals
+		std::memset(ancestor, 0, numRectangle * sizeof(unsigned));
 
 		bool existsRemovable = false;
-		std::queue<int> queue;
+		std::queue<unsigned> queue;
 		queue.push(rootIndex);
 		visited[rootIndex] = true;
-		ancestor[rootIndex] = -1;
+		ancestor[rootIndex] = rootIndex;
 		// run bfs to determine which bounding boxes can be removed
 		while (!queue.empty()) {
-			int current = queue.front();
-			if (current == -1) { break; } // stopping condition
+			unsigned current = queue.front();
 			queue.pop();
 			// see which neighbours have not been visited yet
 			bool isLeaf = true;
-			for (int i=0; i<numRectangle; i++) {
+			for (unsigned i=0; i<numRectangle; i++) {
 				edge e = std::make_pair(std::min(i, current), std::max(i, current));
 				bool connection = std::binary_search(edges.begin(), edges.end(), e);
 				if (current != i && connection && !visited[i]) {
@@ -1641,7 +1640,10 @@ namespace nirtree
 				if (weights[current] == 0) {
 					removable[current] = true;
 					existsRemovable = true;
-					queue.push(ancestor[current]);  // re-examine parent
+					if (current != rootIndex)
+					{
+						queue.push(ancestor[current]);  // re-examine parent
+					}
 				}
 			}
 		}
@@ -1651,7 +1653,7 @@ namespace nirtree
 
 		// copy over rectangles that can't be deleted
 		std::vector<Rectangle> newBoundingRects;
-		for (int i=0; i<numRectangle; i++) {
+		for (unsigned i=0; i<numRectangle; i++) {
 			if (!removable[i]) {
 				newBoundingRects.push_back(boundingRectangles.at(i));
 			}

@@ -11,11 +11,12 @@
 #include <util/geometry.h>
 #include <nirtree/node.h>
 #include <nirtree/pencilPrinter.h>
+#include <index/index.h>
 
 namespace nirtree
 {
 	// TODO: For now we will work with a NIRTree that only stores points
-	class NIRTree
+	class NIRTree: public Index
 	{
 		public:
 			Node *root;

@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 			default:
 			{
 				std::cout << "Bad option. Exiting." << std::endl;
-				return;
+				return 1;
 			}
 		}
 	}
@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 		default:
 		{
 			std::cout << "Tree not selected. Exiting." << std::endl;
-			return;
+			return 1;
 		}
 	}
 #endif
