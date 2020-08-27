@@ -33,7 +33,7 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 		directSum += (unsigned)points[i].y;
 
 		// Print the new point
-		std::cout << "Point[" << i << "] "; points[i].print(); std::cout << std::endl;
+		std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
@@ -47,7 +47,7 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 		searchRectangles[i] = Rectangle(i * blockSize, i * blockSize, i * blockSize + blockSize, i * blockSize + blockSize);
 
 		// Print the search rectangle
-		std::cout << "searchRectangles[" << i << "] "; searchRectangles[i].print();
+		std::cout << "searchRectangles[" << i << "] " << searchRectangles[i] << std::endl;
 	}
 	std::cout << "Finished initialization of 16 rectangles." << std::endl;
 

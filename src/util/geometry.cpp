@@ -42,14 +42,9 @@ bool Point::operator!=(Point p) const
 	return x != p.x || y != p.y;
 }
 
-void Point::print()
-{
-	std::cout.precision(std::numeric_limits<double>::max_digits10+3);
-	std::cout << "(" << x << ", " << y << ")";
-}
-
 std::ostream& operator<<(std::ostream& os, const Point& point)
 {
+	os.precision(std::numeric_limits<double>::max_digits10+3);
 	os << "(" << point.x << ", " << point.y << ")";
 	return os;
 }
@@ -274,18 +269,9 @@ bool Rectangle::operator!=(Rectangle r) const
 	return lowerLeft != r.lowerLeft || upperRight != r.upperRight;
 }
 
-void Rectangle::print()
-{
-	std::cout.precision(std::numeric_limits<double>::max_digits10+3);
-	std::cout << "Rectangle {";
-	lowerLeft.print();
-	std::cout << ", ";
-	upperRight.print();
-	std::cout << "}" << std::endl;
-}
-
 std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle)
 {
+	os.precision(std::numeric_limits<double>::max_digits10+3);
 	os << "[" << rectangle.lowerLeft << "; " << rectangle.upperRight << "]";
 	return os;
 }
@@ -461,15 +447,12 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	DASSERT(constraintPolygon.containsPoint(givenPoint));
 	Rectangle swapIntersectionPiece;
 	Rectangle rAtInfinity = Rectangle();
-	DPRINT1("swap");
-	DEXEC(swap.print());
+	DPRINT2("swap", swap);
 	for (unsigned i = 0; i < constraintPolygon.basicRectangles.size(); ++i)
 	{
 		swapIntersectionPiece = swap.intersection(constraintPolygon.basicRectangles[i]);
-		DPRINT1("constraintRectanlge ");
-		DEXEC(constraintPolygon.basicRectangles[i].print());
-		DPRINT1("swapIntersectionPiece ");
-		DEXEC(swapIntersectionPiece.print());
+		DPRINT2("constraintRectanlge ", constraintPolygon.basicRectangles[i]);
+		DPRINT2("swapIntersectionPiece ", swapIntersectionPiece);
 		if (swapIntersectionPiece != rAtInfinity)
 		{
 			DPRINT1("Pushing swapIntersectionPiece");
@@ -604,10 +587,8 @@ void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 	for (unsigned i = 0; i < basicRectangles.size(); ++i)
 	{
 		// Break the rectangle
-		DPRINT1("basic: ");
-		DEXEC(basicRectangles[i].print());
-		DPRINT1("clipping: ");
-		DEXEC(clippingRectangle.print());
+		DPRINT2("basic: ", basicRectangles[i]);
+		DPRINT2("clipping: ", clippingRectangle);
 		std::vector<Rectangle> fragments = basicRectangles[i].fragmentRectangle(clippingRectangle);
 		DPRINT2("fragments.size() = ", fragments.size());
 
@@ -635,11 +616,9 @@ void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
 {
 	for (unsigned i = 0; i < clippingPolygon.basicRectangles.size(); ++i)
 	{
-		DPRINT1("    Removing ");
-		DEXEC(clippingPolygon.basicRectangles[i].print());
+		DPRINT2("    Removing ", clippingPolygon.basicRectangles[i]);
 		increaseResolution(clippingPolygon.basicRectangles[i]);
-		DPRINT1("    Result ");
-		DEXEC(print());
+		DPRINT2("    Result ", this);
 	}
 
 	// Cleanup
@@ -648,8 +627,7 @@ void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
 
 void IsotheticPolygon::refine()
 {
-	DPRINT1("Before ");
-	DEXEC(print());
+	DPRINT2("Before ", this);
 
 	for (unsigned k = 0; k < 7 && basicRectangles.size(); ++k)
 	{
@@ -698,9 +676,7 @@ void IsotheticPolygon::refine()
 		rectangleSetRefined.clear();
 	}
 
-	DPRINT1("After ");
-	DEXEC(print());
-
+	DPRINT2("After ", this);
 	sort(true);
 }
 
@@ -842,27 +818,20 @@ bool IsotheticPolygon::contiguous()
 
 	if (!contigous)
 	{
-		DPRINT1("Not contigous! ");
-		DEXEC(print());
+		DPRINT2("Not contigous! ", this);
 	}
 
 	return contigous;
 }
 
-void IsotheticPolygon::print()
+std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon)
 {
-	std::cout.precision(std::numeric_limits<double>::max_digits10+3);
-	std::cout << "IsotheticPolygon |";
-	unsigned i;
-	for (i = 0; i < basicRectangles.size(); ++i)
+	os.precision(std::numeric_limits<double>::max_digits10+3);
+	os << "|";
+	for (auto rectangle : polygon.basicRectangles)
 	{
-		basicRectangles[i].lowerLeft.print();
-		basicRectangles[i].upperRight.print();
-		std::cout << '|';
+		os << rectangle;
 	}
-	if (i == 0)
-	{
-		std::cout << '|';
-	}
-	std::cout << std::endl;
+	os << "|";
+	return os;
 }

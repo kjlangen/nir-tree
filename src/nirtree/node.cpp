@@ -278,10 +278,8 @@ namespace nirtree
 						node->boundingBoxes[smallestExpansionIndex].increaseResolution(node->boundingBoxes[j]);
 						DPRINT1("Post chooseLeaf increaseRes");
 						DPRINT2("i = ", i);
-						DPRINT1("node->boundingBoxes[i] = ");
-						DEXEC(node->boundingBoxes[i].print());
-						DPRINT1("node->boundingBoxes[smallestExpansionIndex] = ");
-						DEXEC(node->boundingBoxes[smallestExpansionIndex].print());
+						DPRINT2("node->boundingBoxes[i] = ", node->boundingBoxes[i]);
+						DPRINT2("node->boundingBoxes[smallestExpansionIndex] = ", node->boundingBoxes[smallestExpansionIndex]);
 						DASSERT(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
 					}
 
@@ -299,7 +297,7 @@ namespace nirtree
 
 				DPRINT1("Trimmed back to ");
 				DPRINT4("C: node->boundingBoxes[", smallestExpansionIndex, "].size() = ", node->boundingBoxes[smallestExpansionIndex].basicRectangles.size());
-				DEXEC(node->boundingBoxes[smallestExpansionIndex].print());
+				DPRINT1(node->boundingBoxes[smallestExpansionIndex]);
 				DEXEC(p.printToPencil(node->boundingBoxes));
 				DASSERT(node->boundingBoxes[smallestExpansionIndex].unique());
 				DASSERT(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
@@ -322,8 +320,7 @@ namespace nirtree
 
 	Node *Node::findLeaf(Point givenPoint)
 	{
-		DPRINT1("Given point = ");
-		DEXEC(givenPoint.print());
+		DPRINT2("Given point = ", givenPoint);
 
 		// Initialize our context stack
 		std::stack<Node *> context;
@@ -378,15 +375,12 @@ namespace nirtree
 		// Decompose our bounding box using code for increasing a polygon's "resolution"
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 		{
-			DPRINT1("Current polygon ");
-			DEXEC(temp.print());
-			DPRINT1("Cutting out ");
-			DEXEC(boundingBoxes[i].print());
+			DPRINT2("Current polygon ", temp);
+			DPRINT2("Cutting out ", boundingBoxes[i]);
 			DPRINT1("Pre decompose increaseRes");
 			temp.increaseResolution(boundingBoxes[i]);
 			DPRINT1("Post decompose increaseRes");
-			DPRINT1("Result ");
-			DEXEC(temp.print());
+			DPRINT2("Result ", temp);
 		}
 
 		return temp.basicRectangles;
@@ -400,8 +394,8 @@ namespace nirtree
 		Node *right = new Node(minBranchFactor, maxBranchFactor, parent);
 
 		// Insert the lower split as if we had capacity
-		DEXEC(lowerSplit.leftPolygon.print());
-		DEXEC(lowerSplit.rightPolygon.print());
+		DPRINT1(lowerSplit.leftPolygon);
+		DPRINT1(lowerSplit.rightPolygon);
 		boundingBoxes.push_back(lowerSplit.leftPolygon);
 		children.push_back(lowerSplit.left);
 		boundingBoxes.push_back(lowerSplit.rightPolygon);
@@ -422,8 +416,7 @@ namespace nirtree
 				r.expand(boundingBoxes[i].boundingBox());
 			}
 			unsplitPolygon = IsotheticPolygon(r);
-			DPRINT1("unsplitPolygon: ");
-			DEXEC(unsplitPolygon.print());
+			DPRINT2("unsplitPolygon: ", unsplitPolygon);
 			DPRINT1("CHKPT15");
 		}
 		else
@@ -681,8 +674,8 @@ namespace nirtree
 		rightPolygon.sort(true);
 
 		DPRINT1("L/R polygons post increase resolution");
-		DEXEC(leftPolygon.print());
-		DEXEC(rightPolygon.print());
+		DPRINT1(leftPolygon);
+		DPRINT1(rightPolygon);
 
 		// Split children in two
 		DPRINT1("Splitting children");
@@ -768,7 +761,7 @@ namespace nirtree
 
 		unsigned polygonIndex;
 		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
-		DEXEC(parent->boundingBoxes[polygonIndex].print());
+		DPRINT1(parent->boundingBoxes[polygonIndex]);
 		std::vector<Rectangle> &basics = parent->boundingBoxes[polygonIndex].basicRectangles;
 		const unsigned basicsSize = basics.size();
 
@@ -1039,11 +1032,9 @@ namespace nirtree
 					DPRINT1("CHKPT11");
 					node->parent->removeChild(node);
 				}
-				DPRINT1("Left ");
-				DEXEC(lowerSplit.leftPolygon.print());
+				DPRINT2("Left ", lowerSplit.leftPolygon);
 				DEXEC(lowerSplit.left->printTree());
-				DPRINT1("Right ");
-				DEXEC(lowerSplit.rightPolygon.print());
+				DPRINT2("Right ", lowerSplit.rightPolygon);
 				DEXEC(lowerSplit.right->printTree());
 				DPRINT1("CHKPT12");
 				// Continue to move up the tree
@@ -1057,8 +1048,7 @@ namespace nirtree
 	// Always called on root, this = root
 	Node *Node::insert(Point givenPoint)
 	{
-		DPRINT1("Inserting ");
-		DEXEC(givenPoint.print());
+		DPRINT2("Inserting ", givenPoint);
 
 		// I1 [Find position for new record]
 		DPRINT1("Before the leaf choosing");
@@ -1310,18 +1300,18 @@ namespace nirtree
 	{
 		DEXEC(PencilPrinter pr);
 		DEXEC(pr.printToPencil(this));
-		DPRINT1("Removing ");
-		DEXEC(givenPoint.print());
+		DPRINT2("Removing ", givenPoint);
 		DPRINT1("CHKPT0");
 		// D1 [Find node containing record]
 		Node *leaf = findLeaf(givenPoint);
 
 		DPRINT1("CHKPT1");
+		// Record not in the tree
 		if (leaf == nullptr)
 		{
 			DEXEC(this->printTree());
 			DPRINT1("Leaf was nullptr");
-			return nullptr;
+			return this;
 		}
 
 		DPRINT1("CHKPT2");
@@ -1488,16 +1478,12 @@ namespace nirtree
 			{
 				if (!parent->boundingBoxes[index].contiguous())
 				{
-					parent->boundingBoxes[index].print();
-					std::cout << " not contiguous" << std::endl;
+					std::cout << parent->boundingBoxes[index] << " not contiguous" << std::endl;
 					assert(parent->boundingBoxes[index].contiguous());
 				}
 				if (!parent->boundingBoxes[index].containsPoint(data[i]))
 				{
-					parent->boundingBoxes[index].print();
-					std::cout << " fails to contain ";
-					data[i].print();
-					std::cout << std::endl;
+					std::cout << parent->boundingBoxes[index] << " fails to contain " << data[i] << std::endl;
 					assert(parent->boundingBoxes[index].containsPoint(data[i]));
 				}
 			}
@@ -1521,8 +1507,7 @@ namespace nirtree
 		std::cout << indendtation << "    Bounding Boxes: " << std::endl;
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 		{
-			std::cout << indendtation << "		";
-			boundingBoxes[i].print();
+			std::cout << indendtation << "		" << boundingBoxes[i] << std::endl;
 		}
 		std::cout << std::endl << indendtation << "    Children: ";
 		for (unsigned i = 0; i < children.size(); ++i)
@@ -1532,7 +1517,7 @@ namespace nirtree
 		std::cout << std::endl << indendtation << "    Data: ";
 		for (unsigned i = 0; i < data.size(); ++i)
 		{
-			data[i].print();
+			std::cout << data[i];
 		}
 		std::cout << std::endl << indendtation << ")" << std::endl;
 	}
