@@ -37,7 +37,7 @@ void splitPoints()
 		// directSum += (unsigned)points[i].y;
 
 		// Print the new point
-		std::cout << "Points[" << i << "] "; points[i].print(); std::cout << std::endl;
+		std::cout << "Points[" << i << "] " << points[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
@@ -91,7 +91,7 @@ void splitPoints()
 		// directSum += (unsigned)points[i].y;
 
 		// Print the new point
-		std::cout << "PointsPrime[" << i << "] "; pointsPrime[i].print(); std::cout << std::endl;
+		std::cout << "PointsPrime[" << i << "] " << pointsPrime[i] << std::endl;
 
 		// Keep the point and advance only if it is within the isothetic polygon
 		if (ip.containsPoint(pointsPrime[i]))

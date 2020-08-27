@@ -791,8 +791,7 @@ namespace rtree
 		std::cout << indendtation << "    Bounding Boxes: " << std::endl;
 		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
 		{
-			std::cout << indendtation << "		";
-			boundingBoxes[i].print();
+			std::cout << indendtation << "		" << boundingBoxes[i] << std::endl;
 		}
 		std::cout << std::endl << indendtation << "    Children: ";
 		for (unsigned i = 0; i < children.size(); ++i)
@@ -802,7 +801,7 @@ namespace rtree
 		std::cout << std::endl << indendtation << "    Data: ";
 		for (unsigned i = 0; i < data.size(); ++i)
 		{
-			data[i].print();
+			std::cout << data[i];
 		}
 		std::cout << std::endl << indendtation << "}" << std::endl;
 	}

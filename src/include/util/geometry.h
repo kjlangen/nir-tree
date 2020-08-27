@@ -27,7 +27,6 @@ class Point
 		bool operator==(Point p) const;
 		bool operator!=(Point p) const;
 
-		void print();
 		friend std::ostream& operator<<(std::ostream& os, const Point& point);
 };
 
@@ -61,7 +60,6 @@ class Rectangle
 		bool operator==(Rectangle r) const;
 		bool operator!=(Rectangle r) const;
 
-		void print();
 		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
 };
 
@@ -97,7 +95,7 @@ class IsotheticPolygon
 		bool infFree();
 		bool contiguous();
 
-		void print();
+		friend std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon);
 };
 
 #endif
