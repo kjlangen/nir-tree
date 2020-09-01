@@ -1,9 +1,9 @@
 #include <bench/randomPoints.h>
 
-void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequency)
+void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequency, unsigned seed)
 {
 	// Setup random generators
-	std::default_random_engine generator;
+	std::default_random_engine generator(seed);
 	std::uniform_real_distribution<float> pointDist(0.0, 200000.0);
 	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (20000000.0, 20000000.0)." << std::endl;
 

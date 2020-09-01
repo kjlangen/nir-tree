@@ -8,6 +8,6 @@
 #include <rtree/rtree.h>
 #include <nirtree/nirtree.h>
 
-void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequency);
+void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequency, unsigned seed);
 
 #endif
