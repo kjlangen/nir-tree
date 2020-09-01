@@ -8,25 +8,18 @@
 
 Graph::Graph(const unsigned n)
 {
-	// Allocate the graph
+	// Make the appropriately sized graph
 	vertices = n;
-	g = new bool[n * n];
-	std::memset(g, false, n * n);
-
-	// Allocate the set of removed vertices
-	removedVertices = 0;
-	gRemoved = new bool[n];
-	std::memset(gRemoved, false, n);
+	g = new std::vector<unsigned>[vertices];
+	explored = new bool[vertices];
 }
 
 Graph::Graph(std::vector<Rectangle> &v)
 {
-	// Record the size of the graph
+	// Make the appropriately sized graph
 	vertices = v.size();
-
-	// Allocate the graph
-	g = new bool[vertices * vertices];
-	std::memset(g, false, vertices * vertices);
+	g = new std::vector<unsigned>[vertices];
+	explored = new bool[vertices];
 
 	// Place all possible schedule points in a list
 	SchedulePoint schedule[vertices * 2];
@@ -47,7 +40,6 @@ Graph::Graph(std::vector<Rectangle> &v)
 	// Allocate space to record which rectangles are "active" at the current SchedulePoint
 	unsigned active[vertices];
 	unsigned activeEnd = 0;
-
 	// Sweep
 	for (unsigned i = 0; i < vertices * 2; ++i)
 	{
@@ -55,13 +47,15 @@ Graph::Graph(std::vector<Rectangle> &v)
 		// we have hit it's upper right corner
 		if (schedule[i].start)
 		{
+			DPRINT3(schedule[i].index, "\tstart\t", schedule[i].coord);
 			// Check if the newly "active" rectangle intersects any other "active" rectangles
 			for (unsigned j = 0; j < activeEnd; ++j)
 			{
-				if (v[schedule[i].index].intersectsRectangle(v[j]))
+				if (v[schedule[i].index].intersectsRectangle(v[active[j]]))
 				{
-					g[schedule[i].index * vertices + j] = true;
-					g[j * vertices + schedule[i].index] = true;
+					DPRINT8("inserting edge schedule[", i, "].index = ", schedule[i].index, " ----- active[", j, "] = ", active[j]);
+					g[schedule[i].index].push_back(active[j]);
+					g[active[j]].push_back(schedule[i].index);
 				}
 			}
 
@@ -71,6 +65,7 @@ Graph::Graph(std::vector<Rectangle> &v)
 		}
 		else
 		{
+			DPRINT3(schedule[i].index, "\tend\t", schedule[i].coord);
 			for (unsigned j = 0; j < activeEnd; ++j)
 			{
 				// Find the rectangle in the active set
@@ -83,63 +78,109 @@ Graph::Graph(std::vector<Rectangle> &v)
 				}
 			}
 		}
+		DPRINT2("activeEnd = ", activeEnd);
 	}
-
-	// Allocate the set of removed vertices
-	removedVertices = 0;
-	gRemoved = new bool[vertices];
-	std::memset(gRemoved, false, vertices);
 }
 
-Graph::Graph(std::vector<IsotheticPolygon> &v)
+Graph::Graph(std::vector<IsotheticPolygon> &p)
 {
-	removedVertices = 0;
-
 	// Record the size of the graph
-	vertices = v.size();
+	vertices = p.size();
+	g = new std::vector<unsigned>[vertices];
+	explored = new bool[vertices];
 
-	// Build the graph
-	g = new bool[vertices * vertices];
-	std::memset(g, false, vertices * vertices);
+	DPRINT2("initialization of vertices = ", vertices);
+
+	// Place all possible schedule points in a list
+	SchedulePoint schedule[vertices * 2];
 	for (unsigned i = 0; i < vertices; ++i)
 	{
-		for (unsigned j = 0; j < i; ++j)
-		{
-			if (v[i].intersectsPolygon(v[j]))
-			{
-				g[i * vertices + j] = true;
-				g[j * vertices + i] = true;
-			}
-		}
+		Rectangle pBB = p[i].boundingBox();
+		schedule[i].coord = pBB.lowerLeft.x;
+		schedule[i].index = i;
+		schedule[i].start = true;
+
+		schedule[vertices * 2 - i - 1].coord = pBB.upperRight.x;
+		schedule[vertices * 2 - i - 1].index = i;
+		schedule[vertices * 2 - i - 1].start = false;
 	}
 
-	removedVertices = 0;
+	// Sort to create a sweep schedule
+	std::sort(schedule, &schedule[vertices * 2 - 1], [](SchedulePoint a, SchedulePoint b){return a.coord == b.coord ? a.start && !b.start : a.coord < b.coord;});
 
-	gRemoved = new bool[vertices];
-	std::memset(gRemoved, false, vertices);
+	// Allocate space to record which rectangles are "active" at the current SchedulePoint
+	unsigned active[vertices];
+	unsigned activeEnd = 0;
+	// Sweep
+	for (unsigned i = 0; i < vertices * 2; ++i)
+	{
+		// "Active" a rectangle if we have hit it's lower left corner. "Deactivate" a rectangle if
+		// we have hit it's upper right corner
+		if (schedule[i].start)
+		{
+			DPRINT3(schedule[i].index, "\tstart\t", schedule[i].coord);
+			// Check if the newly "active" rectangle intersects any other "active" rectangles
+			for (unsigned j = 0; j < activeEnd; ++j)
+			{
+				if (p[schedule[i].index].intersectsPolygon(p[active[j]]))
+				{
+					DPRINT8("inserting edge schedule[", i, "].index = ", schedule[i].index, " ----- active[", j, "] = ", active[j]);
+					g[schedule[i].index].push_back(active[j]);
+					g[active[j]].push_back(schedule[i].index);
+				}
+			}
+
+			// Activation
+			active[activeEnd] = schedule[i].index;
+			++activeEnd;
+		}
+		else
+		{
+			DPRINT3(schedule[i].index, "\tend\t", schedule[i].coord);
+			for (unsigned j = 0; j < activeEnd; ++j)
+			{
+				// Find the rectangle in the active set
+				if (active[j] == schedule[i].index)
+				{
+					// Deactivation
+					active[j] = active[activeEnd - 1];
+					--activeEnd;
+					break;
+				}
+			}
+		}
+		DPRINT2("activeEnd = ", activeEnd);
+	}
 }
 
 Graph::~Graph()
 {
+	for (unsigned i = 0; i < vertices; ++i)
+	{
+		g[i].clear();
+	}
 	delete [] g;
+
+	delete [] explored;
 }
 
 bool Graph::contiguous()
 {
 	// BFS variables
-	unsigned root; for (root = 0; gRemoved[root]; ++root){}
 	unsigned currentVertex;
 	std::queue<unsigned> explorationQ;
-	bool explored[vertices];
 	std::memset(explored, false, vertices);
 	unsigned explorationCount = 0;
 
+	DPRINT2("vertices = ", vertices);
+
 	// BFS, counting number of visited vertices which if the corresponding geometry is contigous
 	// will be equal to vertices
-	explorationQ.push(root);
+	explorationQ.push(vertices / 2);
 	for (;explorationQ.size();)
 	{
 		currentVertex = explorationQ.front();
+		DPRINT2("currentVertex = ", currentVertex);
 		explorationQ.pop();
 
 		if (explored[currentVertex])
@@ -151,31 +192,29 @@ bool Graph::contiguous()
 		++explorationCount;
 
 		// Go to all of currentVertex's neighbours
-		for (unsigned neighbouringVertex = 0; neighbouringVertex < vertices; ++neighbouringVertex)
+		for (auto neighbouringVertex : g[currentVertex])
 		{
-			if (g[currentVertex * vertices + neighbouringVertex] && !explored[neighbouringVertex])
+			if (!explored[neighbouringVertex])
 			{
 				explorationQ.push(neighbouringVertex);
 			}
 		}
 	}
 
-	return explorationCount == vertices - removedVertices;
+	return explorationCount == vertices;
 }
 
 bool Graph::contiguous(unsigned skipVertex)
 {
 	// BFS variables
-	unsigned root; for (root = 0; gRemoved[root] || root == skipVertex; ++root){}
 	unsigned currentVertex;
 	std::queue<unsigned> explorationQ;
-	bool explored[vertices];
 	std::memset(explored, false, vertices);
 	unsigned explorationCount = 0;
 
 	// BFS, counting number of visited vertices which if the corresponding geometry is contigous
 	// will be equal to vertices
-	explorationQ.push(root);
+	explorationQ.push(vertices / 2);
 	for (;explorationQ.size();)
 	{
 		currentVertex = explorationQ.front();
@@ -190,89 +229,179 @@ bool Graph::contiguous(unsigned skipVertex)
 		++explorationCount;
 
 		// Go to all of currentVertex's neighbours
-		for (unsigned neighbouringVertex = 0; neighbouringVertex < vertices; ++neighbouringVertex)
+		for (auto neighbouringVertex : g[currentVertex])
 		{
-			if (neighbouringVertex != skipVertex && g[currentVertex * vertices + neighbouringVertex] && !explored[neighbouringVertex])
+			if (neighbouringVertex != skipVertex && !explored[neighbouringVertex])
 			{
 				explorationQ.push(neighbouringVertex);
 			}
 		}
 	}
 
-	return explorationCount == vertices - 1 - removedVertices;
+	return explorationCount == vertices - 1;
 }
 
-unsigned Graph::components(unsigned *labels)
+bool *Graph::findBalancedSeparator(unsigned *weights)
 {
-	// BFS variables
-	unsigned root;
-	unsigned currentVertex;
-	bool explored[vertices];
-	std::queue<unsigned> explorationQ;
+	// Allocate a tree
+	std::vector<unsigned> *t = new std::vector<unsigned>[vertices];
 
-	unsigned componentNumber = 0;
-	std::memset(labels, 0, vertices * sizeof(unsigned));
+	unsigned currentVertex;
+	std::queue<unsigned> explorationQ;
 	std::memset(explored, false, vertices);
 
-	// Loop until all components have been labeled
-	for (unsigned labelledSoFar = 0; labelledSoFar != vertices - removedVertices;)
+	bool connected[vertices]; // Connection labels so we don't double connect vertices
+	std::memset(connected, false, vertices);
+
+	// Stacks to propogate weights
+	std::stack<unsigned> weightStack;
+	std::stack<unsigned> parentStack;
+
+	// Build the tree
+	explorationQ.push(vertices / 2);
+	for (;explorationQ.size();)
 	{
-		DPRINT1("A");
-		// Increase the number of components
-		++componentNumber;
+		currentVertex = explorationQ.front();
+		explorationQ.pop();
 
-		// Find the next unlabeled component
-		for (root = 0; labels[root] != 0 || gRemoved[root]; ++root) { DPRINT1("B"); }
-
-		DPRINT2("root = ", root);
-
-		// Propagate labels to that component
-		explorationQ.push(root);
-		for (;explorationQ.size();)
+		if (explored[currentVertex])
 		{
-			DPRINT1("C");
-			currentVertex = explorationQ.front();
-			explorationQ.pop();
+			continue;
+		}
 
-			if (explored[currentVertex])
+		explored[currentVertex] = true;
+
+		// Go to all of currentVertex's neighbours
+		for (auto neighbouringVertex : g[currentVertex])
+		{
+			if (!explored[neighbouringVertex])
 			{
-				continue;
-			}
-
-			explored[currentVertex] = true;
-			labels[currentVertex] = componentNumber;
-			++labelledSoFar;
-
-			// Go to all of currentVertex's neighbours
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < vertices; ++neighbouringVertex)
-			{
-				if (g[currentVertex * vertices + neighbouringVertex] && !explored[neighbouringVertex])
+				if (!connected[neighbouringVertex])
 				{
-					DPRINT4("Pushing ", neighbouringVertex, " from ", currentVertex);
-					explorationQ.push(neighbouringVertex);
-				}
-			}
+					DPRINT2("Connecting ", neighbouringVertex);
+					t[currentVertex].push_back(neighbouringVertex);
+					t[neighbouringVertex].push_back(currentVertex);
 
-			DPRINT3("Node ", currentVertex, " finished");
+					connected[neighbouringVertex] = true;
+
+					weightStack.push(neighbouringVertex);
+					parentStack.push(currentVertex);
+				}
+
+				explorationQ.push(neighbouringVertex);
+			}
 		}
 	}
 
-	return componentNumber;
-}
-
-void Graph::remove(unsigned givenVertex)
-{
-	std::memset(&g[givenVertex * vertices], false, vertices);
 	for (unsigned i = 0; i < vertices; ++i)
 	{
-		g[i * vertices + givenVertex] = false;
+		DPRINT4("weights[", i, "] = ", weights[i]);
 	}
 
-	++removedVertices;
-	gRemoved[givenVertex] = true;
-}
+	DPRINT2("parentStack.size() = ", parentStack.size());
+	DPRINT2("weightStack.size() = ", weightStack.size());
 
-bool *Graph::operator[](unsigned i)
-{
-	return &g[i * vertices];
+	// Weight the tree so we can quickly find a separator
+	for (;!parentStack.empty();)
+	{
+		DPRINT4("parentStack.top = ", parentStack.top(), " weightStack.top = ", weightStack.top());
+		weights[parentStack.top()] += weights[weightStack.top()];
+		weightStack.pop();
+		parentStack.pop();
+	}
+
+	for (unsigned i = 0; i < vertices; ++i)
+	{
+		DPRINT4("weights[", i, "] = ", weights[i]);
+	}
+
+	// Find a separator within the tree
+	DPRINT1("Finding a separator...");
+	unsigned delta = std::numeric_limits<unsigned>::max();
+	unsigned root = vertices / 2;
+	unsigned subtreeRoot = 0;
+	unsigned subtreeParent = 0;
+
+	std::memset(explored, false, vertices);
+
+	explorationQ.push(root);
+	for (;explorationQ.size();)
+	{
+		currentVertex = explorationQ.front();
+		explorationQ.pop();
+
+		if (explored[currentVertex])
+		{
+			continue;
+		}
+
+		explored[currentVertex] = true;
+
+		// Go to all of currentVertex's neighbours
+		for (auto neighbouringVertex : t[currentVertex])
+		{
+			if (!explored[neighbouringVertex])
+			{
+				unsigned componentTwoWeight = weights[neighbouringVertex];
+				unsigned componentOneWeight = weights[root] - componentTwoWeight;
+				unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
+
+				if (comparisonDelta < delta)
+				{
+					delta = comparisonDelta;
+					subtreeRoot = neighbouringVertex;
+					subtreeParent = currentVertex;
+				}
+
+				explorationQ.push(neighbouringVertex);
+			}
+		}
+	}
+
+	// Split along separator
+	DPRINT1("Splitting along separator...");
+	bool *switchboard = new bool[vertices];
+
+	t[subtreeRoot].erase(std::find(t[subtreeRoot].begin(), t[subtreeRoot].end(), subtreeParent));
+	t[subtreeParent].erase(std::find(t[subtreeParent].begin(), t[subtreeParent].end(), subtreeRoot));
+
+	DPRINT1("Clearing switchboard and exploration labels");
+	std::memset(switchboard, false, vertices);
+	std::memset(explored, false, vertices);
+
+	switchboard[subtreeRoot] = true;
+
+	DPRINT1("BFSing for separator");
+	explorationQ.push(subtreeRoot);
+	for (;explorationQ.size();)
+	{
+		currentVertex = explorationQ.front();
+		explorationQ.pop();
+
+		if (explored[currentVertex])
+		{
+			continue;
+		}
+
+		explored[currentVertex] = true;
+
+		// Go to all of currentVertex's neighbours
+		for (auto neighbouringVertex : t[currentVertex])
+		{
+			if (!explored[neighbouringVertex])
+			{
+				switchboard[neighbouringVertex] = true;
+				explorationQ.push(neighbouringVertex);
+			}
+		}
+	}
+
+	// Delete the tree
+	for (unsigned i = 0; i < vertices; ++i)
+	{
+		t[i].clear();
+	}
+	delete [] t;
+
+	return switchboard;
 }

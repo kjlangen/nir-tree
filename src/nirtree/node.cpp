@@ -262,7 +262,8 @@ namespace nirtree
 					DEXEC(p.printToPencil(node->boundingBoxes));
 					DASSERT(node->boundingBoxes[smallestExpansionIndex].unique());
 					DASSERT(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
-					DASSERT(node->boundingBoxes[smallestExpansionIndex].contiguous());
+					DEXEC(Graph g0(node->boundingBoxes[smallestExpansionIndex].basicRectangles));
+					DASSERT(g0.contiguous());
 					DPRINT1("Expanded successfully");
 
 					// CL3.2 Trim back the chosen bounding polygon so it plays nice with the other
@@ -285,7 +286,8 @@ namespace nirtree
 
 					// If our initial choice is contiguous then great we can move on, otherwise try
 					// every other node in descending order of required expansion area
-					if (node->boundingBoxes[smallestExpansionIndex].contiguous())
+					Graph g1(node->boundingBoxes[smallestExpansionIndex].basicRectangles);
+					if (g1.contiguous())
 					{
 						break;
 					}
@@ -301,11 +303,13 @@ namespace nirtree
 				DEXEC(p.printToPencil(node->boundingBoxes));
 				DASSERT(node->boundingBoxes[smallestExpansionIndex].unique());
 				DASSERT(node->boundingBoxes[smallestExpansionIndex].containsPoint(givenPoint));
-				DASSERT(node->boundingBoxes[smallestExpansionIndex].contiguous());
+				DEXEC(Graph g2(node->boundingBoxes[smallestExpansionIndex].basicRectangles));
+				DASSERT(g2.contiguous());
 				DPRINT1("Trimmed successfully");
 
 				// CL4 [Descend until a leaf is reached]
-				DASSERT(node->boundingBoxes[smallestExpansionIndex].contiguous());
+				DEXEC(Graph g3(node->boundingBoxes[smallestExpansionIndex].basicRectangles));
+				DASSERT(g3.contiguous());
 				node = node->children[smallestExpansionIndex];
 				prevSmallestExpansionIndex = smallestExpansionIndex;
 			}
@@ -429,10 +433,15 @@ namespace nirtree
 		// Decompose polygon
 		DPRINT1("Decomposing node");
 		std::vector<Rectangle> decomposed = decomposeNode(unsplitPolygon);
+		std::vector<IsotheticPolygon> decomposedPolygon;
+
+		for (Rectangle r : decomposed)
+		{
+			decomposedPolygon.push_back(IsotheticPolygon(r));
+		}
 
 		const unsigned decomposedSize = decomposed.size();
 		const unsigned totalSize = childrenSize + decomposedSize;
-		const unsigned root = totalSize / 2;
 
 		DEXEC(PencilPrinter p1);
 		DEXEC(p1.printToPencil(decomposed));
@@ -440,199 +449,19 @@ namespace nirtree
 		// Build graph
 		DPRINT1("Building graph");
 		DPRINT2("totalSize = ", totalSize);
-		bool graph[totalSize][totalSize];
-		std::memset(graph, false, totalSize * totalSize);
 
-		for (unsigned i = 0; i < childrenSize; ++i)
-		{
-			// Children X Children
-			DPRINT1("Children X Children");
-			for (unsigned j = 0; j < i && j < childrenSize; ++j)
-			{
-				if (boundingBoxes[i].intersectsPolygon(boundingBoxes[j]))
-				{
-					graph[i][j] = true;
-					graph[j][i] = true;
-				}
-			}
-			DPRINT1("Done");
+		std::vector<IsotheticPolygon> allItems;
 
-			// Children X Decomposed Polygon
-			DPRINT1("Children X Decomposed");
-			for (unsigned j = childrenSize; j < totalSize; ++j)
-			{
-				if (boundingBoxes[i].intersectsRectangle(decomposed[j - childrenSize]))
-				{
-					graph[i][j] = true;
-					graph[j][i] = true;
-				}
-			}
-			DPRINT1("Done");
-		}
-		DPRINT1("Decomposed polygon X Decomposed polygon");
-		for (unsigned i = 0; i < decomposedSize; ++i)
-		{
-			// Decomposed Polygon X Decomposed Polygon
-			for (unsigned j = 0; j < decomposedSize; ++j)
-			{
-				if (decomposed[i].intersectsRectangle(decomposed[j]))
-				{
-					graph[i + childrenSize][j + childrenSize] = true;
-					graph[j + childrenSize][i + childrenSize] = true;
-				}
-			}
-		}
-		DPRINT1("Done");
+		allItems.insert(allItems.end(), boundingBoxes.begin(), boundingBoxes.end());
+		allItems.insert(allItems.end(), decomposedPolygon.begin(), decomposedPolygon.end());
 
-		// Build tree
-		DPRINT1("Building tree");
-		bool tree[totalSize][totalSize];
-		unsigned currentVertex;
-		std::queue<unsigned> explorationQ;
-		bool explored[totalSize]; // Exploration labels so we don't cycle during search
-		bool connected[totalSize]; // Connection labels so we don't double connect leaves
+		Graph g(allItems);
+
 		unsigned weights[totalSize];
-		std::stack<unsigned> weightStack;
-		std::stack<unsigned> parentStack;
-
-		std::memset(tree, false, totalSize * totalSize);
-		std::memset(explored, false, totalSize);
-		std::memset(connected, false, totalSize);
 		std::memset(weights, 0, totalSize * sizeof(unsigned));
+		std::memset(weights, 1, childrenSize * sizeof(unsigned));
 
-		explorationQ.push(root);
-		for (;explorationQ.size();)
-		{
-			currentVertex = explorationQ.front();
-			explorationQ.pop();
-
-			if (explored[currentVertex])
-			{
-				continue;
-			}
-
-			// Connect children of this node to the tree
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < totalSize; ++neighbouringVertex)
-			{
-				if (graph[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
-				{
-					if (!connected[neighbouringVertex])
-					{
-						tree[currentVertex][neighbouringVertex] = true;
-						tree[neighbouringVertex][currentVertex] = true;
-						connected[neighbouringVertex] = true;
-						weightStack.push(neighbouringVertex);
-						parentStack.push(currentVertex);
-					}
-					explorationQ.push(neighbouringVertex);
-				}
-			}
-
-			// Weight the current node
-			if (currentVertex < childrenSize)
-			{
-				// Give the node weight if and only if it is in this->children
-				weights[currentVertex] = 1;
-			}
-
-			explored[currentVertex] = true;
-		}
-
-		// Push weights up the tree
-		DPRINT1("Pushing weights up the tree");
-		DPRINT2("parentStack.size(): ", parentStack.size());
-		DPRINT2("WeightStack.size(): ", weightStack.size());
-		DPRINT2("totalSize: ", totalSize);
-		for (;parentStack.size() && weightStack.size();)
-		{
-			weights[parentStack.top()] += weights[weightStack.top()];
-			weightStack.pop();
-			parentStack.pop();
-		}
-
-		// Find a separator
-		DPRINT1("Finding a separator");
-		unsigned delta = std::numeric_limits<unsigned>::max();
-		unsigned subtreeRoot = 0;
-		unsigned subtreeParent = 0;
-
-		std::memset(explored, false, totalSize);
-
-		explorationQ.push(root);
-		for (;explorationQ.size();)
-		{
-			currentVertex = explorationQ.front();
-			explorationQ.pop();
-
-			if (explored[currentVertex])
-			{
-				continue;
-			}
-
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < totalSize; ++neighbouringVertex)
-			{
-				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
-				{
-					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
-					// If yes that means that the subtree rooted at neighbouring vertex is more
-					// balanced than any of our previous splits.
-					unsigned componentTwoWeight = weights[neighbouringVertex];
-					unsigned componentOneWeight = weights[root] - componentTwoWeight;
-					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
-					if (comparisonDelta < delta)
-					{
-						delta = comparisonDelta;
-						subtreeRoot = neighbouringVertex;
-						subtreeParent = currentVertex;
-					}
-					explorationQ.push(neighbouringVertex);
-				}
-			}
-			explored[currentVertex] = true;
-		}
-
-		// Split along separator
-		DPRINT1("Splitting along separator");
-		bool switchboard[totalSize];
-		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
-		DPRINT1("CHKPT15");
-
-		std::memset(switchboard, false, totalSize);
-		std::memset(explored, false, totalSize);
-		DPRINT1("CHKPT16");
-
-		switchboard[subtreeRoot] = true;
-		DPRINT1("CHKPT17");
-
-		explorationQ.push(subtreeRoot);
-		DPRINT1("CHKPT18");
-		for (;explorationQ.size();)
-		{
-			currentVertex = explorationQ.front();
-			explorationQ.pop();
-			DPRINT1("CHKPT19");
-
-			if (explored[currentVertex])
-			{
-				continue;
-			}
-			DPRINT1("CHKPT20");
-
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < totalSize; ++neighbouringVertex)
-			{
-				DPRINT1("CHKPT21");
-				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
-				{
-					DPRINT1("CHKPT22");
-					switchboard[neighbouringVertex] = true;
-					explorationQ.push(neighbouringVertex);
-					DPRINT1("CHKPT23");
-				}
-				DPRINT1("CHKPT24");
-			}
-			explored[currentVertex] = true;
-			DPRINT1("CHKPT25");
-		}
+		bool *switchboard = g.findBalancedSeparator(weights);
 
 		// Recompose into two polygons by building polygons representing what we have now and then
 		// reducing in size their representation
@@ -642,6 +471,7 @@ namespace nirtree
 
 		for (unsigned i = 0; i < totalSize; ++i)
 		{
+			DPRINT4("switchboard[", i, "] = ", switchboard[i]);
 			if (switchboard[i])
 			{
 				if (i < childrenSize)
@@ -776,169 +606,25 @@ namespace nirtree
 		Node *right = new Node(minBranchFactor, maxBranchFactor, parent);
 		data.push_back(newData);
 		const unsigned dataSize = data.size();
-		const unsigned root = basicsSize / 2;
 
-		DEXEC(PencilPrinter p);
-		DEXEC(p.printToPencil(basics));
-		
-		// Build graph
-		DPRINT1("Building graph...");
-		bool graph[basicsSize][basicsSize];
-		std::memset(graph, false, basicsSize * basicsSize);
+		// Weight this node
+		unsigned weights[basicsSize];
 		for (unsigned i = 0; i < basicsSize; ++i)
 		{
-			for (unsigned j = 0; j < i; ++j)
-			{
-				if (basics[i].intersectsRectangle(basics[j]))
-				{
-					graph[i][j] = true;
-					graph[j][i] = true;
-				}
-			}
-		}
-
-		// Build tree
-		DPRINT1("Building tree...");
-		bool tree[basicsSize][basicsSize];
-		unsigned currentVertex;
-		std::queue<unsigned> explorationQ;
-		bool explored[basicsSize]; // Exploration labels so we don't cycle during search
-		bool connected[basicsSize]; // Connection labels so we don't double connect vertices
-		unsigned weights[basicsSize];
-		std::stack<unsigned> weightStack;
-		std::stack<unsigned> parentStack;
-
-		std::memset(tree, false, basicsSize * basicsSize);
-		std::memset(explored, false, basicsSize);
-		std::memset(connected, false, basicsSize);
-		std::memset(weights, 0, basicsSize * sizeof(unsigned));
-
-		explorationQ.push(root);
-		for (;explorationQ.size();)
-		{
-			currentVertex = explorationQ.front();
-			explorationQ.pop();
-
-			if (explored[currentVertex])
-			{
-				continue;
-			}
-
-			// Connect children of this node to the tree
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
-			{
-				if (graph[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
-				{
-					if (!connected[neighbouringVertex])
-					{
-						tree[currentVertex][neighbouringVertex] = true;
-						tree[neighbouringVertex][currentVertex] = true;
-						connected[neighbouringVertex] = true;
-						weightStack.push(neighbouringVertex);
-						parentStack.push(currentVertex);
-					}
-					explorationQ.push(neighbouringVertex);
-				}
-			}
-
-			// Weight this node
 			for (unsigned j = 0; j < dataSize; ++j)
 			{
-				if (basics[currentVertex].containsPoint(data[j]))
+				if (basics[i].containsPoint(data[j]))
 				{
-					++weights[currentVertex];
+					++weights[i];
 				}
 			}
-
-			// Done with this vertex
-			explored[currentVertex] = true;
 		}
 
-		// Weight the tree so we can quickly find a separator
-		DPRINT1("Combining weights...");
-		DPRINT2("basicsSize = ", basicsSize);
-		DPRINT2("parentStack.size() = ", parentStack.size());
-		DASSERT(parentStack.size() == weightStack.size());
-		DASSERT(basicsSize - 1 == parentStack.size());
-		for (unsigned i = 0; i < basicsSize - 1; ++i)
-		{
-			weights[parentStack.top()] += weights[weightStack.top()];
-			weightStack.pop();
-			parentStack.pop();
-		}
-
-		// Find a separator
-		DPRINT1("Finding a separator...");
-		unsigned delta = std::numeric_limits<unsigned>::max();
-		unsigned subtreeRoot = 0;
-		unsigned subtreeParent = 0;
-
-		std::memset(explored, false, basicsSize);
-
-		explorationQ.push(root);
-		for (;explorationQ.size();)
-		{
-			currentVertex = explorationQ.front();
-			explorationQ.pop();
-
-			if (explored[currentVertex])
-			{
-				continue;
-			}
-
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
-			{
-				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
-				{
-					// |(weight of whole tree - weight of this subtree) - weight of this subtree| < delta?
-					// If yes that means that the subtree rooted at neighbouring vertex is more
-					// balanced than any of our previous splits.
-					unsigned componentTwoWeight = weights[neighbouringVertex];
-					unsigned componentOneWeight = weights[root] - componentTwoWeight;
-					unsigned comparisonDelta = componentOneWeight > componentTwoWeight ? componentOneWeight - componentTwoWeight : componentTwoWeight - componentOneWeight;
-					if (comparisonDelta < delta)
-					{
-						delta = comparisonDelta;
-						subtreeRoot = neighbouringVertex;
-						subtreeParent = currentVertex;
-					}
-					explorationQ.push(neighbouringVertex);
-				}
-			}
-			explored[currentVertex] = true;
-		}
-
-		// Split along separator
-		DPRINT1("Splitting along separator...");
-		bool switchboard[basicsSize];
-		tree[subtreeRoot][subtreeParent] = tree[subtreeParent][subtreeRoot] = false;
-
-		std::memset(switchboard, false, basicsSize);
-		std::memset(explored, false, basicsSize);
-
-		switchboard[subtreeRoot] = true;
-
-		explorationQ.push(subtreeRoot);
-		for (;explorationQ.size();)
-		{
-			currentVertex = explorationQ.front();
-			explorationQ.pop();
-
-			if (explored[currentVertex])
-			{
-				continue;
-			}
-
-			for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
-			{
-				if (tree[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
-				{
-					switchboard[neighbouringVertex] = true;
-					explorationQ.push(neighbouringVertex);
-				}
-			}
-			explored[currentVertex] = true;
-		}
+		DPRINT1("Before graph building.");
+		Graph g(basics);
+		DPRINT1("Before graph separating.");
+		bool *switchboard = g.findBalancedSeparator(weights);
+		DPRINT1("After graph separating.");
 
 		// Break the bounding polygon in two
 		IsotheticPolygon leftPolygon;
@@ -1146,21 +832,6 @@ namespace nirtree
 					pointSet.push_back(data[j]);
 				}
 			}
-
-			// Depending on whether or not R is a bridge we may be able to delete it
-			if (pointSet.size() == 0 && g.contiguous(R))
-			{
-				// Delete R and then check if its neighbours can be deleted
-				basics[R] = Rectangle();
-				g.remove(R);
-				++deletedCount;
-				DPRINT2("Deleted R = ", R);
-			}
-			else
-			{
-				// Shrink R as much as possible under the restrictions of the pin set and the points
-				// it still must cover
-			}
 		}
 
 		// Cleanup
@@ -1208,21 +879,6 @@ namespace nirtree
 				{
 					coverSet.push_back(Rectangle());
 				}
-			}
-
-			// Depending on whether or not R is a bridge we may be able to delete it
-			if (coverSet.size() == 0 && g.contiguous(R))
-			{
-				// Delete R and then check if its neighbours can be deleted
-				basics[R] = Rectangle();
-				g.remove(R);
-				++deletedCount;
-				DPRINT2("Deleted R = ", R);
-			}
-			else
-			{
-				// Shrink R as much as possible under the restrictions of the pin set and the points
-				// it still must cover
 			}
 		}
 
@@ -1476,10 +1132,11 @@ namespace nirtree
 		{
 			for (unsigned i = 0; i < data.size(); ++i)
 			{
-				if (!parent->boundingBoxes[index].contiguous())
+				Graph gp(parent->boundingBoxes[index].basicRectangles);
+				if (!gp.contiguous())
 				{
 					std::cout << parent->boundingBoxes[index] << " not contiguous" << std::endl;
-					assert(parent->boundingBoxes[index].contiguous());
+					assert(gp.contiguous());
 				}
 				if (!parent->boundingBoxes[index].containsPoint(data[i]))
 				{

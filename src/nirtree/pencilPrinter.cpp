@@ -1,4 +1,4 @@
-#include<nirtree/pencilPrinter.h>
+#include <nirtree/pencilPrinter.h>
 
 namespace nirtree
 {
