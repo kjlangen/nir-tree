@@ -38,8 +38,8 @@ Graph::Graph(std::vector<Rectangle> &v)
 	std::sort(schedule, &schedule[vertices * 2 - 1], [](SchedulePoint a, SchedulePoint b){return a.coord == b.coord ? a.start && !b.start : a.coord < b.coord;});
 
 	// Allocate space to record which rectangles are "active" at the current SchedulePoint
-	unsigned active[vertices];
-	unsigned activeEnd = 0;
+	std::unordered_set<unsigned> active(vertices);
+
 	// Sweep
 	for (unsigned i = 0; i < vertices * 2; ++i)
 	{
@@ -49,36 +49,24 @@ Graph::Graph(std::vector<Rectangle> &v)
 		{
 			DPRINT3(schedule[i].index, "\tstart\t", schedule[i].coord);
 			// Check if the newly "active" rectangle intersects any other "active" rectangles
-			for (unsigned j = 0; j < activeEnd; ++j)
+			for (unsigned j : active)
 			{
-				if (v[schedule[i].index].intersectsRectangle(v[active[j]]))
+				if (v[schedule[i].index].intersectsRectangle(v[j]))
 				{
-					DPRINT8("inserting edge schedule[", i, "].index = ", schedule[i].index, " ----- active[", j, "] = ", active[j]);
-					g[schedule[i].index].push_back(active[j]);
-					g[active[j]].push_back(schedule[i].index);
+					DPRINT6("inserting edge schedule[", i, "].index = ", schedule[i].index, " ----- active j = ", j);
+					g[schedule[i].index].push_back(j);
+					g[j].push_back(schedule[i].index);
 				}
 			}
 
 			// Activation
-			active[activeEnd] = schedule[i].index;
-			++activeEnd;
+			active.insert(schedule[i].index);
 		}
 		else
 		{
 			DPRINT3(schedule[i].index, "\tend\t", schedule[i].coord);
-			for (unsigned j = 0; j < activeEnd; ++j)
-			{
-				// Find the rectangle in the active set
-				if (active[j] == schedule[i].index)
-				{
-					// Deactivation
-					active[j] = active[activeEnd - 1];
-					--activeEnd;
-					break;
-				}
-			}
+			active.erase(schedule[i].index);
 		}
-		DPRINT2("activeEnd = ", activeEnd);
 	}
 }
 
@@ -109,8 +97,8 @@ Graph::Graph(std::vector<IsotheticPolygon> &p)
 	std::sort(schedule, &schedule[vertices * 2 - 1], [](SchedulePoint a, SchedulePoint b){return a.coord == b.coord ? a.start && !b.start : a.coord < b.coord;});
 
 	// Allocate space to record which rectangles are "active" at the current SchedulePoint
-	unsigned active[vertices];
-	unsigned activeEnd = 0;
+	std::unordered_set<unsigned> active(vertices);
+
 	// Sweep
 	for (unsigned i = 0; i < vertices * 2; ++i)
 	{
@@ -120,36 +108,24 @@ Graph::Graph(std::vector<IsotheticPolygon> &p)
 		{
 			DPRINT3(schedule[i].index, "\tstart\t", schedule[i].coord);
 			// Check if the newly "active" rectangle intersects any other "active" rectangles
-			for (unsigned j = 0; j < activeEnd; ++j)
+			for (unsigned j : active)
 			{
-				if (p[schedule[i].index].intersectsPolygon(p[active[j]]))
+				if (p[schedule[i].index].intersectsPolygon(p[j]))
 				{
-					DPRINT8("inserting edge schedule[", i, "].index = ", schedule[i].index, " ----- active[", j, "] = ", active[j]);
-					g[schedule[i].index].push_back(active[j]);
-					g[active[j]].push_back(schedule[i].index);
+					DPRINT6("inserting edge schedule[", i, "].index = ", schedule[i].index, " ----- active j = ", j);
+					g[schedule[i].index].push_back(j);
+					g[j].push_back(schedule[i].index);
 				}
 			}
 
 			// Activation
-			active[activeEnd] = schedule[i].index;
-			++activeEnd;
+			active.insert(schedule[i].index);
 		}
 		else
 		{
 			DPRINT3(schedule[i].index, "\tend\t", schedule[i].coord);
-			for (unsigned j = 0; j < activeEnd; ++j)
-			{
-				// Find the rectangle in the active set
-				if (active[j] == schedule[i].index)
-				{
-					// Deactivation
-					active[j] = active[activeEnd - 1];
-					--activeEnd;
-					break;
-				}
-			}
+			active.erase(schedule[i].index);
 		}
-		DPRINT2("activeEnd = ", activeEnd);
 	}
 }
 
