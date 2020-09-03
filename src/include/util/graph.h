@@ -9,38 +9,35 @@
 #include <stack>
 #include <iostream>
 #include <chrono>
+#include <unordered_set>
 #include <util/geometry.h>
 #include <util/debug.h>
+#include <nirtree/pencilPrinter.h>
 
 class Graph
 {
 	private:
 		struct SchedulePoint
 		{
-			unsigned coord;
+			float coord;
 			unsigned index;
 			bool start;
 		};
 
 		unsigned vertices;
-		bool *g;
-		unsigned removedVertices;
-		bool *gRemoved;
+		std::vector<unsigned> *g;
+		bool *explored;
 
 	public:
 		// Constructors and destructors
 		Graph(const unsigned n);
 		Graph(std::vector<Rectangle> &v);
-		Graph(std::vector<IsotheticPolygon> &v);
+		Graph(std::vector<IsotheticPolygon> &p);
 		~Graph();
 
 		// High-level graph operations
 		bool contiguous();
 		bool contiguous(unsigned skipVertex);
-		unsigned components(unsigned *labels);
-		void remove(unsigned givenVertex);
-
-		// Graph access
-		bool *operator[](unsigned i);	
+		bool *findBalancedSeparator(unsigned *weights);
 };
 #endif

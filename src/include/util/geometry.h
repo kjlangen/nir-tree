@@ -93,7 +93,6 @@ class IsotheticPolygon
 		bool operator!=(IsotheticPolygon r);
 		bool unique();
 		bool infFree();
-		bool contiguous();
 
 		friend std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon);
 };

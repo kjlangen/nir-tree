@@ -419,7 +419,6 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	basicRectangles[minIndex].expand(givenPoint);
 	DASSERT(unique());
 	DASSERT(basicRectangles[minIndex].containsPoint(givenPoint));
-	DASSERT(contiguous());
 
 	// By expanding naively the expanded rectangle could intersect some of our own rectangles.
 	// To fix this take the expanded rectangle out of the polygon, treat it as a clipping
@@ -431,7 +430,6 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	DASSERT(unique());
 
 	DEXEC(basicRectangles.push_back(swap));
-	DASSERT(contiguous());
 	DEXEC(basicRectangles.pop_back());
 
 	increaseResolution(swap);
@@ -439,7 +437,6 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	DASSERT(swap.containsPoint(givenPoint));
 	DASSERT(unique());
 	DEXEC(basicRectangles.push_back(swap));
-	DASSERT(contiguous());
 	DEXEC(basicRectangles.pop_back());
 	DASSERT(unique());
 
@@ -461,7 +458,6 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	}
 	DASSERT((containsPoint(givenPoint)));
 	DASSERT(unique());
-	DASSERT(contiguous());
 
 	// Cleanup
 	refine();
@@ -627,7 +623,7 @@ void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
 
 void IsotheticPolygon::refine()
 {
-	DPRINT2("Before ", this);
+	DPRINT2("Before refinement ", this);
 
 	for (unsigned k = 0; k < 7 && basicRectangles.size(); ++k)
 	{
@@ -676,7 +672,7 @@ void IsotheticPolygon::refine()
 		rectangleSetRefined.clear();
 	}
 
-	DPRINT2("After ", this);
+	DPRINT2("After refinement ", this);
 	sort(true);
 }
 
@@ -761,67 +757,6 @@ bool IsotheticPolygon::infFree()
 	}
 
 	return true;
-}
-
-bool IsotheticPolygon::contiguous()
-{
-	unsigned basicsSize = basicRectangles.size();
-	bool graph[basicsSize][basicsSize];
-	std::memset(graph, false, basicsSize * basicsSize);
-	for (unsigned i = 0; i < basicsSize; ++i)
-	{
-		for (unsigned j = 0; j < i; ++j)
-		{
-			if (basicRectangles[i].intersectsRectangle(basicRectangles[j]))
-			{
-				graph[i][j] = true;
-				graph[j][i] = true;
-			}
-		}
-	}
-
-	unsigned currentVertex;
-	bool explored[basicsSize];
-	std::queue<unsigned> explorationQ;
-
-	std::memset(explored, false, basicsSize);
-
-	explorationQ.push(basicsSize / 2);
-	for (;explorationQ.size();)
-	{
-		currentVertex = explorationQ.front();
-		explorationQ.pop();
-
-		if (explored[currentVertex])
-		{
-			continue;
-		}
-
-		// Connect children of this node to the tree
-		for (unsigned neighbouringVertex = 0; neighbouringVertex < basicsSize; ++neighbouringVertex)
-		{
-			if (graph[currentVertex][neighbouringVertex] && !explored[neighbouringVertex])
-			{
-				explorationQ.push(neighbouringVertex);
-			}
-		}
-
-		// Done with this vertex
-		explored[currentVertex] = true;
-	}
-
-	bool contigous = true;
-	for (unsigned i = 0; i < basicsSize; ++i)
-	{
-		contigous = contigous && explored[i];
-	}
-
-	if (!contigous)
-	{
-		DPRINT2("Not contigous! ", this);
-	}
-
-	return contigous;
 }
 
 std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon)

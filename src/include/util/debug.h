@@ -12,6 +12,8 @@
 	#define DPRINT4(a, b, c, d) std::cout << a << b << c << d << std::endl
 	#define DPRINT5(a, b, c, d, e) std::cout << a << b << c << d << e << std::endl
 	#define DPRINT6(a, b, c, d, e, f) std::cout << a << b << c << d << e << f << std::endl
+	#define DPRINT7(a, b, c, d, e, f, g) std::cout << a << b << c << d << e << f << g << std::endl
+	#define DPRINT8(a, b, c, d, e, f, g, h) std::cout << a << b << c << d << e << f << g << h << std::endl
 #endif
 
 #ifndef DEBUG
@@ -22,7 +24,9 @@
 	#define DPRINT3(a, b, c)
 	#define DPRINT4(a, b, c, d)
 	#define DPRINT5(a, b, c, d, e)
-	#define DPRINT6(a, b, c, d, e)
+	#define DPRINT6(a, b, c, d, e, f)
+	#define DPRINT7(a, b, c, d, e, f, g)
+	#define DPRINT8(a, b, c, d, e, f, g, h)
 #endif
 
 #endif
