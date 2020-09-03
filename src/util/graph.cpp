@@ -220,7 +220,7 @@ bool Graph::contiguous(unsigned skipVertex)
 bool *Graph::findBalancedSeparator(unsigned *weights)
 {
 	// Allocate a tree
-	std::vector<unsigned> *t = new std::vector<unsigned>[vertices];
+	std::vector<unsigned> t[vertices];
 
 	unsigned currentVertex;
 	std::queue<unsigned> explorationQ;
@@ -371,13 +371,6 @@ bool *Graph::findBalancedSeparator(unsigned *weights)
 			}
 		}
 	}
-
-	// Delete the tree
-	for (unsigned i = 0; i < vertices; ++i)
-	{
-		t[i].clear();
-	}
-	delete [] t;
 
 	return switchboard;
 }
