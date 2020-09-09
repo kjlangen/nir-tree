@@ -9,6 +9,7 @@
 #include <util/geometry.h>
 #include <index/index.h>
 #include <rplustree/rPlusTreeNode.h>
+#include <util/statistics.h>
 
 namespace rplustree
 {
@@ -34,7 +35,6 @@ namespace rplustree
 			// Helper functions
 			bool isEmpty();
 			Node *getRoot();
-			unsigned height();
 			unsigned numDataElements();
 			bool exists(Point requestedPoint);
 			void adjustTree(Node *n, Node *nn);
@@ -62,6 +62,8 @@ namespace rplustree
 			// Miscellaneous
 			void checkBoundingBoxes();
 			unsigned checksum() override;
+			unsigned height();
+			void stat();
 			friend std::ostream &operator<<(std::ostream &os, RPlusTree &tree);
 	};
 }

@@ -126,6 +126,8 @@ namespace nirtree
 
 	std::vector<Point> Node::search(Point &requestedPoint)
 	{
+		STATEXEC(stat());
+
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
@@ -169,6 +171,8 @@ namespace nirtree
 
 	std::vector<Point> Node::search(Rectangle &requestedRectangle)
 	{
+		STATEXEC(stat());
+
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
@@ -392,6 +396,7 @@ namespace nirtree
 
 	Node::SplitResult Node::splitNode(SplitResult &lowerSplit)
 	{
+		STATSPLIT();
 		DPRINT1("Split starting");
 		// Setup the split
 		Node *left = new Node(minBranchFactor, maxBranchFactor, parent);
@@ -582,6 +587,8 @@ namespace nirtree
 	// TODO: START Make sure isothetic polygon constituent rectangles are always sorted forever and for always from here down
 	Node::SplitResult Node::splitNode(Point newData)
 	{
+		STATSPLIT();
+
 		// Special case where the leaf to be split is the root
 		if (parent == nullptr)
 		{
@@ -734,6 +741,8 @@ namespace nirtree
 	// Always called on root, this = root
 	Node *Node::insert(Point givenPoint)
 	{
+		STATEXEC(stat());
+
 		DPRINT2("Inserting ", givenPoint);
 
 		// I1 [Find position for new record]
@@ -795,6 +804,8 @@ namespace nirtree
 
 	bool Node::condenseLeaf(Point givenPoint)
 	{
+		STATSHRINK();
+
 		// Find ourselves, much like a teenager :P
 		unsigned polygonIndex;
 		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
@@ -843,6 +854,8 @@ namespace nirtree
 
 	bool Node::condenseNode(IsotheticPolygon &givenPolygon)
 	{
+		STATSHRINK();
+
 		// Find ourselves, much like a teenager :P
 		unsigned polygonIndex;
 		for(polygonIndex = 0; parent->children[polygonIndex] != this; ++polygonIndex) {}
@@ -954,6 +967,8 @@ namespace nirtree
 	// Always called on root, this = root
 	Node *Node::remove(Point givenPoint)
 	{
+		STATEXEC(stat());
+
 		DEXEC(PencilPrinter pr);
 		DEXEC(pr.printToPencil(this));
 		DPRINT2("Removing ", givenPoint);
@@ -1357,6 +1372,62 @@ namespace nirtree
 		newBoundingRects.clear();
 
 		return true;
+	}
+
+	unsigned Node::height()
+	{
+		unsigned ret = 0;
+		Node *node = this;
+
+		for (;;)
+		{
+			ret++;
+			if (node->children.size() == 0)
+			{
+				return ret;
+			}
+			else
+			{
+				node = node->children[0];
+			}
+		}
+	}
+
+	void Node::stat()
+	{
+		STATHEIGHT(height());
+
+		// Initialize our context stack
+		std::stack<Node *> context;
+		context.push(this);
+		Node *currentContext;
+		size_t memoryFootprint = 0;
+
+		for (;!context.empty();)
+		{
+			currentContext = context.top();
+			context.pop();
+
+			if (currentContext->children.size() == 0)
+			{
+				STATBRANCH(currentContext->data.size());
+				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);
+			}
+			else
+			{
+				STATBRANCH(currentContext->children.size());
+				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *);
+				// Determine which branches we need to follow
+				for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
+				{
+					STATPSIZE(currentContext->boundingBoxes[i].basicRectangles.size());
+					memoryFootprint += sizeof(Rectangle) * currentContext->boundingBoxes[i].basicRectangles.size();
+					context.push(currentContext->children[i]);
+				}
+			}
+		}
+
+		STATMEM(memoryFootprint);
 	}
 
 	void testPlayground()

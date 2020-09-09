@@ -130,6 +130,8 @@ namespace rtree
 
 	std::vector<Point> Node::search(Point &requestedPoint)
 	{
+		STATEXEC(stat());
+
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
@@ -172,6 +174,8 @@ namespace rtree
 
 	std::vector<Point> Node::search(Rectangle &requestedRectangle)
 	{
+		STATEXEC(stat());
+
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
@@ -335,6 +339,8 @@ namespace rtree
 
 	Node *Node::splitNode(Node *newChild)
 	{
+		STATSPLIT();
+
 		unsigned boundingBoxesSize = boundingBoxes.size();
 
 		// Setup the two groups which will be the entries in the two new nodes
@@ -444,6 +450,8 @@ namespace rtree
 	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
 	Node *Node::splitNode(Point newData)
 	{
+		STATSPLIT();
+
 		float dataSize = data.size();
 
 		// Setup the two groups which will be the entries in the two new nodes
@@ -596,6 +604,8 @@ namespace rtree
 	// Always called on root, this = root
 	Node *Node::insert(Point givenPoint)
 	{
+		STATEXEC(stat());
+
 		// I1 [Find position for new record]
 		Node *leaf = chooseLeaf(givenPoint);
 		Node *siblingLeaf = nullptr;
@@ -701,6 +711,8 @@ namespace rtree
 			// CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
 			if (nodeBoundingBoxesSize >= node->minBranchFactor || nodeDataSize >= node->minBranchFactor)
 			{
+				STATSHRINK();
+
 				node->parent->updateBoundingBox(node, node->boundingBox());
 
 				// CT5 [Move up one level in the tree]
@@ -710,6 +722,8 @@ namespace rtree
 			}
 			else
 			{
+				STATSHRINK();
+
 				// Remove ourselves from our parent
 				node->parent->removeChild(node);
 
@@ -756,6 +770,8 @@ namespace rtree
 	// Always called on root, this = root
 	Node *Node::remove(Point givenPoint)
 	{
+		STATEXEC(stat());
+
 		// D1 [Find node containing record]
 		Node *leaf = findLeaf(givenPoint);
 
@@ -844,5 +860,59 @@ namespace rtree
 		}
 
 		return sum;
+	}
+
+	unsigned Node::height()
+	{
+		unsigned ret = 0;
+		Node *node = this;
+
+		for (;;)
+		{
+			ret++;
+			if (node->children.size() == 0)
+			{
+				return ret;
+			}
+			else
+			{
+				node = node->children[0];
+			}
+		}
+	}
+
+	void Node::stat()
+	{
+		STATHEIGHT(height());
+
+		// Initialize our context stack
+		std::stack<Node *> context;
+		context.push(this);
+		Node *currentContext;
+		size_t memoryFootprint = 0;
+
+		for (;!context.empty();)
+		{
+			currentContext = context.top();
+			context.pop();
+
+			if (currentContext->children.size() == 0)
+			{
+				STATBRANCH(currentContext->data.size());
+				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);
+			}
+			else
+			{
+				STATBRANCH(currentContext->children.size());
+				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *) + currentContext->boundingBoxes.size() * sizeof(Rectangle);
+				// Determine which branches we need to follow
+				for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
+				{
+					context.push(currentContext->children[i]);
+				}
+			}
+		}
+
+		STATMEM(memoryFootprint);
 	}
 }

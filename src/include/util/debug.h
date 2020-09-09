@@ -1,9 +1,9 @@
 #ifndef __DEBUG__
 #define __DEBUG__
 
-#include <iostream>
-
 #ifdef DEBUG
+	#include <iostream>
+
 	#define DEXEC(a) a
 	#define DASSERT(a) assert(a)
 	#define DPRINT1(a) std::cout << a << std::endl
@@ -14,9 +14,7 @@
 	#define DPRINT6(a, b, c, d, e, f) std::cout << a << b << c << d << e << f << std::endl
 	#define DPRINT7(a, b, c, d, e, f, g) std::cout << a << b << c << d << e << f << g << std::endl
 	#define DPRINT8(a, b, c, d, e, f, g, h) std::cout << a << b << c << d << e << f << g << h << std::endl
-#endif
-
-#ifndef DEBUG
+#else
 	#define DEXEC(a)
 	#define DASSERT(a)
 	#define DPRINT1(a)

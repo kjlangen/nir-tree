@@ -16,6 +16,7 @@
 #include <util/geometry.h>
 #include <util/graph.h>
 #include <util/debug.h>
+#include <util/statistics.h>
 #include <nirtree/pencilPrinter.h>
 
 namespace nirtree
@@ -87,6 +88,8 @@ namespace nirtree
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 			bool tighten();
+			unsigned height();
+			void stat();
 	};
 
 	void testPlayground();
