@@ -1,6 +1,6 @@
-SXX = -std=c++11 	# Standard
-FLAGS = -Wall -O1	# Flags
-DIR = src/include 	# Include directory
+SXX = -std=c++11 # Standard
+FLAGS = -Wall -O1 # Flags
+DIR = src/include # Include directory
 OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o randomSquares.o randomPoints.o randomDisjointSquares.o splitPoints.o pencilPrinter.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
 
@@ -77,27 +77,19 @@ tests: ${OBJECTS} ${TESTS}
 clean:
 	rm -rf bin/* *.o *.d
 
-# Build all together
-all: clean ${OBJECTS}
-	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads
-
 # Alter flags to include profiling
-profileflags:
+profile:
 	$(eval FLAGS += -pg)
 
-# Build all together with profiling
-# Note: Problems will occur if files were previously compiled without -pg and were not altered since
-profile: clean profileflags ${OBJECTS}
-	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/profile -I ${DIR} -lspatialindex -lctemplate_nothreads
-
 # Alter flags to include debugging
-debugflags:
+debug:
 	$(eval FLAGS += -DDEBUG)
 
-#Build all together with debugging
-# Note: Problems will occur if files were previously compiled without -pg and were not altered since
-debug: clean debugflags ${OBJECTS}
+# Alter flags to include statistics
+stat:
+	$(eval FLAGS += -DSTAT)
+
+# Build all together
+all: ${OBJECTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/debug -I ${DIR} -lspatialindex -lctemplate_nothreads
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads

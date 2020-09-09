@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 #include <util/geometry.h>
+#include <util/statistics.h>
 
 namespace rtree
 {
@@ -62,6 +63,8 @@ namespace rtree
 			unsigned checksum();
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
+			unsigned height();
+			void stat();
 	};
 }
 

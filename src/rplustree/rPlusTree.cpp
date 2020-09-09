@@ -40,20 +40,6 @@ namespace rplustree
 		return root;
 	}
 
-	unsigned RPlusTree::height()
-	{
-		unsigned height = 0;
-		Node *n = root;
-
-		while (!n->isLeaf())
-		{
-			n = n->children[0];
-			height++;
-		}
-
-		return height;
-	}
-
 	unsigned RPlusTree::numDataElements()
 	{
 		unsigned result = 0;
@@ -596,11 +582,15 @@ namespace rplustree
 
 	std::vector<Point> RPlusTree::search(Point requestedPoint)
 	{
+		STATEXEC(stat());
+
 		return findLeaf(requestedPoint) == nullptr ? std::vector<Point>() : std::vector<Point>{requestedPoint};
 	}
 
 	std::vector<Point> RPlusTree::search(Rectangle requestedRectangle)
 	{
+		STATEXEC(stat());
+
 		std::vector<Point> result;
 		std::stack<Node *> stack;
 		Node *currentNode;
@@ -639,6 +629,8 @@ namespace rplustree
 
 	void RPlusTree::insert(Point givenPoint)
 	{
+		STATEXEC(stat());
+
 		// Choose the leaves where the data will go
 		Node *leaf = chooseLeaf(root, givenPoint);
 		leaf->data.push_back(givenPoint);
@@ -657,6 +649,8 @@ namespace rplustree
 
 	void RPlusTree::remove(Point givenPoint)
 	{
+		STATEXEC(stat());
+
 		Node *leaf = findLeaf(givenPoint);
 		if (leaf == nullptr)
 		{
@@ -749,6 +743,55 @@ namespace rplustree
 		}
 
 		return sum;
+	}
+
+	unsigned RPlusTree::height()
+	{
+		unsigned height = 0;
+		Node *n = root;
+
+		while (!n->isLeaf())
+		{
+			n = n->children[0];
+			height++;
+		}
+
+		return height;
+	}
+
+	void RPlusTree::stat()
+	{
+		STATHEIGHT(height());
+
+		// Initialize our context stack
+		std::stack<Node *> context;
+		context.push(root);
+		Node *currentContext;
+		size_t memoryFootprint = 0;
+
+		for (;!context.empty();)
+		{
+			currentContext = context.top();
+			context.pop();
+
+			if (currentContext->children.size() == 0)
+			{
+				STATBRANCH(currentContext->data.size());
+				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);
+			}
+			else
+			{
+				STATBRANCH(currentContext->children.size());
+				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *);
+				// Determine which branches we need to follow
+				for (unsigned i = 0; i < currentContext->children.size(); ++i)
+				{
+					context.push(currentContext->children[i]);
+				}
+			}
+		}
+
+		STATMEM(memoryFootprint);
 	}
 
 	std::ostream &operator<<(std::ostream &os, RPlusTree &tree)
