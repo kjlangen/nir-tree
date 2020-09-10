@@ -81,6 +81,9 @@ clean:
 profile:
 	$(eval FLAGS += -pg)
 
+perf:
+	$(eval FLAGS += -ggdb)
+
 # Alter flags to include debugging
 debug:
 	$(eval FLAGS += -DDEBUG)
