@@ -115,10 +115,10 @@ void testLibSpatialIndex()
 	delete pirateTree;
 }
 
-enum TreeType { NONE = 0, R_PLUS_TREE, R_STAR_TREE, NIR_TREE };
+enum TreeType { NONE = 0, R_TREE, R_PLUS_TREE, NIR_TREE };
 
 void parameters(TreeType type, unsigned a, unsigned b, unsigned n, unsigned l, unsigned s) {
-	std::string treeTypes[] = {"NONE", "R_PLUS_TREE", "R_STAR_TREE", "NIR_TREE"};
+	std::string treeTypes[] = {"NONE", "R_TREE", "R_PLUS_TREE", "NIR_TREE"};
 	std::cout << "### TEST PARAMETERS ###" << std::endl;
 	std::cout << "  tree = " << treeTypes[type] << std::endl;
 	std::cout << "  a = " << a << "; b = " << b << std::endl;
@@ -183,16 +183,16 @@ int main(int argc, char *argv[])
 
 	// Run benchmarking
 	switch (type) {
+		case R_TREE:
+		{
+			rtree::RTree rt(a, b);
+			randomPoints(rt, n, l, s);
+			break;
+		}
 		case R_PLUS_TREE:
 		{
 			rplustree::RPlusTree rpt(a, b);
 			randomPoints(rpt, n, l, s);
-			break;
-		}
-		case R_STAR_TREE:
-		{
-			rtree::RTree rt(a, b);
-			randomPoints(rt, n, l, s);
 			break;
 		}
 		case NIR_TREE:

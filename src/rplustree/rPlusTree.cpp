@@ -748,15 +748,20 @@ namespace rplustree
 	unsigned RPlusTree::height()
 	{
 		unsigned height = 0;
-		Node *n = root;
+		Node *node = root;
 
-		while (!n->isLeaf())
+		for (;;)
 		{
-			n = n->children[0];
 			height++;
+			if (node->children.size() == 0)
+			{
+				return height;
+			}
+			else
+			{
+				node = node->children[0];
+			}
 		}
-
-		return height;
 	}
 
 	void RPlusTree::stat()
@@ -783,10 +788,9 @@ namespace rplustree
 			{
 				STATBRANCH(currentContext->children.size());
 				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *);
-				// Determine which branches we need to follow
-				for (unsigned i = 0; i < currentContext->children.size(); ++i)
+				for (Node * child : currentContext->children)
 				{
-					context.push(currentContext->children[i]);
+					context.push(child);
 				}
 			}
 		}

@@ -1417,7 +1417,6 @@ namespace nirtree
 			{
 				STATBRANCH(currentContext->children.size());
 				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *);
-				// Determine which branches we need to follow
 				for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
 				{
 					STATPSIZE(currentContext->boundingBoxes[i].basicRectangles.size());
