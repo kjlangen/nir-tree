@@ -1,12 +1,96 @@
 #include <bench/randomPoints.h>
 
-void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequency, unsigned seed)
+Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 {
 	// Setup random generators
 	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<float> pointDist(0.0, 200000.0);
-	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (20000000.0, 20000000.0)." << std::endl;
+	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
+	// Initialize points
+	Point *points = new Point[benchmarkSize];
+	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
+	for (unsigned i = 0; i < benchmarkSize; ++i)
+	{
+		// Create the point
+		points[i] = Point(pointDist(generator), pointDist(generator));
+
+		// Print the new point
+		std::cout << "Point[" << i << "] " << points[i] << std::endl;
+	}
+	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
+
+	return points;
+}
+
+Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
+{
+	// Setup random generators
+	std::default_random_engine generator(seed);
+	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::cout << "Skewing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
+
+	// Initialize points
+	Point *points = new Point[benchmarkSize];
+	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
+	for (unsigned i = 0; i < benchmarkSize; ++i)
+	{
+		// Create the point
+		points[i] = Point(pointDist(generator), pow(pointDist(generator), skewFactor));
+
+		// Print the new point
+		std::cout << "Point[" << i << "] " << points[i] << std::endl;
+	}
+	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
+
+	return points;
+}
+
+Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned clusterCount)
+{
+	// Setup random generators
+	std::default_random_engine generator(seed);
+	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::normal_distribution<float> clusterDist(0.0, 0.001);
+	std::cout << "Clustering points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
+
+	// Initialize cluster centres
+	Point *centres = new Point[clusterCount];
+	std::cout << "Beginning initialization of " << clusterCount << " clusters..." << std::endl;
+	for (unsigned i = 0; i < clusterCount; ++i)
+	{
+		// Create the point
+		centres[i] = Point(pointDist(generator), pointDist(generator));
+
+		// Print the centre
+		std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
+	}
+	std::cout << "Finished initialization of " << clusterCount << " clusters." << std::endl;
+
+	// Initialize points
+	Point *points = new Point[benchmarkSize];
+	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
+	for (unsigned i = 0; i < benchmarkSize;)
+	{
+		for (unsigned j = 0; j < clusterCount && i < benchmarkSize; ++j)
+		{
+			// Create the point
+			points[i] = Point(centres[j].x + clusterDist(generator), centres[j].y + clusterDist(generator));
+
+			// Print the new point
+			std::cout << "Point[" << i << "] " << points[i] << std::endl;
+
+			// Move to the next point
+			i++;
+		}
+	}
+	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
+
+	return points;
+}
+
+void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, unsigned seed, unsigned logFrequency)
+{
 	// Setup checksums
 	unsigned directSum = 0;
 
@@ -21,21 +105,21 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	double totalDeletes = 0.0;
 
 	// Initialize points
-	Point *points = new Point[benchmarkSize];
-	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	Point *points;
+	switch(bench)
 	{
-		// Create the point
-		points[i] = Point(pointDist(generator), pointDist(generator));
-
-		// Compute the checksum directly
-		directSum += (unsigned)points[i].x;
-		directSum += (unsigned)points[i].y;
-
-		// Print the new point
-		std::cout << "Point[" << i << "] " << points[i] << std::endl;
+		case UNIFORM:
+			points = generateUniform(benchmarkSize, seed);
+			break;
+		case SKEW:
+			points = generateSkewed(benchmarkSize, seed, 5.0);
+			break;
+		case CLUSTER:
+			points = generateClustered(benchmarkSize, seed, 20);
+			break;
+		default:
+			assert(false);
 	}
-	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
 	// Initialize search rectangles
 	Rectangle *searchRectangles = new Rectangle[16];
@@ -55,6 +139,10 @@ void randomPoints(Index& spatialIndex, unsigned benchmarkSize, unsigned logFrequ
 	std::cout << "Beginning insertion of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
+		// Compute the checksum directly
+		directSum += (unsigned)points[i].x;
+		directSum += (unsigned)points[i].y;
+
 		// Insert
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
 		spatialIndex.insert(points[i]);
