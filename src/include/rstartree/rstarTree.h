@@ -6,21 +6,21 @@
 #include <iostream>
 #include <utility>
 #include <util/geometry.h>
-#include <rtree/node.h>
+#include <rstartree/rstarTreeNode.h>
 #include <index/index.h>
 
-namespace rtree
+namespace rstartree
 {
 	// For now we will work with an RTree that only stores points
-	class RTree: public Index
+	class RStarTree: public Index
 	{
 		public:
-			Node *root;
+			RStarTreeNode *root;
 
 			// Constructors and destructors
-			RTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-			RTree(Node *root);
-			~RTree();
+			RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+			RStarTree(RStarTreeNode *root);
+			~RStarTree();
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);

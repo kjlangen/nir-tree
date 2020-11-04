@@ -1,8 +1,8 @@
 #include <rstartree/rstarTreeNode.h>
 
-namespace rtree
+namespace rstartree
 {
-	Node::Node()
+	RStarTreeNode::RStarTreeNode()
 	{
 		minBranchFactor = 3;
 		maxBranchFactor = 5;
@@ -12,7 +12,7 @@ namespace rtree
 		data.resize(0);
 	}
 
-	Node::Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p)
+	RStarTreeNode::RStarTreeNode(unsigned minBranchFactor, unsigned maxBranchFactor, RStarTreeNode *p)
 	{
 		this->minBranchFactor = minBranchFactor;
 		this->maxBranchFactor = maxBranchFactor;
@@ -22,7 +22,7 @@ namespace rtree
 		data.resize(0);
 	}
 
-	void Node::deleteSubtrees()
+	void RStarTreeNode::deleteSubtrees()
 	{
 		if (children.size() == 0)
 		{
@@ -38,7 +38,7 @@ namespace rtree
 		}
 	}
 
-	Rectangle Node::boundingBox()
+	Rectangle RStarTreeNode::boundingBox()
 	{
 		Rectangle boundingBox;
 
@@ -63,7 +63,7 @@ namespace rtree
 	}
 
 	// TODO: Optimize maybe
-	void Node::updateBoundingBox(Node *child, Rectangle updatedBoundingBox)
+	void RStarTreeNode::updateBoundingBox(RStarTreeNode *child, Rectangle updatedBoundingBox)
 	{
 		for (unsigned i = 0; i < children.size(); ++i)
 		{
@@ -76,7 +76,7 @@ namespace rtree
 	}
 
 	// TODO: Optimize maybe
-	void Node::removeChild(Node *child)
+	void RStarTreeNode::removeChild(RStarTreeNode *child)
 	{
 		for (unsigned i = 0; i < children.size(); ++i)
 		{
@@ -90,7 +90,7 @@ namespace rtree
 	}
 
 	// TODO: Optimize maybe
-	void Node::removeData(Point givenPoint)
+	void RStarTreeNode::removeData(Point givenPoint)
 	{
 		for (unsigned i = 0; i < data.size(); ++i)
 		{
@@ -102,7 +102,7 @@ namespace rtree
 		}
 	}
 
-	void Node::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
+	void RStarTreeNode::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
 	{
 		if (children.size() == 0)
 		{
@@ -128,16 +128,16 @@ namespace rtree
 		}
 	}
 
-	std::vector<Point> Node::search(Point &requestedPoint)
+	std::vector<Point> RStarTreeNode::search(Point &requestedPoint)
 	{
 		STATEXEC(stat());
 
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
-		std::stack<Node *> context;
+		std::stack<RStarTreeNode *> context;
 		context.push(this);
-		Node *currentContext;
+		RStarTreeNode *currentContext;
 
 		for (;!context.empty();)
 		{
@@ -172,16 +172,16 @@ namespace rtree
 		return matchingPoints;
 	}
 
-	std::vector<Point> Node::search(Rectangle &requestedRectangle)
+	std::vector<Point> RStarTreeNode::search(Rectangle &requestedRectangle)
 	{
 		STATEXEC(stat());
 
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
-		std::stack<Node *> context;
+		std::stack<RStarTreeNode *> context;
 		context.push(this);
-		Node *currentContext;
+		RStarTreeNode *currentContext;
 
 		for (;!context.empty();)
 		{
@@ -218,10 +218,10 @@ namespace rtree
 
 	// Always called on root, this = root
 	// TODO: Write the analogous chooseLeaf(Rectangle searchRectangle)
-	Node *Node::chooseLeaf(Point givenPoint)
+	RStarTreeNode *RStarTreeNode::chooseLeaf(Point givenPoint)
 	{
 		// CL1 [Initialize]
-		Node *node = this;
+		RStarTreeNode *node = this;
 
 		for (;;)
 		{
@@ -254,10 +254,10 @@ namespace rtree
 	}
 
 	// Always called on root, this = root
-	Node *Node::chooseNode(ReinsertionEntry e)
+	RStarTreeNode *RStarTreeNode::chooseNode(ReinsertionEntry e)
 	{
 		// CL1 [Initialize]
-		Node *node = this;
+		RStarTreeNode *node = this;
 
 		for (;;)
 		{
@@ -295,12 +295,12 @@ namespace rtree
 	}
 
 	// TODO: Optimize
-	Node *Node::findLeaf(Point givenPoint)
+	RStarTreeNode *RStarTreeNode::findLeaf(Point givenPoint)
 	{
 		// Initialize our context stack
-		std::stack<Node *> context;
+		std::stack<RStarTreeNode *> context;
 		context.push(this);
-		Node *currentContext;
+		RStarTreeNode *currentContext;
 
 		for (;!context.empty();)
 		{
@@ -337,7 +337,7 @@ namespace rtree
 		return nullptr;
 	}
 
-	Node *Node::splitNode(Node *newChild)
+	RStarTreeNode *RStarTreeNode::splitNode(RStarTreeNode *newChild)
 	{
 		STATSPLIT();
 
@@ -406,7 +406,7 @@ namespace rtree
 		}
 
 		// Create the new node and fill it with groupB entries by doing complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		RStarTreeNode *newSibling = new RStarTreeNode(minBranchFactor, maxBranchFactor, parent);
 		unsigned groupASize = groupA.size();
 		unsigned groupALastIndex = groupASize - 1;
 		unsigned iGroupB;
@@ -448,7 +448,7 @@ namespace rtree
 
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
 	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
-	Node *Node::splitNode(Point newData)
+	RStarTreeNode *RStarTreeNode::splitNode(Point newData)
 	{
 		STATSPLIT();
 
@@ -524,7 +524,7 @@ namespace rtree
 		}
 
 		// Create the new node and fill it with groupB entries by doing really complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		RStarTreeNode *newSibling = new RStarTreeNode(minBranchFactor, maxBranchFactor, parent);
 		unsigned groupALastIndex = groupA.size() - 1;
 		unsigned iGroupB;
 		for (unsigned i = 0; i < groupB.size(); ++i)
@@ -551,11 +551,11 @@ namespace rtree
 		return newSibling;
 	}
 
-	Node *Node::adjustTree(Node *sibling)
+	RStarTreeNode *RStarTreeNode::adjustTree(RStarTreeNode *sibling)
 	{
 		// AT1 [Initialize]
-		Node *node = this;
-		Node *siblingNode = sibling;
+		RStarTreeNode *node = this;
+		RStarTreeNode *siblingNode = sibling;
 
 		for (;;)
 		{
@@ -584,7 +584,7 @@ namespace rtree
 					}
 					else
 					{
-						Node *siblingParent = node->parent->splitNode(siblingNode);
+						RStarTreeNode *siblingParent = node->parent->splitNode(siblingNode);
 
 						node = node->parent;
 						siblingNode = siblingParent;
@@ -602,13 +602,13 @@ namespace rtree
 	}
 
 	// Always called on root, this = root
-	Node *Node::insert(Point givenPoint)
+	RStarTreeNode *RStarTreeNode::insert(Point givenPoint)
 	{
 		STATEXEC(stat());
 
 		// I1 [Find position for new record]
-		Node *leaf = chooseLeaf(givenPoint);
-		Node *siblingLeaf = nullptr;
+		RStarTreeNode *leaf = chooseLeaf(givenPoint);
+		RStarTreeNode *siblingLeaf = nullptr;
 
 		// I2 [Add record to leaf node]
 		if (leaf->data.size() < leaf->maxBranchFactor)
@@ -621,12 +621,12 @@ namespace rtree
 		}
 
 		// I3 [Propogate changes upward]
-		Node *siblingNode = leaf->adjustTree(siblingLeaf);
+		RStarTreeNode *siblingNode = leaf->adjustTree(siblingLeaf);
 
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
-			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
+			RStarTreeNode *newRoot = new RStarTreeNode(minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
 			newRoot->boundingBoxes.push_back(this->boundingBox());
@@ -645,7 +645,7 @@ namespace rtree
 	}
 
 	// Always called on root, this = root
-	Node *Node::insert(ReinsertionEntry e)
+	RStarTreeNode *RStarTreeNode::insert(ReinsertionEntry e)
 	{
 		// If reinserting a leaf then use normal insert
 		if (e.level == 0)
@@ -654,8 +654,8 @@ namespace rtree
 		}
 
 		// I1 [Find position for new record]
-		Node *node = chooseNode(e);
-		Node *siblingNode = nullptr;
+		RStarTreeNode *node = chooseNode(e);
+		RStarTreeNode *siblingNode = nullptr;
 
 		// I2 [Add record to node]
 		if (node->children.size() < node->maxBranchFactor)
@@ -675,7 +675,7 @@ namespace rtree
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
-			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
+			RStarTreeNode *newRoot = new RStarTreeNode(minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
 			newRoot->boundingBoxes.push_back(this->boundingBox());
@@ -694,10 +694,10 @@ namespace rtree
 	}
 
 	// To be called on a leaf
-	Node *Node::condenseTree()
+	RStarTreeNode *RStarTreeNode::condenseTree()
 	{
 		// CT1 [Initialize]
-		Node *node = this;
+		RStarTreeNode *node = this;
 		unsigned level = 0;
 
 		std::vector<ReinsertionEntry> Q;
@@ -746,7 +746,7 @@ namespace rtree
 				}
 
 				// Prepare for garbage collection
-				Node *garbage = node;
+				RStarTreeNode *garbage = node;
 
 				// CT5 [Move up one level in the tree]
 				// Move up a level before deleting ourselves
@@ -768,12 +768,12 @@ namespace rtree
 	}
 
 	// Always called on root, this = root
-	Node *Node::remove(Point givenPoint)
+	RStarTreeNode *RStarTreeNode::remove(Point givenPoint)
 	{
 		STATEXEC(stat());
 
 		// D1 [Find node containing record]
-		Node *leaf = findLeaf(givenPoint);
+		RStarTreeNode *leaf = findLeaf(givenPoint);
 
 		if (leaf == nullptr)
 		{
@@ -784,7 +784,7 @@ namespace rtree
 		leaf->removeData(givenPoint);
 
 		// D3 [Propagate changes]
-		Node *root = leaf->condenseTree();
+		RStarTreeNode *root = leaf->condenseTree();
 
 		// D4 [Shorten tree]
 		if (root->children.size() == 1)
@@ -798,7 +798,7 @@ namespace rtree
 		}
 	}
 
-	void Node::print(unsigned n)
+	void RStarTreeNode::print(unsigned n)
 	{
 		std::string indendtation(n * 4, ' ');
 		std::cout << indendtation << "Node " << (void *)this << std::endl;
@@ -822,7 +822,7 @@ namespace rtree
 		std::cout << std::endl << indendtation << "}" << std::endl;
 	}
 
-	void Node::printTree(unsigned n)
+	void RStarTreeNode::printTree(unsigned n)
 	{
 		// Print this node first
 		print(n);
@@ -838,7 +838,7 @@ namespace rtree
 		}
 	}
 
-	unsigned Node::checksum()
+	unsigned RStarTreeNode::checksum()
 	{
 		unsigned sum = 0;
 
@@ -862,10 +862,10 @@ namespace rtree
 		return sum;
 	}
 
-	unsigned Node::height()
+	unsigned RStarTreeNode::height()
 	{
 		unsigned ret = 0;
-		Node *node = this;
+		RStarTreeNode *node = this;
 
 		for (;;)
 		{
@@ -881,14 +881,14 @@ namespace rtree
 		}
 	}
 
-	void Node::stat()
+	void RStarTreeNode::stat()
 	{
 		STATHEIGHT(height());
 
 		// Initialize our context stack
-		std::stack<Node *> context;
+		std::stack<RStarTreeNode *> context;
 		context.push(this);
-		Node *currentContext;
+		RStarTreeNode *currentContext;
 		size_t memoryFootprint = 0;
 
 		for (;!context.empty();)
@@ -899,12 +899,12 @@ namespace rtree
 			if (currentContext->children.size() == 0)
 			{
 				STATBRANCH(currentContext->data.size());
-				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);
+				memoryFootprint += sizeof(RStarTreeNode) + currentContext->data.size() * sizeof(Point);
 			}
 			else
 			{
 				STATBRANCH(currentContext->children.size());
-				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *) + currentContext->boundingBoxes.size() * sizeof(Rectangle);
+				memoryFootprint += sizeof(RStarTreeNode) + currentContext->children.size() * sizeof(RStarTreeNode *) + currentContext->boundingBoxes.size() * sizeof(Rectangle);
 				// Determine which branches we need to follow
 				for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
 				{

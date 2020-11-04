@@ -11,16 +11,16 @@
 #include <util/geometry.h>
 #include <util/statistics.h>
 
-namespace rtree
+namespace rstartree
 {
-	class Node
+	class RStarTreeNode
 	{
 		class ReinsertionEntry
 		{
 			public:
 				Rectangle boundingBox;
 				Point data;
-				Node *child;
+				RStarTreeNode *child;
 				unsigned level;
 		};
 
@@ -28,36 +28,36 @@ namespace rtree
 		unsigned maxBranchFactor;
 
 		public:
-			Node *parent;
+			RStarTreeNode *parent;
 			std::vector<Rectangle> boundingBoxes;
-			std::vector<Node *> children;
+			std::vector<RStarTreeNode *> children;
 			std::vector<Point> data;
 
 			// Constructors and destructors
-			Node();
-			Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p=nullptr);
+			RStarTreeNode();
+			RStarTreeNode(unsigned minBranchFactor, unsigned maxBranchFactor, RStarTreeNode *p=nullptr);
 			void deleteSubtrees();
 
 			// Helper functions
 			Rectangle boundingBox();
-			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
-			void removeChild(Node *child);
+			void updateBoundingBox(RStarTreeNode *child, Rectangle updatedBoundingBox);
+			void removeChild(RStarTreeNode *child);
 			void removeData(Point givenPoint);
-			Node *chooseLeaf(Point givenPoint);
-			Node *chooseNode(ReinsertionEntry e);
-			Node *findLeaf(Point givenPoint);
-			Node *splitNode(Node *newChild);
-			Node *splitNode(Point newData);
-			Node *adjustTree(Node *siblingLeaf);
-			Node *condenseTree();
-			Node *insert(ReinsertionEntry e);
+			RStarTreeNode *chooseLeaf(Point givenPoint);
+			RStarTreeNode *chooseNode(ReinsertionEntry e);
+			RStarTreeNode *findLeaf(Point givenPoint);
+			RStarTreeNode *splitNode(RStarTreeNode *newChild);
+			RStarTreeNode *splitNode(Point newData);
+			RStarTreeNode *adjustTree(RStarTreeNode *siblingLeaf);
+			RStarTreeNode *condenseTree();
+			RStarTreeNode *insert(ReinsertionEntry e);
 
 			// Datastructure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
 			std::vector<Point> search(Point &requestedPoint);
 			std::vector<Point> search(Rectangle &requestedRectangle);
-			Node *insert(Point givenPoint);
-			Node *remove(Point givenPoint);
+			RStarTreeNode *insert(Point givenPoint);
+			RStarTreeNode *remove(Point givenPoint);
 
 			// Miscellaneous
 			unsigned checksum();

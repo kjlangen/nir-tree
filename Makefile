@@ -33,6 +33,14 @@ rPlusTreeNode.o:
 rPlusTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
 
+# Build rplustree node
+rstarTreeNode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/rstarTreeNode.cpp
+
+# Build rplustree
+rstarTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/rstarTree.cpp
+
 # Build pencil printer
 pencilPrinter.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/pencilPrinter.cpp
@@ -71,7 +79,7 @@ testRPlusTree.o:
 # Unit tests
 tests: ${OBJECTS} ${TESTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -lctemplate_nothreads -DUNIT_TESTING
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lctemplate_nothreads -DUNIT_TESTING
 
 # Clean all together
 clean:
@@ -95,4 +103,4 @@ stat:
 # Build all together
 all: ${OBJECTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lctemplate_nothreads
