@@ -1,5 +1,5 @@
-#ifndef __NIRTREE__
-#define __NIRTREE__
+#ifndef __RPLUSTREE__
+#define __RPLUSTREE__
 
 #include <cassert>
 #include <vector>
@@ -9,22 +9,21 @@
 #include <iostream>
 #include <utility>
 #include <util/geometry.h>
-#include <nirtree/node.h>
+#include <rplustree/node.h>
 #include <index/index.h>
 #include <util/pencilPrinter.h>
 
-namespace nirtree
+namespace rplustree
 {
-	// TODO: For now we will work with a NIRTree that only stores points
-	class NIRTree: public Index
+	class RPlusTree: public Index
 	{
 		public:
 			Node *root;
 
 			// Constructors and destructors
-			NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-			NIRTree(Node *root);
-			~NIRTree();
+			RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+			RPlusTree(Node *root);
+			~RPlusTree();
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);

@@ -51,8 +51,18 @@ namespace rtree
 		return root->checksum();
 	}
 
+	void RTree::stat()
+	{
+		root->stat();
+	}
+
 	void RTree::print()
 	{
 		root->printTree();
+	}
+
+	void RTree::pencilPrint()
+	{
+		// Pencil printer doesn't work for RTree, sorry!
 	}
 }

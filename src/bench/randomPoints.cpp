@@ -16,7 +16,7 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 		points[i] = Point(pointDist(generator), pointDist(generator));
 
 		// Print the new point
-		std::cout << "Point[" << i << "] " << points[i] << std::endl;
+		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
@@ -39,7 +39,7 @@ Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
 		points[i] = Point(pointDist(generator), pow(pointDist(generator), skewFactor));
 
 		// Print the new point
-		std::cout << "Point[" << i << "] " << points[i] << std::endl;
+		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
@@ -63,7 +63,7 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 		centres[i] = Point(pointDist(generator), pointDist(generator));
 
 		// Print the centre
-		std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
+		// std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << clusterCount << " clusters." << std::endl;
 
@@ -78,7 +78,7 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 			points[i] = Point(centres[j].x + clusterDist(generator), centres[j].y + clusterDist(generator));
 
 			// Print the new point
-			std::cout << "Point[" << i << "] " << points[i] << std::endl;
+			// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 
 			// Move to the next point
 			i++;
@@ -87,6 +87,27 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
 	return points;
+}
+
+Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
+{
+	std::default_random_engine generator(seed + benchmarkSize);
+	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[rectanglesSize];
+	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles..." << std::endl;
+	for (unsigned i = 0; i < rectanglesSize; ++i)
+	{
+		// Generate a new point and then create a square from it that covers 5% of the total area
+		Point randomPoint = Point(pointDist(generator), pointDist(generator));
+		Point randomPointDelta = Point(randomPoint.x + 0.05, randomPoint.y + 0.05);
+
+		rectangles[i] = Rectangle(randomPoint, randomPointDelta);
+	}
+	std::cout << "Finished initialization of " << rectanglesSize << " rectangles..." << std::endl;
+
+	return rectangles;
 }
 
 void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, unsigned seed, unsigned logFrequency)
@@ -112,7 +133,7 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 			points = generateUniform(benchmarkSize, seed);
 			break;
 		case SKEW:
-			points = generateSkewed(benchmarkSize, seed, 5.0);
+			points = generateSkewed(benchmarkSize, seed, 9.0);
 			break;
 		case CLUSTER:
 			points = generateClustered(benchmarkSize, seed, 20);
@@ -122,18 +143,8 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 	}
 
 	// Initialize search rectangles
-	Rectangle *searchRectangles = new Rectangle[16];
-	unsigned blockSize = benchmarkSize / 16;
-	std::cout << "Beginning initialization of 16 rectangles..." << std::endl;
-	for (unsigned i = 0; i < 16; ++i)
-	{
-		// Create the rectangle
-		searchRectangles[i] = Rectangle(i * blockSize, i * blockSize, i * blockSize + blockSize, i * blockSize + blockSize);
-
-		// Print the search rectangle
-		std::cout << "searchRectangles[" << i << "] " << searchRectangles[i] << std::endl;
-	}
-	std::cout << "Finished initialization of 16 rectangles." << std::endl;
+	unsigned rectanglesSize = 5000;
+	Rectangle *searchRectangles = generateRectangles(benchmarkSize, seed, rectanglesSize);
 
 	// Insert points and time their insertion
 	std::cout << "Beginning insertion of " << benchmarkSize << " points..." << std::endl;
@@ -150,9 +161,13 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
-		std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
+		// std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
 	}
 	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
+
+	// Gather statistics
+	spatialIndex.stat();
+	std::cout << "Statistics OK." << std::endl;
 
 	// Validate checksum
 	assert(spatialIndex.checksum() == directSum);
@@ -164,12 +179,12 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex.search(points[i]);
+		assert(spatialIndex.search(points[i])[0] == points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
-		std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
+		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Finished search for " << benchmarkSize << " points." << std::endl;
 
@@ -178,8 +193,8 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for rectangles
-	std::cout << "Beginning search for 16 rectangles..." << std::endl;
-	for (unsigned i = 0; i < 16; ++i)
+	std::cout << "Beginning search for " << rectanglesSize << " rectangles..." << std::endl;
+	for (unsigned i = 0; i < rectanglesSize; ++i)
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
@@ -188,16 +203,16 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
 		totalRangeSearches += 1;
-		std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
+		// std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
 
 		// Validate points returned in the search
 		for (unsigned j = 0; j < v.size(); ++j)
 		{
 			assert(searchRectangles[i].containsPoint(v[j]));
 		}
-		std::cout << v.size() << " points verified." << std::endl;
+		// std::cout << v.size() << " points verified." << std::endl;
 	}
-	std::cout << "Finished searching for 16 rectangles." << std::endl;
+	std::cout << "Finished searching for " << rectanglesSize << " rectangles." << std::endl;
 
 	// Validate checksum
 	assert(spatialIndex.checksum() == directSum);
@@ -214,7 +229,7 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeDeletes += delta.count();
 		totalDeletes += 1;
-		std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
+		// std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Finished deletion of " << benchmarkSize << " points." << std::endl;
 

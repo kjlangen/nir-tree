@@ -1,5 +1,6 @@
 #ifndef __RTREE__
 #define __RTREE__
+
 #include <cassert>
 #include <vector>
 #include <stack>
@@ -24,19 +25,17 @@ namespace rtree
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);
-			std::vector<Point> search(Point requestedPoint) override;
-			std::vector<Point> search(Rectangle requestedRectangle) override;
-			void insert(Point givenPoint) override;
-			void remove(Point givenPoint) override;
+			std::vector<Point> search(Point requestedPoint);
+			std::vector<Point> search(Rectangle requestedRectangle);
+			void insert(Point givenPoint);
+			void remove(Point givenPoint);
 
 			// Miscellaneous
-			unsigned checksum() override;
+			unsigned checksum();
+			void stat();
 			void print();
+			void pencilPrint();
 	};
-
-	void testSimpleSearch();
-	void testSimpleInsert();
-	void expandRootTest();
 }
 
 #endif
