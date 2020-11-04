@@ -195,29 +195,26 @@ TEST_CASE("Geometry: testRectangleFragmentation")
 	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
 	r2 = Rectangle(3.0, 3.0, 7.0, 7.0);
 	v = r1.fragmentRectangle(r2);
-	REQUIRE(v.size() == 4);
-	REQUIRE(v[0] == Rectangle(0.0, 0.0, 4.0, 3.0));
-	REQUIRE(v[1] == Rectangle(0.0, 3.0, 3.0, 8.0));
-	REQUIRE(v[2] == Rectangle(0.0, 7.0, 4.0, 8.0));
-	REQUIRE(v[3] == Rectangle(0.0, 0.0, 3.0, 7.0));
+	REQUIRE(v.size() == 3);
+	REQUIRE(v[0] == Rectangle(0.0, 7.0, 4.0, 8.0));
+	REQUIRE(v[1] == Rectangle(0.0, 0.0, 4.0, 3.0));
+	REQUIRE(v[2] == Rectangle(0.0, 3.0, 3.0, 7.0));
 
 	// Test set five
 	r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
 	r2 = Rectangle(-3.0, 3.0, 1.0, 7.0);
 	v = r1.fragmentRectangle(r2);
-	REQUIRE(v.size() == 4);
+	REQUIRE(v.size() == 3);
 	REQUIRE(v[0] == Rectangle(0.0, 7.0, 4.0, 8.0));
-	REQUIRE(v[1] == Rectangle(1.0, 0.0, 4.0, 7.0));
+	REQUIRE(v[1] == Rectangle(1.0, 3.0, 4.0, 7.0));
 	REQUIRE(v[2] == Rectangle(0.0, 0.0, 4.0, 3.0));
-	REQUIRE(v[3] == Rectangle(1.0, 3.0, 4.0, 8.0));
 
 	// Test set six
 	r1 = Rectangle(0.0, 0.0, 8.0, 4.0);
 	r2 = Rectangle(1.0, 2.0, 5.0, 6.0);
 	v = r1.fragmentRectangle(r2);
-	REQUIRE(v.size() == 4);
-	REQUIRE(v[0] == Rectangle(0.0, 0.0, 8.0, 2.0));
-	REQUIRE(v[1] == Rectangle(5.0, 2.0, 8.0, 4.0));
-	REQUIRE(v[2] == Rectangle(0.0, 0.0, 8.0, 2.0));
-	REQUIRE(v[3] == Rectangle(0.0, 2.0, 1.0, 4.0));
+	REQUIRE(v.size() == 3);
+	REQUIRE(v[0] == Rectangle(5.0, 2.0, 8.0, 4.0));
+	REQUIRE(v[1] == Rectangle(0.0, 0.0, 8.0, 2.0));
+	REQUIRE(v[2] == Rectangle(0.0, 2.0, 1.0, 4.0));
 }

@@ -51,8 +51,20 @@ namespace nirtree
 		return root->checksum();
 	}
 
+	void NIRTree::stat()
+	{
+		root->stat();
+	}
+
 	void NIRTree::print()
 	{
 		root->printTree();
+	}
+
+	void NIRTree::pencilPrint()
+	{
+		PencilPrinter p;
+
+		p.printToPencil(root);
 	}
 }

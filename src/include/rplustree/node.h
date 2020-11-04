@@ -1,5 +1,5 @@
-#ifndef __NIRNODE__
-#define __NIRNODE__
+#ifndef __RPLUSNODE__
+#define __RPLUSNODE__
 
 #include <cassert>
 #include <vector>
@@ -14,13 +14,12 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
-#include <omp.h>
 #include <util/geometry.h>
 #include <util/graph.h>
 #include <util/debug.h>
 #include <util/statistics.h>
 
-namespace nirtree
+namespace rplustree
 {
 	class Node
 	{

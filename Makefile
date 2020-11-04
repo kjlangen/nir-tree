@@ -1,8 +1,8 @@
 SXX = -std=c++11 # Standard
-FLAGS = -Wall -O1 # Flags
+FLAGS = -Wall -O1 -fopenmp # Flags
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o randomSquares.o randomPoints.o randomDisjointSquares.o splitPoints.o pencilPrinter.o
-TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o pencilPrinter.o
+TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o
 
 .PHONY : clean tests
 
@@ -26,16 +26,12 @@ rtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/rtree.cpp
 
 # Build rplustree node
-rPlusTreeNode.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTreeNode.cpp
+rplusnode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/node.cpp -o rplusnode.o
 
 # Build rplustree
-rPlusTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
-
-# Build pencil printer
-pencilPrinter.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/pencilPrinter.cpp
+rplustree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rplustree.cpp
 
 # Build nirtree node
 nirnode.o:
@@ -45,18 +41,13 @@ nirnode.o:
 nirtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/nirtree.cpp
 
+# Build pencil printer
+pencilPrinter.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/pencilPrinter.cpp
+
 # Build benchmarks
-randomSquares.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomSquares.cpp
-
-randomDisjointSquares.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomDisjointSquares.cpp
-
 randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
-
-splitPoints.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/splitPoints.cpp
 
 # Build tests
 testGeometry.o:
@@ -67,6 +58,9 @@ testRStarTree.o:
 
 testRPlusTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRPlusTree.cpp
+
+testNIRTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testNIRTree.cpp
 
 # Unit tests
 tests: ${OBJECTS} ${TESTS}

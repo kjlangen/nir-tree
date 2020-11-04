@@ -12,7 +12,6 @@
 #include <unordered_set>
 #include <util/geometry.h>
 #include <util/debug.h>
-#include <nirtree/pencilPrinter.h>
 
 class Graph
 {

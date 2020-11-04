@@ -1,6 +1,6 @@
-#include <nirtree/node.h>
+#include <rplustree/node.h>
 
-namespace nirtree
+namespace rplustree
 {
 	Node::Node()
 	{
@@ -19,16 +19,21 @@ namespace nirtree
 	void Node::deleteSubtrees()
 	{
 		DPRINT1("deleteSubtrees");
+		DPRINT2("this = ", (void *)this);
+		DPRINT2("branches.size() = ", branches.size());
 
 		if (branches.size() == 0)
 		{
+			DPRINT1("deleteSubtrees leaf finished");
 			return;
 		}
 		else
 		{
-			for (unsigned i = 0; i < branches.size(); ++i)
+			unsigned branchesSize = branches.size();
+			for (unsigned i = 0; i < branchesSize; ++i)
 			{
 				branches[i].child->deleteSubtrees();
+				DPRINT1("deleting branch child");
 				delete branches[i].child;
 			}
 		}
@@ -71,9 +76,8 @@ namespace nirtree
 		DPRINT1("updateBranch");
 
 		// Locate the child
-		unsigned branchesSize = branches.size();
 		unsigned childIndex;
-		for (childIndex = 0; branches[childIndex].child != child && childIndex < branchesSize; ++childIndex) {}
+		for (childIndex = 0; branches[childIndex].child != child && childIndex < branches.size(); ++childIndex) {}
 
 		// Update the child
 		branches[childIndex] = {child, boundingBox};
@@ -86,18 +90,13 @@ namespace nirtree
 		DPRINT1("removeBranch");
 
 		// Locate the child
-		unsigned branchesSize = branches.size();
 		unsigned childIndex;
-		for (childIndex = 0; branches[childIndex].child != child && childIndex < branchesSize; ++childIndex) {}
+		for (childIndex = 0; branches[childIndex].child != child && childIndex < branches.size(); ++childIndex) {}
 
 		// Delete the child deleting it and overwriting its branch
-		DPRINT1("wat");
 		delete child;
-		DPRINT1("deleted child pointer");
 		branches[childIndex] = branches.back();
-		DPRINT1("swapppped branch with last branch in the vector");
 		branches.pop_back();
-		DPRINT1("poppppped last branch in vector");
 
 		DPRINT1("removeBranch finished");
 	}
@@ -107,9 +106,8 @@ namespace nirtree
 		DPRINT1("removeData");
 
 		// Locate the point
-		unsigned dataSize = data.size();
 		unsigned pointIndex;
-		for (pointIndex = 0; data[pointIndex] != givenPoint && pointIndex < dataSize; ++pointIndex) {}
+		for (pointIndex = 0; data[pointIndex] != givenPoint && pointIndex < data.size(); ++pointIndex) {}
 
 		// Delete the point by overwriting it
 		data[pointIndex] = data.back();
@@ -151,7 +149,7 @@ namespace nirtree
 	{
 		DPRINT1("search point");
 
-		std::vector<Point> accumulator;
+		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
 		std::stack<Node *> context;
@@ -165,29 +163,28 @@ namespace nirtree
 			currentContext = context.top();
 			context.pop();
 
-			unsigned branchesSize = currentContext->branches.size();
-			unsigned dataSize = currentContext->data.size();
-
-			if (branchesSize == 0)
+			if (currentContext->branches.size() == 0)
 			{
-				DPRINT3("searching ", dataSize, "data points in leaf");
+				DPRINT3("searching ", currentContext->data.size(), "data points in leaf");
 				// We are a leaf so add our data points when they are the search point
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < currentContext->data.size(); ++i)
 				{
 					if (requestedPoint == currentContext->data[i])
 					{
-						accumulator.push_back(currentContext->data[i]);
+						matchingPoints.push_back(currentContext->data[i]);
 					}
 				}
 			}
 			else
 			{
-				DPRINT3("searching ", branchesSize, " branches in routing node");
+				DPRINT3("searching ", currentContext->branches.size(), " branches in routing node");
 				// Determine which branches we need to follow
-				for (unsigned i = 0; i < branchesSize; ++i)
+				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
+					DPRINT4(currentContext->branches[i].boundingBox, " contains ", requestedPoint, "?");
 					if (currentContext->branches[i].boundingBox.containsPoint(requestedPoint))
 					{
+						DPRINT1("yes");
 						// Add to the nodes we will check
 						context.push(currentContext->branches[i].child);
 						STATEXEC(++branchesSearched);
@@ -200,45 +197,41 @@ namespace nirtree
 		STATBRSR(branchesSearched);
 
 		DPRINT1("search point finished");
-		return accumulator;
+		return matchingPoints;
 	}
 
 	std::vector<Point> Node::search(Rectangle &requestedRectangle)
 	{
 		DPRINT1("search rectangle");
 
-		std::vector<Point> accumulator;
+		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
 		STATEXEC(unsigned branchesSearched = 0);
-		unsigned branchesSize, dataSize;
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
 
-			branchesSize = currentContext->branches.size();
-			dataSize = currentContext->data.size();
-
-			if (branchesSize == 0)
+			if (currentContext->branches.size() == 0)
 			{
 				// We are a leaf so add our data points when they are within the search rectangle
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < currentContext->data.size(); ++i)
 				{
 					if (requestedRectangle.containsPoint(currentContext->data[i]))
 					{
-						accumulator.push_back(currentContext->data[i]);
+						matchingPoints.push_back(currentContext->data[i]);
 					}
 				}
 			}
 			else
 			{
 				// Determine which branches we need to follow
-				for (unsigned i = 0; i < branchesSize; ++i)
+				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
 					if (currentContext->branches[i].boundingBox.intersectsRectangle(requestedRectangle))
 					{
@@ -253,7 +246,7 @@ namespace nirtree
 		STATBRSR(branchesSearched);
 
 		DPRINT1("search rectangle finished");
-		return accumulator;
+		return matchingPoints;
 	}
 
 	// Always called on root, this = root
@@ -264,14 +257,12 @@ namespace nirtree
 		DPRINT1("chooseNode");
 		// CL1 [Initialize]
 		Node *context = this;
-		unsigned branchesSize;
 
 		for (;;)
 		{
-			branchesSize = context->branches.size();
 
 			// CL2 [Leaf check]
-			if (branchesSize == 0)
+			if (context->branches.size() == 0)
 			{
 				DPRINT2("chose ", (void *)context);
 				DPRINT1("chooseNode finished");
@@ -280,13 +271,14 @@ namespace nirtree
 			else
 			{
 				// Compute the smallest expansion
-				DPRINT1("computing smallest expansion");
 				unsigned smallestExpansionIndex = 0;
 				float smallestExpansionArea = context->branches[0].boundingBox.computeExpansionArea(givenPoint);
 				float expansionArea;
-				for (unsigned i = 1; i < branchesSize; ++i)
+				DPRINT2("smallestExpansionArea = ", smallestExpansionArea);
+				for (unsigned i = 1; i < context->branches.size(); ++i)
 				{
 					expansionArea = context->branches[i].boundingBox.computeExpansionArea(givenPoint);
+					DPRINT2("expansionArea = ", expansionArea);
 					if (expansionArea < smallestExpansionArea)
 					{
 						smallestExpansionIndex = i;
@@ -294,41 +286,11 @@ namespace nirtree
 					}
 				}
 
-				// Backup the bounding box before expanding
-				DPRINT1("backing up bounding box");
-				Rectangle backup = context->branches[smallestExpansionIndex].boundingBox;
 				context->branches[smallestExpansionIndex].boundingBox.expand(givenPoint);
-				bool expansionGeneratesOverlap = false;
 
-				// Fragment the bounding box if necessary
-				DPRINT1("checking for fragmentation");
-				DPRINT2("context = ", (void *)context);
-				for (unsigned i = 0; i < branchesSize; ++i)
-				{
-					if (i != smallestExpansionIndex && context->branches[i].boundingBox.strictIntersectsRectangle(context->branches[smallestExpansionIndex].boundingBox))
-					{
-						expansionGeneratesOverlap = true;
-						break;
-					}
-				}
-				DPRINT2("context = ", (void *)context);
-
-				// Resore the bounding box if fragmented and do a push-down insert
-				if (expansionGeneratesOverlap)
-				{
-					DPRINT2("context = ", (void *)context);
-					context->branches.push_back({new Node(minBranchFactor, maxBranchFactor, context), Rectangle(givenPoint, givenPoint)});
-					DPRINT1("restoring backup");
-					context->branches[smallestExpansionIndex].boundingBox = backup;
-					DPRINT1("chooseNode finished");
-					return context;
-				}
-				else
-				{
-					// Descend
-					DPRINT2("context ", (void *)context);
-					context = context->branches[smallestExpansionIndex].child;
-				}
+				// Descend
+				DPRINT2("context ", (void *)context);
+				context = context->branches[smallestExpansionIndex].child;
 			}
 		}
 	}
@@ -341,7 +303,6 @@ namespace nirtree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		unsigned branchesSize, dataSize;
 
 		for (;!context.empty();)
 		{
@@ -349,15 +310,12 @@ namespace nirtree
 			context.pop();
 			DPRINT2("Current find leaf context = ", (void *)currentContext);
 
-			branchesSize = currentContext->branches.size();
-			dataSize = currentContext->data.size();
-
-			if (branchesSize == 0)
+			if (currentContext->branches.size() == 0)
 			{
 				DPRINT2("FL2 size = ", currentContext->branches.size());
 				// FL2 [Search leaf node for record]
 				// Check each entry to see if it matches E
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < currentContext->data.size(); ++i)
 				{
 					if (currentContext->data[i] == givenPoint)
 					{
@@ -367,10 +325,10 @@ namespace nirtree
 			}
 			else
 			{
-				DPRINT2("FL1 size = ", branchesSize);
+				DPRINT2("FL1 size = ", currentContext->branches.size());
 				// FL1 [Search subtrees]
 				// Determine which branches we need to follow
-				for (unsigned i = 0; i < branchesSize; ++i)
+				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
 					if (currentContext->branches[i].boundingBox.containsPoint(givenPoint))
 					{
@@ -463,7 +421,7 @@ namespace nirtree
 			}
 			else
 			{
-				DPRINT3("Partition {0, ", locationX, "}");
+				DPRINT3("Partition {1, ", locationX, "}");
 				DPRINT1("partitionNode finished");
 				return {0, locationX};
 			}
@@ -478,17 +436,14 @@ namespace nirtree
 		DPRINT4("branches.size() = ", branches.size(), " data.size() = ", data.size());
 		Node *left = new Node(minBranchFactor, maxBranchFactor, parent);
 		Node *right = new Node(minBranchFactor, maxBranchFactor, parent);
-		Rectangle rAtInfinity = Rectangle();
-		unsigned branchesSize = branches.size();
-		unsigned dataSize = data.size();
 
-		if (branchesSize == 0)
+		if (branches.size() == 0)
 		{
 			DPRINT1("leaf split");
 			if (p.dimension == 0)
 			{
 				DPRINT2("partition line x = ", p.location);
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < data.size(); ++i)
 				{
 					DPRINT4("data[", i, "] = ", data[i]);
 					if (data[i].x < p.location)
@@ -504,7 +459,7 @@ namespace nirtree
 			else if (p.dimension == 1)
 			{
 				DPRINT2("partition line y = ", p.location);
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < data.size(); ++i)
 				{
 					DPRINT4("data[", i, "] = ", data[i]);
 					if (data[i].y < p.location)
@@ -517,7 +472,6 @@ namespace nirtree
 					}
 				}
 			}
-			data.clear();
 			DPRINT5("Left has ", left->branches.size(), " branches, ", left->data.size(), " data points");
 			DPRINT5("Right has ", right->branches.size(), " branches, ", right->data.size(), " data points");
 			DPRINT4("left side = ", (void *)left, " right side = ", (void *)right);
@@ -528,7 +482,8 @@ namespace nirtree
 			if (p.dimension == 0)
 			{
 				DPRINT1("splitting along x");
-				for (unsigned i = 0; i < branchesSize; ++i)
+				unsigned branchesSize = branches.size();
+				for (unsigned i = 0; i < branchesSize;)
 				{
 					DPRINT4("branches[", i, "].boundingBox = ", branches[i].boundingBox);
 					if (branches[i].boundingBox.upperRight.x <= p.location)
@@ -536,41 +491,38 @@ namespace nirtree
 						DPRINT1("placed left");
 						branches[i].child->parent = left;
 						left->branches.push_back(branches[i]);
+						++i;
 					}
 					else if (branches[i].boundingBox.lowerLeft.x >= p.location)
 					{
 						DPRINT1("placed right");
 						branches[i].child->parent = right;
 						right->branches.push_back(branches[i]);
+						++i;
 					}
 					else
 					{
 						DPRINT1("must split before placing");
 						Node::SplitResult downwardSplit = branches[i].child->splitNode(p);
 
-						DPRINT1("cleaning up recursively split child");
-						delete branches[i].child;
+						DPRINT1("placing left");
+						downwardSplit.leftBranch.child->parent = left;
+						left->branches.push_back(downwardSplit.leftBranch);
 
-						if (downwardSplit.leftBranch.boundingBox != rAtInfinity)
-						{
-							DPRINT1("placing left");
-							downwardSplit.leftBranch.child->parent = left;
-							left->branches.push_back(downwardSplit.leftBranch);
-						}
+						DPRINT1("placing right");
+						downwardSplit.rightBranch.child->parent = right;
+						right->branches.push_back(downwardSplit.rightBranch);
 
-						if (downwardSplit.rightBranch.boundingBox != rAtInfinity)
-						{
-							DPRINT1("placing right");
-							downwardSplit.rightBranch.child->parent = right;
-							right->branches.push_back(downwardSplit.rightBranch);
-						}
+						// Do not advance since we have removed branches[i] and the vector is smaller
+						branchesSize--;
 					}
 				}
 			}
 			else if (p.dimension == 1)
 			{
 				DPRINT1("splitting along y");
-				for (unsigned i = 0; i < branchesSize; ++i)
+				unsigned branchesSize = branches.size();
+				for (unsigned i = 0; i < branchesSize;)
 				{
 					DPRINT4("branches[", i, "].boundingBox = ", branches[i].boundingBox);
 					if (branches[i].boundingBox.upperRight.y <= p.location)
@@ -578,41 +530,33 @@ namespace nirtree
 						DPRINT1("placed left");
 						branches[i].child->parent = left;
 						left->branches.push_back(branches[i]);
+						++i;
 					}
 					else if (branches[i].boundingBox.lowerLeft.y >= p.location)
 					{
 						DPRINT1("placed right");
 						branches[i].child->parent = right;
 						right->branches.push_back(branches[i]);
+						++i;
 					}
 					else
 					{
 						DPRINT1("must split before placing");
 						Node::SplitResult downwardSplit = branches[i].child->splitNode(p);
 
-						DPRINT1("cleaning up recursively split child");
-						delete branches[i].child;
+						DPRINT1("placing left");
+						downwardSplit.leftBranch.child->parent = left;
+						left->branches.push_back(downwardSplit.leftBranch);
 
-						if (downwardSplit.leftBranch.boundingBox != rAtInfinity)
-						{
-							DPRINT1("placing left");
-							downwardSplit.leftBranch.child->parent = left;
-							left->branches.push_back(downwardSplit.leftBranch);
-						}
+						DPRINT1("placing right");
+						downwardSplit.rightBranch.child->parent = right;
+						right->branches.push_back(downwardSplit.rightBranch);
 
-						if (downwardSplit.rightBranch.boundingBox != rAtInfinity)
-						{
-							DPRINT1("placing right");
-							downwardSplit.rightBranch.child->parent = right;
-							right->branches.push_back(downwardSplit.rightBranch);
-						}
+						// Do not advance since we have removed branches[i] and the vector is smaller
+						branchesSize--;
 					}
 				}
 			}
-			branches.clear();
-			DPRINT5("Left has ", left->branches.size(), " branches, ", left->data.size(), " data points");
-			DPRINT5("Right has ", right->branches.size(), " branches, ", right->data.size(), " data points");
-			DPRINT4("left side = ", (void *)left, " right side = ", (void *)right);
 		}
 
 		for (unsigned i = 0; i < left->branches.size(); ++i)
@@ -627,6 +571,20 @@ namespace nirtree
 
 		DASSERT(left->parent == parent);
 		DASSERT(right->parent == parent);
+
+		// This node is split and no longer logically exists so clean it up
+		if (parent == nullptr)
+		{
+			// Root special case
+			DPRINT2("deleting ", (void *)this);
+			delete this;
+		}
+		else
+		{
+			// Regular node case
+			parent->removeBranch(this);
+		}
+
 		DASSERT(left->data.size() <= left->maxBranchFactor);
 		DASSERT(right->data.size() <= right->maxBranchFactor);
 		DPRINT5("Left has ", left->branches.size(), " branches, ", left->data.size(), " data points");
@@ -640,8 +598,11 @@ namespace nirtree
 	Node::SplitResult Node::splitNode()
 	{
 		DPRINT1("splitNode");
+		// STATSPLIT();
 
-		Node::SplitResult returnSplit = splitNode(partitionNode());
+		Partition p = partitionNode();
+
+		Node::SplitResult returnSplit = splitNode(p);
 
 		DPRINT4("left side = ", (void *)returnSplit.leftBranch.child, " right side = ", (void *)returnSplit.rightBranch.child);
 		DPRINT5("Left has ", returnSplit.leftBranch.child->branches.size(), " branches, ", returnSplit.leftBranch.child->data.size(), " data points");
@@ -655,14 +616,10 @@ namespace nirtree
 	{
 		DPRINT1("adjustTree");
 		Node *currentContext = this;
-		unsigned branchesSize, dataSize;
 		Node::SplitResult propagationSplit = {{nullptr, Rectangle()}, {nullptr, Rectangle()}};
 
 		for (;currentContext != nullptr;)
 		{
-			branchesSize = currentContext->branches.size();
-			dataSize = currentContext->data.size();
-
 			// If there was a split we were supposed to propagate then propagate it
 			if (propagationSplit.leftBranch.child != nullptr && propagationSplit.rightBranch.child != nullptr)
 			{
@@ -673,16 +630,10 @@ namespace nirtree
 
 			// If there are too many branches or too much data at this level then create a split to
 			// be propagated otherwise we may finish and return a non-split
-			if (dataSize > currentContext->maxBranchFactor || branchesSize > currentContext->maxBranchFactor)
+			if (currentContext->data.size() > currentContext->maxBranchFactor || currentContext->branches.size() > currentContext->maxBranchFactor)
 			{
-				DPRINT6("maxBranchFactor = ", currentContext->maxBranchFactor, ", data.size() = ", dataSize, ", branches.size() = ", branchesSize);
+				DPRINT6("maxBranchFactor = ", currentContext->maxBranchFactor, ", data.size() = ", currentContext->data.size(), ", branches.size() = ", currentContext->branches.size());
 				propagationSplit = currentContext->splitNode();
-				DASSERT(propagationSplit.leftBranch.child->parent == currentContext->parent);
-				DASSERT(propagationSplit.rightBranch.child->parent == currentContext->parent);
-				if (currentContext->parent != nullptr)
-				{
-					currentContext->parent->removeBranch(currentContext);
-				}
 				DPRINT4("left side = ", (void *)propagationSplit.leftBranch.child, " right side = ", (void *)propagationSplit.rightBranch.child);
 				DPRINT5("Left has ", propagationSplit.leftBranch.child->branches.size(), " branches, ", propagationSplit.leftBranch.child->data.size(), " data points");
 				DPRINT5("Right has ", propagationSplit.rightBranch.child->branches.size(), " branches, ", propagationSplit.rightBranch.child->data.size(), " data points");
@@ -695,7 +646,7 @@ namespace nirtree
 				propagationSplit = {{nullptr, Rectangle()}, {nullptr, Rectangle()}};
 				break;
 			}
-
+			
 			// Ascend
 			currentContext = propagationSplit.leftBranch.child->parent;
 			DPRINT2("ascending to ", (void *)currentContext);
@@ -705,47 +656,21 @@ namespace nirtree
 		return propagationSplit;
 	}
 
-	void Node::pushDown(Point givenPoint)
-	{
-		DPRINT1("pushDown");
-		DASSERT(branches.size() > 1);
-
-		Node *pacerChild = branches.front().child;
-		Node *pushChild = branches.back().child;
-
-		for (; pacerChild->branches.size() > 0; pacerChild = pacerChild->branches.front().child)
-		{
-			DPRINT4("minBranchFactor = ", minBranchFactor, " maxBranchFactor = ", maxBranchFactor);
-			pushChild->branches.push_back({new Node(minBranchFactor, maxBranchFactor, pushChild), Rectangle(givenPoint, givenPoint)});
-			pushChild = pushChild->branches.front().child;
-		}
-
-		pushChild->data.push_back(givenPoint);
-		DPRINT1("pushDown finished");
-	}
-
 	// Always called on root, this = root
 	Node *Node::insert(Point givenPoint)
 	{
 		DPRINT1("insert");
+
 		DPRINT2("Inserting ", givenPoint);
 
 		// Find the appropriate position for the new point
 		Node *adjustContext = chooseNode(givenPoint);
 
 		// Adjust the tree
-		if (adjustContext->branches.size() == 0)
-		{
-			DPRINT2("adding data ", givenPoint);
-			// Add just the data
-			adjustContext->data.push_back(givenPoint);
-		}
-		else
-		{
-			DPRINT2("pushing down data ", givenPoint);
-			// Add a whole new branch
-			adjustContext->pushDown(givenPoint);
-		}
+		DPRINT2("adding data ", givenPoint);
+		// Add just the data
+		adjustContext->data.push_back(givenPoint);
+
 		// There is no guarantee that the root will still exist after adjustment so backup branch factors
 		unsigned backupMinBranchFactor = minBranchFactor;
 		unsigned backupMaxBranchFactor = maxBranchFactor;
@@ -754,6 +679,9 @@ namespace nirtree
 		// Grow the tree taller if we need to
 		if (finalSplit.leftBranch.child != nullptr && finalSplit.rightBranch.child != nullptr)
 		{
+			DPRINT5("Left has ", finalSplit.leftBranch.child->branches.size(), " branches, ", finalSplit.leftBranch.child->data.size(), " data points");
+			DPRINT5("Right has ", finalSplit.rightBranch.child->branches.size(), " branches, ", finalSplit.rightBranch.child->data.size(), " data points");
+
 			DPRINT1("CHKPT4");
 			DPRINT5("Left has ", finalSplit.leftBranch.child->branches.size(), " branches, ", finalSplit.leftBranch.child->data.size(), " data points");
 			DPRINT5("Right has ", finalSplit.rightBranch.child->branches.size(), " branches, ", finalSplit.rightBranch.child->data.size(), " data points");
@@ -772,9 +700,6 @@ namespace nirtree
 			DPRINT1("CHKPT6");
 			newRoot->branches.push_back(finalSplit.rightBranch);
 			DPRINT1("I4a complete");
-
-			DPRINT1("cleanup old root");
-			delete this;
 
 			DPRINT1("insert finished");
 			return newRoot;
@@ -832,7 +757,9 @@ namespace nirtree
 		DPRINT1("CHKPT2");
 
 		// D2 [Delete record]
+		DPRINT2("leaf data size = ", leaf->data.size());
 		leaf->removeData(givenPoint);
+		DPRINT2("leaf data size = ", leaf->data.size());
 		DPRINT1("CHKPT3");
 
 		// D3 [Propagate changes]

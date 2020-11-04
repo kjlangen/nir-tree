@@ -12,34 +12,34 @@ Point::Point(float x, float y)
 	this->y = y;
 }
 
-bool Point::operator<(Point p) const
+bool operator<(const Point &lhs, const Point &rhs)
 {
-	return x < p.x && y < p.y;
+	return lhs.x < rhs.x && lhs.y < rhs.y;
 }
 
-bool Point::operator>(Point p) const
+bool operator>(const Point &lhs, const Point &rhs)
 {
-	return x > p.x && y > p.y;
+	return lhs.x < rhs.x && lhs.y < rhs.y;
 }
 
-bool Point::operator<=(Point p) const
+bool operator<=(const Point &lhs, const Point &rhs)
 {
-	return x <= p.x && y <= p.y;
+	return lhs.x <= rhs.x && lhs.y <= rhs.y;
 }
 
-bool Point::operator>=(Point p) const
+bool operator>=(const Point &lhs, const Point &rhs)
 {
-	return x >= p.x && y >= p.y;
+	return lhs.x >= rhs.x && lhs.y >= rhs.y;
 }
 
-bool Point::operator==(Point p) const
+bool operator==(const Point &lhs, const Point &rhs)
 {
-	return x == p.x && y == p.y;
+	return lhs.x == rhs.x && lhs.y == rhs.y;
 }
 
-bool Point::operator!=(Point p) const
+bool operator!=(const Point &lhs, const Point &rhs)
 {
-	return x != p.x || y != p.y;
+	return lhs.x != rhs.x || lhs.y != rhs.y;
 }
 
 std::ostream& operator<<(std::ostream& os, const Point& point)
@@ -259,14 +259,14 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 	return v;
 }
 
-bool Rectangle::operator==(Rectangle r) const
+bool operator==(const Rectangle &lhs, const Rectangle &rhs)
 {
-	return lowerLeft == r.lowerLeft && upperRight == r.upperRight;
+	return lhs.lowerLeft == rhs.lowerLeft && lhs.upperRight == rhs.upperRight;
 }
 
-bool Rectangle::operator!=(Rectangle r) const
+bool operator!=(const Rectangle &lhs, const Rectangle &rhs)
 {
-	return lowerLeft != r.lowerLeft || upperRight != r.upperRight;
+	return lhs.lowerLeft != rhs.lowerLeft || lhs.upperRight != rhs.upperRight;
 }
 
 std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle)
@@ -688,46 +688,6 @@ void IsotheticPolygon::sort(bool min, unsigned d)
 	}
 }
 
-bool IsotheticPolygon::operator==(IsotheticPolygon r)
-{
-	if (basicRectangles.size() != r.basicRectangles.size())
-	{
-		return false;
-	}
-	else
-	{
-		for (unsigned i = 0; i < r.basicRectangles.size(); ++i)
-		{
-			if (basicRectangles[i] != r.basicRectangles[i])
-			{
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-bool IsotheticPolygon::operator!=(IsotheticPolygon r)
-{
-	if (basicRectangles.size() != r.basicRectangles.size())
-	{
-		return true;
-	}
-	else
-	{
-		for (unsigned i = 0; i < r.basicRectangles.size(); ++i)
-		{
-			if (basicRectangles[i] != r.basicRectangles[i])
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
 bool IsotheticPolygon::unique()
 {
 	for (unsigned i = 0; i < basicRectangles.size(); ++i)
@@ -757,6 +717,46 @@ bool IsotheticPolygon::infFree()
 	}
 
 	return true;
+}
+
+bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
+{
+	if (lhs.basicRectangles.size() != rhs.basicRectangles.size())
+	{
+		return false;
+	}
+	else
+	{
+		for (unsigned i = 0; i < rhs.basicRectangles.size(); ++i)
+		{
+			if (lhs.basicRectangles[i] != rhs.basicRectangles[i])
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
+{
+	if (lhs.basicRectangles.size() != rhs.basicRectangles.size())
+	{
+		return true;
+	}
+	else
+	{
+		for (unsigned i = 0; i < rhs.basicRectangles.size(); ++i)
+		{
+			if (lhs.basicRectangles[i] != rhs.basicRectangles[i])
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon)

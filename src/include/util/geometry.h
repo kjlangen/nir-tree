@@ -20,15 +20,22 @@ class Point
 
 		Point();
 		Point(float x, float y);
-		bool operator<(Point p) const;
-		bool operator>(Point p) const;
-		bool operator<=(Point p) const;
-		bool operator>=(Point p) const;
-		bool operator==(Point p) const;
-		bool operator!=(Point p) const;
 
+		friend bool operator<(const Point &lhs, const Point &rhs);
+		friend bool operator>(const Point &lhs, const Point &rhs);
+		friend bool operator<=(const Point &lhs, const Point &rhs);
+		friend bool operator>=(const Point &lhs, const Point &rhs);
+		friend bool operator==(const Point &lhs, const Point &rhs);
+		friend bool operator!=(const Point &lhs, const Point &rhs);
 		friend std::ostream& operator<<(std::ostream& os, const Point& point);
 };
+
+bool operator<(const Point &lhs, const Point &rhs);
+bool operator>(const Point &lhs, const Point &rhs);
+bool operator<=(const Point &lhs, const Point &rhs);
+bool operator>=(const Point &lhs, const Point &rhs);
+bool operator==(const Point &lhs, const Point &rhs);
+bool operator!=(const Point &lhs, const Point &rhs);
 
 class Rectangle
 {
@@ -57,11 +64,13 @@ class Rectangle
 		Rectangle intersection(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
-		bool operator==(Rectangle r) const;
-		bool operator!=(Rectangle r) const;
-
+		friend bool operator==(const Rectangle &lr, const Rectangle &rr);
+		friend bool operator!=(const Rectangle &lr, const Rectangle &rr);
 		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
 };
+
+bool operator==(const Rectangle &lhs, const Rectangle &rhs);
+bool operator!=(const Rectangle &lhs, const Rectangle &rhs);
 
 class IsotheticPolygon
 {
@@ -89,12 +98,15 @@ class IsotheticPolygon
 		void refine();
 		void sort(bool min, unsigned d=0);
 
-		bool operator==(IsotheticPolygon r);
-		bool operator!=(IsotheticPolygon r);
 		bool unique();
 		bool infFree();
 
+		friend bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
+		friend bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 		friend std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon);
 };
+
+bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
+bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 
 #endif
