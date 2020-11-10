@@ -12,6 +12,7 @@
 #include <rplustree/node.h>
 #include <index/index.h>
 #include <util/pencilPrinter.h>
+#include <util/bmpPrinter.h>
 
 namespace rplustree
 {

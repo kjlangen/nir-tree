@@ -1,8 +1,8 @@
 SXX = -std=c++11 # Standard
 FLAGS = -Wall -O1 -fopenmp # Flags
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o pencilPrinter.o
-TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o pencilPrinter.o bmpPrinter.o
+TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o testBMPPrinter.o
 
 .PHONY : clean tests
 
@@ -45,6 +45,10 @@ nirtree.o:
 pencilPrinter.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/pencilPrinter.cpp
 
+# Build BMP printer
+bmpPrinter.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/bmpPrinter.cpp
+
 # Build benchmarks
 randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
@@ -61,6 +65,9 @@ testRPlusTree.o:
 
 testNIRTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testNIRTree.cpp
+
+testBMPPrinter.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testBMPPrinter.cpp
 
 # Unit tests
 tests: ${OBJECTS} ${TESTS}

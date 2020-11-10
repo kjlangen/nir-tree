@@ -169,6 +169,10 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 	spatialIndex.stat();
 	std::cout << "Statistics OK." << std::endl;
 
+	// Visualize the tree
+	spatialIndex.print();
+	std::cout << "Visualization OK." << std::endl;
+
 	// Validate checksum
 	assert(spatialIndex.checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;

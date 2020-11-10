@@ -58,7 +58,10 @@ namespace nirtree
 
 	void NIRTree::print()
 	{
-		root->printTree();
+		BMPPrinter p(10000, 10000);
+
+		p.printToBMP(root);
+		// root->printTree();
 	}
 
 	void NIRTree::pencilPrint()
