@@ -11,6 +11,7 @@
 #include <util/geometry.h>
 #include <nirtree/node.h>
 #include <index/index.h>
+#include <util/bmpPrinter.h>
 #include <util/pencilPrinter.h>
 
 namespace nirtree

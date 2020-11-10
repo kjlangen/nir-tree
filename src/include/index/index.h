@@ -14,7 +14,7 @@ class Index
 		virtual void remove(Point givenPoint) = 0;
 		virtual unsigned checksum() = 0;
 		virtual void stat() = 0;
-		virtual void pencilPrint() = 0;
+		virtual void print() = 0;
 };
 
 #endif
