@@ -110,7 +110,7 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 	return rectangles;
 }
 
-void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, unsigned seed, unsigned logFrequency)
+void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, float> &configF)
 {
 	// Setup checksums
 	unsigned directSum = 0;
@@ -125,30 +125,51 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 	double totalRangeSearches = 0.0;
 	double totalDeletes = 0.0;
 
+	// Initialize the index
+	Index *spatialIndex;
+	if (configU["tree"] == R_TREE)
+	{
+		spatialIndex = new rtree::RTree(configU["minfanout"], configU["maxfanout"]);
+	}
+	else if (configU["tree"] == R_PLUS_TREE)
+	{
+		spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
+	}
+	else if (configU["tree"] == NIR_TREE)
+	{
+		spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
+	}
+	else
+	{
+		assert(false);
+	}
+
+
 	// Initialize points
 	Point *points;
-	switch(bench)
+	if(configU["distribution"] == UNIFORM)
 	{
-		case UNIFORM:
-			points = generateUniform(benchmarkSize, seed);
-			break;
-		case SKEW:
-			points = generateSkewed(benchmarkSize, seed, 9.0);
-			break;
-		case CLUSTER:
-			points = generateClustered(benchmarkSize, seed, 20);
-			break;
-		default:
-			assert(false);
+		points = generateUniform(configU["size"], configU["seed"]);
+	}
+	else if (configU["distribution"] == SKEW)
+	{
+		points = generateSkewed(configU["size"], configU["seed"], (float) configF["skewfactor"]);
+	}
+	else if (configU["distribution"] == CLUSTER)
+	{
+		points = generateClustered(configU["size"], configU["seed"], configU["clustercount"]);
+	}
+	else
+	{
+		assert(false);
 	}
 
 	// Initialize search rectangles
-	unsigned rectanglesSize = 5000;
-	Rectangle *searchRectangles = generateRectangles(benchmarkSize, seed, rectanglesSize);
+	Rectangle *searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
 
 	// Insert points and time their insertion
-	std::cout << "Beginning insertion of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	std::cout << "Beginning insertion of " << configU["size"] << " points..." << std::endl;
+	for (unsigned i = 0; i < configU["size"]; ++i)
 	{
 		// Compute the checksum directly
 		directSum += (unsigned)points[i].x;
@@ -156,53 +177,53 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 
 		// Insert
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex.insert(points[i]);
+		spatialIndex->insert(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
 		// std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
 	}
-	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
+	std::cout << "Finished insertion of " << configU["size"] << " points." << std::endl;
 
 	// Gather statistics
-	spatialIndex.stat();
+	spatialIndex->stat();
 	std::cout << "Statistics OK." << std::endl;
 
 	// Visualize the tree
-	spatialIndex.print();
+	spatialIndex->visualize();
 	std::cout << "Visualization OK." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == directSum);
+	assert(spatialIndex->checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for points and time their retrieval
-	std::cout << "Beginning search for " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	std::cout << "Beginning search for " << configU["size"] << " points..." << std::endl;
+	for (unsigned i = 0; i < configU["size"]; ++i)
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		assert(spatialIndex.search(points[i])[0] == points[i]);
+		assert(spatialIndex->search(points[i])[0] == points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
 		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
-	std::cout << "Finished search for " << benchmarkSize << " points." << std::endl;
+	std::cout << "Finished search for " << configU["size"] << " points." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == directSum);
+	assert(spatialIndex->checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for rectangles
-	std::cout << "Beginning search for " << rectanglesSize << " rectangles..." << std::endl;
-	for (unsigned i = 0; i < rectanglesSize; ++i)
+	std::cout << "Beginning search for " << configU["rectanglescount"] << " rectangles..." << std::endl;
+	for (unsigned i = 0; i < configU["rectanglescount"]; ++i)
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		std::vector<Point> v = spatialIndex.search(searchRectangles[i]);
+		std::vector<Point> v = spatialIndex->search(searchRectangles[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
@@ -216,29 +237,29 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 		}
 		// std::cout << v.size() << " points verified." << std::endl;
 	}
-	std::cout << "Finished searching for " << rectanglesSize << " rectangles." << std::endl;
+	std::cout << "Finished searching for " << configU["rectanglescount"] << " rectangles." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == directSum);
+	assert(spatialIndex->checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Delete points and time their deletion
-	std::cout << "Beginning deletion of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	std::cout << "Beginning deletion of " << configU["size"] << " points..." << std::endl;
+	for (unsigned i = 0; i < configU["size"]; ++i)
 	{
 		// Delete
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex.remove(points[i]);
+		spatialIndex->remove(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeDeletes += delta.count();
 		totalDeletes += 1;
 		// std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
 	}
-	std::cout << "Finished deletion of " << benchmarkSize << " points." << std::endl;
+	std::cout << "Finished deletion of " << configU["size"] << " points." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == 0);
+	assert(spatialIndex->checksum() == 0);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Timing Statistics

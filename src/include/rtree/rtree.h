@@ -12,7 +12,6 @@
 
 namespace rtree
 {
-	// For now we will work with an RTree that only stores points
 	class RTree: public Index
 	{
 		public:
@@ -34,7 +33,7 @@ namespace rtree
 			unsigned checksum();
 			void stat();
 			void print();
-			void pencilPrint();
+			void visualize();
 	};
 }
 

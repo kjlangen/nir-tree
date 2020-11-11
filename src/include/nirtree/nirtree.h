@@ -12,11 +12,9 @@
 #include <nirtree/node.h>
 #include <index/index.h>
 #include <util/bmpPrinter.h>
-#include <util/pencilPrinter.h>
 
 namespace nirtree
 {
-	// TODO: For now we will work with a NIRTree that only stores points
 	class NIRTree: public Index
 	{
 		public:
@@ -38,7 +36,7 @@ namespace nirtree
 			unsigned checksum();
 			void stat();
 			void print();
-			void pencilPrint();
+			void visualize();
 	};
 }
 
