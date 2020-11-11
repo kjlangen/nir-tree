@@ -1,7 +1,7 @@
 SXX = -std=c++11 # Standard
 FLAGS = -Wall -O1 -fopenmp # Flags
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o pencilPrinter.o bmpPrinter.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o bmpPrinter.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o testBMPPrinter.o
 
 .PHONY : clean tests
@@ -42,8 +42,8 @@ nirtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/nirtree.cpp
 
 # Build pencil printer
-pencilPrinter.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/pencilPrinter.cpp
+# pencilPrinter.o:
+#	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/pencilPrinter.cpp
 
 # Build BMP printer
 bmpPrinter.o:
@@ -72,7 +72,7 @@ testBMPPrinter.o:
 # Unit tests
 tests: ${OBJECTS} ${TESTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -lctemplate_nothreads -DUNIT_TESTING
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -DUNIT_TESTING
 
 # Clean all together
 clean:
@@ -96,4 +96,4 @@ stat:
 # Build all together
 all: ${OBJECTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR}

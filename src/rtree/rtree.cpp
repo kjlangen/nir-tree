@@ -61,8 +61,8 @@ namespace rtree
 		root->printTree();
 	}
 
-	void RTree::pencilPrint()
+	void RTree::visualize()
 	{
-		// Pencil printer doesn't work for RTree, sorry!
+		// BMP printer doesn't support the R-Tree
 	}
 }

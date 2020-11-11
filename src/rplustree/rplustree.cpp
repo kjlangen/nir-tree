@@ -58,16 +58,13 @@ namespace rplustree
 
 	void RPlusTree::print()
 	{
+		root->printTree();
+	}
+
+	void RPlusTree::visualize()
+	{
 		BMPPrinter p(10000, 10000);
 
 		p.printToBMP(root);
-		// root->printTree();
-	}
-
-	void RPlusTree::pencilPrint()
-	{
-		PencilPrinter p;
-
-		p.printToPencil(root);
 	}
 }

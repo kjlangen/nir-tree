@@ -11,7 +11,6 @@
 #include <util/geometry.h>
 #include <rplustree/node.h>
 #include <index/index.h>
-#include <util/pencilPrinter.h>
 #include <util/bmpPrinter.h>
 
 namespace rplustree
@@ -37,7 +36,7 @@ namespace rplustree
 			unsigned checksum();
 			void stat();
 			void print();
-			void pencilPrint();
+			void visualize();
 	};
 }
 

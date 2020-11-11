@@ -15,6 +15,7 @@ class Index
 		virtual unsigned checksum() = 0;
 		virtual void stat() = 0;
 		virtual void print() = 0;
+		virtual void visualize() = 0;
 };
 
 #endif
