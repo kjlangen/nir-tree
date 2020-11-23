@@ -11,15 +11,20 @@
 #include <limits>
 #include <cfenv>
 #include <util/debug.h>
+#include <globals/globals.h>
 
 class Point
 {
-	public:
-		float x;
-		float y;
+	float values[dimensions];
 
+	public:
 		Point();
 		Point(float x, float y);
+		Point(float *values);
+
+		float operator[](unsigned index) const;
+		void operator<<(Point &p);
+		void operator>>(Point &p);
 
 		friend bool operator<(const Point &lhs, const Point &rhs);
 		friend bool operator>(const Point &lhs, const Point &rhs);
@@ -54,6 +59,7 @@ class Rectangle
 		void expand(Rectangle givenRectangle);
 		void shrink(std::vector<Rectangle> &pinSet, std::vector<Point> &constraintSet);
 		void shrink(std::vector<Rectangle> &pinSet, std::vector<Rectangle> &constraintSet);
+		bool aligned(Rectangle givenRectangle);
 		bool alignedOpposingBorders(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle givenRectangle);
 		bool strictIntersectsRectangle(Rectangle givenRectangle);

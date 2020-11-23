@@ -359,12 +359,18 @@ namespace rtree
 			for (unsigned j = 0; j < boundingBoxesSize; ++j)
 			{
 				jBox = boundingBoxes[j];
-				float xdist = iBox.lowerLeft.x - jBox.lowerLeft.x;
-				float xdistPrime = iBox.upperRight.x - jBox.upperRight.x;
-				float ydist = iBox.lowerLeft.y - jBox.lowerLeft.y;
-				float ydistPrime = iBox.upperRight.y - jBox.upperRight.y;
+				float dist, distPrime;
+				float wasted = 0;
 
-				float wasted = (xdist * xdist + xdistPrime * xdistPrime + ydist * ydist + ydistPrime * ydistPrime) / 2;
+				for (unsigned d = 0; d < dimensions; ++d)
+				{
+					dist = iBox.lowerLeft[d] - jBox.lowerLeft[d];
+					distPrime = iBox.upperRight[d] - jBox.upperRight[d];
+					wasted += dist * dist + distPrime * distPrime;
+				}
+
+				wasted /= (float)dimensions;
+
 				if (maxWasted < wasted)
 				{
 					maxWasted = wasted;
@@ -462,10 +468,14 @@ namespace rtree
 		unsigned seedA = 0;
 		unsigned seedB = dataSize - 1;
 
-		float xdist = data[seedA].x - data[seedB].x;
-		float ydist = data[seedA].y - data[seedB].y;
+		float dist;
+		float maxWasted = 0;
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			dist = data[seedA][d] - data[seedB][d];
+			maxWasted += dist * dist;
+		}
 
-		float maxWasted = xdist * xdist + ydist * ydist;
 		Point iData, jData;
 		for (unsigned i = 0; i < dataSize; ++i)
 		{
@@ -473,9 +483,13 @@ namespace rtree
 			for (unsigned j = 0; j < dataSize; ++j)
 			{
 				jData = data[j];
-				xdist = iData.x - jData.x;
-				ydist = iData.y - jData.y;
-				float wasted = xdist * xdist + ydist * ydist;
+
+				float wasted = 0;
+				for (unsigned d = 0; d < dimensions; ++d)
+				{
+					dist = iData[d] - jData[d];
+					wasted += dist * dist;
+				}
 
 				if (maxWasted < wasted)
 				{
@@ -846,8 +860,10 @@ namespace rtree
 		{
 			for (unsigned i = 0; i < data.size(); ++i)
 			{
-				sum += (unsigned)data[i].x;
-				sum += (unsigned)data[i].y;
+				for (unsigned d = 0; d < dimensions; ++d)
+				{
+					sum += (unsigned)data[i][d];
+				}
 			}
 		}
 		else

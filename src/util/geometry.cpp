@@ -2,58 +2,136 @@
 
 Point::Point()
 {
-	this->x = 0;
-	this->y = 0;
+	float infinity = std::numeric_limits<float>::infinity();
+	memset(values, infinity, sizeof(float) * dimensions);
 }
 
 Point::Point(float x, float y)
 {
-	this->x = x;
-	this->y = y;
+	values[0] = x;
+	values[1] = y;
+}
+
+Point::Point(float *values)
+{
+	for (unsigned i = 0; i < dimensions; ++i)
+	{
+		this->values[i] = values[i];
+	}
+}
+
+float Point::operator[](unsigned index) const
+{
+	return values[index];
+}
+
+void Point::operator<<(Point &p)
+{
+	// Set this point to be the Hamming minimum between itself and p
+	for (unsigned i = 0; i < dimensions; ++i)
+	{
+		values[i] = values[i] < p[i] ? values[i] : p[i];
+	}
+}
+
+void Point::operator>>(Point &p)
+{
+	// Set this point to be the Hamming maximum between itself and p
+	for (unsigned i = 0; i < dimensions; ++i)
+	{
+		values[i] = values[i] > p[i] ? values[i] : p[i];
+	}
 }
 
 bool operator<(const Point &lhs, const Point &rhs)
 {
-	return lhs.x < rhs.x && lhs.y < rhs.y;
+	bool result = true;
+
+	for (unsigned i = 0; i < dimensions && result; ++i)
+	{
+		result = result && lhs[i] < rhs[i];
+	}
+
+	return result;
 }
 
 bool operator>(const Point &lhs, const Point &rhs)
 {
-	return lhs.x < rhs.x && lhs.y < rhs.y;
+	bool result = true;
+
+	for (unsigned i = 0; i < dimensions && result; ++i)
+	{
+		result = result && lhs[i] > rhs[i];
+	}
+
+	return result;
 }
 
 bool operator<=(const Point &lhs, const Point &rhs)
 {
-	return lhs.x <= rhs.x && lhs.y <= rhs.y;
+	bool result = true;
+
+	for (unsigned i = 0; i < dimensions && result; ++i)
+	{
+		result = result && lhs[i] <= rhs[i];
+	}
+
+	return result;
 }
 
 bool operator>=(const Point &lhs, const Point &rhs)
 {
-	return lhs.x >= rhs.x && lhs.y >= rhs.y;
+	bool result = true;
+
+	for (unsigned i = 0; i < dimensions && result; ++i)
+	{
+		result = result && lhs[i] >= rhs[i];
+	}
+
+	return result;
 }
 
 bool operator==(const Point &lhs, const Point &rhs)
 {
-	return lhs.x == rhs.x && lhs.y == rhs.y;
+	bool result = true;
+
+	for (unsigned i = 0; i < dimensions && result; ++i)
+	{
+		result = result && lhs[i] == rhs[i];
+	}
+
+	return result;
 }
 
 bool operator!=(const Point &lhs, const Point &rhs)
 {
-	return lhs.x != rhs.x || lhs.y != rhs.y;
+	bool result = false;
+
+	for (unsigned i = 0; i < dimensions && !result; ++i)
+	{
+		result = result || lhs[i] != rhs[i];
+	}
+
+	return result;
 }
 
 std::ostream& operator<<(std::ostream& os, const Point& point)
 {
 	os.precision(std::numeric_limits<double>::max_digits10+3);
-	os << "(" << point.x << ", " << point.y << ")";
+	os << "(" << point[0];
+	for (unsigned i = 1; i < dimensions; ++i)
+	{
+		os << ", " << point[i];
+	}
+	os << ")";
+
 	return os;
 }
 
 Rectangle::Rectangle()
 {
-	float infinity = std::numeric_limits<float>::infinity();
-	lowerLeft = Point(infinity, infinity);
-	upperRight = Point(infinity, infinity);
+	lowerLeft = Point();
+	upperRight = Point();
 }
 
 Rectangle::Rectangle(float x, float y, float xp, float yp)
@@ -70,7 +148,14 @@ Rectangle::Rectangle(Point lowerLeft, Point upperRight)
 
 float Rectangle::area()
 {
-	return fabs((upperRight.x - lowerLeft.x) * (upperRight.y - lowerLeft.y));
+	float a = fabs(upperRight[0] - lowerLeft[0]);
+
+	for (unsigned i = 1; i < dimensions; ++i)
+	{
+		a = a * fabs(upperRight[i] - lowerLeft[i]);
+	}
+
+	return a;
 }
 
 float Rectangle::computeIntersectionArea(Rectangle givenRectangle)
@@ -81,15 +166,25 @@ float Rectangle::computeIntersectionArea(Rectangle givenRectangle)
 		return 0;
 	}
 
-	return fabs((fmin(upperRight.x, givenRectangle.upperRight.x) - fmax(lowerLeft.x, givenRectangle.lowerLeft.x)) *
-				(fmin(upperRight.y, givenRectangle.upperRight.y) - fmax(lowerLeft.y, givenRectangle.lowerLeft.y)));
+	float intersectionArea = fabs(fmin(upperRight[0], givenRectangle.upperRight[0]) - fmax(lowerLeft[0], givenRectangle.lowerLeft[0]));
+
+	for (unsigned i = 1; i < dimensions; ++i)
+	{
+		intersectionArea = intersectionArea * fabs(fmin(upperRight[i], givenRectangle.upperRight[i]) - fmax(lowerLeft[i], givenRectangle.lowerLeft[i]));
+	}
+
+	return intersectionArea;
 }
 
 float Rectangle::computeExpansionArea(Point givenPoint)
 {
 	// Expanded rectangle area computed directly
-	float expandedArea = fabs((fmin(lowerLeft.x, givenPoint.x) - fmax(upperRight.x, givenPoint.x)) *
-							  (fmin(lowerLeft.y, givenPoint.y) - fmax(upperRight.y, givenPoint.y)));
+	float expandedArea = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
+
+	for (unsigned i = 1; i < dimensions; ++i)
+	{
+		expandedArea = expandedArea * fabs(fmin(lowerLeft[i], givenPoint[i]) - fmax(upperRight[i], givenPoint[i]));
+	}
 
 	// Compute the difference
 	return expandedArea - area();
@@ -98,8 +193,12 @@ float Rectangle::computeExpansionArea(Point givenPoint)
 float Rectangle::computeExpansionArea(Rectangle givenRectangle)
 {
 	// Expanded rectangle area computed directly
-	float expandedArea = fabs((fmin(givenRectangle.lowerLeft.x, lowerLeft.x) - fmax(givenRectangle.upperRight.x, upperRight.x)) *
-							  (fmin(givenRectangle.lowerLeft.y, lowerLeft.y) - fmax(givenRectangle.upperRight.y, upperRight.y)));
+	float expandedArea = fabs(fmin(givenRectangle.lowerLeft[0], lowerLeft[0]) - fmax(givenRectangle.upperRight[0], upperRight[0]));
+
+	for (unsigned i = 0; i < dimensions; ++i)
+	{
+		expandedArea = expandedArea * fabs(fmin(givenRectangle.lowerLeft[i], lowerLeft[i]) - fmax(givenRectangle.upperRight[i], upperRight[i]));
+	}
 
 	// Compute the difference
 	return expandedArea - area();
@@ -107,14 +206,14 @@ float Rectangle::computeExpansionArea(Rectangle givenRectangle)
 
 void Rectangle::expand(Point givenPoint)
 {
-	lowerLeft = Point(fmin(lowerLeft.x, givenPoint.x), fmin(lowerLeft.y, givenPoint.y));
-	upperRight = Point(fmax(upperRight.x, givenPoint.x), fmax(upperRight.y, givenPoint.y));
+	lowerLeft << givenPoint;
+	upperRight >> givenPoint;
 }
 
 void Rectangle::expand(Rectangle givenRectangle)
 {
-	lowerLeft = Point(fmin(givenRectangle.lowerLeft.x, lowerLeft.x), fmin(givenRectangle.lowerLeft.y, lowerLeft.y));
-	upperRight = Point(fmax(givenRectangle.upperRight.x, upperRight.x), fmax(givenRectangle.upperRight.y, upperRight.y));
+	lowerLeft << givenRectangle.lowerLeft;
+	upperRight >> givenRectangle.upperRight;
 }
 
 void Rectangle::shrink(std::vector<Rectangle> &pointSet, std::vector<Point> &constraintSet)
@@ -125,36 +224,63 @@ void Rectangle::shrink(std::vector<Rectangle> &pointSet, std::vector<Rectangle> 
 {
 }
 
+bool Rectangle::aligned(Rectangle givenRectangle)
+{
+	unsigned unalignedDimensions = 0;
+
+	for (unsigned d = 0; d < dimensions && unalignedDimensions < 2; ++d)
+	{
+		if (lowerLeft[d] != givenRectangle.lowerLeft[d] && upperRight[d] != givenRectangle.upperRight[d])
+		{
+			unalignedDimensions++;
+		}
+	}
+
+	return unalignedDimensions == 1;
+}
+
 bool Rectangle::alignedOpposingBorders(Rectangle givenRectangle)
 {
-	bool a = lowerLeft.x == givenRectangle.upperRight.x || lowerLeft.y == givenRectangle.upperRight.y;
-	bool b = upperRight.x == givenRectangle.lowerLeft.x || upperRight.y == givenRectangle.lowerLeft.y;
+	bool result = false;
 
-	return (a || b);
+	for (unsigned i = 0; i < dimensions && !result; ++i)
+	{
+		result = result || lowerLeft[i] == givenRectangle.upperRight[i] || upperRight[i] == givenRectangle.lowerLeft[i];
+	}
+
+	return result;
 }
 
 bool Rectangle::intersectsRectangle(Rectangle givenRectangle)
 {
 	// Compute the range intersections
-	bool intervalX = lowerLeft.x <= givenRectangle.lowerLeft.x && givenRectangle.lowerLeft.x <= upperRight.x;
-	intervalX = intervalX || (givenRectangle.lowerLeft.x <= lowerLeft.x && lowerLeft.x <= givenRectangle.upperRight.x);
+	bool interval = true;
 
-	bool intervalY = lowerLeft.y <= givenRectangle.lowerLeft.y && givenRectangle.lowerLeft.y <= upperRight.y;
-	intervalY = intervalY || (givenRectangle.lowerLeft.y <= lowerLeft.y && lowerLeft.y <= givenRectangle.upperRight.y);
+	for (unsigned i = 0; i < dimensions && interval; ++i)
+	{
+		interval =
+			interval &&
+			((lowerLeft[i] <= givenRectangle.lowerLeft[i] && givenRectangle.lowerLeft[i] <= upperRight[i]) ||
+			(givenRectangle.lowerLeft[i] <= lowerLeft[i] && lowerLeft[i] <= givenRectangle.upperRight[i]));
+	}
 
-	return intervalX && intervalY;
+	return interval;
 }
 
 bool Rectangle::strictIntersectsRectangle(Rectangle givenRectangle)
 {
-	// Compute the range intersections strictly
-	bool intervalX = lowerLeft.x < givenRectangle.lowerLeft.x && givenRectangle.lowerLeft.x < upperRight.x;
-	intervalX = intervalX || (givenRectangle.lowerLeft.x < lowerLeft.x && lowerLeft.x < givenRectangle.upperRight.x);
+	// Compute the range intersections
+	bool interval = true;
 
-	bool intervalY = lowerLeft.y < givenRectangle.lowerLeft.y && givenRectangle.lowerLeft.y < upperRight.y;
-	intervalY = intervalY || (givenRectangle.lowerLeft.y < lowerLeft.y && lowerLeft.y < givenRectangle.upperRight.y);
+	for (unsigned i = 0; i < dimensions && interval; ++i)
+	{
+		interval =
+			interval &&
+			((lowerLeft[i] < givenRectangle.lowerLeft[i] && givenRectangle.lowerLeft[i] < upperRight[i]) ||
+			(givenRectangle.lowerLeft[i] < lowerLeft[i] && lowerLeft[i] < givenRectangle.upperRight[i]));
+	}
 
-	return intervalX && intervalY;
+	return interval;
 }
 
 bool Rectangle::borderOnlyIntersectsRectanlge(Rectangle givenRectangle)
@@ -190,8 +316,8 @@ Rectangle Rectangle::intersection(Rectangle clippingRectangle)
 	}
 
 	// Revise inward whenever the clippingRectangle is inside us
-	r.lowerLeft = Point(fmax(clippingRectangle.lowerLeft.x, lowerLeft.x), fmax(clippingRectangle.lowerLeft.y, lowerLeft.y));
-	r.upperRight = Point(fmin(clippingRectangle.upperRight.x, upperRight.x), fmin(clippingRectangle.upperRight.y, upperRight.y));
+	r.lowerLeft >> lowerLeft;
+	r.upperRight << upperRight;
 
 	return r;
 }
@@ -214,37 +340,41 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 	// 2 -> bottom slab
 	// 1 -> right vertical, not intersecting the top or bottom slabs
 	// 3 -> left vertical, not intersecting the top or bottom slabs
-	Rectangle slots[] = { Rectangle(), Rectangle(), Rectangle(), Rectangle() };
-
-	// If the top slab is defined this will be revised downward
-	float maxVertical = upperRight.y;
-	float minVertical = lowerLeft.y;
-
-	// Define the top slab
-	if (lowerLeft.y < clippingRectangle.upperRight.y && clippingRectangle.upperRight.y < upperRight.y)
+	Rectangle slots[2 * dimensions];
+	for (unsigned i = 0; i < 2 * dimensions; ++i)
 	{
-		maxVertical = clippingRectangle.upperRight.y;
-		slots[0] = Rectangle(lowerLeft.x, maxVertical, upperRight.x, upperRight.y);
+		slots[i] = Rectangle();
 	}
 
-	// Define the bottom slab
-	if (lowerLeft.y < clippingRectangle.lowerLeft.y && clippingRectangle.lowerLeft.y < upperRight.y)
-	{
-		minVertical = clippingRectangle.lowerLeft.y;
-		slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, minVertical);
-	}
+	// // If the top slab is defined this will be revised downward
+	// float maxVertical = upperRight.y;
+	// float minVertical = lowerLeft.y;
 
-	// Define the right vertical
-	if (lowerLeft.x < clippingRectangle.upperRight.x && clippingRectangle.upperRight.x < upperRight.x)
-	{
-		slots[1] = Rectangle(clippingRectangle.upperRight.x, minVertical, upperRight.x, maxVertical);
-	}
+	// // Define the top slab
+	// if (lowerLeft.y < clippingRectangle.upperRight.y && clippingRectangle.upperRight.y < upperRight.y)
+	// {
+	// 	maxVertical = clippingRectangle.upperRight.y;
+	// 	slots[0] = Rectangle(lowerLeft.x, maxVertical, upperRight.x, upperRight.y);
+	// }
 
-	// Define the left vertical
-	if (lowerLeft.x < clippingRectangle.lowerLeft.x && clippingRectangle.lowerLeft.x < upperRight.x)
-	{
-		slots[3] = Rectangle(lowerLeft.x, minVertical, clippingRectangle.lowerLeft.x, maxVertical);
-	}
+	// // Define the bottom slab
+	// if (lowerLeft.y < clippingRectangle.lowerLeft.y && clippingRectangle.lowerLeft.y < upperRight.y)
+	// {
+	// 	minVertical = clippingRectangle.lowerLeft.y;
+	// 	slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, minVertical);
+	// }
+
+	// // Define the right vertical
+	// if (lowerLeft.x < clippingRectangle.upperRight.x && clippingRectangle.upperRight.x < upperRight.x)
+	// {
+	// 	slots[1] = Rectangle(clippingRectangle.upperRight.x, minVertical, upperRight.x, maxVertical);
+	// }
+
+	// // Define the left vertical
+	// if (lowerLeft.x < clippingRectangle.lowerLeft.x && clippingRectangle.lowerLeft.x < upperRight.x)
+	// {
+	// 	slots[3] = Rectangle(lowerLeft.x, minVertical, clippingRectangle.lowerLeft.x, maxVertical);
+	// }
 
 	// TODO: Maybe optimize this away and just return the array?
 	Rectangle rAtInfinity = Rectangle();
@@ -472,10 +602,6 @@ bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
 		{
 			return true;
 		}
-		else if (givenRectangle.upperRight.x < basicRectangles[i].lowerLeft.x)
-		{
-			return false;
-		}
 	}
 
 	return false;
@@ -630,46 +756,28 @@ void IsotheticPolygon::refine()
 		Rectangle r;
 		std::vector<Rectangle> rectangleSetRefined;
 
-		// Refine along x
-		r = basicRectangles[0];
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle a, Rectangle b){return a.lowerLeft.x < b.lowerLeft.x;});
-		r = basicRectangles[0];
-		for (unsigned i = 1; i < basicRectangles.size(); ++i)
+		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			if (r.lowerLeft.x == basicRectangles[i].lowerLeft.x && r.upperRight.x == basicRectangles[i].upperRight.x && r.intersectsRectangle(basicRectangles[i]))
+			// Refine along x
+			r = basicRectangles[0];
+			std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
+			r = basicRectangles[0];
+			for (unsigned i = 1; i < basicRectangles.size(); ++i)
 			{
-				r.lowerLeft.y = fmin(r.lowerLeft.y, basicRectangles[i].lowerLeft.y);
-				r.upperRight.y = fmax(r.upperRight.y, basicRectangles[i].upperRight.y);
+				if (r.aligned(basicRectangles[i]) && r.intersectsRectangle(basicRectangles[i]))
+				{
+					r.expand(basicRectangles[i]);
+				}
+				else
+				{
+					rectangleSetRefined.push_back(r);
+					r = basicRectangles[i];
+				}
 			}
-			else
-			{
-				rectangleSetRefined.push_back(r);
-				r = basicRectangles[i];
-			}
+			rectangleSetRefined.push_back(r);
+			basicRectangles.swap(rectangleSetRefined);
+			rectangleSetRefined.clear();
 		}
-		rectangleSetRefined.push_back(r);
-		basicRectangles.swap(rectangleSetRefined);
-		rectangleSetRefined.clear();
-
-		// Refine along y
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle a, Rectangle b){return a.lowerLeft.y < b.lowerLeft.y;});
-		r = basicRectangles[0];
-		for (unsigned i = 1; i < basicRectangles.size(); ++i)
-		{
-			if (r.lowerLeft.y == basicRectangles[i].lowerLeft.y && r.upperRight.y == basicRectangles[i].upperRight.y && r.intersectsRectangle(basicRectangles[i]))
-			{
-				r.lowerLeft.x = fmin(r.lowerLeft.x, basicRectangles[i].lowerLeft.x);
-				r.upperRight.x = fmax(r.upperRight.x, basicRectangles[i].upperRight.x);
-			}
-			else
-			{
-				rectangleSetRefined.push_back(r);
-				r = basicRectangles[i];
-			}
-		}
-		rectangleSetRefined.push_back(r);
-		basicRectangles.swap(rectangleSetRefined);
-		rectangleSetRefined.clear();
 	}
 
 	DPRINT2("After refinement ", this);
@@ -680,11 +788,11 @@ void IsotheticPolygon::sort(bool min, unsigned d)
 {
 	if (min)
 	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle a, Rectangle b){return a.lowerLeft.x < b.lowerLeft.x;});
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
 	}
 	else
 	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle a, Rectangle b){return a.upperRight.x < b.upperRight.x;});
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.upperRight[d] < b.upperRight[d];});
 	}
 }
 
@@ -761,7 +869,7 @@ bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
 
 std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon)
 {
-	os.precision(std::numeric_limits<double>::max_digits10+3);
+	os.precision(std::numeric_limits<double>::max_digits10 + 3);
 	os << "|";
 	for (auto rectangle : polygon.basicRectangles)
 	{
