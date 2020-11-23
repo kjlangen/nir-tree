@@ -8,12 +8,17 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
+	float dummyPoint[dimensions];
 	Point *points = new Point[benchmarkSize];
 	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
 		// Create the point
-		points[i] = Point(pointDist(generator), pointDist(generator));
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			dummyPoint[d] = pointDist(generator);
+		}
+		points[i] = Point(dummyPoint);
 
 		// Print the new point
 		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
@@ -31,12 +36,18 @@ Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
 	std::cout << "Skewing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
+	float dummyPoint[dimensions];
 	Point *points = new Point[benchmarkSize];
 	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
 		// Create the point
-		points[i] = Point(pointDist(generator), pow(pointDist(generator), skewFactor));
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			dummyPoint[d] = pointDist(generator);
+		}
+		dummyPoint[dimensions - 1] = pow(dummyPoint[dimensions - 1], skewFactor);
+		points[i] = Point(dummyPoint);
 
 		// Print the new point
 		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
@@ -54,13 +65,19 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 	std::normal_distribution<float> clusterDist(0.0, 0.001);
 	std::cout << "Clustering points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
+	float dummyPoint[dimensions];
+
 	// Initialize cluster centres
 	Point *centres = new Point[clusterCount];
 	std::cout << "Beginning initialization of " << clusterCount << " clusters..." << std::endl;
 	for (unsigned i = 0; i < clusterCount; ++i)
 	{
 		// Create the point
-		centres[i] = Point(pointDist(generator), pointDist(generator));
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			dummyPoint[d] = pointDist(generator);
+		}
+		centres[i] = Point(dummyPoint);
 
 		// Print the centre
 		// std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
@@ -75,7 +92,11 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 		for (unsigned j = 0; j < clusterCount && i < benchmarkSize; ++j)
 		{
 			// Create the point
-			points[i] = Point(centres[j].x + clusterDist(generator), centres[j].y + clusterDist(generator));
+			for (unsigned d = 0; d < dimensions; ++d)
+			{
+				dummyPoint[d] = centres[j][d] + clusterDist(generator);
+			}
+			points[i] = Point(dummyPoint);
 
 			// Print the new point
 			// std::cout << "Point[" << i << "] " << points[i] << std::endl;
@@ -95,15 +116,20 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
 
 	// Initialize rectangles
+	float dummyPointLL[dimensions];
+	float dummyPointUR[dimensions];
 	Rectangle *rectangles = new Rectangle[rectanglesSize];
 	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles..." << std::endl;
 	for (unsigned i = 0; i < rectanglesSize; ++i)
 	{
 		// Generate a new point and then create a square from it that covers 5% of the total area
-		Point randomPoint = Point(pointDist(generator), pointDist(generator));
-		Point randomPointDelta = Point(randomPoint.x + 0.05, randomPoint.y + 0.05);
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			dummyPointLL[d] = pointDist(generator);
+			dummyPointUR[d] = dummyPointLL[d] + 0.05;
+		}
 
-		rectangles[i] = Rectangle(randomPoint, randomPointDelta);
+		rectangles[i] = Rectangle(Point(dummyPointLL), Point(dummyPointUR));
 	}
 	std::cout << "Finished initialization of " << rectanglesSize << " rectangles..." << std::endl;
 
@@ -144,7 +170,6 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		assert(false);
 	}
 
-
 	// Initialize points
 	Point *points;
 	if(configU["distribution"] == UNIFORM)
@@ -172,8 +197,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	for (unsigned i = 0; i < configU["size"]; ++i)
 	{
 		// Compute the checksum directly
-		directSum += (unsigned)points[i].x;
-		directSum += (unsigned)points[i].y;
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			directSum += (unsigned)points[i][d];
+		}
 
 		// Insert
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
@@ -271,4 +298,9 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Avg time to range search: " << totalTimeRangeSearches / totalRangeSearches << "s" << std::endl;
 	std::cout << "Total time to delete: " << totalTimeDeletes << "s" << std::endl;
 	std::cout << "Avg time to delete: " << totalTimeDeletes / totalDeletes << "s" << std::endl;
+
+	// Cleanup
+	delete spatialIndex;
+	delete [] points;
+	delete [] searchRectangles;
 }

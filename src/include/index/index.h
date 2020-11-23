@@ -7,6 +7,8 @@
 class Index
 {
 	public:
+		virtual ~Index() {};
+
 		virtual std::vector<Point> exhaustiveSearch(Point requestedPoint) = 0;
 		virtual std::vector<Point> search(Point requestedPoint) = 0;
 		virtual std::vector<Point> search(Rectangle requestedRectangle) = 0;

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <globals/globals.h>
 #include <rtree/rtree.h>
 #include <nirtree/nirtree.h>
 #include <rplustree/rplustree.h>

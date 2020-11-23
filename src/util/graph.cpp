@@ -25,11 +25,11 @@ Graph::Graph(std::vector<Rectangle> &v)
 	SchedulePoint schedule[vertices * 2];
 	for (unsigned i = 0; i < vertices; ++i)
 	{
-		schedule[i].coord = v[i].lowerLeft.x;
+		schedule[i].coord = v[i].lowerLeft[0];
 		schedule[i].index = i;
 		schedule[i].start = true;
 
-		schedule[vertices * 2 - i - 1].coord = v[i].upperRight.x;
+		schedule[vertices * 2 - i - 1].coord = v[i].upperRight[0];
 		schedule[vertices * 2 - i - 1].index = i;
 		schedule[vertices * 2 - i - 1].start = false;
 	}
@@ -84,11 +84,11 @@ Graph::Graph(std::vector<IsotheticPolygon> &p)
 	for (unsigned i = 0; i < vertices; ++i)
 	{
 		Rectangle pBB = p[i].boundingBox();
-		schedule[i].coord = pBB.lowerLeft.x;
+		schedule[i].coord = pBB.lowerLeft[0];
 		schedule[i].index = i;
 		schedule[i].start = true;
 
-		schedule[vertices * 2 - i - 1].coord = pBB.upperRight.x;
+		schedule[vertices * 2 - i - 1].coord = pBB.upperRight[0];
 		schedule[vertices * 2 - i - 1].index = i;
 		schedule[vertices * 2 - i - 1].start = false;
 	}

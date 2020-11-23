@@ -84,11 +84,11 @@ void BMPPrinter::registerPoint(Point &point, Colour colour)
 
 	DPRINT4("scaling x and y by ", xScale, " and ", yScale);
 
-	unsigned xp = (unsigned) round(point.x * xScale);
+	unsigned xp = (unsigned) round(point[0] * xScale);
 	// Rounding may cause the pixel to be outside the array so cap xp at the maximum array index
 	xp = std::min(xp, xDimension - 1);
 
-	unsigned yp = (unsigned) round(point.y * yScale);
+	unsigned yp = (unsigned) round(point[1] * yScale);
 	// Rounding may cause the pixel to be outside the array so cap yp at the maximum array index
 	yp = std::min(yp, yDimension - 1);
 
@@ -112,13 +112,13 @@ void BMPPrinter::registerRectangle(Rectangle &boundingBox, Colour colour)
 
 	DPRINT4("scaling x and y by ", xScale, " and ", yScale);
 
-	unsigned xLower = (unsigned) round(boundingBox.lowerLeft.x * xScale);
-	unsigned xUpper = (unsigned) round(boundingBox.upperRight.x * xScale);
+	unsigned xLower = (unsigned) round(boundingBox.lowerLeft[0] * xScale);
+	unsigned xUpper = (unsigned) round(boundingBox.upperRight[0] * xScale);
 	// Rounding may cause the pixel to be outside the array so cap xUpper at the maximum array index
 	xUpper = std::min(xUpper, xDimension - 1);
 
-	unsigned yLower = (unsigned) round(boundingBox.lowerLeft.y * yScale);
-	unsigned yUpper = (unsigned) round(boundingBox.upperRight.y * yScale);
+	unsigned yLower = (unsigned) round(boundingBox.lowerLeft[1] * yScale);
+	unsigned yUpper = (unsigned) round(boundingBox.upperRight[1] * yScale);
 	// Rounding may cause the pixel to be outside the array so cap yUpper at the maximum array index
 	yUpper = std::min(yUpper, yDimension - 1);
 

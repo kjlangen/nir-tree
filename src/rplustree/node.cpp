@@ -243,7 +243,7 @@ namespace rplustree
 			}
 		}
 
-		STATBRSR(branchesSearched);
+		// STATBRSR(branchesSearched);
 
 		DPRINT1("search rectangle finished");
 		return matchingPoints;
@@ -260,7 +260,6 @@ namespace rplustree
 
 		for (;;)
 		{
-
 			// CL2 [Leaf check]
 			if (context->branches.size() == 0)
 			{
@@ -353,7 +352,7 @@ namespace rplustree
 
 			for (Point p : data)
 			{
-				values.push_back(p.x);
+				values.push_back(p[0]);
 			}
 
 			// Sort along x
@@ -377,54 +376,39 @@ namespace rplustree
 
 			DASSERT(sortableBoundingBoxes.size() == branches.size());
 
-			// Sort along x
-			std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [](Rectangle a, Rectangle b){return a.lowerLeft.x < b.lowerLeft.x;});
+			rplustree::Node::Partition defaultPartition;
+			unsigned inducedSplits = std::numeric_limits<unsigned>::max();
 
-			// Pick split along x
-			float locationX = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft.x;
-
-			// Compute # of splits if x is chosen
-			unsigned inducedSplitsX = 0;
-
-			for (unsigned i = 0; i < sortableBoundingBoxes.size(); ++i)
+			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				DPRINT4("sortableBoundingBoxes[", i, "] = ", sortableBoundingBoxes[i]);
-				if (sortableBoundingBoxes[i].lowerLeft.x < locationX && locationX < sortableBoundingBoxes[i].upperRight.x)
+				// Sort along x
+				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
+
+				// Pick split along d
+				float locationD = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft[d];
+
+				// Compute # of splits if d is chosen
+				unsigned inducedSplitsD = 0;
+
+				for (unsigned i = 0; i < sortableBoundingBoxes.size(); ++i)
 				{
-					inducedSplitsX++;
+					DPRINT4("sortableBoundingBoxes[", i, "] = ", sortableBoundingBoxes[i]);
+					if (sortableBoundingBoxes[i].lowerLeft[d] < locationD && locationD < sortableBoundingBoxes[i].upperRight[d])
+					{
+						inducedSplitsD++;
+					}
+				}
+
+				// Decide if defaultPartition should be updated
+				if (inducedSplitsD < inducedSplits)
+				{
+					defaultPartition.dimension = d;
+					defaultPartition.location = locationD;
+					inducedSplits = inducedSplitsD;
 				}
 			}
 
-			// Sort along y
-			std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [](Rectangle a, Rectangle b){return a.lowerLeft.y < b.lowerLeft.y;});
-
-			// Pick split along y
-			float locationY = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft.y;
-
-			// Compute # of splits if y is chosen
-			unsigned inducedSplitsY = 0;
-
-			for (unsigned i = 0; i < sortableBoundingBoxes.size(); ++i)
-			{
-				DPRINT4("sortableBoundingBoxes[", i, "] = ", sortableBoundingBoxes[i]);
-				if (sortableBoundingBoxes[i].lowerLeft.y < locationY && locationY < sortableBoundingBoxes[i].upperRight.y)
-				{
-					inducedSplitsY++;
-				}
-			}
-
-			if (inducedSplitsY < inducedSplitsX)
-			{
-				DPRINT3("Partition {1, ", locationY, "}");
-				DPRINT1("partitionNode finished");
-				return {1, locationY};
-			}
-			else
-			{
-				DPRINT3("Partition {1, ", locationX, "}");
-				DPRINT1("partitionNode finished");
-				return {0, locationX};
-			}
+			return defaultPartition;
 		}
 	}
 
@@ -436,40 +420,23 @@ namespace rplustree
 		DPRINT4("branches.size() = ", branches.size(), " data.size() = ", data.size());
 		Node *left = new Node(minBranchFactor, maxBranchFactor, parent);
 		Node *right = new Node(minBranchFactor, maxBranchFactor, parent);
+		Rectangle rAtInfinity = Rectangle();
+		unsigned branchesSize = branches.size();
 
-		if (branches.size() == 0)
+		if (branchesSize == 0)
 		{
 			DPRINT1("leaf split");
-			if (p.dimension == 0)
+			DPRINT4("partition line ", p.dimension, " = ", p.location);
+			for (unsigned i = 0; i < data.size(); ++i)
 			{
-				DPRINT2("partition line x = ", p.location);
-				for (unsigned i = 0; i < data.size(); ++i)
+				DPRINT4("data[", i, "] = ", data[i]);
+				if (data[i][p.dimension] < p.location)
 				{
-					DPRINT4("data[", i, "] = ", data[i]);
-					if (data[i].x < p.location)
-					{
-						left->data.push_back(data[i]);
-					}
-					else
-					{
-						right->data.push_back(data[i]);
-					}
+					left->data.push_back(data[i]);
 				}
-			}
-			else if (p.dimension == 1)
-			{
-				DPRINT2("partition line y = ", p.location);
-				for (unsigned i = 0; i < data.size(); ++i)
+				else
 				{
-					DPRINT4("data[", i, "] = ", data[i]);
-					if (data[i].y < p.location)
-					{
-						left->data.push_back(data[i]);
-					}
-					else
-					{
-						right->data.push_back(data[i]);
-					}
+					right->data.push_back(data[i]);
 				}
 			}
 			DPRINT5("Left has ", left->branches.size(), " branches, ", left->data.size(), " data points");
@@ -479,84 +446,47 @@ namespace rplustree
 		else
 		{
 			DPRINT1("routing split");
-			if (p.dimension == 0)
+			DPRINT2("splitting along dimension ", p.dimension);
+			
+			for (unsigned i = 0; i < branchesSize; ++i)
 			{
-				DPRINT1("splitting along x");
-				unsigned branchesSize = branches.size();
-				for (unsigned i = 0; i < branchesSize;)
+				DPRINT4("branches[", i, "].boundingBox = ", branches[i].boundingBox);
+				if (branches[i].boundingBox.upperRight[p.dimension] <= p.location)
 				{
-					DPRINT4("branches[", i, "].boundingBox = ", branches[i].boundingBox);
-					if (branches[i].boundingBox.upperRight.x <= p.location)
-					{
-						DPRINT1("placed left");
-						branches[i].child->parent = left;
-						left->branches.push_back(branches[i]);
-						++i;
-					}
-					else if (branches[i].boundingBox.lowerLeft.x >= p.location)
-					{
-						DPRINT1("placed right");
-						branches[i].child->parent = right;
-						right->branches.push_back(branches[i]);
-						++i;
-					}
-					else
-					{
-						DPRINT1("must split before placing");
-						Node::SplitResult downwardSplit = branches[i].child->splitNode(p);
+					DPRINT1("placed left");
+					branches[i].child->parent = left;
+					left->branches.push_back(branches[i]);
+				}
+				else if (branches[i].boundingBox.lowerLeft[p.dimension] >= p.location)
+				{
+					DPRINT1("placed right");
+					branches[i].child->parent = right;
+					right->branches.push_back(branches[i]);
+				}
+				else
+				{
+					DPRINT1("must split before placing");
+					Node::SplitResult downwardSplit = branches[i].child->splitNode(p);
 
+					DPRINT1("cleaning up recursively split child");
+					delete branches[i].child;
+
+					if (downwardSplit.leftBranch.boundingBox != rAtInfinity)
+					{
 						DPRINT1("placing left");
 						downwardSplit.leftBranch.child->parent = left;
 						left->branches.push_back(downwardSplit.leftBranch);
+					}
 
+					if (downwardSplit.rightBranch.boundingBox != rAtInfinity)
+					{
 						DPRINT1("placing right");
 						downwardSplit.rightBranch.child->parent = right;
 						right->branches.push_back(downwardSplit.rightBranch);
-
-						// Do not advance since we have removed branches[i] and the vector is smaller
-						branchesSize--;
 					}
 				}
 			}
-			else if (p.dimension == 1)
-			{
-				DPRINT1("splitting along y");
-				unsigned branchesSize = branches.size();
-				for (unsigned i = 0; i < branchesSize;)
-				{
-					DPRINT4("branches[", i, "].boundingBox = ", branches[i].boundingBox);
-					if (branches[i].boundingBox.upperRight.y <= p.location)
-					{
-						DPRINT1("placed left");
-						branches[i].child->parent = left;
-						left->branches.push_back(branches[i]);
-						++i;
-					}
-					else if (branches[i].boundingBox.lowerLeft.y >= p.location)
-					{
-						DPRINT1("placed right");
-						branches[i].child->parent = right;
-						right->branches.push_back(branches[i]);
-						++i;
-					}
-					else
-					{
-						DPRINT1("must split before placing");
-						Node::SplitResult downwardSplit = branches[i].child->splitNode(p);
-
-						DPRINT1("placing left");
-						downwardSplit.leftBranch.child->parent = left;
-						left->branches.push_back(downwardSplit.leftBranch);
-
-						DPRINT1("placing right");
-						downwardSplit.rightBranch.child->parent = right;
-						right->branches.push_back(downwardSplit.rightBranch);
-
-						// Do not advance since we have removed branches[i] and the vector is smaller
-						branchesSize--;
-					}
-				}
-			}
+			branches.clear();
 		}
 
 		for (unsigned i = 0; i < left->branches.size(); ++i)
@@ -571,20 +501,6 @@ namespace rplustree
 
 		DASSERT(left->parent == parent);
 		DASSERT(right->parent == parent);
-
-		// This node is split and no longer logically exists so clean it up
-		if (parent == nullptr)
-		{
-			// Root special case
-			DPRINT2("deleting ", (void *)this);
-			delete this;
-		}
-		else
-		{
-			// Regular node case
-			parent->removeBranch(this);
-		}
-
 		DASSERT(left->data.size() <= left->maxBranchFactor);
 		DASSERT(right->data.size() <= right->maxBranchFactor);
 		DPRINT5("Left has ", left->branches.size(), " branches, ", left->data.size(), " data points");
@@ -600,9 +516,7 @@ namespace rplustree
 		DPRINT1("splitNode");
 		// STATSPLIT();
 
-		Partition p = partitionNode();
-
-		Node::SplitResult returnSplit = splitNode(p);
+		Node::SplitResult returnSplit = splitNode(partitionNode());
 
 		DPRINT4("left side = ", (void *)returnSplit.leftBranch.child, " right side = ", (void *)returnSplit.rightBranch.child);
 		DPRINT5("Left has ", returnSplit.leftBranch.child->branches.size(), " branches, ", returnSplit.leftBranch.child->data.size(), " data points");
@@ -616,10 +530,14 @@ namespace rplustree
 	{
 		DPRINT1("adjustTree");
 		Node *currentContext = this;
+		unsigned branchesSize, dataSize;
 		Node::SplitResult propagationSplit = {{nullptr, Rectangle()}, {nullptr, Rectangle()}};
 
 		for (;currentContext != nullptr;)
 		{
+			branchesSize = currentContext->branches.size();
+			dataSize = currentContext->data.size();
+
 			// If there was a split we were supposed to propagate then propagate it
 			if (propagationSplit.leftBranch.child != nullptr && propagationSplit.rightBranch.child != nullptr)
 			{
@@ -630,10 +548,14 @@ namespace rplustree
 
 			// If there are too many branches or too much data at this level then create a split to
 			// be propagated otherwise we may finish and return a non-split
-			if (currentContext->data.size() > currentContext->maxBranchFactor || currentContext->branches.size() > currentContext->maxBranchFactor)
+			if (dataSize > currentContext->maxBranchFactor || branchesSize > currentContext->maxBranchFactor)
 			{
 				DPRINT6("maxBranchFactor = ", currentContext->maxBranchFactor, ", data.size() = ", currentContext->data.size(), ", branches.size() = ", currentContext->branches.size());
 				propagationSplit = currentContext->splitNode();
+				if (currentContext->parent != nullptr)
+				{
+					currentContext->parent->removeBranch(currentContext);
+				}
 				DPRINT4("left side = ", (void *)propagationSplit.leftBranch.child, " right side = ", (void *)propagationSplit.rightBranch.child);
 				DPRINT5("Left has ", propagationSplit.leftBranch.child->branches.size(), " branches, ", propagationSplit.leftBranch.child->data.size(), " data points");
 				DPRINT5("Right has ", propagationSplit.rightBranch.child->branches.size(), " branches, ", propagationSplit.rightBranch.child->data.size(), " data points");
@@ -660,7 +582,6 @@ namespace rplustree
 	Node *Node::insert(Point givenPoint)
 	{
 		DPRINT1("insert");
-
 		DPRINT2("Inserting ", givenPoint);
 
 		// Find the appropriate position for the new point
@@ -700,6 +621,9 @@ namespace rplustree
 			DPRINT1("CHKPT6");
 			newRoot->branches.push_back(finalSplit.rightBranch);
 			DPRINT1("I4a complete");
+
+			DPRINT1("cleanup old root");
+			delete this;
 
 			DPRINT1("insert finished");
 			return newRoot;
@@ -789,8 +713,10 @@ namespace rplustree
 		{
 			for (unsigned i = 0; i < data.size(); ++i)
 			{
-				sum += (unsigned)data[i].x;
-				sum += (unsigned)data[i].y;
+				for (unsigned d = 0; d < dimensions; ++d)
+				{
+					sum += (unsigned)data[i][d];
+				}
 			}
 		}
 		else
