@@ -1,7 +1,7 @@
 SXX = -std=c++11 # Standard
 FLAGS = -Wall -O1 # Flags
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o randomSquares.o randomPoints.o randomDisjointSquares.o splitPoints.o pencilPrinter.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o rstartreenode.o rstartree.o randomSquares.o randomPoints.o splitPoints.o pencilPrinter.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
 
 .PHONY : clean tests
@@ -34,12 +34,12 @@ rPlusTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
 
 # Build rplustree node
-rstarTreeNode.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/rstarTreeNode.cpp
+rstartreenode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/node.cpp -o rstartreenode.o
 
 # Build rplustree
-rstarTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/rstarTree.cpp
+rstartree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/rstartree.cpp
 
 # Build pencil printer
 pencilPrinter.o:
@@ -57,8 +57,8 @@ nirtree.o:
 randomSquares.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomSquares.cpp
 
-randomDisjointSquares.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomDisjointSquares.cpp
+# randomDisjointSquares.o:
+# 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomDisjointSquares.cpp
 
 randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp

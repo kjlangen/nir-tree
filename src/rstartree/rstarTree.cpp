@@ -1,4 +1,4 @@
-#include <rstartree/rstarTree.h>
+#include <rstartree/rstartree.h>
 
 namespace rstartree
 {

@@ -23,6 +23,25 @@ namespace rstartree
 				RStarTreeNode *child;
 				unsigned level;
 		};
+		
+		// sorting structs to help in splitNode
+		// As a note since points are X/Y, this will need to be updated when we
+		// 	get to multi dimensional data
+		// This may be worth moving to the geometry class?
+		struct sortByXFirst
+		{
+			inline bool operator() (const Point& pointA, const Point& pointB)
+			{
+				return (pointA.x < pointB.x) || ((pointA.x == pointB.x) && (pointA.y < pointB.y));
+			}
+		};
+
+		struct sortByYFirst{
+			inline bool operator() (const Point& pointA, const Point& pointB)
+			{
+				return (pointA.y < pointB.y) || ((pointA.y == pointB.y) && (pointA.x < pointB.x));
+			}
+		};
 
 		unsigned minBranchFactor;
 		unsigned maxBranchFactor;
@@ -47,6 +66,9 @@ namespace rstartree
 			RStarTreeNode *chooseNode(ReinsertionEntry e);
 			RStarTreeNode *findLeaf(Point givenPoint);
 			RStarTreeNode *splitNode(RStarTreeNode *newChild);
+			unsigned int computeTotalMarginSum();
+			unsigned int splitAxis(Point newData);
+			std::vector<std::vector<unsigned int>> chooseSplitIndex(unsigned int axis);
 			RStarTreeNode *splitNode(Point newData);
 			RStarTreeNode *adjustTree(RStarTreeNode *siblingLeaf);
 			RStarTreeNode *condenseTree();
@@ -65,6 +87,9 @@ namespace rstartree
 			void printTree(unsigned n=0);
 			unsigned height();
 			void stat();
+
+			// operator overlaod for sorting
+			bool operator < (const RStarTreeNode &otherNode) const;
 	};
 }
 

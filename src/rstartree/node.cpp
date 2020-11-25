@@ -1,4 +1,4 @@
-#include <rstartree/rstarTreeNode.h>
+#include <rstartree/node.h>
 
 namespace rstartree
 {
@@ -220,6 +220,22 @@ namespace rstartree
 	// TODO: Write the analogous chooseLeaf(Rectangle searchRectangle)
 	RStarTreeNode *RStarTreeNode::chooseLeaf(Point givenPoint)
 	{
+		// This gets changed here
+
+		// Basically we need to implememt the choose subtree algorithm here
+		// Honestly not much has changed so we don't really need to do much
+		/*
+			CS1: This is CAlled on the root! Just like above
+			CS2: If N is a leaf return N (same)
+			CS3: If the child pointers (bounding boxes) -> choose reactangle that needs least
+					overlap enlargment to fit the new Point/bounding rectangle if tie return smallest area
+					i.e. the rectangle that has the least overlap -> tbh I'm not sure we can just leave this
+				Else: 
+					If not child pointers (bounding boxes) -> choose reactangle that needs least
+					overlap enlargment to fit the new Point (same as before) if tie return smallest area (same)
+			
+		*/
+
 		// CL1 [Initialize]
 		RStarTreeNode *node = this;
 
@@ -446,82 +462,200 @@ namespace rstartree
 		return newSibling;
 	}
 
+	/*
+		Helper function that takes a pre-sorted data and then computes the sum
+		of all margin values over all possible M - 2m + 2 distributions
+	*/
+	unsigned int RStarTreeNode::computeTotalMarginSum()
+	{
+		// use the data to find possible matches (1, M - 2m +2) possible distributions
+		// first split the vector into vectorA and vectorB with vectorA being the minimum
+		std::vector<Point>::const_iterator groupABegin = data.begin();
+		std::vector<Point>::const_iterator groupAEnd = data.begin() + minBranchFactor;
+		std::vector<Point>::const_iterator groupBBegin = data.begin() + minBranchFactor + 1;
+		std::vector<Point>::const_iterator groupBEnd = data.end();
+
+		std::vector<Point> groupA(groupABegin, groupAEnd);
+		std::vector<Point> groupB(groupBBegin, groupBEnd);
+
+		// Find the best size out of all the distributions
+		unsigned int sumOfAllMarginValues = 0;
+		for (unsigned int offset = 1; offset < (maxBranchFactor - 2*minBranchFactor + 2); offset += 1)
+		{
+			// compute the margin of groupA and groupB -> track of the sum
+			Rectangle boundingBoxA;
+			for (unsigned int i = 0; i < groupA.size(); i += 1)
+			{
+				boundingBoxA.expand(groupA[i]);
+			}
+
+			Rectangle boundingBoxB;
+			for (unsigned int i = 0; i < groupA.size(); i += 1)
+			{
+				boundingBoxB.expand(groupB[i]);
+			}
+
+			sumOfAllMarginValues += boundingBoxA.margin() + boundingBoxB.margin();
+
+			
+			// Add one new value to groupA and remove one from groupB
+			// ok that's the next step and repeat
+			Point transfer = groupA.back();
+			groupA.pop_back();
+			groupB.push_back(transfer);
+		}
+
+		return sumOfAllMarginValues;
+	}
+
+	// NOTE follow up -> let's just change Point implementation here -> but I'm unsure of what changes for the type Reinsertion entry
+	
+	// Implement splitAxis here
+	/*
+		CSA1: Sort entries by lower and upper bound along each axis and compute S -> sum of all margin values for the different distributions
+			This can be stored in a array of variable that we keep in a loop -> and the just compare to the others?
+			// we can first call a helper function that returns an array of all possible distributions for it?
+		CSA2: Return the Axis that has the minimum total sum of all the distributions
+	*/
+
+
+	unsigned int RStarTreeNode::splitAxis(Point newData)
+	{
+		unsigned int optimalAxis = 0;
+		
+		// For now we will say there is only 2 axis; however, we can set up geometry.h to include an axis type
+		// eventually we can make this a loop to work with multi dimensional data
+		// Sort along x axis
+		std::sort(data.begin(), data.end(), RStarTreeNode::sortByXFirst());
+		unsigned int marginsFromAxisX = computeTotalMarginSum();
+
+		// Sort along y axis
+		std::sort(data.begin(), data.end(), RStarTreeNode::sortByXFirst());
+		unsigned int marginsFromAxisY = computeTotalMarginSum();
+
+		if (marginsFromAxisX < marginsFromAxisY) {
+			// X axis is better
+			return 0;
+		} else  {
+			// Y axis is better
+			return 1;
+		}
+
+		return optimalAxis;
+	}
+
+
+	// Implement ChooseSplitIndex here
+	/*
+		CSI1: Given the chosen split index -> basically perform chooseSubtree
+			group all the entries into multiple groups and choose the one that has the least
+			overlap value -> so I guess we'll need to make a helper that returns distributions?
+			And resolve ties with the minimum area
+			I guess this helper can just be tied with the first function and done along each axis
+			the key is a tuple of the split
+			The value is a tuple -> one containing the area of the split, one containing the overlap value and lastly
+			one containing the margin value -> this can be shared by this and the one above.
+	*/
+	std::vector<std::vector<unsigned int>> RStarTreeNode::chooseSplitIndex(unsigned int axis)
+	{
+		
+	}
+
+
 	// TODO: Because we're using vectors and didn't exactly implement the original R-Tree rewriting this
 	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
+	// Note split node is always called on a leaf -> so we can directly access it's data points
 	RStarTreeNode *RStarTreeNode::splitNode(Point newData)
 	{
+		// This will now be modified
+		/*
+			S1: Call splitAxis to determine the axis perpendicular to which the split is performed
+			S2: Invoke chooseSplitIndex given the access to determine the best distribution along this axis
+			S3: Distribute the entries among these two groups
+		*/
+
 		STATSPLIT();
 
 		float dataSize = data.size();
 
+		// Call splitAxis to determine the axis perpendicular to which the split is perfromed
+		// 	For now we will save the axis as a int -> since this allows for room for growth in the future
+		unsigned int axis = splitAxis(newData);
+
+		// Call ChooseSplitIndex -> creates a grouping of the vaues
+		std::vector<std::vector<unsigned>> groups = chooseSplitIndex(axis);
+
+		// Take the two groups and modify the actual node
 		// Setup the two groups which will be the entries in the two new nodes
-		std::vector<unsigned> groupA;
-		std::vector<unsigned> groupB;
+		std::vector<unsigned> groupA = groups.at(0);
+		std::vector<unsigned> groupB = groups.at(1);
 
-		// Compute the first entry in each group based on PS1 & PS2
-		unsigned seedA = 0;
-		unsigned seedB = dataSize - 1;
+		// // Compute the first entry in each group based on PS1 & PS2
+		// unsigned seedA = 0;
+		// unsigned seedB = dataSize - 1;
 
-		float xdist = data[seedA].x - data[seedB].x;
-		float ydist = data[seedA].y - data[seedB].y;
+		// float xdist = data[seedA].x - data[seedB].x;
+		// float ydist = data[seedA].y - data[seedB].y;
 
-		float maxWasted = xdist * xdist + ydist * ydist;
-		Point iData, jData;
-		for (unsigned i = 0; i < dataSize; ++i)
-		{
-			iData = data[i];
-			for (unsigned j = 0; j < dataSize; ++j)
-			{
-				jData = data[j];
-				xdist = iData.x - jData.x;
-				ydist = iData.y - jData.y;
-				float wasted = xdist * xdist + ydist * ydist;
+		// float maxWasted = xdist * xdist + ydist * ydist;
+		// Point iData, jData;
+		// for (unsigned i = 0; i < dataSize; ++i)
+		// {
+		// 	iData = data[i];
+		// 	for (unsigned j = 0; j < dataSize; ++j)
+		// 	{
+		// 		jData = data[j];
+		// 		xdist = iData.x - jData.x;
+		// 		ydist = iData.y - jData.y;
+		// 		float wasted = xdist * xdist + ydist * ydist;
 
-				if (maxWasted < wasted)
-				{
-					maxWasted = wasted;
+		// 		if (maxWasted < wasted)
+		// 		{
+		// 			maxWasted = wasted;
 
-					seedA = i;
-					seedB = j;
-				}
-			}
-		}
+		// 			seedA = i;
+		// 			seedB = j;
+		// 		}
+		// 	}
+		// }
 
 		// Set the bounding rectangles
-		Rectangle boundingBoxA = Rectangle(data[seedA], data[seedA]);
-		Rectangle boundingBoxB = Rectangle(data[seedB], data[seedB]);
+		// Rectangle boundingBoxA = Rectangle(data[seedA], data[seedA]);
+		// Rectangle boundingBoxB = Rectangle(data[seedB], data[seedB]);
 
-		// Go through the remaining entries and add them to groupA or groupB
-		for (unsigned i = 0; i < dataSize; ++i)
-		{
-			// TODO: Is there an edge case where when considering one of the seeds, it is placed in the
-			// incorrect group? We rely on the groups sorted in ascending order so that's why we
-			// consider them here instead of adding them in the beginning
-			if (i == seedA)
-			{
-				groupA.push_back(i);
-				boundingBoxA.expand(data[i]);
-				continue;
-			}
-			else if (i == seedB)
-			{
-				groupB.push_back(i);
-				boundingBoxB.expand(data[i]);
-				continue;
-			}
+		// // Go through the remaining entries and add them to groupA or groupB
+		// for (unsigned i = 0; i < dataSize; ++i)
+		// {
+		// 	// TODO: Is there an edge case where when considering one of the seeds, it is placed in the
+		// 	// incorrect group? We rely on the groups sorted in ascending order so that's why we
+		// 	// consider them here instead of adding them in the beginning
+		// 	if (i == seedA)
+		// 	{
+		// 		groupA.push_back(i);
+		// 		boundingBoxA.expand(data[i]);
+		// 		continue;
+		// 	}
+		// 	else if (i == seedB)
+		// 	{
+		// 		groupB.push_back(i);
+		// 		boundingBoxB.expand(data[i]);
+		// 		continue;
+		// 	}
 
-			// Choose the group which will need to expand the least
-			if (boundingBoxB.computeExpansionArea(data[i]) > boundingBoxA.computeExpansionArea(data[i]))
-			{
-				groupA.push_back(i);
-				boundingBoxA.expand(data[i]);
-			}
-			else
-			{
-				groupB.push_back(i);
-				boundingBoxB.expand(data[i]);
-			}
-		}
+		// 	// Choose the group which will need to expand the least
+		// 	if (boundingBoxB.computeExpansionArea(data[i]) > boundingBoxA.computeExpansionArea(data[i]))
+		// 	{
+		// 		groupA.push_back(i);
+		// 		boundingBoxA.expand(data[i]);
+		// 	}
+		// 	else
+		// 	{
+		// 		groupB.push_back(i);
+		// 		boundingBoxB.expand(data[i]);
+		// 	}
+		// }
+
+		// Keep this all the same below
 
 		// Create the new node and fill it with groupB entries by doing really complicated stuff
 		RStarTreeNode *newSibling = new RStarTreeNode(minBranchFactor, maxBranchFactor, parent);
@@ -538,14 +672,15 @@ namespace rstartree
 
 		// Add newData which caused this split in the first place
 		// Choose the group which will need to expand the least
-		if (boundingBoxB.computeExpansionArea(newData) > boundingBoxA.computeExpansionArea(newData))
-		{
-			data.push_back(newData);
-		}
-		else
-		{
-			newSibling->data.push_back(newData);
-		}
+		// I think this is not needed since one of groupA or groupB will contain the node
+		// if (boundingBoxB.computeExpansionArea(newData) > boundingBoxA.computeExpansionArea(newData))
+		// {
+		// 	data.push_back(newData);
+		// }
+		// else
+		// {
+		// 	newSibling->data.push_back(newData);
+		// }
 
 		// Return our newly minted sibling
 		return newSibling;
@@ -607,7 +742,7 @@ namespace rstartree
 		STATEXEC(stat());
 
 		// I1 [Find position for new record]
-		RStarTreeNode *leaf = chooseLeaf(givenPoint);
+		RStarTreeNode *leaf = chooseLeaf(givenPoint); // this is where things will change in the new algorithm
 		RStarTreeNode *siblingLeaf = nullptr;
 
 		// I2 [Add record to leaf node]
@@ -617,6 +752,7 @@ namespace rstartree
 		}
 		else
 		{
+			// This call to splitNode will be udpated -> to use the new formula
 			siblingLeaf = leaf->splitNode(givenPoint);
 		}
 

@@ -54,6 +54,7 @@ class Rectangle
 		bool containsPoint(Point givenPoint);
 		bool strictContainsPoint(Point givenPoint);
 		bool containsRectangle(Rectangle givenRectangle);
+		unsigned int margin();
 		Rectangle intersection(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 

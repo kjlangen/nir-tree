@@ -177,6 +177,10 @@ bool Rectangle::containsRectangle(Rectangle givenRectangle)
 	return containsPoint(givenRectangle.lowerLeft) && containsPoint(givenRectangle.upperRight);
 }
 
+unsigned int Rectangle::margin() {
+	return ((upperRight.y - lowerLeft.y) * 2) + ((lowerLeft.x - upperRight.x) * 2);
+}
+
 // NOTE: Will return the degenerate inf rectangle if the intersection is border-only or non-existent
 Rectangle Rectangle::intersection(Rectangle clippingRectangle)
 {

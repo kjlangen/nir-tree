@@ -6,7 +6,7 @@
 #include <iostream>
 #include <utility>
 #include <util/geometry.h>
-#include <rstartree/rstarTreeNode.h>
+#include <rstartree/node.h>
 #include <index/index.h>
 
 namespace rstartree
