@@ -42,6 +42,11 @@ bool Point::operator!=(Point p) const
 	return x != p.x || y != p.y;
 }
 
+float Point::distance(Point p)
+{
+	return sqrt(pow(abs(x - p.x), 2) + pow(abs(y - p.y), 2));
+}
+
 std::ostream& operator<<(std::ostream& os, const Point& point)
 {
 	os.precision(std::numeric_limits<double>::max_digits10+3);
@@ -177,8 +182,15 @@ bool Rectangle::containsRectangle(Rectangle givenRectangle)
 	return containsPoint(givenRectangle.lowerLeft) && containsPoint(givenRectangle.upperRight);
 }
 
-unsigned int Rectangle::margin() {
+unsigned int Rectangle::margin()
+{
 	return ((upperRight.y - lowerLeft.y) * 2) + ((lowerLeft.x - upperRight.x) * 2);
+}
+
+Point Rectangle::centerPoint() const
+{
+	Point centerPoint((lowerLeft.x + upperRight.x)/2, (lowerLeft.y + upperRight.y)/2);
+	return centerPoint;
 }
 
 // NOTE: Will return the degenerate inf rectangle if the intersection is border-only or non-existent

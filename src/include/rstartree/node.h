@@ -7,7 +7,9 @@
 #include <list>
 #include <utility>
 #include <cmath>
+#include <numeric>
 #include <iostream>
+#include <limits>
 #include <util/geometry.h>
 #include <util/statistics.h>
 
@@ -45,6 +47,7 @@ namespace rstartree
 
 		unsigned minBranchFactor;
 		unsigned maxBranchFactor;
+		float p = 0.3; 			// for reinsertion entries - set to 0.3 on default
 
 		public:
 			RStarTreeNode *parent;
@@ -62,7 +65,8 @@ namespace rstartree
 			void updateBoundingBox(RStarTreeNode *child, Rectangle updatedBoundingBox);
 			void removeChild(RStarTreeNode *child);
 			void removeData(Point givenPoint);
-			RStarTreeNode *chooseLeaf(Point givenPoint);
+			unsigned int computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Point givenPoint);
+			RStarTreeNode *chooseLeaf(Point givenPoint); // technically can be renamed chooseSubtree
 			RStarTreeNode *chooseNode(ReinsertionEntry e);
 			RStarTreeNode *findLeaf(Point givenPoint);
 			RStarTreeNode *splitNode(RStarTreeNode *newChild);
@@ -71,6 +75,8 @@ namespace rstartree
 			std::vector<std::vector<unsigned int>> chooseSplitIndex(unsigned int axis);
 			RStarTreeNode *splitNode(Point newData);
 			RStarTreeNode *adjustTree(RStarTreeNode *siblingLeaf);
+			RStarTreeNode *reInsert(Point givenPoint);
+			RStarTreeNode *overflowTreatment(RStarTreeNode *leaf, Point givenPoint);
 			RStarTreeNode *condenseTree();
 			RStarTreeNode *insert(ReinsertionEntry e);
 

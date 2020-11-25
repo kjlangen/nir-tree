@@ -26,6 +26,7 @@ class Point
 		bool operator>=(Point p) const;
 		bool operator==(Point p) const;
 		bool operator!=(Point p) const;
+		float distance(Point p);
 
 		friend std::ostream& operator<<(std::ostream& os, const Point& point);
 };
@@ -55,6 +56,7 @@ class Rectangle
 		bool strictContainsPoint(Point givenPoint);
 		bool containsRectangle(Rectangle givenRectangle);
 		unsigned int margin();
+		Point centerPoint() const;
 		Rectangle intersection(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
