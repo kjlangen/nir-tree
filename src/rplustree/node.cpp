@@ -348,22 +348,44 @@ namespace rplustree
 
 		if (branches.size() == 0)
 		{
-			std::vector<float> values;
+			rplustree::Node::Partition defaultPartition;
+			float leastTotalArea = std::numeric_limits<float>::infinity();
+			float combinedArea = 0.0;
 
-			for (Point p : data)
+			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				values.push_back(p[0]);
+				// Sort along dimension d
+				std::sort(data.begin(), data.end(), [d](Point &a, Point &b){return a[d] < b[d];});
+
+				// Compute size of left and right rectangles
+				Rectangle left(data[0], data[0]);
+				Rectangle right(data[data.size() / 2], data[data.size() / 2]);
+
+				// Expand left
+				for (unsigned i = 0; i < data.size() / 2; ++i)
+				{
+					left.expand(data[i]);
+				}
+
+				// Expand right
+				for (unsigned i = data.size() / 2; i < data.size(); ++i)
+				{
+					right.expand(data[i]);
+				}
+
+				combinedArea = left.area() + right.area();
+
+				if (combinedArea < leastTotalArea)
+				{
+					leastTotalArea = combinedArea;
+					defaultPartition.dimension = d;
+					defaultPartition.location = data[data.size() / 2][d];
+				}
 			}
 
-			// Sort along x
-			std::sort(values.begin(), values.end());
-
-			// Pick split along x
-			float location = values[values.size() / 2];
-
-			DPRINT3("Partition {0, ", location, "}");
+			DPRINT5("Partition {", defaultPartition.dimension, ", ", defaultPartition.location, "}");
 			DPRINT1("partitionNode finished");
-			return {0, location};
+			return defaultPartition;
 		}
 		else
 		{
