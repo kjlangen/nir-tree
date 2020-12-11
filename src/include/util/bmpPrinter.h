@@ -39,6 +39,7 @@ class BMPPrinter
 		void registerPoint(Point &point, Colour colour);
 		void registerRectangle(Rectangle &boundingBox, Colour colour);
 		void registerRectangleArray(std::vector<Rectangle> &boundingBoxes);
+		void registerPolygon(IsotheticPolygon &polygon, Colour colour);
 
 		void finalize(std::string &printId, unsigned level=0);
 

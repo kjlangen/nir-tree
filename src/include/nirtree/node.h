@@ -40,7 +40,7 @@ namespace nirtree
 			struct Branch
 			{
 				Node *child;
-				Rectangle boundingBox;
+				IsotheticPolygon boundingPoly;
 			};
 
 			struct SplitResult
@@ -66,7 +66,8 @@ namespace nirtree
 
 			// Helper functions
 			Rectangle boundingBox();
-			void updateBranch(Node *child, Rectangle &boundingBox);
+			Branch locateBranch(Node *child);
+			void updateBranch(Node *child, IsotheticPolygon &boundingPoly);
 			void removeBranch(Node *child);
 			void removeData(Point givenPoint);
 			Node *chooseNode(Point givenPoint);

@@ -144,6 +144,14 @@ void BMPPrinter::registerRectangleArray(std::vector<Rectangle> &boundingBoxes)
 	// TODO
 }
 
+void BMPPrinter::registerPolygon(IsotheticPolygon &polygon, Colour colour)
+{
+	for (unsigned i = 0; i < polygon.basicRectangles.size(); ++i)
+	{
+		registerRectangle(polygon.basicRectangles[i], colour);
+	}
+}
+
 void BMPPrinter::finalize(std::string &printId, unsigned level)
 {
 	DPRINT1("finalize");
@@ -271,7 +279,7 @@ void BMPPrinter::printToBMP(nirtree::Node *root)
 		// Add all of our children's bounding boxes to this level's image
 		for (unsigned i = 0; i < currentContext.first->branches.size(); ++i)
 		{
-			registerRectangle(currentContext.first->branches[i].boundingBox, bmpColourGenerator());
+			registerPolygon(currentContext.first->branches[i].boundingPoly, bmpColourGenerator());
 			explorationQ.push(std::pair<nirtree::Node *, unsigned>(currentContext.first->branches[i].child, currentLevel + 1));
 		}
 

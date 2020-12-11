@@ -355,7 +355,7 @@ namespace rplustree
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
 				// Sort along dimension d
-				std::sort(data.begin(), data.end(), [d](Point &a, Point &b){return a[d] < b[d];});
+				std::sort(data.begin(), data.end(), [d](Point a, Point b){return a[d] < b[d];});
 
 				// Compute size of left and right rectangles
 				Rectangle left(data[0], data[0]);

@@ -20,7 +20,7 @@ Point::Point(float *values)
 	}
 }
 
-float Point::operator[](unsigned index) const
+float &Point::operator[](unsigned index)
 {
 	return values[index];
 }
@@ -43,7 +43,7 @@ void Point::operator>>(Point &p)
 	}
 }
 
-bool operator<(const Point &lhs, const Point &rhs)
+bool operator<(Point &lhs, Point &rhs)
 {
 	bool result = true;
 
@@ -55,7 +55,7 @@ bool operator<(const Point &lhs, const Point &rhs)
 	return result;
 }
 
-bool operator>(const Point &lhs, const Point &rhs)
+bool operator>(Point &lhs, Point &rhs)
 {
 	bool result = true;
 
@@ -67,7 +67,7 @@ bool operator>(const Point &lhs, const Point &rhs)
 	return result;
 }
 
-bool operator<=(const Point &lhs, const Point &rhs)
+bool operator<=(Point &lhs, Point &rhs)
 {
 	bool result = true;
 
@@ -79,7 +79,7 @@ bool operator<=(const Point &lhs, const Point &rhs)
 	return result;
 }
 
-bool operator>=(const Point &lhs, const Point &rhs)
+bool operator>=(Point &lhs, Point &rhs)
 {
 	bool result = true;
 
@@ -91,7 +91,7 @@ bool operator>=(const Point &lhs, const Point &rhs)
 	return result;
 }
 
-bool operator==(const Point &lhs, const Point &rhs)
+bool operator==(Point &lhs, Point &rhs)
 {
 	bool result = true;
 
@@ -103,7 +103,7 @@ bool operator==(const Point &lhs, const Point &rhs)
 	return result;
 }
 
-bool operator!=(const Point &lhs, const Point &rhs)
+bool operator!=(Point &lhs, Point &rhs)
 {
 	bool result = false;
 
@@ -115,9 +115,10 @@ bool operator!=(const Point &lhs, const Point &rhs)
 	return result;
 }
 
-std::ostream& operator<<(std::ostream& os, const Point& point)
+std::ostream& operator<<(std::ostream &os, Point &point)
 {
 	os.precision(std::numeric_limits<double>::max_digits10+3);
+
 	os << "(" << point[0];
 	for (unsigned i = 1; i < dimensions; ++i)
 	{
@@ -330,76 +331,56 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 	// Quick exit
 	if (!intersectsRectangle(clippingRectangle) || borderOnlyIntersectsRectanlge(clippingRectangle))
 	{
-		assert(*this != Rectangle());
+		DEXEC(Rectangle rAtInfinity);
+		DASSERT(*this != rAtInfinity);
 		v.push_back(Rectangle(lowerLeft, upperRight));
 		return v;
 	}
 
-	// This array represents the rectangles that might have to be created when fragmenting
-	// 0 -> top slab
-	// 2 -> bottom slab
-	// 1 -> right vertical, not intersecting the top or bottom slabs
-	// 3 -> left vertical, not intersecting the top or bottom slabs
-	Rectangle slots[2 * dimensions];
-	for (unsigned i = 0; i < 2 * dimensions; ++i)
+	// Cycle through all dimensions
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		slots[i] = Rectangle();
-	}
+		// Alter the original rectangle to respect the clipping rectangle. In the y-dimension this
+		// corresponds to making a 'floor' and 'ceiling' rectangle around the clipping rectangle and
+		// then doing the same for all other dimensions. If creating a 'floor' or 'ceiling' is not
+		// possible because the clipping rectangle clips through the original in a particular
+		// dimension then do not create a rectangle
 
-	// // If the top slab is defined this will be revised downward
-	// float maxVertical = upperRight.y;
-	// float minVertical = lowerLeft.y;
+		// Start with copies of the original rectangle
+		Rectangle ceiling(lowerLeft, upperRight);
+		Rectangle floor(lowerLeft, upperRight);
 
-	// // Define the top slab
-	// if (lowerLeft.y < clippingRectangle.upperRight.y && clippingRectangle.upperRight.y < upperRight.y)
-	// {
-	// 	maxVertical = clippingRectangle.upperRight.y;
-	// 	slots[0] = Rectangle(lowerLeft.x, maxVertical, upperRight.x, upperRight.y);
-	// }
-
-	// // Define the bottom slab
-	// if (lowerLeft.y < clippingRectangle.lowerLeft.y && clippingRectangle.lowerLeft.y < upperRight.y)
-	// {
-	// 	minVertical = clippingRectangle.lowerLeft.y;
-	// 	slots[2] = Rectangle(lowerLeft.x, lowerLeft.y, upperRight.x, minVertical);
-	// }
-
-	// // Define the right vertical
-	// if (lowerLeft.x < clippingRectangle.upperRight.x && clippingRectangle.upperRight.x < upperRight.x)
-	// {
-	// 	slots[1] = Rectangle(clippingRectangle.upperRight.x, minVertical, upperRight.x, maxVertical);
-	// }
-
-	// // Define the left vertical
-	// if (lowerLeft.x < clippingRectangle.lowerLeft.x && clippingRectangle.lowerLeft.x < upperRight.x)
-	// {
-	// 	slots[3] = Rectangle(lowerLeft.x, minVertical, clippingRectangle.lowerLeft.x, maxVertical);
-	// }
-
-	// TODO: Maybe optimize this away and just return the array?
-	Rectangle rAtInfinity = Rectangle();
-	for (unsigned i = 0; i < 4; ++i)
-	{
-		if (slots[i] != rAtInfinity)
+		// Make the original into a 'ceiling' in this d dimension
+		if (clippingRectangle.upperRight[d] < upperRight[d])
 		{
-			v.push_back(slots[i]);
+			// New ceiling
+			ceiling.lowerLeft[d] = clippingRectangle.upperRight[d];
+			v.push_back(ceiling);
+		}
+
+		// Make the original into a 'floor' in this d dimension
+		if (clippingRectangle.lowerLeft[d] > lowerLeft[d])
+		{
+			// New floor
+			floor.upperRight[d] = clippingRectangle.lowerLeft[d];
+			v.push_back(floor);
 		}
 	}
 
 	return v;
 }
 
-bool operator==(const Rectangle &lhs, const Rectangle &rhs)
+bool operator==(Rectangle &lhs, Rectangle &rhs)
 {
 	return lhs.lowerLeft == rhs.lowerLeft && lhs.upperRight == rhs.upperRight;
 }
 
-bool operator!=(const Rectangle &lhs, const Rectangle &rhs)
+bool operator!=(Rectangle &lhs, Rectangle &rhs)
 {
 	return lhs.lowerLeft != rhs.lowerLeft || lhs.upperRight != rhs.upperRight;
 }
 
-std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle)
+std::ostream& operator<<(std::ostream &os, Rectangle &rectangle)
 {
 	os.precision(std::numeric_limits<double>::max_digits10+3);
 	os << "[" << rectangle.lowerLeft << "; " << rectangle.upperRight << "]";
@@ -507,30 +488,11 @@ void IsotheticPolygon::expand(Point givenPoint)
 
 	basicRectangles[minIndex].expand(givenPoint);
 	DASSERT(basicRectangles[minIndex].containsPoint(givenPoint));
-
-	// By expanding naively the expanded rectangle could intersect some of our own rectangles.
-	// To fix this take the expanded rectangle out of the polygon, treat it as a clipping
-	// rectangle, then put it back.
-	Rectangle swap = basicRectangles[minIndex];
-	basicRectangles[minIndex] = basicRectangles[basicRectangles.size() - 1];
-	basicRectangles.pop_back();
-	DASSERT(swap.containsPoint(givenPoint));
-	DASSERT(!containsPoint(givenPoint));
-	increaseResolution(swap);
-	basicRectangles.push_back(swap);
-	DASSERT(containsPoint(givenPoint));
-
-	// Cleanup
-	refine();
 }
 
-// TODO: This is a simple functional first-pass at expanding. It could get far more complex and most
-// likely will as we deal with the special case of spirals
-// TODO: There's a special case where this doesn't work when the expansion of the isothetic polygon
-// bridges a U shape indent of the constraint polygon. The new expansion might be non-contigous
-// after being intersected with the constraint polygon.
 void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPolygon)
 {
+	// Expand as if without restraint
 	DASSERT(unique());
 	unsigned minIndex = 0;
 	float minArea = basicRectangles[0].computeExpansionArea(givenPoint);
@@ -550,47 +512,13 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	DASSERT(unique());
 	DASSERT(basicRectangles[minIndex].containsPoint(givenPoint));
 
-	// By expanding naively the expanded rectangle could intersect some of our own rectangles.
-	// To fix this take the expanded rectangle out of the polygon, treat it as a clipping
-	// rectangle, then put it back.
-	Rectangle swap = basicRectangles[minIndex];
-	basicRectangles[minIndex] = basicRectangles.back();
+	// Introduce the constraint
+	std::vector<Rectangle> intersectionPieces = constraintPolygon.intersection(basicRectangles[minIndex]);
+
+	// Replace the original expansion with the constrained expansion
+	basicRectangles[minIndex] = basicRectangles[basicRectangles.size() - 1];
 	basicRectangles.pop_back();
-	DASSERT(swap.containsPoint(givenPoint));
-	DASSERT(unique());
-
-	DEXEC(basicRectangles.push_back(swap));
-	DEXEC(basicRectangles.pop_back());
-
-	increaseResolution(swap);
-
-	DASSERT(swap.containsPoint(givenPoint));
-	DASSERT(unique());
-	DEXEC(basicRectangles.push_back(swap));
-	DEXEC(basicRectangles.pop_back());
-	DASSERT(unique());
-
-	// Ensure the expansion remains within the constraint polygon
-	DASSERT(constraintPolygon.containsPoint(givenPoint));
-	Rectangle swapIntersectionPiece;
-	Rectangle rAtInfinity = Rectangle();
-	DPRINT2("swap", swap);
-	for (unsigned i = 0; i < constraintPolygon.basicRectangles.size(); ++i)
-	{
-		swapIntersectionPiece = swap.intersection(constraintPolygon.basicRectangles[i]);
-		DPRINT2("constraintRectanlge ", constraintPolygon.basicRectangles[i]);
-		DPRINT2("swapIntersectionPiece ", swapIntersectionPiece);
-		if (swapIntersectionPiece != rAtInfinity)
-		{
-			DPRINT1("Pushing swapIntersectionPiece");
-			basicRectangles.push_back(swapIntersectionPiece);
-		}
-	}
-	DASSERT((containsPoint(givenPoint)));
-	DASSERT(unique());
-
-	// Cleanup
-	refine();
+	basicRectangles.insert(basicRectangles.end(), intersectionPieces.begin(), intersectionPieces.end());
 }
 
 bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
@@ -664,10 +592,12 @@ std::vector<Rectangle> IsotheticPolygon::intersection(Rectangle givenRectangle)
 {
 	std::vector<Rectangle> v;
 
+	Rectangle rAtInfinity = Rectangle();
+
 	for (unsigned i = 0; i < basicRectangles.size(); ++i)
 	{
 		Rectangle r = basicRectangles[i].intersection(givenRectangle);
-		if (r != Rectangle())
+		if (r != rAtInfinity)
 		{
 			v.push_back(r);
 		}
@@ -719,7 +649,8 @@ void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 		{
 			extraRectangles.push_back(fragments[j]);
 			DPRINT2("j = ", j);
-			DASSERT(fragments[j] != Rectangle());
+			DEXEC(Rectangle rAtInfinity);
+			DASSERT(fragments[j] != rAtInfinity);
 		}
 		DPRINT2("extraRectangles.size() = ", extraRectangles.size());
 	}
@@ -729,9 +660,6 @@ void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
 	basicRectangles.swap(extraRectangles);
 	DPRINT2("basicRectangles.size() = ", basicRectangles.size());
-
-	// Cleanup
-	refine();
 }
 
 void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
@@ -742,9 +670,26 @@ void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
 		increaseResolution(clippingPolygon.basicRectangles[i]);
 		DPRINT2("    Result ", this);
 	}
+}
 
-	// Cleanup
-	refine();
+void IsotheticPolygon::maxLimit(float limit, unsigned d)
+{
+	std::remove_if(basicRectangles.begin(), basicRectangles.end(), [d, limit](Rectangle r){return r.lowerLeft[d] > limit;});
+
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	{
+		basicRectangles[i].upperRight[d] = std::min(basicRectangles[i].upperRight[d], limit);
+	}
+}
+
+void IsotheticPolygon::minLimit(float limit, unsigned d)
+{
+	std::remove_if(basicRectangles.begin(), basicRectangles.end(), [d, limit](Rectangle r){return r.upperRight[d] < limit;});
+
+	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	{
+		basicRectangles[i].lowerLeft[d] = std::max(basicRectangles[i].lowerLeft[d], limit);
+	}
 }
 
 void IsotheticPolygon::refine()
@@ -796,6 +741,30 @@ void IsotheticPolygon::sort(bool min, unsigned d)
 	}
 }
 
+float IsotheticPolygon::max(unsigned d)
+{
+	float runningMax = 0;
+
+	for (Rectangle r : basicRectangles)
+	{
+		runningMax = std::max(runningMax, r.upperRight[d]);
+	}
+
+	return runningMax;
+}
+
+float IsotheticPolygon::min(unsigned d)
+{
+	float runningMin = std::numeric_limits<float>::infinity();
+
+	for (Rectangle r : basicRectangles)
+	{
+		runningMin = std::min(runningMin, r.lowerLeft[d]);
+	}
+
+	return runningMin;
+}
+
 bool IsotheticPolygon::unique()
 {
 	for (unsigned i = 0; i < basicRectangles.size(); ++i)
@@ -815,9 +784,11 @@ bool IsotheticPolygon::unique()
 
 bool IsotheticPolygon::infFree()
 {
+	Rectangle rAtInfinity;
+
 	for (unsigned i = 0; i < basicRectangles.size(); ++i)
 	{
-		if (basicRectangles[i] == Rectangle())
+		if (basicRectangles[i] == rAtInfinity)
 		{
 			DPRINT3("Rectangle ", i, " is degenerate");
 			return false;
@@ -827,7 +798,7 @@ bool IsotheticPolygon::infFree()
 	return true;
 }
 
-bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
+bool operator==(IsotheticPolygon &lhs, IsotheticPolygon &rhs)
 {
 	if (lhs.basicRectangles.size() != rhs.basicRectangles.size())
 	{
@@ -847,7 +818,7 @@ bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
 	return true;
 }
 
-bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
+bool operator!=(IsotheticPolygon &lhs, IsotheticPolygon &rhs)
 {
 	if (lhs.basicRectangles.size() != rhs.basicRectangles.size())
 	{
@@ -867,7 +838,7 @@ bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
 	return false;
 }
 
-std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon)
+std::ostream& operator<<(std::ostream &os, IsotheticPolygon &polygon)
 {
 	os.precision(std::numeric_limits<double>::max_digits10 + 3);
 	os << "|";

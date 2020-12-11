@@ -22,25 +22,25 @@ class Point
 		Point(float x, float y);
 		Point(float *values);
 
-		float operator[](unsigned index) const;
+		float &operator[](unsigned index);
 		void operator<<(Point &p);
 		void operator>>(Point &p);
 
-		friend bool operator<(const Point &lhs, const Point &rhs);
-		friend bool operator>(const Point &lhs, const Point &rhs);
-		friend bool operator<=(const Point &lhs, const Point &rhs);
-		friend bool operator>=(const Point &lhs, const Point &rhs);
-		friend bool operator==(const Point &lhs, const Point &rhs);
-		friend bool operator!=(const Point &lhs, const Point &rhs);
-		friend std::ostream& operator<<(std::ostream& os, const Point& point);
+		friend bool operator<(Point &lhs, Point &rhs);
+		friend bool operator>(Point &lhs, Point &rhs);
+		friend bool operator<=(Point &lhs, Point &rhs);
+		friend bool operator>=(Point &lhs, Point &rhs);
+		friend bool operator==(Point &lhs, Point &rhs);
+		friend bool operator!=(Point &lhs, Point &rhs);
+		friend std::ostream& operator<<(std::ostream &os, Point &point);
 };
 
-bool operator<(const Point &lhs, const Point &rhs);
-bool operator>(const Point &lhs, const Point &rhs);
-bool operator<=(const Point &lhs, const Point &rhs);
-bool operator>=(const Point &lhs, const Point &rhs);
-bool operator==(const Point &lhs, const Point &rhs);
-bool operator!=(const Point &lhs, const Point &rhs);
+bool operator<(Point &lhs, Point &rhs);
+bool operator>(Point &lhs, Point &rhs);
+bool operator<=(Point &lhs, Point &rhs);
+bool operator>=(Point &lhs, Point &rhs);
+bool operator==(Point &lhs, Point &rhs);
+bool operator!=(Point &lhs, Point &rhs);
 
 class Rectangle
 {
@@ -70,13 +70,13 @@ class Rectangle
 		Rectangle intersection(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
-		friend bool operator==(const Rectangle &lr, const Rectangle &rr);
-		friend bool operator!=(const Rectangle &lr, const Rectangle &rr);
-		friend std::ostream& operator<<(std::ostream& os, const Rectangle& rectangle);
+		friend bool operator==(Rectangle &lr, Rectangle &rr);
+		friend bool operator!=(Rectangle &lr, Rectangle &rr);
+		friend std::ostream& operator<<(std::ostream& os, Rectangle &rectangle);
 };
 
-bool operator==(const Rectangle &lhs, const Rectangle &rhs);
-bool operator!=(const Rectangle &lhs, const Rectangle &rhs);
+bool operator==(Rectangle &lhs, Rectangle &rhs);
+bool operator!=(Rectangle &lhs, Rectangle &rhs);
 
 class IsotheticPolygon
 {
@@ -101,18 +101,22 @@ class IsotheticPolygon
 		void intersection(IsotheticPolygon &constraintPolygon);
 		void increaseResolution(Rectangle clippingRectangle);
 		void increaseResolution(IsotheticPolygon &clippingPolygon);
+		void maxLimit(float limit, unsigned d=0);
+		void minLimit(float limit, unsigned d=0);
 		void refine();
 		void sort(bool min, unsigned d=0);
+		float max(unsigned d=0);
+		float min(unsigned d=0);
 
 		bool unique();
 		bool infFree();
 
-		friend bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
-		friend bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
-		friend std::ostream& operator<<(std::ostream& os, const IsotheticPolygon& polygon);
+		friend bool operator==(IsotheticPolygon &lhs, IsotheticPolygon &rhs);
+		friend bool operator!=(IsotheticPolygon &lhs, IsotheticPolygon &rhs);
+		friend std::ostream& operator<<(std::ostream &os, IsotheticPolygon &polygon);
 };
 
-bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
-bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
+bool operator==(IsotheticPolygon &lhs, IsotheticPolygon &rhs);
+bool operator!=(IsotheticPolygon &lhs, IsotheticPolygon &rhs);
 
 #endif
