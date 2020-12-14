@@ -14,6 +14,7 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <random>
 #include <util/geometry.h>
 #include <util/graph.h>
 #include <util/debug.h>
@@ -36,6 +37,9 @@ namespace rplustree
 			unsigned maxBranchFactor;
 
 		public:
+			static std::default_random_engine globalGenerator;
+			static std::uniform_int_distribution<unsigned> coinFlipper;
+
 			struct Branch
 			{
 				Node *child;

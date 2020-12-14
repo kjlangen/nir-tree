@@ -14,6 +14,7 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <random>
 #include <omp.h>
 #include <util/geometry.h>
 #include <util/graph.h>
@@ -37,6 +38,9 @@ namespace nirtree
 			unsigned maxBranchFactor;
 
 		public:
+			static std::default_random_engine globalGenerator;
+			static std::uniform_int_distribution<unsigned> coinFlipper;
+
 			struct Branch
 			{
 				Node *child;

@@ -2,11 +2,16 @@
 
 namespace rplustree
 {
+	std::default_random_engine Node::globalGenerator = std::default_random_engine(1241024);
+	std::uniform_int_distribution<unsigned> Node::coinFlipper = std::uniform_int_distribution<unsigned>(0, dimensions - 1);
+
 	Node::Node()
 	{
 		minBranchFactor = 0;
 		maxBranchFactor = 0;
 		parent = nullptr;
+		data.clear();
+		branches.clear();
 	}
 
 	Node::Node(unsigned minBranch, unsigned maxBranch, Node *p)
@@ -14,6 +19,8 @@ namespace rplustree
 		minBranchFactor = minBranch;
 		maxBranchFactor = maxBranch;
 		parent = p;
+		data.clear();
+		branches.clear();
 	}
 
 	void Node::deleteSubtrees()
@@ -348,44 +355,14 @@ namespace rplustree
 
 		if (branches.size() == 0)
 		{
-			rplustree::Node::Partition defaultPartition;
-			float leastTotalArea = std::numeric_limits<float>::infinity();
-			float combinedArea = 0.0;
+			unsigned d = coinFlipper(globalGenerator);
 
-			for (unsigned d = 0; d < dimensions; ++d)
-			{
-				// Sort along dimension d
-				std::sort(data.begin(), data.end(), [d](Point &a, Point &b){return a[d] < b[d];});
+			// Sort along dimension d
+			std::sort(data.begin(), data.end(), [d](Point &a, Point &b){return a[d] < b[d];});
 
-				// Compute size of left and right rectangles
-				Rectangle left(data[0], data[0]);
-				Rectangle right(data[data.size() / 2], data[data.size() / 2]);
-
-				// Expand left
-				for (unsigned i = 0; i < data.size() / 2; ++i)
-				{
-					left.expand(data[i]);
-				}
-
-				// Expand right
-				for (unsigned i = data.size() / 2; i < data.size(); ++i)
-				{
-					right.expand(data[i]);
-				}
-
-				combinedArea = left.area() + right.area();
-
-				if (combinedArea < leastTotalArea)
-				{
-					leastTotalArea = combinedArea;
-					defaultPartition.dimension = d;
-					defaultPartition.location = data[data.size() / 2][d];
-				}
-			}
-
-			DPRINT5("Partition {", defaultPartition.dimension, ", ", defaultPartition.location, "}");
+			DPRINT5("Partition {", d, ", ", data[data.size() / 2][d], "}");
 			DPRINT1("partitionNode finished");
-			return defaultPartition;
+			return {d, data[data.size() / 2][d]};
 		}
 		else
 		{
