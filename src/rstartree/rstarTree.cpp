@@ -4,10 +4,10 @@ namespace rstartree
 {
 	RStarTree::RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor)
 	{
-		root = new RStarTreeNode(minBranchFactor, maxBranchFactor);
+		root = new Node(minBranchFactor, maxBranchFactor);
 	}
 
-	RStarTree::RStarTree(RStarTreeNode *root)
+	RStarTree::RStarTree(Node *root)
 	{
 		this->root = root;
 	}
@@ -38,12 +38,12 @@ namespace rstartree
 
 	void RStarTree::insert(Point givenPoint)
 	{
-		root = root->insert(givenPoint);
+		root = root->insert(givenPoint, hasReinsertedOnLevel);
 	}
 
 	void RStarTree::remove(Point givenPoint)
 	{
-		root = root->remove(givenPoint);
+		root = root->remove(givenPoint, hasReinsertedOnLevel);
 	}
 
 	unsigned RStarTree::checksum()

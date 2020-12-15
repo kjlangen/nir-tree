@@ -47,6 +47,11 @@ float Point::distance(Point p)
 	return sqrt(pow(abs(x - p.x), 2) + pow(abs(y - p.y), 2));
 }
 
+float Point::distance(Point p) const
+{
+	return sqrt(pow(abs(x - p.x), 2) + pow(abs(y - p.y), 2));
+}
+
 std::ostream& operator<<(std::ostream& os, const Point& point)
 {
 	os.precision(std::numeric_limits<double>::max_digits10+3);
@@ -184,7 +189,7 @@ bool Rectangle::containsRectangle(Rectangle givenRectangle)
 
 unsigned int Rectangle::margin()
 {
-	return ((upperRight.y - lowerLeft.y) * 2) + ((lowerLeft.x - upperRight.x) * 2);
+	return ((upperRight.y - lowerLeft.y) * 2) + ((upperRight.x - lowerLeft.x) * 2);
 }
 
 Point Rectangle::centerPoint() const

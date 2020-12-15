@@ -15,11 +15,12 @@ namespace rstartree
 	class RStarTree: public Index
 	{
 		public:
-			RStarTreeNode *root;
+			Node *root;
+			std::vector<bool> hasReinsertedOnLevel;
 
 			// Constructors and destructors
 			RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-			RStarTree(RStarTreeNode *root);
+			RStarTree(Node *root);
 			~RStarTree();
 
 			// Datastructure interface

@@ -203,6 +203,7 @@ int main(int argc, char *argv[])
 			randomPoints(rpt, bench, n, s, l);
 			break;
 		}
+		// Well need to add a case here with RSTAR TREE
 		case NIR_TREE:
 		{
 			nirtree::NIRTree nt(a, b);

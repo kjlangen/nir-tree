@@ -27,6 +27,8 @@ class Point
 		bool operator==(Point p) const;
 		bool operator!=(Point p) const;
 		float distance(Point p);
+		float distance(Point p) const;
+
 
 		friend std::ostream& operator<<(std::ostream& os, const Point& point);
 };

@@ -1,8 +1,8 @@
 SXX = -std=c++11 # Standard
 FLAGS = -Wall -O1 # Flags
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o rstartreenode.o rstartree.o randomSquares.o randomPoints.o splitPoints.o pencilPrinter.o
-TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o rstartree.o rstartreenode.o randomSquares.o randomPoints.o splitPoints.o pencilPrinter.o
+TESTS = testRStarTree.o # testGeometry.o testRPlusTree.o - for now only test rstartree
 
 .PHONY : clean tests
 

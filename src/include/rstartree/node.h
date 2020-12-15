@@ -15,14 +15,14 @@
 
 namespace rstartree
 {
-	class RStarTreeNode
+	class Node
 	{
 		class ReinsertionEntry
 		{
 			public:
 				Rectangle boundingBox;
 				Point data;
-				RStarTreeNode *child;
+				Node *child;
 				unsigned level;
 		};
 		
@@ -45,47 +45,72 @@ namespace rstartree
 			}
 		};
 
-		unsigned minBranchFactor;
+		struct sortByXRectangleFirst
+		{
+			inline bool operator() (const Rectangle& rectangleA, const Rectangle& rectangleB)
+			{
+				return (rectangleA.lowerLeft.x < rectangleB.lowerLeft.x)
+					|| ((rectangleA.lowerLeft.x == rectangleB.lowerLeft.x) && (rectangleA.upperRight.x < rectangleB.upperRight.x));
+			}
+		};
+
+		struct sortByYRectangleFirst{
+			inline bool operator() (const Rectangle& rectangleA, const Rectangle& rectangleB)
+			{
+				return (rectangleA.lowerLeft.y < rectangleB.lowerLeft.y)
+					|| ((rectangleA.lowerLeft.y == rectangleB.lowerLeft.y) && (rectangleA.upperRight.y < rectangleB.upperRight.y));
+			}
+		};
+
+		unsigned minBranchFactor;		// this cannot be 1 or else splitNode will fail
 		unsigned maxBranchFactor;
 		float p = 0.3; 			// for reinsertion entries - set to 0.3 on default
 
 		public:
-			RStarTreeNode *parent;
+			Node *parent;
 			std::vector<Rectangle> boundingBoxes;
-			std::vector<RStarTreeNode *> children;
+			std::vector<Node *> children;
 			std::vector<Point> data;
+			unsigned int level = 0;
 
 			// Constructors and destructors
-			RStarTreeNode();
-			RStarTreeNode(unsigned minBranchFactor, unsigned maxBranchFactor, RStarTreeNode *p=nullptr);
+			Node();
+			Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p=nullptr);
 			void deleteSubtrees();
 
 			// Helper functions
 			Rectangle boundingBox();
-			void updateBoundingBox(RStarTreeNode *child, Rectangle updatedBoundingBox);
-			void removeChild(RStarTreeNode *child);
+			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
+			void removeChild(Node *child);
 			void removeData(Point givenPoint);
+			unsigned int computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Rectangle givenRectangle);
 			unsigned int computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Point givenPoint);
-			RStarTreeNode *chooseLeaf(Point givenPoint); // technically can be renamed chooseSubtree
-			RStarTreeNode *chooseNode(ReinsertionEntry e);
-			RStarTreeNode *findLeaf(Point givenPoint);
-			RStarTreeNode *splitNode(RStarTreeNode *newChild);
+			Node *chooseLeaf(Point givenPoint); // technically can be renamed chooseSubtree
+			Node *chooseNode(ReinsertionEntry e);
+			Node *findLeaf(Point givenPoint);
+			unsigned int computeTotalMarginSumOfBoundingBoxes();
+			unsigned int splitAxis(Node *newChild);
+			std::vector<std::vector<unsigned int>> chooseSplitIndexByRectangle(unsigned int axis);
+			Node *splitNode(Node *newChild);
 			unsigned int computeTotalMarginSum();
 			unsigned int splitAxis(Point newData);
 			std::vector<std::vector<unsigned int>> chooseSplitIndex(unsigned int axis);
-			RStarTreeNode *splitNode(Point newData);
-			RStarTreeNode *adjustTree(RStarTreeNode *siblingLeaf);
-			RStarTreeNode *reInsert(Point givenPoint);
-			RStarTreeNode *overflowTreatment(RStarTreeNode *leaf, Point givenPoint);
-			RStarTreeNode *condenseTree();
-			RStarTreeNode *insert(ReinsertionEntry e);
+			Node *splitNode(Point newData);
+			Node *adjustTree(Node *siblingLeaf, std::vector<bool> hasReinsertedOnLevel);
+			Node *reInsert(Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
+			Node *reInsert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
+			Node *overflowTreatment(Node *leaf, Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
+			Node *overflowTreatment(Node *node, ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
+			Node *overflowTreatment(Node *node, Node *nodeToInsert, std::vector<bool> hasReinsertedOnLevel); // tbh this is dumb and duplicated -> we should merge this with above
+			Node *condenseTree(std::vector<bool> hasReinsertedOnLevel);
+			Node *insert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
 
 			// Datastructure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
 			std::vector<Point> search(Point &requestedPoint);
 			std::vector<Point> search(Rectangle &requestedRectangle);
-			RStarTreeNode *insert(Point givenPoint);
-			RStarTreeNode *remove(Point givenPoint);
+			Node *insert(Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
+			Node *remove(Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
 
 			// Miscellaneous
 			unsigned checksum();
@@ -95,7 +120,7 @@ namespace rstartree
 			void stat();
 
 			// operator overlaod for sorting
-			bool operator < (const RStarTreeNode &otherNode) const;
+			bool operator < (const Node &otherNode) const;
 	};
 }
 
