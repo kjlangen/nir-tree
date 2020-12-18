@@ -3,6 +3,7 @@
 #include <rtree/rtree.h>
 #include <nirtree/nirtree.h>
 #include <rplustree/rPlusTree.h>
+#include <rstartree/rStarTree.h>
 #include <nirtree/pencilPrinter.h>
 #include <util/geometry.h>
 #include <bench/randomSquares.h>
@@ -115,7 +116,7 @@
 // 	delete pirateTree;
 // }
 
-enum TreeType { R_TREE, R_PLUS_TREE, NIR_TREE };
+enum TreeType { R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE };
 
 void parameters(TreeType type, BenchType bench, unsigned a, unsigned b, unsigned n, unsigned l, unsigned s) {
 	std::string treeTypes[] = {"R_TREE", "R_PLUS_TREE", "NIR_TREE"};
@@ -137,7 +138,8 @@ int main(int argc, char *argv[])
 #else
 	// Process command line options
 	int option, a = 250, b = 500, n = 10000, l = 1000, s = 3141;
-	TreeType type = NIR_TREE;
+	// TreeType type = NIR_TREE;
+	TreeType type = R_STAR_TREE;
 	BenchType bench = UNIFORM;
 	while ((option = getopt(argc, argv, "t:m:a:b:n:l:s:")) != -1)
 	{
@@ -203,7 +205,12 @@ int main(int argc, char *argv[])
 			randomPoints(rpt, bench, n, s, l);
 			break;
 		}
-		// TODO: Add case here for RSTAR TREE
+		case R_STAR_TREE:
+		{
+			rstartree::RStarTree rst(a, b);
+			randomPoints(rst, bench, n, s, l);
+			break;
+		}
 		case NIR_TREE:
 		{
 			nirtree::NIRTree nt(a, b);
