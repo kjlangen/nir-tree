@@ -445,50 +445,87 @@ TEST_CASE("R*Tree: testSplitNode")
 	delete dummys[5];
 }
 
+// Create a test for overflow treatement
+// Create a tests for reinsert nodes
+TEST_CASE("R*Tree: testReInsert")
+{
+	// Leaf rtree::Node and new sibling leaf
+	// Cluster 4, n = 5
+	// center is (0,0)
+	rstartree::Node *cluster4a = new rstartree::Node();
+	cluster4a->data.push_back(Point(-10.0, -10.0));
+	cluster4a->data.push_back(Point(-10.0, 10.0));
+	cluster4a->data.push_back(Point(10.0, -10.0));
+	cluster4a->data.push_back(Point(10.0, 10.0));
+	cluster4a->data.push_back(Point(5.0, -5.0));
+	cluster4a->level = 1;
+
+	// Root rstartree::Node
+	rstartree::Node *root = new rstartree::Node();
+	root->level = 0;
+
+	// Rinsert on the tree
+	// This is slightly wrong - we do need to end up calling insert on root
+	//	I am unsure about the best way to tackle this
+	std::vector<bool> levels = {false, false};
+	// rstartree::Node *result = root->reInsert(Point(2.0, 2.0), levels);
+	
+	// REQUIRE(root->children.size() == 2);
+}
+
 // The test for adjust tree needs to be updated to account for the levels array
 // TEST_CASE("R*Tree: testAdjustTree")
 // {
 // 	// Leaf rtree::Node and new sibling leaf
 // 	// Cluster 4, n = 7
 // 	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
-// 	rtree::Node *cluster4a = new rtree::Node();
+// 	rstartree::Node *cluster4a = new rstartree::Node();
 // 	cluster4a->data.push_back(Point(-10.0, -2.0));
 // 	cluster4a->data.push_back(Point(-12.0, -3.0));
 // 	cluster4a->data.push_back(Point(-11.0, -3.0));
 // 	cluster4a->data.push_back(Point(-10.0, -3.0));
+// 	cluster4a->level = 2;
 
-// 	rtree::Node *cluster4b = new rtree::Node();
+// 	rstartree::Node *cluster4b = new rstartree::Node();
 // 	cluster4b->data.push_back(Point(-9.0, -3.0));
 // 	cluster4b->data.push_back(Point(-7.0, -3.0));
 // 	cluster4b->data.push_back(Point(-10.0, -5.0));
+// 	cluster4b->level = 2;
 
-// 	// Middle rtree::Node
-// 	rtree::Node *middle = new rtree::Node();
-// 	rtree::Node *dummys[4] = {new rtree::Node(), new rtree::Node(), new rtree::Node(), new rtree::Node()};
+// 	// Middle rstartree::Node
+// 	rstartree::Node *middle = new rstartree::Node();
+// 	middle->level = 1;
+// 	rstartree::Node *dummys[4] = {new rstartree::Node(), new rstartree::Node(), new rstartree::Node(), new rstartree::Node()};
 // 	dummys[0]->parent = middle;
+// 	dummys[0]->level = 2;
 // 	middle->boundingBoxes.push_back(Rectangle(-10.0, 2.0, -8.0, 4.0));
 // 	middle->children.push_back(dummys[0]);
 // 	dummys[1]->parent = middle;
+// 	dummys[1]->level = 2;
 // 	middle->boundingBoxes.push_back(Rectangle(-12.0, -10.0, -10.0, -8.0));
 // 	middle->children.push_back(dummys[1]);
 // 	cluster4a->parent = middle;
 // 	middle->boundingBoxes.push_back(Rectangle(-12.0, -5.0, -7.0, -2.0));
 // 	middle->children.push_back(cluster4a);
 // 	dummys[2]->parent = middle;
+// 	dummys[2]->level = 2;
 // 	middle->boundingBoxes.push_back(Rectangle(6.0, 6.0, 8.0, 8.0));
 // 	middle->children.push_back(dummys[2]);
 // 	dummys[3]->parent = middle;
+// 	dummys[3]->level = 2;
 // 	middle->boundingBoxes.push_back(Rectangle(15.0, -17.0, 17.0, -15.0));
 // 	middle->children.push_back(dummys[3]);
 
-// 	// Root rtree::Node
-// 	rtree::Node *root = new rtree::Node();
+// 	// Root rstartree::Node
+// 	rstartree::Node *root = new rstartree::Node();
 // 	middle->parent = root;
 // 	root->boundingBoxes.push_back(middle->boundingBox());
 // 	root->children.push_back(middle);
+// 	root->level = 0;
 
 // 	// Adjust the tree
-// 	rtree::Node *result = cluster4a->adjustTree(cluster4b);
+// 	std::vector<bool> levels = {false, false, false};
+// 	rstartree::Node *result = cluster4a->adjustTree(cluster4b, levels);
 
 // 	// Test the adjustment
 // 	REQUIRE(result == nullptr);
@@ -784,8 +821,6 @@ TEST_CASE("R*Tree: testSearch")
 }
 
 // Once the test for adjust and condense tree are working test:
-// Create a test for overflow treatement
-// Create a tests for reinsert nodes
 // Then test insert is working properly
 // TEST_CASE("R*Tree: testInsert")
 // {
