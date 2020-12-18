@@ -43,6 +43,7 @@ class Rectangle
 		Rectangle(float x, float y, float xp, float yp);
 		Rectangle(Point lowerLeft, Point upperRight);
 		float area();
+		float margin();
 		float computeIntersectionArea(Rectangle givenRectangle);
 		float computeExpansionArea(Point givenPoint);
 		float computeExpansionArea(Rectangle givenRectangle);
@@ -57,7 +58,6 @@ class Rectangle
 		bool containsPoint(Point givenPoint);
 		bool strictContainsPoint(Point givenPoint);
 		bool containsRectangle(Rectangle givenRectangle);
-		unsigned int margin();
 		Point centerPoint() const;
 		Rectangle intersection(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);

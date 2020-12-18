@@ -34,10 +34,6 @@ namespace rstartree
 			unsigned checksum() override;
 			void print();
 	};
-
-	void testSimpleSearch();
-	void testSimpleInsert();
-	void expandRootTest();
 }
 
 #endif

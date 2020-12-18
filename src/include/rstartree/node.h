@@ -27,9 +27,8 @@ namespace rstartree
 		};
 		
 		// sorting structs to help in splitNode
-		// As a note since points are X/Y, this will need to be updated when we
-		// 	get to multi dimensional data
-		// This may be worth moving to the geometry class?
+		// TODO: As a note since points are X/Y, this will need to be updated when we
+		// 		get to multi dimensional data
 		struct sortByXFirst
 		{
 			inline bool operator() (const Point& pointA, const Point& pointB)
@@ -64,7 +63,7 @@ namespace rstartree
 
 		unsigned minBranchFactor;		// this cannot be 1 or else splitNode will fail
 		unsigned maxBranchFactor;
-		float p = 0.3; 			// for reinsertion entries - set to 0.3 on default
+		static constexpr float p = 0.3; 			// for reinsertion entries - set to 0.3 on default
 
 		public:
 			Node *parent;
@@ -83,9 +82,9 @@ namespace rstartree
 			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 			void removeChild(Node *child);
 			void removeData(Point givenPoint);
-			unsigned int computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Rectangle givenRectangle);
-			unsigned int computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Point givenPoint);
-			Node *chooseLeaf(Point givenPoint); // technically can be renamed chooseSubtree
+			unsigned computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Rectangle givenRectangle);
+			unsigned computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Point givenPoint);
+			Node *chooseSubtree(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
 			unsigned int computeTotalMarginSumOfBoundingBoxes();
@@ -101,7 +100,7 @@ namespace rstartree
 			Node *reInsert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
 			Node *overflowTreatment(Node *leaf, Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
 			Node *overflowTreatment(Node *node, ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
-			Node *overflowTreatment(Node *node, Node *nodeToInsert, std::vector<bool> hasReinsertedOnLevel); // tbh this is dumb and duplicated -> we should merge this with above
+			Node *overflowTreatment(Node *node, Node *nodeToInsert, std::vector<bool> hasReinsertedOnLevel); // TODO: duplicated code; investigate ways to merge this with above
 			Node *condenseTree(std::vector<bool> hasReinsertedOnLevel);
 			Node *insert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
 

@@ -164,12 +164,12 @@ TEST_CASE("R*Tree: testChooseLeaf")
 	root->children.push_back(right);
 
 	// Test that we get the correct child for the given point
-	REQUIRE(rightChild1 == root->chooseLeaf(Point(13.0, -3.0)));
-	REQUIRE(leftChild0 == root->chooseLeaf(Point(8.5, 12.5)));
-	REQUIRE(leftChild2 == root->chooseLeaf(Point(13.5, 13.5)));
-	REQUIRE(rightChild0 == root->chooseLeaf(Point(7.0, 3.0)));
-	REQUIRE(leftChild1 == root->chooseLeaf(Point(11.0, 15.0)));
-	REQUIRE(leftChild0 == root->chooseLeaf(Point(4.0, 8.0)));
+	REQUIRE(rightChild1 == root->chooseSubtree(Point(13.0, -3.0)));
+	REQUIRE(leftChild0 == root->chooseSubtree(Point(8.5, 12.5)));
+	REQUIRE(leftChild2 == root->chooseSubtree(Point(13.5, 13.5)));
+	REQUIRE(rightChild0 == root->chooseSubtree(Point(7.0, 3.0)));
+	REQUIRE(leftChild1 == root->chooseSubtree(Point(11.0, 15.0)));
+	REQUIRE(leftChild0 == root->chooseSubtree(Point(4.0, 8.0)));
 
 	// Cleanup
 	root->deleteSubtrees();

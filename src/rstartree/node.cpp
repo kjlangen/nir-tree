@@ -216,7 +216,7 @@ namespace rstartree
 		return matchingPoints;
 	}
 
-	unsigned int Node::computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Rectangle givenRectangle)
+	unsigned Node::computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Rectangle givenRectangle)
 	{
 		// ok so now that we have the bounding boxes what we need to do is this 
 		// 1. make a test rectangle we will use to not modify the original
@@ -236,7 +236,7 @@ namespace rstartree
 		return overlapArea;
 	}
 
-	unsigned int Node::computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Point givenPoint)
+	unsigned Node::computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Point givenPoint)
 	{
 		// ok so now that we have the bounding boxes what we need to do is this 
 		// 1. make a test rectangle we will use to not modify the original
@@ -257,8 +257,8 @@ namespace rstartree
 	}
 
 	// Always called on root, this = root
-	// TODO: Write the analogous chooseLeaf(Rectangle searchRectangle)
-	Node *Node::chooseLeaf(Point givenPoint)
+	// TODO: Write the analogous chooseSubtree(Rectangle searchRectangle)
+	Node *Node::chooseSubtree(Point givenPoint)
 	{
 		// This gets changed here
 
@@ -303,6 +303,20 @@ namespace rstartree
 					{
 						smallestOverlapExpansionIndex = i;
 						smallestOverlapExpansion = testOverlapExpansionArea;
+
+						// update smallesExpansionArea if needed
+						float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
+						if (smallestExpansionArea > testExpansionArea)
+						{
+							smallestExpansionArea = testExpansionArea;
+						}
+
+						// update area if needed
+						float testArea = node->boundingBoxes[i].area();
+						if (smallestArea > testArea)
+						{
+							smallestArea = testArea;
+						}
 					} 
 					else if (smallestOverlapExpansion == testOverlapExpansionArea)
 					{
@@ -312,8 +326,16 @@ namespace rstartree
 						{
 							smallestOverlapExpansionIndex = i;
 							smallestExpansionArea = testExpansionArea;
+							
+							// update area if needed
+							float testArea = node->boundingBoxes[i].area();
+							if (smallestArea > testArea)
+							{
+								smallestArea = testArea;
+							}
+
 						}
-						else if  (smallestExpansionArea > testExpansionArea)
+						else if  (smallestExpansionArea == testExpansionArea)
 						{
 							// use area to break tie
 							float testArea = node->boundingBoxes[i].area();
@@ -336,6 +358,8 @@ namespace rstartree
 				// TODO: Break ties by using smallest area
 				unsigned smallestExpansionIndex = 0;
 				float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
+				float smallestArea = node->boundingBoxes[0].area();
+
 				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
 				{
 					float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
@@ -343,6 +367,23 @@ namespace rstartree
 					{
 						smallestExpansionIndex = i;
 						smallestExpansionArea = testExpansionArea;
+
+						// potentially update smallest area
+						float testArea = node->boundingBoxes[i].area();
+						if (smallestArea > testArea)
+						{
+							smallestArea = testArea;
+						}	
+					}
+					else if (smallestExpansionArea > testExpansionArea)
+					{
+						// use area to break tie
+						float testArea = node->boundingBoxes[i].area();
+						if (smallestArea > testArea)
+						{
+							smallestExpansionIndex = i;
+							smallestArea = testArea;
+						}	
 					}
 				}
 
@@ -370,8 +411,7 @@ namespace rstartree
 
 				return node;
 			}
-			// our children point to leaves - TODO: I am not sure if this is the best way to check for
-			// 		children since not all point to children? I should be fine since tree should be balenced
+			// our children point to leaves
 			else if (node->children[0]->children.size() == 0)
 			{
 				// Choose the entry in N whose rectangle needs least overlap enlargement 
@@ -388,6 +428,20 @@ namespace rstartree
 					{
 						smallestOverlapExpansionIndex = i;
 						smallestOverlapExpansion = testOverlapExpansionArea;
+
+						// potentially update smallest expansion area
+						float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(e.boundingBox);
+						if (smallestExpansionArea > testExpansionArea)
+						{
+							smallestExpansionArea = testExpansionArea;
+						}
+
+						// potentially update smallest area
+						float testArea = node->boundingBoxes[i].area();
+						if (smallestArea > testArea)
+						{
+							smallestArea = testArea;
+						}
 					} 
 					else if (smallestOverlapExpansion == testOverlapExpansionArea)
 					{
@@ -397,8 +451,15 @@ namespace rstartree
 						{
 							smallestOverlapExpansionIndex = i;
 							smallestExpansionArea = testExpansionArea;
+
+							// potentially update smallest area
+							float testArea = node->boundingBoxes[i].area();
+							if (smallestArea > testArea)
+							{
+								smallestArea = testArea;
+							}
 						}
-						else if  (smallestExpansionArea > testExpansionArea)
+						else if  (smallestExpansionArea == testExpansionArea)
 						{
 							// use area to break tie
 							float testArea = node->boundingBoxes[i].area();
@@ -421,6 +482,8 @@ namespace rstartree
 				// TODO: Break ties by using smallest area
 				unsigned smallestExpansionIndex = 0;
 				float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(e.boundingBox);
+				float smallestArea = node->boundingBoxes[0].area();
+
 				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
 				{
 					float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(e.boundingBox);
@@ -428,6 +491,23 @@ namespace rstartree
 					{
 						smallestExpansionIndex = i;
 						smallestExpansionArea = testExpansionArea;
+
+						// potentially update smallestArea
+						float testArea = node->boundingBoxes[i].area();
+						if (smallestArea > testArea)
+						{
+							smallestArea = testArea;
+						}
+					}
+					else if (smallestExpansionArea == testExpansionArea)
+					{
+						// use area to break tie
+						float testArea = node->boundingBoxes[i].area();
+						if (smallestArea > testArea)
+						{
+							smallestExpansionIndex = i;
+							smallestArea = testArea;
+						}
 					}
 				}
 
@@ -495,7 +575,7 @@ namespace rstartree
 		std::vector<Rectangle> groupB(groupBBegin, groupBEnd);
 
 		// Find the best size out of all the distributions
-		unsigned int sumOfAllMarginValues = 0;
+		float sumOfAllMarginValues = 0;
 
 		// will test all M - 2m + 2 possible distributions
 		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
@@ -574,11 +654,14 @@ namespace rstartree
 				groups.push_back(groupAIndices);
 				groups.push_back(groupBIndices);
 
-			} else if (currDistOverlapVal == minOverlapValue) {
+			}
+			else if (currDistOverlapVal == minOverlapValue)
+			{
 				// if tied we use the minimum total value or bounding boxes to decide on grouping
 				unsigned int currMinAreaVal = boundingBoxA.area() + boundingBoxB.area();
 
-				if (currMinAreaVal < minAreaValue) {
+				if (currMinAreaVal < minAreaValue)
+				{
 					// we save this current distribution of indices to return
 					minAreaValue = currMinAreaVal;
 					groups.clear();
@@ -614,12 +697,15 @@ namespace rstartree
 		std::sort(boundingBoxes.begin(), boundingBoxes.end(), Node::sortByYRectangleFirst());
 		unsigned int marginsFromAxisY = computeTotalMarginSumOfBoundingBoxes();
 
-		if (marginsFromAxisX < marginsFromAxisY) {
+		if (marginsFromAxisX < marginsFromAxisY)
+		{
 			// X axis is better
 			// resort boundingBoxes
 			std::sort(boundingBoxes.begin(), boundingBoxes.end(), Node::sortByXRectangleFirst());
 			optimalAxis = 0;
-		} else  {
+		}
+		else
+		{
 			// Y axis is better
 			optimalAxis = 1;
 		}
@@ -700,7 +786,7 @@ namespace rstartree
 		std::vector<Point> groupB(groupBBegin, groupBEnd);
 
 		// Find the total margin sum size out of all the distributions along given axis
-		unsigned int sumOfAllMarginValues = 0;
+		float sumOfAllMarginValues = 0;
 
 		// will test all M - 2m + 2 groupings
 		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
@@ -755,11 +841,14 @@ namespace rstartree
 		unsigned int marginsFromAxisY = computeTotalMarginSum();
 
 
-		if (marginsFromAxisX < marginsFromAxisY) {
+		if (marginsFromAxisX < marginsFromAxisY)
+		{
 			// X axis is better and resort data
 			std::sort(data.begin(), data.end(), Node::sortByXFirst());
 			optimalAxis = 0;
-		} else  {
+		}
+		else
+		{
 			// Y axis is better
 			optimalAxis = 1;
 		}
@@ -824,11 +913,14 @@ namespace rstartree
 				groups.push_back(groupAIndices);
 				groups.push_back(groupBIndices);
 
-			} else if (currDistOverlapVal == minOverlapValue) {
+			}
+			else if (currDistOverlapVal == minOverlapValue)
+			{
 				// if overlap is equal, we use the distribution that creates the smallest areas
 				unsigned int currMinAreaVal = boundingBoxA.area() + boundingBoxB.area();
 
-				if (currMinAreaVal < minAreaValue) {
+				if (currMinAreaVal < minAreaValue)
+				{
 					// we save this current distribution of indices to return
 					minAreaValue = currMinAreaVal;
 					groups.clear();
@@ -864,10 +956,8 @@ namespace rstartree
 
 		// Call splitAxis to determine the axis perpendicular to which the split is perfromed
 		// 	For now we will save the axis as a int -> since this allows for room for growth in the future
-		unsigned int axis = splitAxis(newData);
-
 		// Call ChooseSplitIndex to create optimal splitting of data array
-		std::vector<std::vector<unsigned>> groups = chooseSplitIndex(axis);
+		std::vector<std::vector<unsigned>> groups = chooseSplitIndex(splitAxis(newData));
 
 		// Take the two groups and modify the actual node
 		// Setup the two groups which will be the entries in the two new nodes
@@ -965,20 +1055,13 @@ namespace rstartree
 
 		// 1. RI1 Compute distance between each of the boundBoxes.ceter and the 
 		//		gloabl bounding box -> parent's bounding box at that index
-
-		struct sortByDistanceToBoundingBoxMidpoint {
-			Point globalCenterPoint;
-
-			sortByDistanceToBoundingBoxMidpoint(Point globalCenterPoint): globalCenterPoint(globalCenterPoint) {}
-			inline bool operator() (const Point& pointA, const Point& pointB)
-			{
-				return (pointA.distance(globalCenterPoint) > pointB.distance(globalCenterPoint));
-			}
-		};
-
 		// 2. RI2 Sort the entries by DECREASING index -> ok let's define an
 		// 		extra helper function that gets to do this and pass it into sort
-		std::sort(data.begin(), data.end(), sortByDistanceToBoundingBoxMidpoint(boundingBox().centerPoint()));
+		Point globalCenterPoint = boundingBox().centerPoint();
+	
+		std::sort(data.begin(), data.end(), [globalCenterPoint](Point pointA, Point pointB) {
+			return pointA.distance(globalCenterPoint) > pointB.distance(globalCenterPoint);
+		});
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
 		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
@@ -1002,29 +1085,20 @@ namespace rstartree
 	Node *Node::reInsert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel) {
 		// reinsert children of node that has overflowed
 
-		// 1. RI1 Compute distance between each of the boundBoxes.ceter and the 
-		//		gloabl bounding box -> parent's bounding box at that index
-
-		struct sortByRectangleMidpoints{
-			Point globalCenterPoint;
-
-			sortByRectangleMidpoints(Point globalCenterPoint): globalCenterPoint(globalCenterPoint) {}
-			inline bool operator() (const Rectangle& boundingBoxA, const Rectangle& boundingBoxB)
-			{
-				return (boundingBoxA.centerPoint().distance(globalCenterPoint) > boundingBoxB.centerPoint().distance(globalCenterPoint));
-			}
-
-		};
-
 		// temporarily add the newly inserted child's boundingBox into your own
 		boundingBoxes.push_back(e.child->boundingBox());
 		children.push_back(e.child);
 		e.child->parent = this;
 		e.child->level = this->level + 1; // temproarily set new level
 
-		// 2. RI2 Sort the entries by DECREASING index -> ok let's define an
-		// 		extra helper function that gets to do this and pass it into sort
-		std::sort(boundingBoxes.begin(), boundingBoxes.end(), sortByRectangleMidpoints(boundingBox().centerPoint()));
+		// 1. RI1 Compute distance between each of the boundBoxes.ceter and the 
+		//		gloabl bounding box -> parent's bounding box at that index
+		// 2. RI2 Sort the entries by DECREASING index
+		Point globalCenterPoint = boundingBox().centerPoint();
+	
+		std::sort(boundingBoxes.begin(), boundingBoxes.end(), [globalCenterPoint](Rectangle boundingBoxA, Rectangle boundingBoxB) {
+			return (boundingBoxA.centerPoint().distance(globalCenterPoint) > boundingBoxB.centerPoint().distance(globalCenterPoint));
+		});
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
 		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
@@ -1093,7 +1167,7 @@ namespace rstartree
 		STATEXEC(stat());
 
 		// I1 [Find position for new record]
-		Node *leaf = chooseLeaf(givenPoint); // this is now "chooseSubtree" we can rename -> tho tbh it's kinda useless to rename imo.
+		Node *leaf = chooseSubtree(givenPoint); // this is now "chooseSubtree" we can rename -> tho tbh it's kinda useless to rename imo.
 		Node *siblingLeaf = nullptr;
 
 		// I2 [Add record to leaf node]
@@ -1228,6 +1302,7 @@ namespace rstartree
 					e.level = 0;
 					Q.push_back(e);
 				}
+
 				for (unsigned i = 0; i < nodeBoundingBoxesSize; ++i)
 				{
 					ReinsertionEntry e = {};

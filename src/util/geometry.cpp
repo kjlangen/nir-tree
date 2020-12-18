@@ -187,9 +187,9 @@ bool Rectangle::containsRectangle(Rectangle givenRectangle)
 	return containsPoint(givenRectangle.lowerLeft) && containsPoint(givenRectangle.upperRight);
 }
 
-unsigned int Rectangle::margin()
+float Rectangle::margin()
 {
-	return ((upperRight.y - lowerLeft.y) * 2) + ((upperRight.x - lowerLeft.x) * 2);
+	return (abs(upperRight.y - lowerLeft.y) * 2) + (abs(upperRight.x - lowerLeft.x) * 2);
 }
 
 Point Rectangle::centerPoint() const
