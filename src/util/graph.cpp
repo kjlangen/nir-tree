@@ -83,12 +83,11 @@ Graph::Graph(std::vector<IsotheticPolygon> &p)
 	SchedulePoint schedule[vertices * 2];
 	for (unsigned i = 0; i < vertices; ++i)
 	{
-		Rectangle pBB = p[i].boundingBox();
-		schedule[i].coord = pBB.lowerLeft[0];
+		schedule[i].coord = p[i].boundingBox.lowerLeft[0];
 		schedule[i].index = i;
 		schedule[i].start = true;
 
-		schedule[vertices * 2 - i - 1].coord = pBB.upperRight[0];
+		schedule[vertices * 2 - i - 1].coord = p[i].boundingBox.upperRight[0];
 		schedule[vertices * 2 - i - 1].index = i;
 		schedule[vertices * 2 - i - 1].start = false;
 	}

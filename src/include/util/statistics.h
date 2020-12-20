@@ -13,7 +13,8 @@
 	#define STATPSIZE(n) std::cout << "PSIZE " << n << std::endl
 	#define STATBRANCH(b) std::cout << "BRANCH " << b << std::endl
 	#define STATBRSR(b) std::cout << "BRANCH SEARCH " << b << std::endl
-	#define STATFAN(f) std::cout << "FANOUT " << f << std::endl
+	#define STATFAN(f, g) std::cout << "FANOUT " << f << " : " << g << std::endl
+	#define STATPOLY(h, i) std::cout << "POLYGON " << h << " : " << i << std::endl
 #else
 	#define STATEXEC(e)
 	#define STATMEM(m)
@@ -24,7 +25,8 @@
 	#define STATPSIZE(n)
 	#define STATBRANCH(b)
 	#define STATBRSR(b)
-	#define STATFAN(f)
+	#define STATFAN(f, g)
+	#define STATPOLY(h, i)
 #endif
 
 #endif

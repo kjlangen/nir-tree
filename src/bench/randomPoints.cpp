@@ -8,7 +8,6 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
-	float dummyPoint[dimensions];
 	Point *points = new Point[benchmarkSize];
 	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
@@ -16,9 +15,8 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 		// Create the point
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			dummyPoint[d] = pointDist(generator);
+			points[i][d] = pointDist(generator);
 		}
-		points[i] = Point(dummyPoint);
 
 		// Print the new point
 		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
@@ -36,7 +34,6 @@ Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
 	std::cout << "Skewing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
-	float dummyPoint[dimensions];
 	Point *points = new Point[benchmarkSize];
 	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
 	for (unsigned i = 0; i < benchmarkSize; ++i)
@@ -44,10 +41,9 @@ Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
 		// Create the point
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			dummyPoint[d] = pointDist(generator);
+			points[i][d] = pointDist(generator);
 		}
-		dummyPoint[dimensions - 1] = pow(dummyPoint[dimensions - 1], skewFactor);
-		points[i] = Point(dummyPoint);
+		points[i][dimensions - 1] = pow(points[i][dimensions - 1], skewFactor);
 
 		// Print the new point
 		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
@@ -65,8 +61,6 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 	std::normal_distribution<float> clusterDist(0.0, 0.001);
 	std::cout << "Clustering points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
-	float dummyPoint[dimensions];
-
 	// Initialize cluster centres
 	Point *centres = new Point[clusterCount];
 	std::cout << "Beginning initialization of " << clusterCount << " clusters..." << std::endl;
@@ -75,9 +69,8 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 		// Create the point
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			dummyPoint[d] = pointDist(generator);
+			centres[i][d] = pointDist(generator);
 		}
-		centres[i] = Point(dummyPoint);
 
 		// Print the centre
 		// std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
@@ -94,9 +87,8 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 			// Create the point
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				dummyPoint[d] = centres[j][d] + clusterDist(generator);
+				points[i][d] = centres[j][d] + clusterDist(generator);
 			}
-			points[i] = Point(dummyPoint);
 
 			// Print the new point
 			// std::cout << "Point[" << i << "] " << points[i] << std::endl;
@@ -116,8 +108,8 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
 
 	// Initialize rectangles
-	float dummyPointLL[dimensions];
-	float dummyPointUR[dimensions];
+	Point ll;
+	Point ur;
 	Rectangle *rectangles = new Rectangle[rectanglesSize];
 	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles..." << std::endl;
 	for (unsigned i = 0; i < rectanglesSize; ++i)
@@ -125,11 +117,11 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 		// Generate a new point and then create a square from it that covers 5% of the total area
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			dummyPointLL[d] = pointDist(generator);
-			dummyPointUR[d] = dummyPointLL[d] + 0.05;
+			ll[d] = pointDist(generator);
+			ur[d] = ll[d] + 0.05;
 		}
 
-		rectangles[i] = Rectangle(Point(dummyPointLL), Point(dummyPointUR));
+		rectangles[i] = Rectangle(ll, ur);
 	}
 	std::cout << "Finished initialization of " << rectanglesSize << " rectangles..." << std::endl;
 

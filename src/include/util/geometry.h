@@ -18,9 +18,13 @@ class Point
 	float values[dimensions];
 
 	public:
+		static Point atInfinity;
+		static Point atNegInfinity;
+		static Point atOrigin;
+
 		Point();
 		Point(float x, float y);
-		Point(float *values);
+		Point(float value);
 
 		float &operator[](unsigned index);
 		void operator<<(Point &p);
@@ -45,6 +49,10 @@ bool operator!=(Point &lhs, Point &rhs);
 class Rectangle
 {
 	public:
+		static Rectangle atInfinity;
+		static Rectangle atNegInfinity;
+		static Rectangle atOrigin;
+
 		Point lowerLeft;
 		Point upperRight;
 
@@ -81,6 +89,13 @@ bool operator!=(Rectangle &lhs, Rectangle &rhs);
 class IsotheticPolygon
 {
 	public:
+		struct OptimalExpansion
+		{
+			unsigned index;
+			float area;
+		};
+
+		Rectangle boundingBox;
 		std::vector<Rectangle> basicRectangles;
 
 		IsotheticPolygon();
@@ -88,11 +103,12 @@ class IsotheticPolygon
 		IsotheticPolygon(const IsotheticPolygon &basePolygon);
 		float area();
 		float computeIntersectionArea(Rectangle givenRectangle);
-		float computeExpansionArea(Point givenPoint);
-		float computeExpansionArea(Rectangle givenRectangle);
-		Rectangle boundingBox();
+		OptimalExpansion computeExpansionArea(Point givenPoint);
+		OptimalExpansion computeExpansionArea(Rectangle givenRectangle);
 		void expand(Point givenPoint);
+		void expand(Point givenPoint, OptimalExpansion expansion);
 		void expand(Point givenPoint, IsotheticPolygon &constraintPolygon);
+		void expand(Point givenPoint, IsotheticPolygon &constraintPolygon, OptimalExpansion expansion);
 		bool intersectsRectangle(Rectangle &givenRectangle);
 		bool intersectsPolygon(IsotheticPolygon &givenPolygon);
 		bool borderOnlyIntersectsRectanlge(Rectangle givenRectangle);
@@ -105,8 +121,6 @@ class IsotheticPolygon
 		void minLimit(float limit, unsigned d=0);
 		void refine();
 		void sort(bool min, unsigned d=0);
-		float max(unsigned d=0);
-		float min(unsigned d=0);
 
 		bool unique();
 		bool infFree();
