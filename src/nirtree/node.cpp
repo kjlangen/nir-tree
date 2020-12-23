@@ -298,7 +298,7 @@ namespace nirtree
 				// Compute the smallest expansion
 				DPRINT1("computing smallest expansion");
 				DASSERT(branchesSize > 0);
-				unsigned smallestExpansionIndex = 0;
+				unsigned smallestExpansionBranchIndex = 0;
 				IsotheticPolygon::OptimalExpansion smallestExpansion = context->branches[0].boundingPoly.computeExpansionArea(givenPoint);
 				IsotheticPolygon::OptimalExpansion evalExpansion;
 				for (unsigned i = 1; i < branchesSize; ++i)
@@ -306,34 +306,40 @@ namespace nirtree
 					evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint);
 					if (evalExpansion.area < smallestExpansion.area)
 					{
-						smallestExpansionIndex = i;
+						smallestExpansionBranchIndex = i;
 						smallestExpansion = evalExpansion;
 					}
 				}
 
-				DPRINT1("expanding polygon");
-				if (context->parent != nullptr)
-				{
-					context->branches[smallestExpansionIndex].boundingPoly.expand(givenPoint, context->parent->branches[enclosingPolyIndex].boundingPoly, smallestExpansion);
-				}
-				else
-				{
-					context->branches[smallestExpansionIndex].boundingPoly.expand(givenPoint, smallestExpansion);
-				}
+				DPRINT1("expanding subset polygon");
+				IsotheticPolygon subsetPolygon(context->branches[smallestExpansionBranchIndex].boundingPoly.basicRectangles[smallestExpansion.index]);
+				subsetPolygon.expand(givenPoint, {0, smallestExpansion.area});
 
-				DPRINT1("trimming back polygon");
+				DPRINT1("trimming back subset polygon from siblings");
 				for (unsigned i = 0; i < branchesSize; ++i)
 				{
-					if (i != smallestExpansionIndex)
+					DPRINT2("branch #", i);
+					if (i != smallestExpansionBranchIndex)
 					{
-						context->branches[smallestExpansionIndex].boundingPoly.increaseResolution(context->branches[i].boundingPoly);
+						DPRINT1("increasing resolution");
+						subsetPolygon.increaseResolution(context->branches[i].boundingPoly);
 					}
 				}
 
+				if (context->parent != nullptr)
+				{
+					DPRINT1("trimming back subset polygon from parent");
+					subsetPolygon.intersection(context->parent->branches[enclosingPolyIndex].boundingPoly);
+				}
+
+				DPRINT1("merging smallest expansion polygon and subset polygon");
+				context->branches[smallestExpansionBranchIndex].boundingPoly.remove(smallestExpansion.index);
+				context->branches[smallestExpansionBranchIndex].boundingPoly.merge(subsetPolygon);
+
 				// Descend
 				DPRINT2("context ", (void *)context);
-				context = context->branches[smallestExpansionIndex].child;
-				enclosingPolyIndex = smallestExpansionIndex;
+				context = context->branches[smallestExpansionBranchIndex].child;
+				enclosingPolyIndex = smallestExpansionBranchIndex;
 			}
 		}
 	}
@@ -394,9 +400,10 @@ namespace nirtree
 	{
 		DPRINT1("partitionNode");
 
+		nirtree::Node::Partition defaultPartition;
+
 		if (branches.size() == 0)
 		{
-			nirtree::Node::Partition defaultPartition;
 			float leastTotalArea = std::numeric_limits<float>::infinity();
 			float combinedArea = 0.0;
 
@@ -444,16 +451,15 @@ namespace nirtree
 				sortableBoundingBoxes.insert(sortableBoundingBoxes.end(), b.boundingPoly.basicRectangles.begin(), b.boundingPoly.basicRectangles.end());
 			}
 
-			nirtree::Node::Partition defaultPartition;
 			unsigned inducedSplits = std::numeric_limits<unsigned>::max();
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
 				// Sort along d
-				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
+				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return (a.lowerLeft[d] + a.upperRight[d]) / 2.0 < (b.lowerLeft[d] + b.upperRight[d]) / 2.0;});
 
 				// Pick split along d
-				float locationD = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft[d];
+				float locationD = (sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft[d] + sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].upperRight[d]) / 2.0;
 
 				// Compute # of splits if d is chosen
 				unsigned inducedSplitsD = 0;
@@ -476,6 +482,8 @@ namespace nirtree
 				}
 			}
 
+			DPRINT5("Partition {", defaultPartition.dimension, ", ", defaultPartition.location, "}");
+			DPRINT1("partitionNode finished");
 			return defaultPartition;
 		}
 	}
@@ -503,7 +511,7 @@ namespace nirtree
 		if (branchesSize == 0)
 		{
 			DPRINT1("leaf split");
-			DPRINT4("partition line along", p.dimension, " = ", p.location);
+			DPRINT4("partition in dimension ", p.dimension, " along ", p.location);
 			for (unsigned i = 0; i < dataSize; ++i)
 			{
 				DPRINT4("data[", i, "] = ", data[i]);
@@ -524,7 +532,7 @@ namespace nirtree
 		else
 		{
 			DPRINT1("routing split");
-			DPRINT3("splitting along ", p.dimension, " dimension");
+			DPRINT4("splitting in dimension ", p.dimension, " along ", p.location);
 			for (unsigned i = 0; i < branchesSize; ++i)
 			{
 				DPRINT4("branches[", i, "].boundingPoly = ", branches[i].boundingPoly);

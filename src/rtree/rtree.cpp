@@ -51,6 +51,11 @@ namespace rtree
 		return root->checksum();
 	}
 
+	bool RTree::validate()
+	{
+		return true;
+	}
+
 	void RTree::stat()
 	{
 		root->stat();

@@ -34,6 +34,7 @@ namespace rplustree
 
 			// Miscellaneous
 			unsigned checksum();
+			bool validate();
 			void stat();
 			void print();
 			void visualize();

@@ -51,6 +51,11 @@ namespace nirtree
 		return root->checksum();
 	}
 
+	bool NIRTree::validate()
+	{
+		return root->validate(nullptr, 0);
+	}
+
 	void NIRTree::stat()
 	{
 		root->stat();

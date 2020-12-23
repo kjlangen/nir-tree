@@ -51,6 +51,11 @@ namespace rplustree
 		return root->checksum();
 	}
 
+	bool RPlusTree::validate()
+	{
+		return true;
+	}
+
 	void RPlusTree::stat()
 	{
 		root->stat();

@@ -15,6 +15,7 @@ class Index
 		virtual void insert(Point givenPoint) = 0;
 		virtual void remove(Point givenPoint) = 0;
 		virtual unsigned checksum() = 0;
+		virtual bool validate() = 0;
 		virtual void stat() = 0;
 		virtual void print() = 0;
 		virtual void visualize() = 0;

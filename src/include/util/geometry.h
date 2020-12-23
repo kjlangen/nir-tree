@@ -119,6 +119,8 @@ class IsotheticPolygon
 		void increaseResolution(IsotheticPolygon &clippingPolygon);
 		void maxLimit(float limit, unsigned d=0);
 		void minLimit(float limit, unsigned d=0);
+		void merge(const IsotheticPolygon &mergePolygon);
+		void remove(unsigned basicRectangleIndex);
 		void refine();
 		void sort(bool min, unsigned d=0);
 

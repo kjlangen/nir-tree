@@ -727,6 +727,7 @@ std::vector<Rectangle> IsotheticPolygon::intersection(Rectangle givenRectangle)
 
 void IsotheticPolygon::intersection(IsotheticPolygon &constraintPolygon)
 {
+	DPRINT1("intersection poly-poly");
 	Rectangle r;
 	std::vector<Rectangle> v;
 
@@ -747,53 +748,62 @@ void IsotheticPolygon::intersection(IsotheticPolygon &constraintPolygon)
 
 	DASSERT(unique());
 	DASSERT(basicRectangles.size() > 0);
+	DPRINT1("intersection poly-poly finished");
 }
 
 void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 {
+	DPRINT1("increaseResolution rectangle");
 	// Fragment each of our constiuent rectangles based on the clippingRectangle. This may result in
 	// no splitting of the constiuent rectangles and that's okay.
 	std::vector<Rectangle> extraRectangles;
 
-	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	for (Rectangle basicRectangle : basicRectangles)
 	{
-		// Break the rectangle
-		DPRINT2("basic: ", basicRectangles[i]);
-		DPRINT2("clipping: ", clippingRectangle);
-		std::vector<Rectangle> fragments = basicRectangles[i].fragmentRectangle(clippingRectangle);
-		DPRINT2("fragments.size() = ", fragments.size());
-
-		// Add the fragments to extras
-		for (unsigned j = 0; j < fragments.size(); ++j)
+		if (!basicRectangle.intersectsRectangle(clippingRectangle))
 		{
-			extraRectangles.push_back(fragments[j]);
-			DPRINT2("j = ", j);
-			DASSERT(fragments[j] != Rectangle::atInfinity);
-			DASSERT(fragments[j].lowerLeft <= fragments[j].upperRight);
+			extraRectangles.push_back(basicRectangle);
 		}
-		DPRINT2("extraRectangles.size() = ", extraRectangles.size());
+		else
+		{
+			// Break the rectangle and add the fragments to extras
+			for (Rectangle fragment : basicRectangle.fragmentRectangle(clippingRectangle))
+			{
+				DASSERT(fragment != Rectangle::atInfinity);
+				extraRectangles.push_back(fragment);
+			}
+			DPRINT2("extraRectangles.size() = ", extraRectangles.size());
+		}
 	}
 
-	basicRectangles.clear();
-
 	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
+	basicRectangles.clear();
 	basicRectangles.swap(extraRectangles);
 	DPRINT2("basicRectangles.size() = ", basicRectangles.size());
 	DASSERT(basicRectangles.size() > 0);
 	DASSERT(unique());
+	DPRINT1("increaseResolution rectangle finished");
 }
 
 void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
 {
-	for (unsigned i = 0; i < clippingPolygon.basicRectangles.size(); ++i)
+	DPRINT1("increaseResolution polygon");
+	// Quick exit
+	if (!boundingBox.intersectsRectangle(clippingPolygon.boundingBox))
 	{
-		DPRINT2("    Removing ", clippingPolygon.basicRectangles[i]);
-		increaseResolution(clippingPolygon.basicRectangles[i]);
+		return;
+	}
+
+	for (Rectangle basicClippingRectangle : clippingPolygon.basicRectangles)
+	{
+		DPRINT2("    Removing ", basicClippingRectangle);
+		increaseResolution(basicClippingRectangle);
 		DPRINT2("    Result ", this);
 	}
 
 	DASSERT(basicRectangles.size() > 0);
 	DASSERT(unique());
+	DPRINT1("increaseResolution polygon finished");
 }
 
 void IsotheticPolygon::maxLimit(float limit, unsigned d)
@@ -874,6 +884,23 @@ void IsotheticPolygon::minLimit(float limit, unsigned d)
 	DASSERT(boundingBox.lowerLeft != Point::atOrigin);
 	DPRINT1("minLimit finished");
 	DASSERT(unique());
+}
+
+void IsotheticPolygon::merge(const IsotheticPolygon &mergePolygon)
+{
+	boundingBox.expand(mergePolygon.boundingBox);
+	basicRectangles.reserve(basicRectangles.size() + mergePolygon.basicRectangles.size());
+
+	for (Rectangle mergeRectangle : mergePolygon.basicRectangles)
+	{
+		basicRectangles.push_back(mergeRectangle);
+	}
+}
+
+void IsotheticPolygon::remove(unsigned basicRectangleIndex)
+{
+	basicRectangles[basicRectangleIndex] = basicRectangles[basicRectangles.size() - 1];
+	basicRectangles.pop_back();
 }
 
 void IsotheticPolygon::refine()
