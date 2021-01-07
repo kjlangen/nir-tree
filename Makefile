@@ -1,5 +1,5 @@
 SXX = -std=c++11 # Standard
-FLAGS = -Wall -O1 -fopenmp # Flags
+FLAGS = -Wall -O3 # Flags
 DIR = src/include # Include directory
 OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o bmpPrinter.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o testBMPPrinter.o
@@ -87,7 +87,10 @@ perf:
 
 # Alter flags to include debugging
 debug:
-	$(eval FLAGS += -DDEBUG)
+	$(eval FLAGS += -DDEBUG0)
+
+trace:
+	$(eval FLAGS += -DDEBUG1)
 
 # Alter flags to include statistics
 stat:

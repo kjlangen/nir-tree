@@ -210,12 +210,16 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Statistics OK." << std::endl;
 
 	// Visualize the tree
-	spatialIndex->visualize();
-	std::cout << "Visualization OK." << std::endl;
+	// spatialIndex->visualize();
+	// std::cout << "Visualization OK." << std::endl;
 
 	// Validate checksum
 	assert(spatialIndex->checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
+
+	// Validate tree
+	// assert(spatialIndex->validate());
+	// std::cout << "Validation OK." << std::endl;
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search for " << configU["size"] << " points..." << std::endl;

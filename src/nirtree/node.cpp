@@ -300,41 +300,69 @@ namespace nirtree
 				DASSERT(branchesSize > 0);
 				unsigned smallestExpansionBranchIndex = 0;
 				IsotheticPolygon::OptimalExpansion smallestExpansion = context->branches[0].boundingPoly.computeExpansionArea(givenPoint);
+				DPRINT5("smallestExpansion = {", smallestExpansion.index, ", ", smallestExpansion.area, "}");
 				IsotheticPolygon::OptimalExpansion evalExpansion;
 				for (unsigned i = 1; i < branchesSize; ++i)
 				{
-					evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint);
-					if (evalExpansion.area < smallestExpansion.area)
+					DPRINT4("branch #", i, " = ", context->branches[i].boundingPoly);
+
+					if (context->branches[i].boundingPoly.containsPoint(givenPoint))
 					{
 						smallestExpansionBranchIndex = i;
-						smallestExpansion = evalExpansion;
+						smallestExpansion = {0, -1.0};
+						break;
 					}
-				}
-
-				DPRINT1("expanding subset polygon");
-				IsotheticPolygon subsetPolygon(context->branches[smallestExpansionBranchIndex].boundingPoly.basicRectangles[smallestExpansion.index]);
-				subsetPolygon.expand(givenPoint, {0, smallestExpansion.area});
-
-				DPRINT1("trimming back subset polygon from siblings");
-				for (unsigned i = 0; i < branchesSize; ++i)
-				{
-					DPRINT2("branch #", i);
-					if (i != smallestExpansionBranchIndex)
+					else if ((evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint)).area < smallestExpansion.area)
 					{
-						DPRINT1("increasing resolution");
-						subsetPolygon.increaseResolution(context->branches[i].boundingPoly);
+						DPRINT5("evalExpansion = {", evalExpansion.index, ", ", evalExpansion.area, "}");
+						// if (evalExpansion.area < smallestExpansion.area)
+						// {
+							DPRINT3("branch #", i, " selected");
+							DASSERT(!context->branches[i].boundingPoly.containsPoint(givenPoint));
+							smallestExpansionBranchIndex = i;
+							smallestExpansion = evalExpansion;
+						// }
 					}
 				}
 
-				if (context->parent != nullptr)
+				if (smallestExpansion.area != -1.0)
 				{
-					DPRINT1("trimming back subset polygon from parent");
-					subsetPolygon.intersection(context->parent->branches[enclosingPolyIndex].boundingPoly);
+					DPRINT1("expanding subset polygon");
+					IsotheticPolygon subsetPolygon(context->branches[smallestExpansionBranchIndex].boundingPoly.basicRectangles[smallestExpansion.index]);
+					DPRINT2("subsetPolygon = ", subsetPolygon);
+					subsetPolygon.expand(givenPoint);
+					DASSERT(subsetPolygon.containsPoint(givenPoint));
+					DPRINT2("subsetPolygon = ", subsetPolygon);
+
+					DPRINT1("trimming back subset polygon from siblings");
+					for (unsigned i = 0; i < branchesSize; ++i)
+					{
+						DPRINT2("branch #", i);
+						if (i != smallestExpansionBranchIndex)
+						{
+							DPRINT1("increasing resolution");
+							DASSERT(!context->branches[i].boundingPoly.containsPoint(givenPoint));
+							subsetPolygon.increaseResolution(context->branches[i].boundingPoly);
+						}
+					}
+
+					DPRINT2("subsetPolygon = ", subsetPolygon);
+					DASSERT(subsetPolygon.containsPoint(givenPoint));
+
+					if (context->parent != nullptr)
+					{
+						DPRINT1("trimming back subset polygon from parent");
+						subsetPolygon.intersection(context->parent->branches[enclosingPolyIndex].boundingPoly);
+					}
+
+					DASSERT(subsetPolygon.containsPoint(givenPoint));
+
+					DPRINT1("merging smallest expansion polygon and subset polygon");
+					context->branches[smallestExpansionBranchIndex].boundingPoly.remove(smallestExpansion.index);
+					context->branches[smallestExpansionBranchIndex].boundingPoly.merge(subsetPolygon);
 				}
 
-				DPRINT1("merging smallest expansion polygon and subset polygon");
-				context->branches[smallestExpansionBranchIndex].boundingPoly.remove(smallestExpansion.index);
-				context->branches[smallestExpansionBranchIndex].boundingPoly.merge(subsetPolygon);
+				DASSERT(context->branches[smallestExpansionBranchIndex].boundingPoly.containsPoint(givenPoint));
 
 				// Descend
 				DPRINT2("context ", (void *)context);
@@ -578,6 +606,9 @@ namespace nirtree
 		split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
 		split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
 
+		DASSERT(split.leftBranch.boundingPoly.exists());
+		DASSERT(split.leftBranch.boundingPoly.exists());
+
 		DPRINT2("leftBranch boundingPoly = ", split.leftBranch.boundingPoly);
 		DPRINT2("rightBranch boundingPoly = ", split.rightBranch.boundingPoly);
 
@@ -591,6 +622,11 @@ namespace nirtree
 			DASSERT(split.rightBranch.child->branches[i].child->parent == split.rightBranch.child);
 		}
 
+		split.leftBranch.boundingPoly.deduplicate();
+		split.rightBranch.boundingPoly.deduplicate();
+
+		DASSERT(split.leftBranch.boundingPoly.exists());
+		DASSERT(split.leftBranch.boundingPoly.exists());
 		DASSERT(split.rightBranch.child->parent == parent);
 		DASSERT(split.rightBranch.child->parent == parent);
 		DASSERT(split.rightBranch.child->data.size() <= split.rightBranch.child->maxBranchFactor);
