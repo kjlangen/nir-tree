@@ -79,8 +79,8 @@ void BMPPrinter::registerPoint(Point &point, Colour colour)
 {
 	DPRINT1("registerPoint");
 
-	float xScale = (float) xDimension;
-	float yScale = (float) yDimension;
+	double xScale = (double) xDimension;
+	double yScale = (double) yDimension;
 
 	DPRINT4("scaling x and y by ", xScale, " and ", yScale);
 
@@ -107,8 +107,8 @@ void BMPPrinter::registerRectangle(Rectangle &boundingBox, Colour colour)
 {
 	DPRINT1("registerRectangle");
 
-	float xScale = (float) xDimension;
-	float yScale = (float) yDimension;
+	double xScale = (double) xDimension;
+	double yScale = (double) yDimension;
 
 	DPRINT4("scaling x and y by ", xScale, " and ", yScale);
 

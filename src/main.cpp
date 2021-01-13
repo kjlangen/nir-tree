@@ -9,10 +9,10 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
-void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, float> configF)
+void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, double> configD)
 {
 	std::string treeTypes[] = {"R_TREE", "R_PLUS_TREE", "NIR_TREE"};
-	std::string benchTypes[] = {"UNIFORM", "SKEW", "CLUSTER" };
+	std::string benchTypes[] = {"UNIFORM", "SKEW", "CLUSTER", "CALIFORNIA", "BIOLOGICAL" };
 
 	std::cout << "### BENCHMARK PARAMETERS ###" << std::endl;
 	std::cout << "  tree = " << treeTypes[configU["tree"]] << std::endl;
@@ -21,7 +21,7 @@ void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, 
 	std::cout << "  n = " << configU["size"] << std::endl;
 	std::cout << "  seed = " << configU["seed"] << std::endl;
 	std::cout << "  search rectangles = " << configU["rectanglescount"] << std::endl;
-	std::cout << "  skew factor = " << configF["skewfactor"] << std::endl;
+	std::cout << "  skew factor = " << configD["skewfactor"] << std::endl;
 	std::cout << "  cluster count = " << configU["clustercount"] << std::endl;
 	std::cout << "### ### ### ### ### ###" << std::endl << std::endl;
 }
@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 
 #ifdef UNIT_TESTING
 	// Run unit tests
+	assert(dimensions == 2);
 	return session.run(argc, argv);
 
 #else
@@ -50,8 +51,8 @@ int main(int argc, char *argv[])
 	configU.emplace("rectanglescount", 5000);
 	configU.emplace("clustercount", 20);
 
-	std::map<std::string, float> configF;
-	configF.emplace("skewfactor", 9.0);
+	std::map<std::string, double> configD;
+	configD.emplace("skewfactor", 9.0);
 
 	while ((option = getopt(argc, argv, "t:m:a:b:n:s:r:c:f:")) != -1)
 	{
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
 			}
 			case 'f': // Skew factor
 			{
-				configF["skewfactor"] = (float) atof(optarg);
+				configD["skewfactor"] = (double) atof(optarg);
 				break;
 			}
 			default:
@@ -111,9 +112,9 @@ int main(int argc, char *argv[])
 	}
 
 	// Print test parameters
-	parameters(configU, configF);
+	parameters(configU, configD);
 
 	// Run the benchmark
-	randomPoints(configU, configF);
+	randomPoints(configU, configD);
 #endif
 }

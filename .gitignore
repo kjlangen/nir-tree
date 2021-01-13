@@ -31,6 +31,10 @@
 *.out
 *.app
 
+# Data
+data/*
+prints/*
+
 # Other
 benchmarks/target
 nir-tree/target

@@ -155,7 +155,6 @@ namespace rplustree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		STATEXEC(unsigned branchesSearched = 0);
 
 		for (;!context.empty();)
 		{
@@ -187,14 +186,11 @@ namespace rplustree
 						DPRINT1("yes");
 						// Add to the nodes we will check
 						context.push(currentContext->branches[i].child);
-						STATEXEC(++branchesSearched);
 					}
 				}
 			}
 			DPRINT1("done with current context");
 		}
-
-		STATBRSR(branchesSearched);
 
 		DPRINT1("search point finished");
 		return matchingPoints;
@@ -210,7 +206,6 @@ namespace rplustree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		STATEXEC(unsigned branchesSearched = 0);
 
 		for (;!context.empty();)
 		{
@@ -237,13 +232,10 @@ namespace rplustree
 					{
 						// Add to the nodes we will check
 						context.push(currentContext->branches[i].child);
-						STATEXEC(++branchesSearched);
 					}
 				}
 			}
 		}
-
-		// STATBRSR(branchesSearched);
 
 		DPRINT1("search rectangle finished");
 		return matchingPoints;
@@ -271,8 +263,8 @@ namespace rplustree
 			{
 				// Compute the smallest expansion
 				unsigned smallestExpansionIndex = 0;
-				float smallestExpansionArea = context->branches[0].boundingBox.computeExpansionArea(givenPoint);
-				float expansionArea;
+				double smallestExpansionArea = context->branches[0].boundingBox.computeExpansionArea(givenPoint);
+				double expansionArea;
 				DPRINT2("smallestExpansionArea = ", smallestExpansionArea);
 				for (unsigned i = 1; i < context->branches.size(); ++i)
 				{
@@ -349,8 +341,8 @@ namespace rplustree
 		if (branches.size() == 0)
 		{
 			rplustree::Node::Partition defaultPartition;
-			float leastTotalArea = std::numeric_limits<float>::infinity();
-			float combinedArea = 0.0;
+			double leastTotalArea = std::numeric_limits<double>::infinity();
+			double combinedArea = 0.0;
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
@@ -407,7 +399,7 @@ namespace rplustree
 				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
 
 				// Pick split along d
-				float locationD = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft[d];
+				double locationD = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft[d];
 
 				// Compute # of splits if d is chosen
 				unsigned inducedSplitsD = 0;
@@ -565,7 +557,9 @@ namespace rplustree
 			{
 				DPRINT1("Propagating split");
 				currentContext->branches.push_back(propagationSplit.leftBranch);
+				++branchesSize;
 				currentContext->branches.push_back(propagationSplit.rightBranch);
+				++branchesSize;
 			}
 
 			// If there are too many branches or too much data at this level then create a split to
@@ -855,23 +849,34 @@ namespace rplustree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
+		unsigned long branchesSize;
+		unsigned long dataSize;
 		size_t memoryFootprint = 0;
-		unsigned branchesSize = 0;
-		unsigned singularBranches = 0;
+		unsigned long totalNodes = 1;
+		unsigned long singularBranches = 0;
+		unsigned long totalLeaves = 0;
+
+		std::vector<unsigned long> histogramFanout;
+		histogramFanout.resize(maxBranchFactor + 10, 0);
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
 
-			if (currentContext->branches.size() == 0)
+			branchesSize = currentContext->branches.size();
+			dataSize = currentContext->data.size();
+			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
+			++histogramFanout[fanout];
+
+			if (branchesSize == 0 && dataSize > 0)
 			{
+				++totalLeaves;
 				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);
 			}
 			else
 			{
-				STATBRANCH(currentContext->branches.size());
-				branchesSize += currentContext->branches.size();
+				totalNodes += branchesSize;
 				memoryFootprint += sizeof(Node) + currentContext->branches.size() * sizeof(Node::Branch);
 				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
@@ -879,13 +884,26 @@ namespace rplustree
 					{
 						singularBranches++;
 					}
+
 					context.push(currentContext->branches[i].child);
 				}
 			}
 		}
 
-		STATSIZE(branchesSize);
-		STATSIZE(singularBranches);
+		// Print out what we have found
 		STATMEM(memoryFootprint);
+		STATHEIGHT(height());
+		STATSIZE(totalNodes);
+		STATSINGULAR(singularBranches);
+		STATLEAF(totalLeaves);
+		STATBRANCH(totalNodes - 1);
+		STATFANHIST();
+		for (unsigned i = 0; i < histogramFanout.size(); ++i)
+		{
+			if (histogramFanout[i] > 0)
+			{
+				STATHIST(i, histogramFanout[i]);
+			}
+		}
 	}
 }

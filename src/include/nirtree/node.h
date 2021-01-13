@@ -52,7 +52,7 @@ namespace nirtree
 			struct Partition
 			{
 				unsigned dimension;
-				float location;
+				double location;
 			};
 
 			Node *parent;

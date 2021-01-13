@@ -1,5 +1,5 @@
 SXX = -std=c++11 # Standard
-FLAGS = -Wall -O3 # Flags
+FLAGS = -Wall -O3 -DDIM=3 # Flags
 DIR = src/include # Include directory
 OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o bmpPrinter.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o testBMPPrinter.o
@@ -72,7 +72,7 @@ testBMPPrinter.o:
 # Unit tests
 tests: ${OBJECTS} ${TESTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -DUNIT_TESTING
+	g++ ${SXX} ${FLAGS} -DUNIT_TESTING src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR}
 
 # Clean all together
 clean:

@@ -51,7 +51,7 @@ namespace rplustree
 			struct Partition
 			{
 				unsigned dimension;
-				float location;
+				double location;
 			};
 
 			Node *parent;

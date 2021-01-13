@@ -4,7 +4,7 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 {
 	// Setup random generators
 	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
 	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
@@ -26,11 +26,11 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 	return points;
 }
 
-Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
+Point *generateSkewed(unsigned benchmarkSize, unsigned seed, double skewFactor)
 {
 	// Setup random generators
 	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
 	std::cout << "Skewing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
@@ -57,8 +57,8 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 {
 	// Setup random generators
 	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
-	std::normal_distribution<float> clusterDist(0.0, 0.001);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
+	std::normal_distribution<double> clusterDist(0.0, 0.001);
 	std::cout << "Clustering points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize cluster centres
@@ -102,10 +102,102 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 	return points;
 }
 
+Point *generateCalifornia()
+{
+	// Dataset is pre-generated and requires 4 dimensions
+	assert(dimensions == 4);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea02");
+	char *buffer = new char[sizeof(double)];
+
+	// Initialize points
+	Point *points = new Point[CaliforniaSize];
+	std::cout << "Beginning initialization of " << CaliforniaSize << " points..." << std::endl;
+	for (unsigned i = 0; i < CaliforniaSize; ++i)
+	{
+		file.read(buffer, sizeof(double));
+		points[i][0] = *((double *)buffer);
+
+		file.read(buffer, sizeof(double));
+		points[i][2] = *((double *)buffer);
+
+		file.read(buffer, sizeof(double));
+		points[i][1] = *((double *)buffer);
+
+		file.read(buffer, sizeof(double));
+		points[i][3] = *((double *)buffer);
+	}
+	std::cout << "Finished initialization of " << CaliforniaSize << " points." << std::endl;
+
+	// Cleanup
+	file.close();
+
+	return points;
+}
+
+Point *generateBiological()
+{
+	// Dataset is pre-generated and requires 3 dimensions
+	assert(dimensions == 3);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea03");
+	char *buffer = new char[sizeof(double)];
+
+	// Initialize points
+	Point *points = new Point[BiologicalSize];
+	std::cout << "Beginning initialization of " << BiologicalSize << " points..." << std::endl;
+	assert(dimensions == 3);
+	for (unsigned i = 0; i < BiologicalSize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			file.read(buffer, sizeof(double));
+			points[i][d] = *((double *)buffer);
+		}
+	}
+	std::cout << "Finished initialization of " << BiologicalSize << " points." << std::endl;
+
+	// Cleanup
+	file.close();
+
+	return points;
+}
+
+Rectangle *generateCaliRectangles()
+{
+	// TODO: Generate reasonable rectangles or interpret query files for rea02
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[1];
+	std::cout << "Beginning initialization of 1 california roll rectangle..." << std::endl;
+	rectangles[0] = Rectangle();
+	std::cout << "Finished initialization of 1 california roll rectangle. Fix this." << std::endl;
+
+	return rectangles;
+}
+
+Rectangle *generateBioRectangles()
+{
+	// TODO: Generate reasonable rectangles or interpret query files for rea03
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[1];
+	std::cout << "Beginning initialization of 1 biological warfare rectangle..." << std::endl;
+	rectangles[0] = Rectangle();
+	std::cout << "Finished initialization of 1 biological warfare rectangle. Fix this." << std::endl;
+
+	return rectangles;
+}
+
 Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
 {
 	std::default_random_engine generator(seed + benchmarkSize);
-	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
 
 	// Initialize rectangles
 	Point ll;
@@ -128,7 +220,7 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 	return rectangles;
 }
 
-void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, float> &configF)
+void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
 	// Setup checksums
 	unsigned directSum = 0;
@@ -170,11 +262,21 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else if (configU["distribution"] == SKEW)
 	{
-		points = generateSkewed(configU["size"], configU["seed"], (float) configF["skewfactor"]);
+		points = generateSkewed(configU["size"], configU["seed"], (double) configD["skewfactor"]);
 	}
 	else if (configU["distribution"] == CLUSTER)
 	{
 		points = generateClustered(configU["size"], configU["seed"], configU["clustercount"]);
+	}
+	else if (configU["distribution"] == CALIFORNIA)
+	{
+		configU["size"] = CaliforniaSize;
+		points = generateCalifornia();
+	}
+	else if (configU["distribution"] == BIOLOGICAL)
+	{
+		configU["size"] = BiologicalSize;
+		points = generateBiological();
 	}
 	else
 	{
@@ -182,7 +284,21 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 
 	// Initialize search rectangles
-	Rectangle *searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
+	Rectangle *searchRectangles;
+	if (configU["distribution"] == CALIFORNIA)
+	{
+		configU["rectanglescount"] = 0; // ??
+		searchRectangles = generateCaliRectangles();
+	}
+	else if (configU["distribution"] == BIOLOGICAL)
+	{
+		configU["rectanglescount"] = 0;
+		searchRectangles = generateBioRectangles();
+	}
+	else
+	{
+		searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
+	}
 
 	// Insert points and time their insertion
 	std::cout << "Beginning insertion of " << configU["size"] << " points..." << std::endl;

@@ -130,8 +130,6 @@ namespace rtree
 
 	std::vector<Point> Node::search(Point &requestedPoint)
 	{
-		STATEXEC(stat());
-
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
@@ -174,8 +172,6 @@ namespace rtree
 
 	std::vector<Point> Node::search(Rectangle &requestedRectangle)
 	{
-		STATEXEC(stat());
-
 		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
@@ -236,10 +232,10 @@ namespace rtree
 				// Find the bounding box with least required expansion/overlap?
 				// TODO: Break ties by using smallest area
 				unsigned smallestExpansionIndex = 0;
-				float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
+				double smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(givenPoint);
 				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
 				{
-					float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
+					double testExpansionArea = node->boundingBoxes[i].computeExpansionArea(givenPoint);
 					if (smallestExpansionArea > testExpansionArea)
 					{
 						smallestExpansionIndex = i;
@@ -277,10 +273,10 @@ namespace rtree
 				// Find the bounding box with least required expansion/overlap?
 				// TODO: Break ties by using smallest area
 				unsigned smallestExpansionIndex = 0;
-				float smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(e.boundingBox);
+				double smallestExpansionArea = node->boundingBoxes[0].computeExpansionArea(e.boundingBox);
 				for (unsigned i = 0; i < node->boundingBoxes.size(); ++i)
 				{
-					float testExpansionArea = node->boundingBoxes[i].computeExpansionArea(e.boundingBox);
+					double testExpansionArea = node->boundingBoxes[i].computeExpansionArea(e.boundingBox);
 					if (smallestExpansionArea > testExpansionArea)
 					{
 						smallestExpansionIndex = i;
@@ -339,8 +335,6 @@ namespace rtree
 
 	Node *Node::splitNode(Node *newChild)
 	{
-		STATSPLIT();
-
 		unsigned boundingBoxesSize = boundingBoxes.size();
 
 		// Setup the two groups which will be the entries in the two new nodes
@@ -351,7 +345,7 @@ namespace rtree
 		std::vector<unsigned> groupB;
 
 		// Compute the first entry in each group based on PS1 & PS2
-		float maxWasted = 0;
+		double maxWasted = 0;
 		Rectangle iBox, jBox;
 		for (unsigned i = 0; i < boundingBoxesSize; ++i)
 		{
@@ -359,8 +353,8 @@ namespace rtree
 			for (unsigned j = 0; j < boundingBoxesSize; ++j)
 			{
 				jBox = boundingBoxes[j];
-				float dist, distPrime;
-				float wasted = 0;
+				double dist, distPrime;
+				double wasted = 0;
 
 				for (unsigned d = 0; d < dimensions; ++d)
 				{
@@ -369,7 +363,7 @@ namespace rtree
 					wasted += dist * dist + distPrime * distPrime;
 				}
 
-				wasted /= (float)dimensions;
+				wasted /= (double)dimensions;
 
 				if (maxWasted < wasted)
 				{
@@ -456,9 +450,7 @@ namespace rtree
 	// with sets is necessary and that will necessitate rewriting the entire R-Tree with sets.
 	Node *Node::splitNode(Point newData)
 	{
-		STATSPLIT();
-
-		float dataSize = data.size();
+		double dataSize = data.size();
 
 		// Setup the two groups which will be the entries in the two new nodes
 		std::vector<unsigned> groupA;
@@ -468,8 +460,8 @@ namespace rtree
 		unsigned seedA = 0;
 		unsigned seedB = dataSize - 1;
 
-		float dist;
-		float maxWasted = 0;
+		double dist;
+		double maxWasted = 0;
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			dist = data[seedA][d] - data[seedB][d];
@@ -484,7 +476,7 @@ namespace rtree
 			{
 				jData = data[j];
 
-				float wasted = 0;
+				double wasted = 0;
 				for (unsigned d = 0; d < dimensions; ++d)
 				{
 					dist = iData[d] - jData[d];
@@ -618,8 +610,6 @@ namespace rtree
 	// Always called on root, this = root
 	Node *Node::insert(Point givenPoint)
 	{
-		STATEXEC(stat());
-
 		// I1 [Find position for new record]
 		Node *leaf = chooseLeaf(givenPoint);
 		Node *siblingLeaf = nullptr;
@@ -725,7 +715,6 @@ namespace rtree
 			// CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
 			if (nodeBoundingBoxesSize >= node->minBranchFactor || nodeDataSize >= node->minBranchFactor)
 			{
-				STATSHRINK();
 
 				node->parent->updateBoundingBox(node, node->boundingBox());
 
@@ -736,7 +725,6 @@ namespace rtree
 			}
 			else
 			{
-				STATSHRINK();
 
 				// Remove ourselves from our parent
 				node->parent->removeChild(node);
@@ -784,8 +772,6 @@ namespace rtree
 	// Always called on root, this = root
 	Node *Node::remove(Point givenPoint)
 	{
-		STATEXEC(stat());
-
 		// D1 [Find node containing record]
 		Node *leaf = findLeaf(givenPoint);
 
@@ -899,36 +885,68 @@ namespace rtree
 
 	void Node::stat()
 	{
-		STATHEIGHT(height());
+		unsigned long childrenSize;
+		unsigned long dataSize;
+		size_t memoryFootprint = 0;
+		unsigned long totalNodes = 1;
+		unsigned long singularBranches = 0;
+		unsigned long totalLeaves = 0;
+
+		std::vector<unsigned long> histogramFanout;
+		histogramFanout.resize(maxBranchFactor + 10, 0);
+
 
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		size_t memoryFootprint = 0;
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
 
-			if (currentContext->children.size() == 0)
+			childrenSize = currentContext->children.size();
+			dataSize = currentContext->data.size();
+			unsigned fanout = childrenSize == 0 ? dataSize : childrenSize;
+			++histogramFanout[fanout];
+
+			if (childrenSize == 0 && dataSize > 0)
 			{
-				STATBRANCH(currentContext->data.size());
+				++totalLeaves;
 				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);
 			}
 			else
 			{
-				STATBRANCH(currentContext->children.size());
-				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *) + currentContext->boundingBoxes.size() * sizeof(Rectangle);
+				totalNodes += childrenSize;
+				memoryFootprint += sizeof(Node) + childrenSize * sizeof(Node *) + currentContext->boundingBoxes.size() * sizeof(Rectangle);
 				// Determine which branches we need to follow
 				for (unsigned i = 0; i < currentContext->boundingBoxes.size(); ++i)
 				{
+					if (currentContext->children[i]->children.size() == 1 || currentContext->children[i]->data.size() == 1)
+					{
+						singularBranches++;
+					}
+
 					context.push(currentContext->children[i]);
 				}
 			}
 		}
 
+		// Print out statistics
 		STATMEM(memoryFootprint);
+		STATHEIGHT(height());
+		STATSIZE(totalNodes);
+		STATSINGULAR(singularBranches);
+		STATLEAF(totalLeaves);
+		STATBRANCH(totalNodes - 1);
+		STATFANHIST();
+		for (unsigned i = 0; i < histogramFanout.size(); ++i)
+		{
+			if (histogramFanout[i] > 0)
+			{
+				STATHIST(i, histogramFanout[i]);
+			}
+		}
 	}
 }

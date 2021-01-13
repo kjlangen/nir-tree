@@ -1,6 +1,10 @@
 #ifndef __GLOBALS__
 #define __GLOBALS__
 
-const unsigned dimensions = 2;
+#ifndef DIM
+#define DIM 2
+#endif
+
+const unsigned dimensions = DIM;
 
 #endif

@@ -34,6 +34,86 @@ TEST_CASE("Geometry: testPointEquality")
 	REQUIRE(p11 != p12);
 }
 
+TEST_CASE("Geometry: testPointSubtraction")
+{
+	// Test set one, general case
+	Point p1 = Point(3.0, 3.0);
+	Point p2 = Point(7.0, 9.0);
+	REQUIRE((p1 - p2)[0] == -4.0);
+	REQUIRE(p1 - p2 == Point(-4.0, -6.0));
+
+	// Test set two, operator chaining
+	Point p3 = Point(3.0, 3.0);
+	Point p4 = Point(7.0, 9.0);
+	REQUIRE(p3 - p4 - p4 == Point(-11.0, -15.0));
+
+	// Test set three, subtraction reflexively
+	Point p5 = Point(3.0, 1.0);
+	REQUIRE(p5 - p5 == Point::atOrigin);
+
+	// Test set four, subtract negative numbers
+	Point p6 = Point(-89.0, -798.0);
+	Point p7 = Point(-3246, -3465.0);
+	REQUIRE(p6 - p7 == Point(3157.0, 2667.0));
+
+	// Test set five, subtract mixed numbers
+	Point p8 = Point(-93.0, 74.0);
+	Point p9 = Point(5.0, -3.0);
+	REQUIRE(p8 - p9 == Point(-98.0, 77.0));
+
+	// Test set six, zero identity
+	Point p10 = Point::atOrigin;
+	REQUIRE(p10 - p10 == Point::atOrigin);
+
+	// Test set seven, limits
+	Point p11 = Point::atNegInfinity;
+	Point p12 = Point::atInfinity;
+	REQUIRE(p11 - p12 == Point::atNegInfinity);
+}
+
+TEST_CASE("Geometry: testPointSubtractionEquals")
+{
+	// Test set one, general case
+	Point p1 = Point(3.0, 3.0);
+	Point p2 = Point(7.0, 9.0);
+	p1 -= p2;
+	REQUIRE(p1 == Point(-4.0, -6.0));
+
+	// Test set two, operator chaining
+	Point p3 = Point(3.0, 3.0);
+	Point p4 = Point(7.0, 9.0);
+	p3 -= p4 -= p4;
+	REQUIRE(p3 == Point(3.0, 3.0));
+
+	// Test set three, subtraction reflexively
+	Point p5 = Point(3.0, 1.0);
+	p5 -= p5;
+	REQUIRE(p5 == Point::atOrigin);
+
+	// Test set four, subtract negative numbers
+	Point p6 = Point(-89.0, -798.0);
+	Point p7 = Point(-3246, -3465.0);
+	p6 -= p7;
+	REQUIRE(p6 == Point(3157.0, 2667.0));
+
+	// Test set five, subtract mixed numbers
+	Point p8 = Point(-93.0, 74.0);
+	Point p9 = Point(5.0, -3.0);
+	p8 -= p9;
+	REQUIRE(p8 == Point(-98.0, 77.0));
+
+	// Test set six, zero identity
+	Point p10 = Point::atOrigin;
+	p10 -= p10;
+	REQUIRE(p10 == Point::atOrigin);
+
+	// Test set seven, limits
+	Point p11 = Point::atNegInfinity;
+	Point p12 = Point::atInfinity;
+	p11 -= p12;
+	REQUIRE(p11 == Point::atNegInfinity);
+}
+
 TEST_CASE("Geometry: testPointAddition")
 {
 	// Test set one, general case
@@ -73,40 +153,283 @@ TEST_CASE("Geometry: testPointAddition")
 	REQUIRE(p12 + p12 == Point::atNegInfinity);
 }
 
-TEST_CASE("Geometry: testPointSubtraction")
+TEST_CASE("Geometry: testPointAdditionEquals")
 {
 	// Test set one, general case
 	Point p1 = Point(3.0, 3.0);
 	Point p2 = Point(7.0, 9.0);
-	REQUIRE(p1 - p2 == Point(-4.0, -6.0));
+	p1 += p2;
+	REQUIRE(p1 == Point(10.0, 12.0));
 
 	// Test set two, operator chaining
 	Point p3 = Point(3.0, 3.0);
 	Point p4 = Point(7.0, 9.0);
-	REQUIRE(p3 - p4 - p4 == Point(-11.0, -15.0));
+	p3 += p4 += p4;
+	REQUIRE(p3 == Point(17.0, 21.0));
 
-	// Test set three, subtraction reflexively
+	// Test set three, addition reflexively
 	Point p5 = Point(3.0, 1.0);
-	REQUIRE(p5 - p5 == Point::atOrigin);
+	p5 += p5;
+	REQUIRE(p5 == Point(6.0, 2.0));
 
-	// Test set four, subtract negative numbers
+	// Test set four, adding negative numbers
 	Point p6 = Point(-89.0, -798.0);
 	Point p7 = Point(-3246, -3465.0);
-	REQUIRE(p6 - p7 == Point(3157.0, 2667.0));
+	p6 += p7;
+	REQUIRE(p6 == Point(-3335.0, -4263.0));
 
-	// Test set five, subtract mixed numbers
+	// Test set five, adding mixed numbers
 	Point p8 = Point(-93.0, 74.0);
 	Point p9 = Point(5.0, -3.0);
-	REQUIRE(p8 - p9 == Point(-98.0, 77.0));
+	p8 += p9;
+	REQUIRE(p8 == Point(-88.0, 71.0));
 
 	// Test set six, zero identity
 	Point p10 = Point::atOrigin;
-	REQUIRE(p10 - p10 == Point::atOrigin);
+	p10 += p10;
+	REQUIRE(p10 == Point::atOrigin);
 
 	// Test set seven, limits
-	Point p11 = Point::atNegInfinity;
-	Point p12 = Point::atInfinity;
-	REQUIRE(p11 - p12 == Point::atNegInfinity);
+	Point p11 = Point::atInfinity;
+	p11 += p11;
+	REQUIRE(p11 == Point::atInfinity);
+
+	// Test set eight, limits
+	Point p12 = Point::atNegInfinity;
+	p12 += p12;
+	REQUIRE(p12 == Point::atNegInfinity);
+}
+
+TEST_CASE("Geometry: testPointMultiplication")
+{
+	// Test set one, general case
+	Point p1 = Point(3.0, 3.0);
+	Point p2 = Point(7.0, 9.0);
+	REQUIRE(p1 * p2 == Point(21.0, 27.0));
+
+	// Test set two, operator chaining
+	Point p3 = Point(3.0, 3.0);
+	Point p4 = Point(7.0, 9.0);
+	REQUIRE(p3 * p4 * p4 == Point(147.0, 243.0));
+
+	// Test set three, squaring
+	Point p5 = Point(3.0, 1.0);
+	REQUIRE(p5 * p5 == Point(9.0, 1.0));
+
+	// Test set four, multiplying negative numbers
+	Point p6 = Point(-89.0, -798.0);
+	Point p7 = Point(-3246, -3465.0);
+	REQUIRE(p6 * p7 == Point(288894.0, 2765070.0));
+
+	// Test set five, multiplying mixed numbers
+	Point p8 = Point(-93.0, 74.0);
+	Point p9 = Point(5.0, -3.0);
+	REQUIRE(p8 * p9 == Point(-465.0, -222.0));
+
+	// Test set six, zero identity
+	Point p10 = Point::atOrigin;
+	REQUIRE(p10 * p10 == Point::atOrigin);
+
+	// Test set seven, limits
+	Point p11 = Point::atInfinity;
+	REQUIRE(p11 * p11 == Point::atInfinity);
+
+	// Test set eight, limits
+	Point p12 = Point::atNegInfinity;
+	REQUIRE(p12 * p12 == Point::atInfinity);
+}
+
+TEST_CASE("Geometry: testPointMultiplicationEquals")
+{
+	// Test set one, general case
+	Point p1 = Point(3.0, 3.0);
+	Point p2 = Point(7.0, 9.0);
+	p1 *= p2;
+	REQUIRE(p1 == Point(21.0, 27.0));
+
+	// Test set two, operator chaining
+	Point p3 = Point(3.0, 3.0);
+	Point p4 = Point(7.0, 9.0);
+	p3 *= p4 *= p4;
+	REQUIRE(p3 == Point(147.0, 243.0));
+
+	// Test set three, squaring
+	Point p5 = Point(3.0, 1.0);
+	p5 *= p5;
+	REQUIRE(p5 == Point(9.0, 1.0));
+
+	// Test set four, multiplying negative numbers
+	Point p6 = Point(-89.0, -798.0);
+	Point p7 = Point(-3246, -3465.0);
+	p6 *= p7;
+	REQUIRE(p6 == Point(288894.0, 2765070.0));
+
+	// Test set five, multiplying mixed numbers
+	Point p8 = Point(-93.0, 74.0);
+	Point p9 = Point(5.0, -3.0);
+	p8 *= p9;
+	REQUIRE(p8 == Point(-465.0, -222.0));
+
+	// Test set six, zero identity
+	Point p10 = Point::atOrigin;
+	p10 *= p10;
+	REQUIRE(p10 == Point::atOrigin);
+
+	// Test set seven, limits
+	Point p11 = Point::atInfinity;
+	p11 *= p11;
+	REQUIRE(p11 == Point::atInfinity);
+
+	// Test set eight, limits
+	Point p12 = Point::atNegInfinity;
+	p12 *= p12;
+	REQUIRE(p12 == Point::atInfinity);
+}
+
+TEST_CASE("Geometry: testPointScalarMultiplication")
+{
+	// Test set one, general case
+	Point p1 = Point(4.0, 5.1);
+	double s1 = 9.0;
+	REQUIRE(p1 * s1 == Point(36.0, 45.9));
+
+	// Test set two, operator chaining
+	Point p2 = Point(3.0, 4.1);
+	double s2 = 7.5;
+	REQUIRE(p2 * s2 * s2 == Point(168.75, 230.62499999999997158));
+
+	// Test set three, squaring
+	Point p3 = Point(3.0, 3.0);
+	double s3 = 3.0;
+	REQUIRE(p3 * s3 == Point(9.0, 9.0));
+
+	// Test set four, multiplying negative numbers
+	Point p4 = Point(-89.0, -798.0);
+	double s4 = -3246.0;
+	REQUIRE(p4 * s4 == Point(288894.0, 2590308.0));
+
+	// Test set five, multiplying mixed numbers
+	Point p5 = Point(-93.0, 74.0);
+	double s5 = 5.0;
+	REQUIRE(p5 * s5 == Point(-465.0, 370.0));
+
+	// Test set six, zero identity
+	Point p6 = Point::atOrigin;
+	double s6 = 0.0;
+	REQUIRE(p6 * s6 == Point::atOrigin);
+
+	// Test set seven, limits
+	Point p7 = Point::atInfinity;
+	double s7 = p7[0];
+	REQUIRE(p7 * s7 == Point::atInfinity);
+
+	// Test set eight, limits
+	Point p8 = Point::atNegInfinity;
+	double s8 = p8[0];
+	REQUIRE(p8 * s8 == Point::atInfinity);
+}
+
+TEST_CASE("Geometry: testPointScalarMultiplicationEquals")
+{
+	// Test set one, general case
+	Point p1 = Point(4.0, 5.1);
+	double s1 = 9.0;
+	p1 *= s1;
+	REQUIRE(p1 == Point(36.0, 45.9));
+
+	// Test set two, operator chaining
+	Point p2 = Point(3.0, 4.1);
+	double s2 = 7.5;
+	p2 *= s2 * s2;
+	REQUIRE(p2 == Point(168.75, 230.62499999999997158));
+
+	// Test set three, squaring
+	Point p3 = Point(3.0, 3.0);
+	double s3 = 3.0;
+	p3 *= s3;
+	REQUIRE(p3 == Point(9.0, 9.0));
+
+	// Test set four, multiplying negative numbers
+	Point p4 = Point(-89.0, -798.0);
+	double s4 = -3246.0;
+	p4 *= s4;
+	REQUIRE(p4 == Point(288894.0, 2590308.0));
+
+	// Test set five, multiplying mixed numbers
+	Point p5 = Point(-93.0, 74.0);
+	double s5 = 5.0;
+	p5 *= s5;
+	REQUIRE(p5 == Point(-465.0, 370.0));
+
+	// Test set six, zero identity
+	Point p6 = Point::atOrigin;
+	double s6 = 0.0;
+	p6 *= s6;
+	REQUIRE(p6 == Point::atOrigin);
+
+	// Test set seven, limits
+	Point p7 = Point::atInfinity;
+	double s7 = p7[0];
+	p7 * s7;
+	REQUIRE(p7 == Point::atInfinity);
+
+	// Test set eight, limits
+	Point p8 = Point::atNegInfinity;
+	double s8 = p8[0];
+	p8 *= s8;
+	REQUIRE(p8 == Point::atInfinity);
+}
+
+TEST_CASE("Geometry: testPointScalarDivisionEquals")
+{
+	// Test set one, general case
+	Point p1 = Point(21.0, 28.7);
+	double s1 = 7.0;
+	p1 /= s1;
+	REQUIRE(p1 == Point(3.0, 4.1));
+
+	// Test set two, operator chaining
+	Point p2 = Point(168.75, 230.625);
+	double s2 = 7.5;
+	p2 /= s2;
+	p2 /= s2;
+	REQUIRE(p2 == Point(3.0, 4.1));
+
+	// Test set three, divide by onself
+	Point p3 = Point(3.0, 3.0);
+	double s3 = 3.0;
+	p3 /= s3;
+	REQUIRE(p3 == Point(1.0, 1.0));
+
+	// Test set four, dividing negative numbers
+	Point p4 = Point(-288894.0, -2590308.0);
+	double s4 = -3246.0;
+	p4 /= s4;
+	REQUIRE(p4 == Point(89.0, 798.0));
+
+	// Test set five, dviding mixed numbers
+	Point p5 = Point(-465.0, 370.0);
+	double s5 = 5.0;
+	p5 /= s5;
+	REQUIRE(p5 == Point(-93.0, 74.0));
+
+	// Test set six, zero identity
+	Point p6 = Point::atOrigin;
+	double s6 = 342967.98765;
+	p6 /= s6;
+	REQUIRE(p6 == Point::atOrigin);
+
+	// Test set seven, limits
+	Point p7 = Point::atInfinity;
+	double s7 = 342967.98765;
+	p7 /= s7;
+	REQUIRE(p7 == Point::atInfinity);
+
+	// Test set eight, limits
+	Point p8 = Point::atNegInfinity;
+	double s8 = 342967.98765;
+	p8 /= s8;
+	REQUIRE(p8 == Point::atNegInfinity);
 }
 
 TEST_CASE("Geometry: testHammingMinimum")
@@ -245,9 +568,9 @@ TEST_CASE("Geometry: testRectangleArea")
 	Rectangle r3 = Rectangle(-5.0, -3.0, 13.0, 11.0);
 	REQUIRE(r3.area() == 252.0);
 
-	// Test set four, floating point math is busted so it's not quite 259.86 as it should be
+	// Test set four
 	Rectangle r4 = Rectangle(-5.0, -3.0, 13.3, 11.2);
-	REQUIRE(r4.area() == 259.8599853515625);
+	REQUIRE(r4.area() == 259.86);
 }
 
 TEST_CASE("Geometry: testRectangleIntersectionArea")
@@ -342,13 +665,29 @@ TEST_CASE("Geometry: testRectangleExpansion")
 	REQUIRE(r7.area() == 56.0);
 	REQUIRE(r7.lowerLeft == Point(-4.0, -3.0));
 	REQUIRE(r7.upperRight == Point(3.0, 5.0));
+}
 
-	// Test set six, expansion for a point
-	Rectangle r9 = Rectangle(0.11822515726089477539, 3.7751212592637169378e-19, 0.11917885392904281616, 1.3141831373131296345e-11);
-	Point p3 = Point(0.11905806511640548706, 3.6496007372118577533e-19);
-	r9.expand(p3);
-	REQUIRE(r9.lowerLeft == Point(0.11822515726089477539, 3.7751212592637169378e-19));
-	REQUIRE(r9.upperRight == Point(0.11917885392904281616, 1.3141831373131296345e-11));
+TEST_CASE("Geometry: testRectangleAlignment")
+{
+	// Test set one, general case
+	Rectangle r1 = Rectangle(-1.578, -3.452, 7878.0, 9889.0);
+	Rectangle r2 = Rectangle(7878.0, -3.452, 898989.89, 9889.0);
+	REQUIRE(r1.aligned(r2));
+
+	// Test set two, general case
+	r1 = Rectangle(-1.578, -3.452, 7878.78, 9898.98);
+	r2 = Rectangle(-42.34, -27.8, 1212.12, -3.452);
+	REQUIRE(r1.alignedOpposingBorders(r2));
+
+	// Test set three, unaligned case
+	r1 = Rectangle(-2.2, -3.7, 4.4, 6.7);
+	r2 = Rectangle(4.4, -5.0, 7.1, 6.7);
+	REQUIRE(!r1.aligned(r2));
+
+	// Test set four, unaligned case
+	r1 = Rectangle(-2.2, 4.4, 3.7, 6.9);
+	r2 = Rectangle(5.0, -3.2, 7.0, -4.0);
+	REQUIRE(!r1.alignedOpposingBorders(r2));
 }
 
 TEST_CASE("Geometry: testRectangleIntersectionTest")
@@ -367,6 +706,11 @@ TEST_CASE("Geometry: testRectangleIntersectionTest")
 	Rectangle r5 = Rectangle(-23.5, -40.0, -3.0, -2.0);
 	Rectangle r6 = Rectangle(1.0, 1.0, 3.0, 3.0);
 	REQUIRE(!r5.intersectsRectangle(r6));
+
+	// Test set four, implicitly defined corners intersect
+	Rectangle r7 = Rectangle(1.0, 4.0, 4.0, 7.0);
+	Rectangle r8 = Rectangle(2.0, 1.0, 5.0, 5.0);
+	REQUIRE(r7.intersectsRectangle(r8));
 }
 
 TEST_CASE("Geometry: testStrictRectangleIntersectionTest")
@@ -441,17 +785,6 @@ TEST_CASE("Geometry: testRectanglePointContainment")
 	Rectangle r5 = Rectangle(-1.0, -1.0, 3.0, 3.0);
 	Point p5 = Point(3.0, 1.0);
 	REQUIRE(r5.containsPoint(p5));
-
-	// Test set six, general case
-	Rectangle r6 = Rectangle(0.11822515726089477539, 3.7751212592637169378e-19, 0.11917885392904281616, 1.3141831373131296345e-11);
-	Point p6 = Point(0.11905806511640548706, 3.6496007372118577533e-19);
-	REQUIRE(r6.lowerLeft[0] <= p6[0]);
-	REQUIRE(r6.lowerLeft[1] != 0.0);
-	REQUIRE(p6[0] != 0.0);
-	REQUIRE(r6.lowerLeft[1] <= p6[1]);
-	REQUIRE(r6.upperRight[0] >= p6[0]);
-	REQUIRE(r6.upperRight[1] >= p6[1]);
-	REQUIRE(r6.containsPoint(p6));
 }
 
 TEST_CASE("Geometry: testRectangleStrictPointContainment")
@@ -569,9 +902,4 @@ TEST_CASE("Geometry: testRectangleFragmentation")
 	REQUIRE(v[0] == Rectangle(5.0, 0.0, 8.0, 4.0));
 	REQUIRE(v[1] == Rectangle(0.0, 0.0, 1.0, 4.0));
 	REQUIRE(v[2] == Rectangle(1.0, 1.0, 5.0, 4.0));
-}
-
-TEST_CASE("Geometry: testIsotheticPolygonExpansion")
-{
-	// Test set one
 }

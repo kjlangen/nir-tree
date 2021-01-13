@@ -15,7 +15,7 @@
 
 class Point
 {
-	float values[dimensions];
+	double values[dimensions];
 
 	public:
 		static Point atInfinity;
@@ -23,23 +23,30 @@ class Point
 		static Point atOrigin;
 
 		Point();
-		Point(float x, float y);
-		Point(float value);
+		Point(double x, double y);
+		Point(double value);
 
-		Point &operator-(const Point &rhs);
-		Point &operator+(const Point &rhs);
-		float &operator[](unsigned index);
-		const float operator[](unsigned index) const;
+		Point &operator-=(const Point &rhs);
+		Point &operator+=(const Point &rhs);
+		Point &operator/=(double scalar);
+		Point &operator*=(double scalar);
+		Point &operator*=(const Point &rhs);
+		double &operator[](unsigned index);
+		const double operator[](unsigned index) const;
 		Point &operator<<(const Point &p);
 		Point &operator>>(const Point &p);
 
+		friend Point operator-(const Point &lhs, const Point &rhs);
+		friend Point operator+(const Point &lhs, const Point &rhs);
+		friend Point operator*(const Point &lhs, const double scalar);
+		friend Point operator*(const Point &lhs, const Point &rhs);
 		friend bool operator<(const Point &lhs, const Point &rhs);
 		friend bool operator>(const Point &lhs, const Point &rhs);
 		friend bool operator<=(const Point &lhs, const Point &rhs);
 		friend bool operator>=(const Point &lhs, const Point &rhs);
 		friend bool operator==(const Point &lhs, const Point &rhs);
 		friend bool operator!=(const Point &lhs, const Point &rhs);
-		friend std::ostream& operator<<(std::ostream &os, Point &point);
+		friend std::ostream& operator<<(std::ostream &os, const Point &point);
 };
 
 bool operator<(const Point &lhs, const Point &rhs);
@@ -60,16 +67,14 @@ class Rectangle
 		Point upperRight;
 
 		Rectangle();
-		Rectangle(float x, float y, float xp, float yp);
+		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
-		float area();
-		float computeIntersectionArea(Rectangle givenRectangle);
-		float computeExpansionArea(Point givenPoint);
-		float computeExpansionArea(Rectangle givenRectangle);
+		double area();
+		double computeIntersectionArea(Rectangle givenRectangle);
+		double computeExpansionArea(Point givenPoint);
+		double computeExpansionArea(Rectangle givenRectangle);
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
-		void shrink(std::vector<Rectangle> &pinSet, std::vector<Point> &constraintSet);
-		void shrink(std::vector<Rectangle> &pinSet, std::vector<Rectangle> &constraintSet);
 		bool aligned(Rectangle givenRectangle);
 		bool alignedOpposingBorders(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle givenRectangle);
@@ -83,7 +88,7 @@ class Rectangle
 
 		friend bool operator==(const Rectangle &lr, const Rectangle &rr);
 		friend bool operator!=(const Rectangle &lr, const Rectangle &rr);
-		friend std::ostream& operator<<(std::ostream& os, Rectangle &rectangle);
+		friend std::ostream& operator<<(std::ostream& os, const Rectangle &rectangle);
 };
 
 bool operator==(const Rectangle &lhs, const Rectangle &rhs);
@@ -95,7 +100,7 @@ class IsotheticPolygon
 		struct OptimalExpansion
 		{
 			unsigned index;
-			float area;
+			double area;
 		};
 
 		Rectangle boundingBox;
@@ -104,8 +109,8 @@ class IsotheticPolygon
 		IsotheticPolygon();
 		IsotheticPolygon(Rectangle baseRectangle);
 		IsotheticPolygon(const IsotheticPolygon &basePolygon);
-		float area();
-		float computeIntersectionArea(Rectangle givenRectangle);
+		double area();
+		double computeIntersectionArea(Rectangle givenRectangle);
 		OptimalExpansion computeExpansionArea(Point givenPoint);
 		OptimalExpansion computeExpansionArea(Rectangle givenRectangle);
 		void expand(Point givenPoint);
@@ -120,8 +125,8 @@ class IsotheticPolygon
 		void intersection(IsotheticPolygon &constraintPolygon);
 		void increaseResolution(Rectangle clippingRectangle);
 		void increaseResolution(IsotheticPolygon &clippingPolygon);
-		void maxLimit(float limit, unsigned d=0);
-		void minLimit(float limit, unsigned d=0);
+		void maxLimit(double limit, unsigned d=0);
+		void minLimit(double limit, unsigned d=0);
 		void merge(const IsotheticPolygon &mergePolygon);
 		void remove(unsigned basicRectangleIndex);
 		void deduplicate();
@@ -135,7 +140,7 @@ class IsotheticPolygon
 
 		friend bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 		friend bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
-		friend std::ostream& operator<<(std::ostream &os, IsotheticPolygon &polygon);
+		friend std::ostream& operator<<(std::ostream &os, const IsotheticPolygon &polygon);
 };
 
 bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
