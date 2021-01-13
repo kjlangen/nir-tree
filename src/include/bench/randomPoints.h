@@ -8,14 +8,14 @@
 #include <string>
 #include <iostream>
 #include <fstream>
-#include <unistd.h>
 #include <index/index.h>
 #include <rtree/rtree.h>
 #include <rplustree/rplustree.h>
 #include <nirtree/nirtree.h>
 
 const unsigned CaliforniaSize = 1888012;
-const unsigned BiologicalSize = 11958999;
+const unsigned BiologicalDataSize = 11958999;
+const unsigned BiologicalQuerySize = 37844;
 
 enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL};
 enum TreeType {R_TREE, R_PLUS_TREE, NIR_TREE};

@@ -400,7 +400,7 @@ namespace rplustree
 				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
 
 				// Start at least in the middle of the bounding boxes then sweep forward
-				double location = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2].upperRight[d];
+				double location = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft[d];
 
 				// Compute # of splits if d is chosen
 				unsigned currentInducedSplits = 0;

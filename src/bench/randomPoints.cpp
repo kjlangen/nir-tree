@@ -148,10 +148,10 @@ Point *generateBiological()
 	char *buffer = new char[sizeof(double)];
 
 	// Initialize points
-	Point *points = new Point[BiologicalSize];
-	std::cout << "Beginning initialization of " << BiologicalSize << " points..." << std::endl;
+	Point *points = new Point[BiologicalDataSize];
+	std::cout << "Beginning initialization of " << BiologicalDataSize << " points..." << std::endl;
 	assert(dimensions == 3);
-	for (unsigned i = 0; i < BiologicalSize; ++i)
+	for (unsigned i = 0; i < BiologicalDataSize; ++i)
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
@@ -160,7 +160,7 @@ Point *generateBiological()
 			points[i][d] = *((double *)buffer);
 		}
 	}
-	std::cout << "Finished initialization of " << BiologicalSize << " points." << std::endl;
+	std::cout << "Finished initialization of " << BiologicalDataSize << " points." << std::endl;
 
 	// Cleanup
 	file.close();
@@ -183,13 +183,31 @@ Rectangle *generateCaliRectangles()
 
 Rectangle *generateBioRectangles()
 {
-	// TODO: Generate reasonable rectangles or interpret query files for rea03
+	// Query is pre-generated and requires 3 dimensions
+	assert(dimensions == 3);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea03.2");
+	char *buffer = new char[sizeof(double)];
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[1];
-	std::cout << "Beginning initialization of 1 biological warfare rectangle..." << std::endl;
-	rectangles[0] = Rectangle();
-	std::cout << "Finished initialization of 1 biological warfare rectangle. Fix this." << std::endl;
+	Rectangle *rectangles = new Rectangle[BiologicalQuerySize];
+	std::cout << "Beginning initialization of " << BiologicalQuerySize << " biological warfare rectangles..." << std::endl;
+	for (unsigned i = 0; i < BiologicalQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *((double *)buffer);
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *((double *)buffer);
+		}
+	}
+	std::cout << "Finished initialization of " << BiologicalQuerySize << " biological warfare rectangles." << std::endl;
+
+	// Cleanup
+	file.close();
 
 	return rectangles;
 }
@@ -275,7 +293,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else if (configU["distribution"] == BIOLOGICAL)
 	{
-		configU["size"] = BiologicalSize;
+		configU["size"] = BiologicalDataSize;
 		points = generateBiological();
 	}
 	else
@@ -292,7 +310,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else if (configU["distribution"] == BIOLOGICAL)
 	{
-		configU["rectanglescount"] = 0;
+		configU["rectanglescount"] = BiologicalQuerySize;
 		searchRectangles = generateBioRectangles();
 	}
 	else

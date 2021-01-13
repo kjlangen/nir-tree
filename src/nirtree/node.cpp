@@ -1081,5 +1081,6 @@ namespace nirtree
 				STATHIST(i, histogramPolygon[i]);
 			}
 		}
+		STATEXEC(std::cout << "### ### ### ###" << std::endl);
 	}
 }
