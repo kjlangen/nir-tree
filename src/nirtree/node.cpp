@@ -588,13 +588,19 @@ namespace nirtree
 					DPRINT1("cleaning up recursively split child");
 					delete branches[i].child;
 
-					DPRINT1("placing left");
-					downwardSplit.leftBranch.child->parent = split.leftBranch.child;
-					split.leftBranch.child->branches.push_back(downwardSplit.leftBranch);
+					if (downwardSplit.leftBranch.child->data.size() > 0 || downwardSplit.leftBranch.child->branches.size() > 0)
+					{
+						DPRINT1("placing left");
+						downwardSplit.leftBranch.child->parent = split.leftBranch.child;
+						split.leftBranch.child->branches.push_back(downwardSplit.leftBranch);
+					}
 
-					DPRINT1("placing right");
-					downwardSplit.rightBranch.child->parent = split.rightBranch.child;
-					split.rightBranch.child->branches.push_back(downwardSplit.rightBranch);
+					if (downwardSplit.rightBranch.child->data.size() > 0 || downwardSplit.rightBranch.child->branches.size() > 0)
+					{
+						DPRINT1("placing right");
+						downwardSplit.rightBranch.child->parent = split.rightBranch.child;
+						split.rightBranch.child->branches.push_back(downwardSplit.rightBranch);
+					}
 				}
 			}
 			branches.clear();
@@ -786,6 +792,8 @@ namespace nirtree
 			DPRINT5("Left has ", finalSplit.leftBranch.child->branches.size(), " branches, ", finalSplit.leftBranch.child->data.size(), " data points");
 			DPRINT5("Right has ", finalSplit.rightBranch.child->branches.size(), " branches, ", finalSplit.rightBranch.child->data.size(), " data points");
 			DPRINT4("minBranchFactor = ", minBranchFactor, " maxBranchFactor = ", maxBranchFactor);
+			DASSERT(finalSplit.leftBranch.child->data.size() > 0 || finalSplit.leftBranch.child->branches.size() > 0);
+			DASSERT(finalSplit.rightBranch.child->data.size() > 0 || finalSplit.rightBranch.child->branches.size() > 0);
 			Node *newRoot = new Node(backupMinBranchFactor, backupMaxBranchFactor, nullptr);
 			DPRINT9("finalSplit = {{", (void *)finalSplit.leftBranch.child, ", ", finalSplit.leftBranch.boundingPoly, "}, {", (void *)finalSplit.rightBranch.child, ", ", finalSplit.rightBranch.boundingPoly, "}}");
 			DPRINT5("Left has ", finalSplit.leftBranch.child->branches.size(), " branches, ", finalSplit.leftBranch.child->data.size(), " data points");

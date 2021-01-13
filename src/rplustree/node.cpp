@@ -382,6 +382,7 @@ namespace rplustree
 		else
 		{
 			std::vector<Rectangle> sortableBoundingBoxes;
+			std::vector<double> sortable;
 
 			for (Branch b : branches)
 			{
@@ -395,30 +396,30 @@ namespace rplustree
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				// Sort along x
+				// Sort along d
 				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
 
-				// Pick split along d
-				double locationD = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 + 1].lowerLeft[d];
+				// Start at least in the middle of the bounding boxes then sweep forward
+				double location = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2].upperRight[d];
 
 				// Compute # of splits if d is chosen
-				unsigned inducedSplitsD = 0;
+				unsigned currentInducedSplits = 0;
 
 				for (unsigned i = 0; i < sortableBoundingBoxes.size(); ++i)
 				{
 					DPRINT4("sortableBoundingBoxes[", i, "] = ", sortableBoundingBoxes[i]);
-					if (sortableBoundingBoxes[i].lowerLeft[d] < locationD && locationD < sortableBoundingBoxes[i].upperRight[d])
+					if (sortableBoundingBoxes[i].lowerLeft[d] < location && location < sortableBoundingBoxes[i].upperRight[d])
 					{
-						inducedSplitsD++;
+						currentInducedSplits++;
 					}
 				}
 
 				// Decide if defaultPartition should be updated
-				if (inducedSplitsD < inducedSplits)
+				if (currentInducedSplits < inducedSplits)
 				{
 					defaultPartition.dimension = d;
-					defaultPartition.location = locationD;
-					inducedSplits = inducedSplitsD;
+					defaultPartition.location = location;
+					inducedSplits = currentInducedSplits;
 				}
 			}
 
