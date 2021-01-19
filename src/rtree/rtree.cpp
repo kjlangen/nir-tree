@@ -51,8 +51,23 @@ namespace rtree
 		return root->checksum();
 	}
 
+	bool RTree::validate()
+	{
+		return true;
+	}
+
+	void RTree::stat()
+	{
+		root->stat();
+	}
+
 	void RTree::print()
 	{
 		root->printTree();
+	}
+
+	void RTree::visualize()
+	{
+		// BMP printer doesn't support the R-Tree
 	}
 }

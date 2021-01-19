@@ -10,12 +10,11 @@
 #include <utility>
 #include <util/geometry.h>
 #include <nirtree/node.h>
-#include <nirtree/pencilPrinter.h>
 #include <index/index.h>
+#include <util/bmpPrinter.h>
 
 namespace nirtree
 {
-	// TODO: For now we will work with a NIRTree that only stores points
 	class NIRTree: public Index
 	{
 		public:
@@ -27,20 +26,19 @@ namespace nirtree
 			~NIRTree();
 
 			// Datastructure interface
-			std::vector<Point> exhaustiveSearch(Point requestedPoint) override;
-			std::vector<Point> search(Point requestedPoint) override;
-			std::vector<Point> search(Rectangle requestedRectangle) override;
-			void insert(Point givenPoint) override;
-			void remove(Point givenPoint) override;
+			std::vector<Point> exhaustiveSearch(Point requestedPoint);
+			std::vector<Point> search(Point requestedPoint);
+			std::vector<Point> search(Rectangle requestedRectangle);
+			void insert(Point givenPoint);
+			void remove(Point givenPoint);
 
 			// Miscellaneous
-			unsigned checksum() override;
+			unsigned checksum();
+			bool validate();
+			void stat();
 			void print();
+			void visualize();
 	};
-
-	void testSimpleSearch();
-	void testSimpleInsert();
-	void expandRootTest();
 }
 
 #endif

@@ -1,8 +1,8 @@
 SXX = -std=c++11 # Standard
-FLAGS = -Wall -O1 # Flags
+FLAGS = -g -Wall -O3 -DDIM=5 # Flags
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o randomSquares.o randomPoints.o randomDisjointSquares.o splitPoints.o pencilPrinter.o
-TESTS = testGeometry.o testRStarTree.o testRPlusTree.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o bmpPrinter.o
+TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o testBMPPrinter.o
 
 .PHONY : clean tests
 
@@ -26,16 +26,12 @@ rtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/rtree.cpp
 
 # Build rplustree node
-rPlusTreeNode.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTreeNode.cpp
+rplusnode.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/node.cpp -o rplusnode.o
 
 # Build rplustree
-rPlusTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rPlusTree.cpp
-
-# Build pencil printer
-pencilPrinter.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/pencilPrinter.cpp
+rplustree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rplustree.cpp
 
 # Build nirtree node
 nirnode.o:
@@ -45,18 +41,17 @@ nirnode.o:
 nirtree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/nirtree.cpp
 
+# Build pencil printer
+# pencilPrinter.o:
+#	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/pencilPrinter.cpp
+
+# Build BMP printer
+bmpPrinter.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/bmpPrinter.cpp
+
 # Build benchmarks
-randomSquares.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomSquares.cpp
-
-randomDisjointSquares.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomDisjointSquares.cpp
-
 randomPoints.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
-
-splitPoints.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/splitPoints.cpp
 
 # Build tests
 testGeometry.o:
@@ -68,10 +63,16 @@ testRStarTree.o:
 testRPlusTree.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRPlusTree.cpp
 
+testNIRTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testNIRTree.cpp
+
+testBMPPrinter.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testBMPPrinter.cpp
+
 # Unit tests
 tests: ${OBJECTS} ${TESTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR} -lspatialindex -lctemplate_nothreads -DUNIT_TESTING
+	g++ ${SXX} ${FLAGS} -DUNIT_TESTING src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR}
 
 # Clean all together
 clean:
@@ -86,7 +87,10 @@ perf:
 
 # Alter flags to include debugging
 debug:
-	$(eval FLAGS += -DDEBUG)
+	$(eval FLAGS += -DDEBUG0)
+
+trace:
+	$(eval FLAGS += -DDEBUG1)
 
 # Alter flags to include statistics
 stat:
@@ -95,4 +99,4 @@ stat:
 # Build all together
 all: ${OBJECTS}
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR} -lspatialindex -lctemplate_nothreads
+	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR}

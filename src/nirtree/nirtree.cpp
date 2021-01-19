@@ -51,8 +51,25 @@ namespace nirtree
 		return root->checksum();
 	}
 
+	bool NIRTree::validate()
+	{
+		return root->validate(nullptr, 0);
+	}
+
+	void NIRTree::stat()
+	{
+		root->stat();
+	}
+
 	void NIRTree::print()
 	{
 		root->printTree();
+	}
+
+	void NIRTree::visualize()
+	{
+		BMPPrinter p(10000, 10000);
+
+		p.printToBMP(root);
 	}
 }

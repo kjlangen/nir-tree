@@ -27,9 +27,14 @@
 *.lib
 
 # Executables
+bin/*
 *.exe
 *.out
 *.app
+
+# Data
+data/*
+prints/*
 
 # Other
 benchmarks/target

@@ -4,7 +4,7 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 {
 	// Setup random generators
 	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
 	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
@@ -13,21 +13,24 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
 		// Create the point
-		points[i] = Point(pointDist(generator), pointDist(generator));
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			points[i][d] = pointDist(generator);
+		}
 
 		// Print the new point
-		std::cout << "Point[" << i << "] " << points[i] << std::endl;
+		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
 	return points;
 }
 
-Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
+Point *generateSkewed(unsigned benchmarkSize, unsigned seed, double skewFactor)
 {
 	// Setup random generators
 	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
 	std::cout << "Skewing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize points
@@ -36,10 +39,14 @@ Point *generateSkewed(unsigned benchmarkSize, unsigned seed, float skewFactor)
 	for (unsigned i = 0; i < benchmarkSize; ++i)
 	{
 		// Create the point
-		points[i] = Point(pointDist(generator), pow(pointDist(generator), skewFactor));
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			points[i][d] = pointDist(generator);
+		}
+		points[i][dimensions - 1] = pow(points[i][dimensions - 1], skewFactor);
 
 		// Print the new point
-		std::cout << "Point[" << i << "] " << points[i] << std::endl;
+		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
 
@@ -50,8 +57,8 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 {
 	// Setup random generators
 	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<float> pointDist(0.0, 1.0);
-	std::normal_distribution<float> clusterDist(0.0, 0.001);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
+	std::normal_distribution<double> clusterDist(0.0, 0.001);
 	std::cout << "Clustering points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
 
 	// Initialize cluster centres
@@ -60,10 +67,13 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 	for (unsigned i = 0; i < clusterCount; ++i)
 	{
 		// Create the point
-		centres[i] = Point(pointDist(generator), pointDist(generator));
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			centres[i][d] = pointDist(generator);
+		}
 
 		// Print the centre
-		std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
+		// std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
 	}
 	std::cout << "Finished initialization of " << clusterCount << " clusters." << std::endl;
 
@@ -75,10 +85,13 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 		for (unsigned j = 0; j < clusterCount && i < benchmarkSize; ++j)
 		{
 			// Create the point
-			points[i] = Point(centres[j].x + clusterDist(generator), centres[j].y + clusterDist(generator));
+			for (unsigned d = 0; d < dimensions; ++d)
+			{
+				points[i][d] = centres[j][d] + clusterDist(generator);
+			}
 
 			// Print the new point
-			std::cout << "Point[" << i << "] " << points[i] << std::endl;
+			// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 
 			// Move to the next point
 			i++;
@@ -89,7 +102,233 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 	return points;
 }
 
-void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, unsigned seed, unsigned logFrequency)
+Point *generateCalifornia()
+{
+	// Dataset is pre-generated and requires 2 dimensions
+	assert(dimensions == 2);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea02");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize points
+	Point *points = new Point[2 * CaliforniaDataSize];
+	std::cout << "Beginning initialization of " << 2 * CaliforniaDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < CaliforniaDataSize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[i][d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[CaliforniaDataSize + i][d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << 2 * CaliforniaDataSize << " points." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return points;
+}
+
+Point *generateBiological()
+{
+	// Dataset is pre-generated and requires 3 dimensions
+	assert(dimensions == 3);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea03");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize points
+	Point *points = new Point[BiologicalDataSize];
+	std::cout << "Beginning initialization of " << BiologicalDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < BiologicalDataSize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[i][d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << BiologicalDataSize << " points." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return points;
+}
+
+Point *generateForest()
+{
+	// Dataset is pre-generated and requires 5 dimensions
+	assert(dimensions == 5);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea05");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize points
+	Point *points = new Point[ForestDataSize];
+	std::cout << "Beginning initialization of " << ForestDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < ForestDataSize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[i][d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << ForestDataSize << " points." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return points;
+}
+
+Rectangle *generateCaliRectangles()
+{
+	// Query set is pre-generated and requires 2 dimensions
+	assert(dimensions == 2);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nirtree/data/rea02.2");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[CaliforniaQuerySize];
+	std::cout << "Beginning initialization of " << CaliforniaQuerySize << " california roll rectangles..." << std::endl;
+	for (unsigned i = 0; i < CaliforniaQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << CaliforniaQuerySize << " california roll rectangles." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return rectangles;
+}
+
+Rectangle *generateBioRectangles()
+{
+	// Query set is pre-generated and requires 3 dimensions
+	assert(dimensions == 3);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea03.2");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[BiologicalQuerySize];
+	std::cout << "Beginning initialization of " << BiologicalQuerySize << " biological warfare rectangles..." << std::endl;
+	for (unsigned i = 0; i < BiologicalQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << BiologicalQuerySize << " biological warfare rectangles." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return rectangles;
+}
+
+Rectangle *generateForestRectangles()
+{
+	// Query set is pre-generated and requires 5 dimensions
+	assert(dimensions == 5);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea05.2");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[ForestQuerySize];
+	std::cout << "Beginning initialization of " << ForestQuerySize << " forest fire rectangles..." << std::endl;
+	for (unsigned i = 0; i < ForestQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << ForestQuerySize << " forest fire rectangles." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return rectangles;
+}
+
+Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
+{
+	std::default_random_engine generator(seed + benchmarkSize);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
+
+	// Initialize rectangles
+	Point ll;
+	Point ur;
+	Rectangle *rectangles = new Rectangle[rectanglesSize];
+	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles..." << std::endl;
+	for (unsigned i = 0; i < rectanglesSize; ++i)
+	{
+		// Generate a new point and then create a square from it that covers 5% of the total area
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			ll[d] = pointDist(generator);
+			ur[d] = ll[d] + 0.05;
+		}
+
+		rectangles[i] = Rectangle(ll, ur);
+	}
+	std::cout << "Finished initialization of " << rectanglesSize << " rectangles..." << std::endl;
+
+	return rectangles;
+}
+
+void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
 	// Setup checksums
 	unsigned directSum = 0;
@@ -104,122 +343,180 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 	double totalRangeSearches = 0.0;
 	double totalDeletes = 0.0;
 
+	// Initialize the index
+	Index *spatialIndex;
+	if (configU["tree"] == R_TREE)
+	{
+		spatialIndex = new rtree::RTree(configU["minfanout"], configU["maxfanout"]);
+	}
+	else if (configU["tree"] == R_PLUS_TREE)
+	{
+		spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
+	}
+	else if (configU["tree"] == NIR_TREE)
+	{
+		spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
+	}
+	else
+	{
+		assert(false);
+	}
+
 	// Initialize points
 	Point *points;
-	switch(bench)
+	if(configU["distribution"] == UNIFORM)
 	{
-		case UNIFORM:
-			points = generateUniform(benchmarkSize, seed);
-			break;
-		case SKEW:
-			points = generateSkewed(benchmarkSize, seed, 5.0);
-			break;
-		case CLUSTER:
-			points = generateClustered(benchmarkSize, seed, 20);
-			break;
-		default:
-			assert(false);
+		points = generateUniform(configU["size"], configU["seed"]);
+	}
+	else if (configU["distribution"] == SKEW)
+	{
+		points = generateSkewed(configU["size"], configU["seed"], (double) configD["skewfactor"]);
+	}
+	else if (configU["distribution"] == CLUSTER)
+	{
+		points = generateClustered(configU["size"], configU["seed"], configU["clustercount"]);
+	}
+	else if (configU["distribution"] == CALIFORNIA)
+	{
+		configU["size"] = 2 * CaliforniaDataSize;
+		points = generateCalifornia();
+	}
+	else if (configU["distribution"] == BIOLOGICAL)
+	{
+		configU["size"] = BiologicalDataSize;
+		points = generateBiological();
+	}
+	else if (configU["distribution"] == FOREST)
+	{
+		configU["size"] = ForestDataSize;
+		points = generateForest();
+	}
+	else
+	{
+		assert(false);
 	}
 
 	// Initialize search rectangles
-	Rectangle *searchRectangles = new Rectangle[16];
-	unsigned blockSize = benchmarkSize / 16;
-	std::cout << "Beginning initialization of 16 rectangles..." << std::endl;
-	for (unsigned i = 0; i < 16; ++i)
+	Rectangle *searchRectangles;
+	if (configU["distribution"] == CALIFORNIA)
 	{
-		// Create the rectangle
-		searchRectangles[i] = Rectangle(i * blockSize, i * blockSize, i * blockSize + blockSize, i * blockSize + blockSize);
-
-		// Print the search rectangle
-		std::cout << "searchRectangles[" << i << "] " << searchRectangles[i] << std::endl;
+		configU["rectanglescount"] = CaliforniaQuerySize;
+		searchRectangles = generateCaliRectangles();
 	}
-	std::cout << "Finished initialization of 16 rectangles." << std::endl;
+	else if (configU["distribution"] == BIOLOGICAL)
+	{
+		configU["rectanglescount"] = BiologicalQuerySize;
+		searchRectangles = generateBioRectangles();
+	}
+	else if (configU["distribution"] == FOREST)
+	{
+		configU["rectanglescount"] = ForestQuerySize;
+		searchRectangles = generateForestRectangles();
+	}
+	else
+	{
+		searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
+	}
 
 	// Insert points and time their insertion
-	std::cout << "Beginning insertion of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	std::cout << "Beginning insertion of " << configU["size"] << " points..." << std::endl;
+	for (unsigned i = 0; i < configU["size"]; ++i)
 	{
 		// Compute the checksum directly
-		directSum += (unsigned)points[i].x;
-		directSum += (unsigned)points[i].y;
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			directSum += (unsigned)points[i][d];
+		}
 
 		// Insert
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex.insert(points[i]);
+		spatialIndex->insert(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
-		std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
+		// std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
 	}
-	std::cout << "Finished insertion of " << benchmarkSize << " points." << std::endl;
+	std::cout << "Finished insertion of " << configU["size"] << " points." << std::endl;
+
+	// Gather statistics
+	spatialIndex->stat();
+	std::cout << "Statistics OK." << std::endl;
+
+	// Visualize the tree
+	// spatialIndex->visualize();
+	// std::cout << "Visualization OK." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == directSum);
+	assert(spatialIndex->checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
+	// Validate tree
+	assert(spatialIndex->validate());
+	std::cout << "Validation OK." << std::endl;
+
 	// Search for points and time their retrieval
-	std::cout << "Beginning search for " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	std::cout << "Beginning search for " << configU["size"] << " points..." << std::endl;
+	for (unsigned i = 0; i < configU["size"]; ++i)
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex.search(points[i]);
+		assert(spatialIndex->search(points[i])[0] == points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
-		std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
+		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
-	std::cout << "Finished search for " << benchmarkSize << " points." << std::endl;
+	std::cout << "Finished search for " << configU["size"] << " points." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == directSum);
+	assert(spatialIndex->checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for rectangles
-	std::cout << "Beginning search for 16 rectangles..." << std::endl;
-	for (unsigned i = 0; i < 16; ++i)
+	std::cout << "Beginning search for " << configU["rectanglescount"] << " rectangles..." << std::endl;
+	for (unsigned i = 0; i < configU["rectanglescount"]; ++i)
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		std::vector<Point> v = spatialIndex.search(searchRectangles[i]);
+		std::vector<Point> v = spatialIndex->search(searchRectangles[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
 		totalRangeSearches += 1;
-		std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
+		// std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
 
 		// Validate points returned in the search
 		for (unsigned j = 0; j < v.size(); ++j)
 		{
 			assert(searchRectangles[i].containsPoint(v[j]));
 		}
-		std::cout << v.size() << " points verified." << std::endl;
+		// std::cout << v.size() << " points verified." << std::endl;
 	}
-	std::cout << "Finished searching for 16 rectangles." << std::endl;
+	std::cout << "Finished searching for " << configU["rectanglescount"] << " rectangles." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == directSum);
+	assert(spatialIndex->checksum() == directSum);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Delete points and time their deletion
-	std::cout << "Beginning deletion of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	std::cout << "Beginning deletion of " << configU["size"] << " points..." << std::endl;
+	for (unsigned i = 0; i < configU["size"]; ++i)
 	{
 		// Delete
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex.remove(points[i]);
+		spatialIndex->remove(points[i]);
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeDeletes += delta.count();
 		totalDeletes += 1;
-		std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
+		// std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
 	}
-	std::cout << "Finished deletion of " << benchmarkSize << " points." << std::endl;
+	std::cout << "Finished deletion of " << configU["size"] << " points." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex.checksum() == 0);
+	assert(spatialIndex->checksum() == 0);
 	std::cout << "Checksum OK." << std::endl;
 
 	// Timing Statistics
@@ -231,4 +528,9 @@ void randomPoints(Index& spatialIndex, BenchType bench, unsigned benchmarkSize, 
 	std::cout << "Avg time to range search: " << totalTimeRangeSearches / totalRangeSearches << "s" << std::endl;
 	std::cout << "Total time to delete: " << totalTimeDeletes << "s" << std::endl;
 	std::cout << "Avg time to delete: " << totalTimeDeletes / totalDeletes << "s" << std::endl;
+
+	// Cleanup
+	delete spatialIndex;
+	delete [] points;
+	delete [] searchRectangles;
 }

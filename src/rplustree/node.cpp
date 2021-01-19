@@ -1,6 +1,6 @@
-#include <nirtree/node.h>
+#include <rplustree/node.h>
 
-namespace nirtree
+namespace rplustree
 {
 	Node::Node()
 	{
@@ -24,7 +24,8 @@ namespace nirtree
 		}
 		else
 		{
-			for (unsigned i = 0; i < branches.size(); ++i)
+			unsigned branchesSize = branches.size();
+			for (unsigned i = 0; i < branchesSize; ++i)
 			{
 				branches[i].child->deleteSubtrees();
 				delete branches[i].child;
@@ -34,7 +35,7 @@ namespace nirtree
 
 	Rectangle Node::boundingBox()
 	{
-		Rectangle bb;
+		Rectangle bb = Rectangle();
 
 		if (data.size() != 0)
 		{
@@ -46,49 +47,31 @@ namespace nirtree
 		}
 		else if (branches.size() != 0)
 		{
-			bb = branches[0].boundingPoly.boundingBox;
+			bb = branches[0].boundingBox;
 			for (unsigned i = 1; i < branches.size(); ++i)
 			{
-				bb.expand(branches[i].boundingPoly.boundingBox);
+				bb.expand(branches[i].boundingBox);
 			}
 		}
 
 		return bb;
 	}
 
-	Node::Branch Node::locateBranch(Node *child)
-	{
-		for (unsigned i = 0; i < branches.size(); ++i)
-		{
-			if (branches[i].child == child)
-			{
-				return branches[i];
-			}
-		}
-
-		// If we are here, panic
-		assert(false);
-
-		return {nullptr, IsotheticPolygon()};
-	}
-
-	void Node::updateBranch(Node *child, IsotheticPolygon &boundingPoly)
+	void Node::updateBranch(Node *child, Rectangle &boundingBox)
 	{
 		// Locate the child
-		unsigned branchesSize = branches.size();
 		unsigned childIndex;
-		for (childIndex = 0; branches[childIndex].child != child && childIndex < branchesSize; ++childIndex) {}
+		for (childIndex = 0; branches[childIndex].child != child && childIndex < branches.size(); ++childIndex) {}
 
 		// Update the child
-		branches[childIndex] = {child, boundingPoly};
+		branches[childIndex] = {child, boundingBox};
 	}
 
 	void Node::removeBranch(Node *child)
 	{
 		// Locate the child
-		unsigned branchesSize = branches.size();
 		unsigned childIndex;
-		for (childIndex = 0; branches[childIndex].child != child && childIndex < branchesSize; ++childIndex) {}
+		for (childIndex = 0; branches[childIndex].child != child && childIndex < branches.size(); ++childIndex) {}
 
 		// Delete the child deleting it and overwriting its branch
 		delete child;
@@ -99,9 +82,8 @@ namespace nirtree
 	void Node::removeData(Point givenPoint)
 	{
 		// Locate the point
-		unsigned dataSize = data.size();
 		unsigned pointIndex;
-		for (pointIndex = 0; data[pointIndex] != givenPoint && pointIndex < dataSize; ++pointIndex) {}
+		for (pointIndex = 0; data[pointIndex] != givenPoint && pointIndex < data.size(); ++pointIndex) {}
 
 		// Delete the point by overwriting it
 		data[pointIndex] = data.back();
@@ -135,7 +117,7 @@ namespace nirtree
 
 	std::vector<Point> Node::search(Point &requestedPoint)
 	{
-		std::vector<Point> accumulator;
+		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
 		std::stack<Node *> context;
@@ -147,26 +129,23 @@ namespace nirtree
 			currentContext = context.top();
 			context.pop();
 
-			unsigned branchesSize = currentContext->branches.size();
-			unsigned dataSize = currentContext->data.size();
-
-			if (branchesSize == 0)
+			if (currentContext->branches.size() == 0)
 			{
 				// We are a leaf so add our data points when they are the search point
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < currentContext->data.size(); ++i)
 				{
 					if (requestedPoint == currentContext->data[i])
 					{
-						accumulator.push_back(currentContext->data[i]);
+						matchingPoints.push_back(currentContext->data[i]);
 					}
 				}
 			}
 			else
 			{
 				// Determine which branches we need to follow
-				for (unsigned i = 0; i < branchesSize; ++i)
+				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
-					if (currentContext->branches[i].boundingPoly.containsPoint(requestedPoint))
+					if (currentContext->branches[i].boundingBox.containsPoint(requestedPoint))
 					{
 						// Add to the nodes we will check
 						context.push(currentContext->branches[i].child);
@@ -175,45 +154,40 @@ namespace nirtree
 			}
 		}
 
-		return accumulator;
+		return matchingPoints;
 	}
 
 	std::vector<Point> Node::search(Rectangle &requestedRectangle)
 	{
-
-		std::vector<Point> accumulator;
+		std::vector<Point> matchingPoints;
 
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		unsigned branchesSize, dataSize;
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
 
-			branchesSize = currentContext->branches.size();
-			dataSize = currentContext->data.size();
-
-			if (branchesSize == 0)
+			if (currentContext->branches.size() == 0)
 			{
 				// We are a leaf so add our data points when they are within the search rectangle
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < currentContext->data.size(); ++i)
 				{
 					if (requestedRectangle.containsPoint(currentContext->data[i]))
 					{
-						accumulator.push_back(currentContext->data[i]);
+						matchingPoints.push_back(currentContext->data[i]);
 					}
 				}
 			}
 			else
 			{
 				// Determine which branches we need to follow
-				for (unsigned i = 0; i < branchesSize; ++i)
+				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
-					if (currentContext->branches[i].boundingPoly.intersectsRectangle(requestedRectangle))
+					if (currentContext->branches[i].boundingBox.intersectsRectangle(requestedRectangle))
 					{
 						// Add to the nodes we will check
 						context.push(currentContext->branches[i].child);
@@ -222,7 +196,7 @@ namespace nirtree
 			}
 		}
 
-		return accumulator;
+		return matchingPoints;
 	}
 
 	// Always called on root, this = root
@@ -232,66 +206,33 @@ namespace nirtree
 	{
 		// CL1 [Initialize]
 		Node *context = this;
-		unsigned enclosingPolyIndex = 0;
-		unsigned branchesSize = 0;
 
 		for (;;)
 		{
-			branchesSize = context->branches.size();
-
 			// CL2 [Leaf check]
-			if (branchesSize == 0)
+			if (context->branches.size() == 0)
 			{
 				return context;
 			}
 			else
 			{
 				// Compute the smallest expansion
-				unsigned smallestExpansionBranchIndex = 0;
-				IsotheticPolygon::OptimalExpansion smallestExpansion = context->branches[0].boundingPoly.computeExpansionArea(givenPoint);
-				IsotheticPolygon::OptimalExpansion evalExpansion;
-				for (unsigned i = 1; i < branchesSize; ++i)
+				unsigned smallestExpansionIndex = 0;
+				double smallestExpansionArea = context->branches[0].boundingBox.computeExpansionArea(givenPoint);
+				double expansionArea;
+				for (unsigned i = 1; i < context->branches.size(); ++i)
 				{
-
-					if (context->branches[i].boundingPoly.containsPoint(givenPoint))
+					expansionArea = context->branches[i].boundingBox.computeExpansionArea(givenPoint);
+					if (expansionArea < smallestExpansionArea)
 					{
-						smallestExpansionBranchIndex = i;
-						smallestExpansion = {0, -1.0};
-						break;
-					}
-					else if ((evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint)).area < smallestExpansion.area)
-					{
-						smallestExpansionBranchIndex = i;
-						smallestExpansion = evalExpansion;
+						smallestExpansionIndex = i;
+						smallestExpansionArea = expansionArea;
 					}
 				}
-
-				if (smallestExpansion.area != -1.0)
-				{
-					IsotheticPolygon subsetPolygon(context->branches[smallestExpansionBranchIndex].boundingPoly.basicRectangles[smallestExpansion.index]);
-					subsetPolygon.expand(givenPoint);
-
-					for (unsigned i = 0; i < branchesSize; ++i)
-					{
-						if (i != smallestExpansionBranchIndex)
-						{
-							subsetPolygon.increaseResolution(context->branches[i].boundingPoly);
-						}
-					}
-
-
-					if (context->parent != nullptr)
-					{
-						subsetPolygon.intersection(context->parent->branches[enclosingPolyIndex].boundingPoly);
-					}
-
-					context->branches[smallestExpansionBranchIndex].boundingPoly.remove(smallestExpansion.index);
-					context->branches[smallestExpansionBranchIndex].boundingPoly.merge(subsetPolygon);
-				}
+				context->branches[smallestExpansionIndex].boundingBox.expand(givenPoint);
 
 				// Descend
-				context = context->branches[smallestExpansionBranchIndex].child;
-				enclosingPolyIndex = smallestExpansionBranchIndex;
+				context = context->branches[smallestExpansionIndex].child;
 			}
 		}
 	}
@@ -302,21 +243,17 @@ namespace nirtree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		unsigned branchesSize, dataSize;
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
 
-			branchesSize = currentContext->branches.size();
-			dataSize = currentContext->data.size();
-
-			if (branchesSize == 0)
+			if (currentContext->branches.size() == 0)
 			{
 				// FL2 [Search leaf node for record]
 				// Check each entry to see if it matches E
-				for (unsigned i = 0; i < dataSize; ++i)
+				for (unsigned i = 0; i < currentContext->data.size(); ++i)
 				{
 					if (currentContext->data[i] == givenPoint)
 					{
@@ -328,9 +265,9 @@ namespace nirtree
 			{
 				// FL1 [Search subtrees]
 				// Determine which branches we need to follow
-				for (unsigned i = 0; i < branchesSize; ++i)
+				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
-					if (currentContext->branches[i].boundingPoly.containsPoint(givenPoint))
+					if (currentContext->branches[i].boundingBox.containsPoint(givenPoint))
 					{
 						// Add the child to the nodes we will consider
 						context.push(currentContext->branches[i].child);
@@ -344,82 +281,68 @@ namespace nirtree
 
 	Node::Partition Node::partitionNode()
 	{
-		nirtree::Node::Partition defaultPartition;
-		double totalMass = 0.0;
+		rplustree::Node::Partition defaultPartition;
 
 		if (branches.size() == 0)
 		{
-			// Setup variance values
-			Point variance = Point::atOrigin;
-			Point average = Point::atOrigin;
-			Point sumOfSquares = Point::atOrigin;
+			unsigned dataSize = data.size();
+			double greatestDistance = - std::numeric_limits<double>::infinity();
+			double currentDistance = 0.0;
 
-			for (Point d : data)
+			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				average += d;
-				sumOfSquares += d * d;
-				totalMass += 1.0;
+				// Sort along dimension d
+				std::sort(data.begin(), data.end(), [d](Point a, Point b){return a[d] < b[d];});
+
+				currentDistance = data[dataSize / 2 + 1][d] - data[dataSize / 2][d];
+
+				if (currentDistance > greatestDistance)
+				{
+					greatestDistance = currentDistance;
+					defaultPartition.dimension = d;
+					defaultPartition.location = data[dataSize / 2][d];
+				}
 			}
-
-			// Compute final terms
-			average /= totalMass;
-			sumOfSquares /= totalMass;
-
-
-			// Compute final variance
-			variance = sumOfSquares - average * average;
-
-			// Choose most variate dimension
-			defaultPartition.dimension = 0;
-
-			for (unsigned i = 0; i < dimensions; ++i)
-			{
-				defaultPartition.dimension = variance[i] > variance[defaultPartition.dimension] ? i : defaultPartition.dimension;
-			}
-			defaultPartition.location = average[defaultPartition.dimension];
 
 			return defaultPartition;
 		}
 		else
 		{
-			Point centreOfMass = Point::atOrigin;
 			std::vector<Rectangle> sortableBoundingBoxes;
+			std::vector<double> sortable;
 
 			for (Branch b : branches)
 			{
-				sortableBoundingBoxes.insert(sortableBoundingBoxes.end(), b.boundingPoly.basicRectangles.begin(), b.boundingPoly.basicRectangles.end());
+				sortableBoundingBoxes.push_back(b.boundingBox);
 			}
 
-			for (Rectangle boundingBox : sortableBoundingBoxes)
-			{
-				centreOfMass += boundingBox.lowerLeft;
-				centreOfMass += boundingBox.upperRight;
-				totalMass += 2.0;
-			}
-
-			centreOfMass /= totalMass;
-
-			unsigned minInducedSplits = std::numeric_limits<unsigned>::max();
+			unsigned inducedSplits = std::numeric_limits<unsigned>::max();
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
+				// Sort along d
+				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return a.upperRight[d] < b.upperRight[d];});
+
+				// Pick half of the rectangles
+				double location = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2].upperRight[d];
+
 				// Compute # of splits if d is chosen
-				unsigned inducedSplits = 0;
+				unsigned currentInducedSplits = 0;
 
 				for (unsigned i = 0; i < sortableBoundingBoxes.size(); ++i)
 				{
-					if (sortableBoundingBoxes[i].lowerLeft[d] < centreOfMass[d] && centreOfMass[d] < sortableBoundingBoxes[i].upperRight[d])
+					if (sortableBoundingBoxes[i].lowerLeft[d] < location && location < sortableBoundingBoxes[i].upperRight[d])
 					{
-						inducedSplits++;
+						currentInducedSplits++;
 					}
 				}
 
 				// Decide if defaultPartition should be updated
-				if (inducedSplits < minInducedSplits)
+				if (currentInducedSplits < inducedSplits)
 				{
 					defaultPartition.dimension = d;
-					defaultPartition.location = centreOfMass[d];
-					minInducedSplits = inducedSplits;
+					defaultPartition.location = location;
+					inducedSplits = currentInducedSplits;
 				}
 			}
 
@@ -430,48 +353,38 @@ namespace nirtree
 	// Splitting a node will remove it from its parent node and its memory will be freed
 	Node::SplitResult Node::splitNode(Partition p)
 	{
-		IsotheticPolygon referencePoly;
-		if (parent != nullptr)
-		{
-			referencePoly = parent->locateBranch(this).boundingPoly;
-		}
-		else
-		{
-			referencePoly = IsotheticPolygon(boundingBox());
-		}
-
-		SplitResult split = {{new Node(minBranchFactor, maxBranchFactor, parent), referencePoly}, {new Node(minBranchFactor, maxBranchFactor, parent), referencePoly}};
-		unsigned branchesSize = branches.size();
+		Node *left = new Node(minBranchFactor, maxBranchFactor, parent);
+		Node *right = new Node(minBranchFactor, maxBranchFactor, parent);
 		unsigned dataSize = data.size();
+		unsigned branchesSize = branches.size();
 
 		if (branchesSize == 0 && dataSize > 0)
 		{
-			for (unsigned i = 0; i < dataSize; ++i)
+			for (Point dataPoint : data)
 			{
-				if (data[i][p.dimension] > p.location)
+				if (dataPoint[p.dimension] <= p.location)
 				{
-					split.rightBranch.child->data.push_back(data[i]);
+					left->data.push_back(dataPoint);
 				}
 				else
 				{
-					split.leftBranch.child->data.push_back(data[i]);
+					right->data.push_back(dataPoint);
 				}
 			}
-			data.clear();
 		}
 		else
 		{
 			for (unsigned i = 0; i < branchesSize; ++i)
 			{
-				if (branches[i].boundingPoly.boundingBox.upperRight[p.dimension] <= p.location)
+				if (branches[i].boundingBox.upperRight[p.dimension] <= p.location)
 				{
-					branches[i].child->parent = split.leftBranch.child;
-					split.leftBranch.child->branches.push_back(branches[i]);
+					branches[i].child->parent = left;
+					left->branches.push_back(branches[i]);
 				}
-				else if (branches[i].boundingPoly.boundingBox.lowerLeft[p.dimension] >= p.location)
+				else if (branches[i].boundingBox.lowerLeft[p.dimension] >= p.location)
 				{
-					branches[i].child->parent = split.rightBranch.child;
-					split.rightBranch.child->branches.push_back(branches[i]);
+					branches[i].child->parent = right;
+					right->branches.push_back(branches[i]);
 				}
 				else
 				{
@@ -479,26 +392,23 @@ namespace nirtree
 
 					delete branches[i].child;
 
-					if (downwardSplit.leftBranch.child->data.size() > 0 || downwardSplit.leftBranch.child->branches.size() > 0)
+					if (downwardSplit.leftBranch.boundingBox != Rectangle::atInfinity)
 					{
-						downwardSplit.leftBranch.child->parent = split.leftBranch.child;
-						split.leftBranch.child->branches.push_back(downwardSplit.leftBranch);
+						downwardSplit.leftBranch.child->parent = left;
+						left->branches.push_back(downwardSplit.leftBranch);
 					}
 
-					if (downwardSplit.rightBranch.child->data.size() > 0 || downwardSplit.rightBranch.child->branches.size() > 0)
+					if (downwardSplit.rightBranch.boundingBox != Rectangle::atInfinity)
 					{
-						downwardSplit.rightBranch.child->parent = split.rightBranch.child;
-						split.rightBranch.child->branches.push_back(downwardSplit.rightBranch);
+						downwardSplit.rightBranch.child->parent = right;
+						right->branches.push_back(downwardSplit.rightBranch);
 					}
 				}
 			}
 			branches.clear();
 		}
 
-		split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
-		split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
-
-		return split;
+		return {{left, left->boundingBox()}, {right, right->boundingBox()}};
 	}
 
 	// Splitting a node will remove it from its parent node and its memory will be freed
@@ -514,7 +424,7 @@ namespace nirtree
 	{
 		Node *currentContext = this;
 		unsigned branchesSize, dataSize;
-		Node::SplitResult propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
+		Node::SplitResult propagationSplit = {{nullptr, Rectangle()}, {nullptr, Rectangle()}};
 
 		for (;currentContext != nullptr;)
 		{
@@ -537,41 +447,27 @@ namespace nirtree
 				}
 			}
 
-			// If there are too many branches or too much data at this level then create a split to
-			// be propagated otherwise we may finish and return a non-split
-			if (dataSize > currentContext->maxBranchFactor || branchesSize > currentContext->maxBranchFactor)
+			// Early exit if this node does not overflow
+			if (dataSize <= currentContext->maxBranchFactor && branchesSize <= currentContext->maxBranchFactor)
 			{
-				propagationSplit = currentContext->splitNode();
-				if (currentContext->parent != nullptr)
-				{
-					currentContext->parent->removeBranch(currentContext);
-				}
-			}
-			else
-			{
-				propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
+				propagationSplit = {{nullptr, Rectangle()}, {nullptr, Rectangle()}};
 				break;
 			}
 
-			// Ascend
+			// Otherwise, split node
+			propagationSplit = currentContext->splitNode();
+
+			// Cleanup before ascending
+			if (currentContext->parent != nullptr)
+			{
+				currentContext->parent->removeBranch(currentContext);
+			}
+
+			// Ascend, propagating splits
 			currentContext = propagationSplit.leftBranch.child->parent;
 		}
 
 		return propagationSplit;
-	}
-
-	void Node::pushDown(Point givenPoint)
-	{
-		Node *pacerChild = branches.front().child;
-		Node *pushChild = branches.back().child;
-
-		for (; pacerChild->branches.size() > 0; pacerChild = pacerChild->branches.front().child)
-		{
-			pushChild->branches.push_back({new Node(minBranchFactor, maxBranchFactor, pushChild), IsotheticPolygon(Rectangle(givenPoint, givenPoint))});
-			pushChild = pushChild->branches.front().child;
-		}
-
-		pushChild->data.push_back(givenPoint);
 	}
 
 	// Always called on root, this = root
@@ -581,16 +477,8 @@ namespace nirtree
 		Node *adjustContext = chooseNode(givenPoint);
 
 		// Adjust the tree
-		if (adjustContext->branches.size() == 0)
-		{
-			// Add just the data
-			adjustContext->data.push_back(givenPoint);
-		}
-		else
-		{
-			// Add a whole new branch
-			adjustContext->pushDown(givenPoint);
-		}
+		// Add just the data
+		adjustContext->data.push_back(givenPoint);
 
 		// There is no guarantee that the root will still exist after adjustment so backup branch factors
 		unsigned backupMinBranchFactor = minBranchFactor;
@@ -629,6 +517,11 @@ namespace nirtree
 				{
 					currentContext->removeBranch(previousContext);
 				}
+				else
+				{
+					Rectangle previousBox = previousContext->boundingBox();
+					currentContext->updateBranch(previousContext, previousBox);
+				}
 			}
 
 			previousContext = currentContext;
@@ -644,7 +537,6 @@ namespace nirtree
 		// Record not in the tree
 		if (leaf == nullptr)
 		{
-			DEXEC(this->printTree());
 			return this;
 		}
 
@@ -696,7 +588,6 @@ namespace nirtree
 	{
 		if (parent != expectedParent || branches.size() > maxBranchFactor)
 		{
-			std::cout << "node = " << (void *)this << std::endl;
 			std::cout << "parent = " << (void *)parent << " expectedParent = " << (void *)expectedParent << std::endl;
 			std::cout << "maxBranchFactor = " << maxBranchFactor << std::endl;
 			std::cout << "branches.size() = " << branches.size() << std::endl;
@@ -708,10 +599,10 @@ namespace nirtree
 		{
 			for (unsigned i = 0; i < data.size(); ++i)
 			{
-				if (!parent->branches[index].boundingPoly.containsPoint(data[i]))
+				if (!parent->branches[index].boundingBox.containsPoint(data[i]))
 				{
-					std::cout << parent->branches[index].boundingPoly << " fails to contain " << data[i] << std::endl;
-					assert(parent->branches[index].boundingPoly.containsPoint(data[i]));
+					std::cout << parent->branches[index].boundingBox << " fails to contain " << data[i] << std::endl;
+					assert(parent->branches[index].boundingBox.containsPoint(data[i]));
 				}
 			}
 		}
@@ -729,19 +620,20 @@ namespace nirtree
 	{
 		std::string indendtation(n * 4, ' ');
 		std::cout << indendtation << "Node " << (void *)this << std::endl;
+		std::cout << indendtation << "(" << std::endl;
 		std::cout << indendtation << "    Parent: " << (void *)parent << std::endl;
 		std::cout << indendtation << "    Branches: " << std::endl;
 		for (unsigned i = 0; i < branches.size(); ++i)
 		{
 			std::cout << indendtation << "		" << (void *)branches[i].child << std::endl;
-			std::cout << indendtation << "		" << branches[i].boundingPoly << std::endl;
+			std::cout << indendtation << "		" << branches[i].boundingBox << std::endl;
 		}
 		std::cout << indendtation << "    Data: ";
 		for (unsigned i = 0; i < data.size(); ++i)
 		{
 			std::cout << data[i];
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << indendtation << ")" << std::endl;
 	}
 
 	void Node::printTree(unsigned n)
@@ -751,6 +643,7 @@ namespace nirtree
 
 		// Print any of our children with one more level of indentation
 		std::string indendtation(n * 4, ' ');
+		std::cout << std::endl << indendtation << "{" << std::endl;
 		if (branches.size() > 0)
 		{
 			for (unsigned i = 0; i < branches.size(); ++i)
@@ -759,7 +652,7 @@ namespace nirtree
 				branches[i].child->printTree(n + 1);
 			}
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << indendtation << "}" << std::endl;
 	}
 
 	unsigned Node::height()
@@ -789,16 +682,13 @@ namespace nirtree
 		Node *currentContext;
 		unsigned long branchesSize;
 		unsigned long dataSize;
-		unsigned long polygonSize;
 		size_t memoryFootprint = 0;
 		unsigned long totalNodes = 1;
 		unsigned long singularBranches = 0;
 		unsigned long totalLeaves = 0;
 
-		std::vector<unsigned long> histogramPolygon;
-		histogramPolygon.resize(10000, 0);
 		std::vector<unsigned long> histogramFanout;
-		histogramFanout.resize(maxBranchFactor + 200, 0);
+		histogramFanout.resize(maxBranchFactor + 10, 0);
 
 		for (;!context.empty();)
 		{
@@ -818,16 +708,13 @@ namespace nirtree
 			else
 			{
 				totalNodes += branchesSize;
-				memoryFootprint += sizeof(Node) + branchesSize * sizeof(Node::Branch);
-				for (unsigned i = 0; i < branchesSize; ++i)
+				memoryFootprint += sizeof(Node) + currentContext->branches.size() * sizeof(Node::Branch);
+				for (unsigned i = 0; i < currentContext->branches.size(); ++i)
 				{
 					if (currentContext->branches[i].child->branches.size() == 1 || currentContext->branches[i].child->data.size() == 1)
 					{
 						singularBranches++;
 					}
-
-					polygonSize = currentContext->branches[i].boundingPoly.basicRectangles.size();
-					++histogramPolygon[polygonSize];
 
 					context.push(currentContext->branches[i].child);
 				}
@@ -835,7 +722,6 @@ namespace nirtree
 		}
 
 		// Print out what we have found
-		STATEXEC(std::cout << "### Statistics ###" << std::endl);
 		STATMEM(memoryFootprint);
 		STATHEIGHT(height());
 		STATSIZE(totalNodes);
@@ -850,14 +736,5 @@ namespace nirtree
 				STATHIST(i, histogramFanout[i]);
 			}
 		}
-		STATPOLYHIST();
-		for (unsigned i = 0; i < histogramPolygon.size(); ++i)
-		{
-			if (histogramPolygon[i] > 0)
-			{
-				STATHIST(i, histogramPolygon[i]);
-			}
-		}
-		STATEXEC(std::cout << "### ### ### ###" << std::endl);
 	}
 }
