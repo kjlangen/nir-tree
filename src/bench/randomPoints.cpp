@@ -104,35 +104,35 @@ Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned cluster
 
 Point *generateCalifornia()
 {
-	// Dataset is pre-generated and requires 4 dimensions
-	assert(dimensions == 4);
+	// Dataset is pre-generated and requires 2 dimensions
+	assert(dimensions == 2);
 
 	// Setup file reader and double buffer
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea02");
 	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
-	Point *points = new Point[CaliforniaSize];
-	std::cout << "Beginning initialization of " << CaliforniaSize << " points..." << std::endl;
-	for (unsigned i = 0; i < CaliforniaSize; ++i)
+	Point *points = new Point[2 * CaliforniaDataSize];
+	std::cout << "Beginning initialization of " << 2 * CaliforniaDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < CaliforniaDataSize; ++i)
 	{
-		file.read(buffer, sizeof(double));
-		points[i][0] = *((double *)buffer);
-
-		file.read(buffer, sizeof(double));
-		points[i][2] = *((double *)buffer);
-
-		file.read(buffer, sizeof(double));
-		points[i][1] = *((double *)buffer);
-
-		file.read(buffer, sizeof(double));
-		points[i][3] = *((double *)buffer);
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[i][d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[CaliforniaDataSize + i][d] = *doubleBuffer;
+		}
 	}
-	std::cout << "Finished initialization of " << CaliforniaSize << " points." << std::endl;
+	std::cout << "Finished initialization of " << 2 * CaliforniaDataSize << " points." << std::endl;
 
 	// Cleanup
 	file.close();
+	delete [] buffer;
 
 	return points;
 }
@@ -146,50 +146,106 @@ Point *generateBiological()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea03");
 	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
 	Point *points = new Point[BiologicalDataSize];
 	std::cout << "Beginning initialization of " << BiologicalDataSize << " points..." << std::endl;
-	assert(dimensions == 3);
 	for (unsigned i = 0; i < BiologicalDataSize; ++i)
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			file.read(buffer, sizeof(double));
 			file.read(buffer, sizeof(double));
-			points[i][d] = *((double *)buffer);
+			file.sync();
+			points[i][d] = *doubleBuffer;
 		}
 	}
 	std::cout << "Finished initialization of " << BiologicalDataSize << " points." << std::endl;
 
 	// Cleanup
 	file.close();
+	delete [] buffer;
+
+	return points;
+}
+
+Point *generateForest()
+{
+	// Dataset is pre-generated and requires 5 dimensions
+	assert(dimensions == 5);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea05");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize points
+	Point *points = new Point[ForestDataSize];
+	std::cout << "Beginning initialization of " << ForestDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < ForestDataSize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[i][d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << ForestDataSize << " points." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
 
 	return points;
 }
 
 Rectangle *generateCaliRectangles()
 {
-	// TODO: Generate reasonable rectangles or interpret query files for rea02
+	// Query set is pre-generated and requires 2 dimensions
+	assert(dimensions == 2);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nirtree/data/rea02.2");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[1];
-	std::cout << "Beginning initialization of 1 california roll rectangle..." << std::endl;
-	rectangles[0] = Rectangle();
-	std::cout << "Finished initialization of 1 california roll rectangle. Fix this." << std::endl;
+	Rectangle *rectangles = new Rectangle[CaliforniaQuerySize];
+	std::cout << "Beginning initialization of " << CaliforniaQuerySize << " california roll rectangles..." << std::endl;
+	for (unsigned i = 0; i < CaliforniaQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << CaliforniaQuerySize << " california roll rectangles." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
 
 	return rectangles;
 }
 
 Rectangle *generateBioRectangles()
 {
-	// Query is pre-generated and requires 3 dimensions
+	// Query set is pre-generated and requires 3 dimensions
 	assert(dimensions == 3);
 
 	// Setup file reader and double buffer
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea03.2");
 	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
 	Rectangle *rectangles = new Rectangle[BiologicalQuerySize];
@@ -199,15 +255,49 @@ Rectangle *generateBioRectangles()
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			file.read(buffer, sizeof(double));
-			rectangles[i].lowerLeft[d] = *((double *)buffer);
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
 			file.read(buffer, sizeof(double));
-			rectangles[i].upperRight[d] = *((double *)buffer);
+			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
 	}
 	std::cout << "Finished initialization of " << BiologicalQuerySize << " biological warfare rectangles." << std::endl;
 
 	// Cleanup
 	file.close();
+	delete [] buffer;
+
+	return rectangles;
+}
+
+Rectangle *generateForestRectangles()
+{
+	// Query set is pre-generated and requires 5 dimensions
+	assert(dimensions == 5);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	file.open("/home/kjlangen/nir-tree/data/rea05.2");
+	char *buffer = new char[sizeof(double)];
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[ForestQuerySize];
+	std::cout << "Beginning initialization of " << ForestQuerySize << " forest fire rectangles..." << std::endl;
+	for (unsigned i = 0; i < ForestQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Finished initialization of " << ForestQuerySize << " forest fire rectangles." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
 
 	return rectangles;
 }
@@ -288,13 +378,18 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else if (configU["distribution"] == CALIFORNIA)
 	{
-		configU["size"] = CaliforniaSize;
+		configU["size"] = 2 * CaliforniaDataSize;
 		points = generateCalifornia();
 	}
 	else if (configU["distribution"] == BIOLOGICAL)
 	{
 		configU["size"] = BiologicalDataSize;
 		points = generateBiological();
+	}
+	else if (configU["distribution"] == FOREST)
+	{
+		configU["size"] = ForestDataSize;
+		points = generateForest();
 	}
 	else
 	{
@@ -305,13 +400,18 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	Rectangle *searchRectangles;
 	if (configU["distribution"] == CALIFORNIA)
 	{
-		configU["rectanglescount"] = 0; // ??
+		configU["rectanglescount"] = CaliforniaQuerySize;
 		searchRectangles = generateCaliRectangles();
 	}
 	else if (configU["distribution"] == BIOLOGICAL)
 	{
 		configU["rectanglescount"] = BiologicalQuerySize;
 		searchRectangles = generateBioRectangles();
+	}
+	else if (configU["distribution"] == FOREST)
+	{
+		configU["rectanglescount"] = ForestQuerySize;
+		searchRectangles = generateForestRectangles();
 	}
 	else
 	{
@@ -352,8 +452,8 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Checksum OK." << std::endl;
 
 	// Validate tree
-	// assert(spatialIndex->validate());
-	// std::cout << "Validation OK." << std::endl;
+	assert(spatialIndex->validate());
+	std::cout << "Validation OK." << std::endl;
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search for " << configU["size"] << " points..." << std::endl;

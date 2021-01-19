@@ -12,7 +12,7 @@
 void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, double> configD)
 {
 	std::string treeTypes[] = {"R_TREE", "R_PLUS_TREE", "NIR_TREE"};
-	std::string benchTypes[] = {"UNIFORM", "SKEW", "CLUSTER", "CALIFORNIA", "BIOLOGICAL" };
+	std::string benchTypes[] = {"UNIFORM", "SKEW", "CLUSTER", "CALIFORNIA", "BIOLOGICAL", "FOREST"};
 
 	std::cout << "### BENCHMARK PARAMETERS ###" << std::endl;
 	std::cout << "  tree = " << treeTypes[configU["tree"]] << std::endl;
