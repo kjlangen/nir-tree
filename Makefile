@@ -1,5 +1,5 @@
 SXX = -std=c++11 # Standard
-FLAGS = -g -Wall -O3 -DDIM=5 # Flags
+FLAGS = -g -Wall -O3 -DDIM=2 # Flags
 DIR = src/include # Include directory
 OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o bmpPrinter.o
 TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o testBMPPrinter.o

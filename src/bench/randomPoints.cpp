@@ -21,7 +21,7 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 		// Print the new point
 		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
-	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	return points;
 }
@@ -48,7 +48,7 @@ Point *generateSkewed(unsigned benchmarkSize, unsigned seed, double skewFactor)
 		// Print the new point
 		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
-	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	return points;
 }
@@ -128,7 +128,7 @@ Point *generateCalifornia()
 			points[CaliforniaDataSize + i][d] = *doubleBuffer;
 		}
 	}
-	std::cout << "Finished initialization of " << 2 * CaliforniaDataSize << " points." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	// Cleanup
 	file.close();
@@ -161,7 +161,7 @@ Point *generateBiological()
 			points[i][d] = *doubleBuffer;
 		}
 	}
-	std::cout << "Finished initialization of " << BiologicalDataSize << " points." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	// Cleanup
 	file.close();
@@ -194,7 +194,7 @@ Point *generateForest()
 			points[i][d] = *doubleBuffer;
 		}
 	}
-	std::cout << "Finished initialization of " << ForestDataSize << " points." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	// Cleanup
 	file.close();
@@ -227,7 +227,7 @@ Rectangle *generateCaliRectangles()
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
 	}
-	std::cout << "Finished initialization of " << CaliforniaQuerySize << " california roll rectangles." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	// Cleanup
 	file.close();
@@ -260,7 +260,7 @@ Rectangle *generateBioRectangles()
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
 	}
-	std::cout << "Finished initialization of " << BiologicalQuerySize << " biological warfare rectangles." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	// Cleanup
 	file.close();
@@ -293,7 +293,7 @@ Rectangle *generateForestRectangles()
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
 	}
-	std::cout << "Finished initialization of " << ForestQuerySize << " forest fire rectangles." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	// Cleanup
 	file.close();
@@ -323,7 +323,7 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 
 		rectangles[i] = Rectangle(ll, ur);
 	}
-	std::cout << "Finished initialization of " << rectanglesSize << " rectangles..." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
 
 	return rectangles;
 }
@@ -437,7 +437,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		totalInserts += 1;
 		// std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
 	}
-	std::cout << "Finished insertion of " << configU["size"] << " points." << std::endl;
+	std::cout << "Insertion OK." << std::endl;
 
 	// Gather statistics
 	spatialIndex->stat();
@@ -468,7 +468,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		totalSearches += 1;
 		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
-	std::cout << "Finished search for " << configU["size"] << " points." << std::endl;
+	std::cout << "Search OK." << std::endl;
 
 	// Validate checksum
 	assert(spatialIndex->checksum() == directSum);
@@ -494,7 +494,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		}
 		// std::cout << v.size() << " points verified." << std::endl;
 	}
-	std::cout << "Finished searching for " << configU["rectanglescount"] << " rectangles." << std::endl;
+	std::cout << "Range search OK." << std::endl;
 
 	// Validate checksum
 	assert(spatialIndex->checksum() == directSum);
@@ -513,7 +513,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		totalDeletes += 1;
 		// std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
 	}
-	std::cout << "Finished deletion of " << configU["size"] << " points." << std::endl;
+	std::cout << "Deletion OK." << std::endl;
 
 	// Validate checksum
 	assert(spatialIndex->checksum() == 0);
