@@ -1,26 +1,29 @@
-#ifndef __RTREE__
-#define __RTREE__
+#ifndef __RPLUSTREE__
+#define __RPLUSTREE__
 
 #include <cassert>
 #include <vector>
 #include <stack>
+#include <queue>
+#include <string>
 #include <iostream>
 #include <utility>
 #include <util/geometry.h>
-#include <rtree/node.h>
+#include <rplustree/node.h>
 #include <index/index.h>
+#include <util/bmpPrinter.h>
 
-namespace rtree
+namespace rplustree
 {
-	class RTree: public Index
+	class RPlusTree: public Index
 	{
 		public:
 			Node *root;
 
 			// Constructors and destructors
-			RTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-			RTree(Node *root);
-			~RTree();
+			RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
+			RPlusTree(Node *root);
+			~RPlusTree();
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);

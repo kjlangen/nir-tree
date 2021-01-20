@@ -1416,8 +1416,8 @@ namespace rstartree
 		{
 			for (unsigned i = 0; i < data.size(); ++i)
 			{
-				sum += (unsigned)data[i].x;
-				sum += (unsigned)data[i].y;
+				sum += (unsigned)data[i][0];
+				sum += (unsigned)data[i][1];
 			}
 		}
 		else

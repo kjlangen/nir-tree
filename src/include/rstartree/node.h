@@ -33,14 +33,16 @@ namespace rstartree
 		{
 			inline bool operator() (const Point& pointA, const Point& pointB)
 			{
-				return (pointA.x < pointB.x) || ((pointA.x == pointB.x) && (pointA.y < pointB.y));
+				// FIXME: multi-dimensional
+				return (pointA[0] < pointB[0]) || ((pointA[0] == pointB[0]) && (pointA[1] < pointB[1]));
 			}
 		};
 
 		struct sortByYFirst{
 			inline bool operator() (const Point& pointA, const Point& pointB)
 			{
-				return (pointA.y < pointB.y) || ((pointA.y == pointB.y) && (pointA.x < pointB.x));
+				// FIXME: multi-dimensional
+				return (pointA[1] < pointB[1]) || ((pointA[1] == pointB[1]) && (pointA[0] < pointB[0]));
 			}
 		};
 
@@ -48,16 +50,16 @@ namespace rstartree
 		{
 			inline bool operator() (const Rectangle& rectangleA, const Rectangle& rectangleB)
 			{
-				return (rectangleA.lowerLeft.x < rectangleB.lowerLeft.x)
-					|| ((rectangleA.lowerLeft.x == rectangleB.lowerLeft.x) && (rectangleA.upperRight.x < rectangleB.upperRight.x));
+				return (rectangleA.lowerLeft[0] < rectangleB.lowerLeft[0])
+					|| ((rectangleA.lowerLeft[0] == rectangleB.lowerLeft[0]) && (rectangleA.upperRight[1] < rectangleB.upperRight[1]));
 			}
 		};
 
 		struct sortByYRectangleFirst{
 			inline bool operator() (const Rectangle& rectangleA, const Rectangle& rectangleB)
 			{
-				return (rectangleA.lowerLeft.y < rectangleB.lowerLeft.y)
-					|| ((rectangleA.lowerLeft.y == rectangleB.lowerLeft.y) && (rectangleA.upperRight.y < rectangleB.upperRight.y));
+				return (rectangleA.lowerLeft[1] < rectangleB.lowerLeft[1])
+					|| ((rectangleA.lowerLeft[1] == rectangleB.lowerLeft[1]) && (rectangleA.upperRight[0] < rectangleB.upperRight[0]));
 			}
 		};
 

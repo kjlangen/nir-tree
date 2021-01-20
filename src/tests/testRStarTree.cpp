@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include <rstartree/rStarTree.h>
+#include <rstartree/rstartree.h>
 #include <util/geometry.h>
 
 TEST_CASE("R*Tree: testBoundingBox")

@@ -1,5 +1,5 @@
-#ifndef __NIRNODE__
-#define __NIRNODE__
+#ifndef __RPLUSNODE__
+#define __RPLUSNODE__
 
 #include <cassert>
 #include <vector>
@@ -14,13 +14,12 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
-#include <omp.h>
 #include <util/geometry.h>
 #include <util/graph.h>
 #include <util/debug.h>
 #include <util/statistics.h>
 
-namespace nirtree
+namespace rplustree
 {
 	class Node
 	{
@@ -40,7 +39,7 @@ namespace nirtree
 			struct Branch
 			{
 				Node *child;
-				IsotheticPolygon boundingPoly;
+				Rectangle boundingBox;
 			};
 
 			struct SplitResult
@@ -66,8 +65,7 @@ namespace nirtree
 
 			// Helper functions
 			Rectangle boundingBox();
-			Branch locateBranch(Node *child);
-			void updateBranch(Node *child, IsotheticPolygon &boundingPoly);
+			void updateBranch(Node *child, Rectangle &boundingBox);
 			void removeBranch(Node *child);
 			void removeData(Point givenPoint);
 			Node *chooseNode(Point givenPoint);
