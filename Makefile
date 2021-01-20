@@ -1,7 +1,7 @@
 SXX = -std=c++11 # Standard
 FLAGS = -Wall -O1 # Flags
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o rstartree.o rstartreenode.o randomSquares.o randomPoints.o splitPoints.o pencilPrinter.o
+OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rPlusTree.o rPlusTreeNode.o rStarTree.o rstartreenode.o randomSquares.o randomPoints.o splitPoints.o pencilPrinter.o
 TESTS = testRStarTree.o # testGeometry.o testRPlusTree.o - for now only test rstartree
 
 .PHONY : clean tests
@@ -38,8 +38,8 @@ rstartreenode.o:
 	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/node.cpp -o rstartreenode.o
 
 # Build rplustree
-rstartree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/rstartree.cpp
+rStarTree.o:
+	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rstartree/rStarTree.cpp
 
 # Build pencil printer
 pencilPrinter.o:
