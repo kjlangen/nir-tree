@@ -7,8 +7,7 @@
 #include <rplustree/rplustree.h>
 #include <rstartree/rstartree.h>
 #include <bench/randomPoints.h>
-#define CATCH_CONFIG_RUNNER
-#include <catch2/catch.hpp>
+#include <unistd.h>
 
 void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, double> configD)
 {
@@ -29,15 +28,6 @@ void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, 
 
 int main(int argc, char *argv[])
 {
-	// Create unit test session
-	Catch::Session session;
-
-#ifdef UNIT_TESTING
-	// Run unit tests
-	assert(dimensions == 2);
-	return session.run(argc, argv);
-
-#else
 	// Process command line options
 	int option;
 
@@ -117,5 +107,4 @@ int main(int argc, char *argv[])
 
 	// Run the benchmark
 	randomPoints(configU, configD);
-#endif
 }
