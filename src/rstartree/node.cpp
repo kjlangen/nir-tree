@@ -724,6 +724,8 @@ namespace rstartree
 			S3: Distribute the entries among these two groups
 		*/
 
+		std::cout << "GOT THAT WEIRD SPLIT" << std::endl;
+
 		STATSPLIT();
 
 		float dataSize = data.size();
@@ -992,17 +994,34 @@ namespace rstartree
 	}
 
 
-	Node *Node::overflowTreatment(Node *node, Node *nodeToInsert, std::vector<bool> hasReinsertedOnLevel)
+	Node *Node::overflowTreatment(Node *nodeToInsert, std::vector<bool> &hasReinsertedOnLevel)
 	{
+		// I cannot be a leaf node.
+		assert( this->children.size() > 0 );
+		assert( this->data.size() == 0 );
+
+		Node *node = this;
 		if (hasReinsertedOnLevel.at(node->level)) {
-			return node->splitNode(nodeToInsert); // this is right -> we call splitNode on the new child
+			std::cout << "Calling split for node." << std::endl;
+			return node->splitNode(nodeToInsert);
 		} else {
+			std::cout << "Calling reInsert for node." << std::endl;
 			hasReinsertedOnLevel.at(node->level) = true;
 			ReinsertionEntry e{};
 			e.boundingBox = nodeToInsert->boundingBox();
 			e.child = nodeToInsert;
 			e.level = node->level;
-			return node->reInsert(e, hasReinsertedOnLevel); // ok yeaa that's right -> that's fine since it's ALWAYS just a point
+
+			// In the Point variant of this code, we iterate over all the points in the thing
+			// and reinsert them. In this variant, we iterate over all of the childBoundingBoxes
+			// in the thing and reinsert those as children elsewhere.
+
+			Node *root = this;
+			while( root->parent ) {
+				root = root->parent;
+			}
+
+			return root->reInsert(e, hasReinsertedOnLevel);
 		}
 		
 	}
@@ -1030,23 +1049,19 @@ namespace rstartree
 				if (siblingNode != nullptr)
 				{
 					// AT4 [Propogate the node split upwards]
-					if (node->parent->children.size() < node->parent->maxBranchFactor)
-					{
-						node->parent->childBoundingBoxes.push_back(siblingNode->boundingBox());
-						node->parent->children.push_back(siblingNode);
-						siblingNode->parent = node->parent;
+					node->parent->childBoundingBoxes.push_back(siblingNode->boundingBox());
+					node->parent->children.push_back(siblingNode);
+					siblingNode->parent = node->parent;
 
-						node = node->parent;
-						siblingNode = nullptr;
-                        // We won't be doing splits anymore, but maybe we need to update bounding
-                        // boxes?
-					}
-					else
-					{
-						Node *siblingParent = overflowTreatment(node->parent, siblingNode, hasReinsertedOnLevel);
+					if( node->parent->children.size() > node->parent->maxBranchFactor ) {
+						std::cout << "We don't have enough room in parent to add this guy." << std::endl;
+						Node *siblingParent = node->parent->overflowTreatment(hasReinsertedOnLevel);
 						node = node->parent;
 						siblingNode = siblingParent;
+
 					}
+					node = node->parent;
+					siblingNode = nullptr;
 				}
 				else
 				{
@@ -1059,20 +1074,14 @@ namespace rstartree
 		return siblingNode;
 	}
 
-	/*
-		Reinsert leaf node values based off their distance to the center node
-	*/
 	Node *Node::reInsert(std::vector<bool> &hasReinsertedOnLevel)
 	{
-        std::cout << "Calling reInsert with givenPoint." << std::endl;
-		// reInsert points in data given the addition of givenPoint
-
 		// 1. RI1 Compute distance between each of the points and the bounding box containing them.
 		// 2. RI2 Sort the entries by DECREASING index -> ok let's define an
 		// 		extra helper function that gets to do this and pass it into sort
 
 		Point globalCenterPoint = boundingBox().centerPoint();
-	
+
 		std::sort(data.begin(), data.end(), [globalCenterPoint](Point pointA, Point pointB) {
 			return pointA.distance(globalCenterPoint) > pointB.distance(globalCenterPoint);
 		});
@@ -1158,15 +1167,12 @@ namespace rstartree
 	*/
 	Node *Node::overflowTreatment(std::vector<bool> &hasReinsertedOnLevel)
 	{
-        assert( this->children.empty() );
-        assert( this->level == hasReinsertedOnLevel.size() - 1 /* We are a leaf */ );
-        
-		// if not root and we have already done a forced reinsert on this level we split the node to deal with overflow
+
 		if (hasReinsertedOnLevel.at(hasReinsertedOnLevel.size() - 1))
 		{
 			return splitNode();
 		}
-		else	// this is our first time overflowing this level and we do a forced reInsert
+		else
 		{
 			hasReinsertedOnLevel.at(this->level) = true;
 			return reInsert(hasReinsertedOnLevel);
@@ -1219,13 +1225,6 @@ namespace rstartree
 		// I3 [Propogate overflow treatment changes upward]
 		Node *siblingNode = leaf->adjustTree(siblingLeaf, hasReinsertedOnLevel);
 
-		std::cout << "Leaf adjustment..." << std::endl;
-		for( const auto &p : leaf->data ) {
-			std::cout << p << ",";
-		}
-		std::cout << std::endl;
-
-
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
@@ -1242,6 +1241,12 @@ namespace rstartree
 
 			// fix the reinserted length
 			hasReinsertedOnLevel.push_back(false);
+
+			// Adjust levels.
+			newRoot->level = this->level;
+			this->level = this->level+1;
+			siblingNode->level = this->level;
+
 			return newRoot;
 		}
 		else

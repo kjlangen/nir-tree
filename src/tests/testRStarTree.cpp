@@ -585,7 +585,49 @@ TEST_CASE("R*Tree: testInsertGrowTreeHeight")
 	REQUIRE(root->data.size() <= 7);
 	REQUIRE(root->children.size() == 2);
 	REQUIRE(root->children[0]->data.size() == 3);
+	REQUIRE(root->children[0]->level == 1);
 	REQUIRE(root->children[1]->data.size() == 5);
+	REQUIRE(root->children[1]->level == 1);
+	root->deleteSubtrees();
+	delete root;
+}
+
+static rstartree::Node *createFullLeafNode(unsigned minBranchFactor, unsigned maxBranchFactor)
+{
+	rstartree::Node *node = new rstartree::Node(minBranchFactor,maxBranchFactor);
+	std::vector<bool> reInsertedAtLevel = { false };
+
+	for(unsigned i = 0; i < maxBranchFactor; i++)
+	{
+		node = node->insert(Point(0.0,0.0),	reInsertedAtLevel);
+		REQUIRE(reInsertedAtLevel[0] == false);
+	}
+	return node;
+}
+
+TEST_CASE("R*Tree: testSplitNonLeafNode", "[broken]")
+{
+	unsigned maxBranchFactor = 7;
+	rstartree::Node *root = new rstartree::Node(3,7);
+	root->level = 0;
+
+	for(unsigned i = 0; i < maxBranchFactor; i++)
+	{
+		rstartree::Node *child = createFullLeafNode(3,7);
+		child->level = 1;
+		child->parent = root;
+		root->children.push_back(child);
+	}
+
+	// Set bounding boxes for each child.
+	root->childBoundingBoxes.push_back(Rectangle(Point(0.0,0.0),Point(0.0,0.0)));
+
+	REQUIRE(root->children.size() == maxBranchFactor);
+	std::vector<bool> reInsertedAtLevel = { false, false };
+	rstartree::Node *newRoot = root->insert(Point(0.0), reInsertedAtLevel);
+
+	REQUIRE( newRoot->children.size() == 8 );
+
 	root->deleteSubtrees();
 	delete root;
 }

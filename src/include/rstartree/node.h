@@ -131,10 +131,11 @@ namespace rstartree
 			// operator overlaod for sorting
 			bool operator < (const Node &otherNode) const;
 
+			Node *overflowTreatment(Node *nodeToInsert, std::vector<bool> &hasReinsertedOnLevel); // TODO: duplicated code; investigate ways to merge this with above
+
             // Static methods 
 			static Node *overflowTreatment(Node *node, ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
-			static Node *overflowTreatment(Node *node, Node *nodeToInsert, std::vector<bool> hasReinsertedOnLevel); // TODO: duplicated code; investigate ways to merge this with above
-
+			
 	};
 }
 
