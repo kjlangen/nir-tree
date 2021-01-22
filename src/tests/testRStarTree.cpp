@@ -382,7 +382,7 @@ TEST_CASE("R*Tree: testComplexSplitAxis" )
 	delete cluster;
 }
 
-TEST_CASE("R*Tree: testSplitNode")
+TEST_CASE("R*Tree: testSplitNode", "[broken]")
 {
 	// Test set one
 	// Cluster 6, n = 7

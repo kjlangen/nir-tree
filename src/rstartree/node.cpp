@@ -864,18 +864,19 @@ namespace rstartree
 			overlap value; resolve ties with the minimum area
 			returns tuple of best distribution group indices
 	*/
-	std::vector<std::vector<unsigned int>> Node::chooseSplitIndex(unsigned int axis)
+	unsigned Node::chooseSplitIndex(unsigned int axis)
 	{
 
-        // We assume this is called after we have sorted this->data according to axis.
-        (void) axis;
+		// We assume this is called after we have sorted this->data according to axis.
+		(void) axis;
 #if !defined(NDEBUG)
         // Verify the sort if we are in regular (i.e., not production) mode.
-        double prevVal = -std::numeric_limits<double>::max();
-        for( const auto &point : data ) {
-            assert( point[axis] >= prevVal );
-            prevVal = point[axis];
-        }
+		double prevVal = -std::numeric_limits<double>::max();
+		for(const auto &point : data)
+		{
+			assert(point[axis] >= prevVal);
+			prevVal = point[axis];
+		}
 #endif
 		std::vector<Point>::const_iterator groupABegin = data.begin();
 		std::vector<Point>::const_iterator groupAEnd = data.begin() + minBranchFactor;
@@ -883,20 +884,15 @@ namespace rstartree
 		std::vector<Point>::const_iterator groupBEnd = data.end();
 
 		std::vector<Point> groupA(groupABegin, groupAEnd);
-		std::vector<unsigned int> groupAIndices(groupA.size());
-		std::iota(groupAIndices.begin(), groupAIndices.end(), 0);
-
 		std::vector<Point> groupB(groupBBegin, groupBEnd);
-		std::vector<unsigned int> groupBIndices(groupB.size());
-		std::iota(groupBIndices.begin(), groupBIndices.end(), minBranchFactor);
-
-		// return value
-		std::vector<std::vector<unsigned int>> groups;
+		unsigned splitIndex;
 
 		// Find the best size out of all the distributions
 		unsigned int minOverlapValue = std::numeric_limits<unsigned int>::max();
 		unsigned int minAreaValue = std::numeric_limits<unsigned int>::max();
 
+		// For tracking what the current "cut" mark is.
+		unsigned curSplitPoint = minBranchFactor;
 
 		// this will try each of the M-2m + 2 groups
 		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
@@ -920,10 +916,7 @@ namespace rstartree
 			if (currDistOverlapVal < minOverlapValue) {
 				// we save this current distribution of indices to return
 				minOverlapValue = currDistOverlapVal;
-				groups.clear();
-				groups.push_back(groupAIndices);
-				groups.push_back(groupBIndices);
-
+				splitIndex = curSplitPoint;
 			}
 			else if (currDistOverlapVal == minOverlapValue)
 			{
@@ -934,22 +927,20 @@ namespace rstartree
 				{
 					// we save this current distribution of indices to return
 					minAreaValue = currMinAreaVal;
-					groups.clear();
-					groups.push_back(groupAIndices);
-					groups.push_back(groupBIndices);
+					splitIndex = curSplitPoint;
 				}
 			}
 			
 			// Add one new value to groupA and remove one from groupB to obtain next distribution
 			Point transferPoint = groupB.front();
-			unsigned int transferIndex = groupBIndices.front();
 			groupB.erase(groupB.begin());
-			groupBIndices.erase(groupBIndices.begin());
 			groupA.push_back(transferPoint);
-			groupAIndices.push_back(transferIndex);
+
+			// Push the split point forward.
+			curSplitPoint++;
 		}
 
-		return groups;
+		return splitIndex;
 	}
 
 
@@ -961,6 +952,9 @@ namespace rstartree
 			S3: Distribute the entries among these two groups
 		*/
 
+		// Verify that I am a leaf.
+		assert(this->children.size() == 0);
+
 		STATSPLIT();
 
 		float dataSize = data.size();
@@ -969,25 +963,17 @@ namespace rstartree
 		// Call chooseSplitAxis to determine the axis perpendicular to which the split is performed
 		// 	For now we will save the axis as a int -> since this allows for room for growth in the future
 		// Call ChooseSplitIndex to create optimal splitting of data array
-		std::vector<std::vector<unsigned>> groups = chooseSplitIndex(chooseSplitAxis());
-
-		// Take the two groups and modify the actual node
-		// Setup the two groups which will be the entries in the two new nodes
-		std::vector<unsigned> groupA = groups.at(0);
-		std::vector<unsigned> groupB = groups.at(1);
+		unsigned splitIndex = chooseSplitIndex(chooseSplitAxis());
 
 		// Create the new node and fill it with groupB entries by doing really complicated stuff
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		unsigned groupALastIndex = groupA.size() - 1;
-		unsigned iGroupB;
-		for (unsigned i = 0; i < groupB.size(); ++i)
-		{
-			iGroupB = groupB[i];
-			newSibling->data.push_back(data[iGroupB]);
-			data[iGroupB] = data[groupA[groupALastIndex]];
-			groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
-		}
-		data.resize(groupA.size());
+		newSibling->data.reserve(data.size()-splitIndex);
+
+		// Copy everything to the right of the splitPOint (inclusive) to the new sibling
+		std::copy(data.begin() + splitIndex, data.end(), std::back_inserter(newSibling->data));
+
+		// Chop our node's data down.
+		data.resize(splitIndex);
 
 		// Return our newly minted sibling
 		return newSibling;

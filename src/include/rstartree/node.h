@@ -101,7 +101,7 @@ namespace rstartree
 			Node *splitNode(Node *newChild);
 			double computeTotalMarginSum();
 			unsigned int chooseSplitAxis();
-			std::vector<std::vector<unsigned int>> chooseSplitIndex(unsigned int axis);
+			unsigned chooseSplitIndex(unsigned int axis);
 			Node *splitNode();
 			Node *adjustTree(Node *siblingLeaf, std::vector<bool> hasReinsertedOnLevel);
 			Node *reInsert(std::vector<bool> &hasReinsertedOnLevel);
