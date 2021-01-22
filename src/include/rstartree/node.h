@@ -116,6 +116,8 @@ namespace rstartree
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
 			std::vector<Point> search(Point &requestedPoint);
 			std::vector<Point> search(Rectangle &requestedRectangle);
+
+			// These return the root of the tree.
 			Node *insert(Point givenPoint, std::vector<bool> &hasReinsertedOnLevel);
 			Node *remove(Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
 
@@ -128,7 +130,6 @@ namespace rstartree
 
 			// operator overlaod for sorting
 			bool operator < (const Node &otherNode) const;
-
 
             // Static methods 
 			static Node *overflowTreatment(Node *node, ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);

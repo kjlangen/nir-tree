@@ -1015,6 +1015,7 @@ namespace rstartree
 
 		for (;;)
 		{
+            std::cout << "In adjustTree, am root: " << (node->parent == nullptr) << std::endl;
 			// AT2 [If node is the root, stop]
 			if (node->parent == nullptr)
 			{
@@ -1037,6 +1038,8 @@ namespace rstartree
 
 						node = node->parent;
 						siblingNode = nullptr;
+                        // We won't be doing splits anymore, but maybe we need to update bounding
+                        // boxes?
 					}
 					else
 					{
@@ -1101,7 +1104,8 @@ namespace rstartree
         // hasReinsertedOnLevel vector because it corresponds to the activities we have performed
         // during a single point/rectangle insertion (the top level one).
         for(const auto &point : pointsToReinsert) {
-            root->insert(point, hasReinsertedOnLevel);
+            // the root may change. Update it.
+            root = root->insert(point, hasReinsertedOnLevel);
         }
 
 		return nullptr;
@@ -1196,7 +1200,7 @@ namespace rstartree
 		STATEXEC(stat());
 
 		// I1 [Find position for new record]
-		Node *leaf = chooseSubtree(givenPoint); // this is now "chooseSubtree" we can rename -> tho tbh it's kinda useless to rename imo.
+		Node *leaf = chooseSubtree(givenPoint);
 		Node *siblingLeaf = nullptr;
 
 		// I2 [Add record to leaf node]
@@ -1225,6 +1229,7 @@ namespace rstartree
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
+            std::cout << "Growing tree..." << std::endl;
 			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
@@ -1241,7 +1246,16 @@ namespace rstartree
 		}
 		else
 		{
-			return this;
+			// We might no longer be the parent.  If we hit overflowTreatment,
+			// we may have triggered reInsert, which then triggered a split.
+			// That insert will have returned newRoot, but because reInsert()
+			// returns nullptr, we don't know about it.
+			Node *root = this; 
+			while(root->parent)
+			{
+				root = root->parent;
+			}
+			return root;
 		}
 	}
 
