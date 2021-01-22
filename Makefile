@@ -1,6 +1,6 @@
 C++ = g++
 SXX = -std=c++11 # Standard
-C++FLAGS = -g -Wall -O3 -DDIM=2 # Flags
+C++FLAGS = -ggdb -Wall -DDIM=2 # -O3 Flags
 DIR = src/include # Include directory
 SRC = $(shell find . -path ./src/tests -prune -false -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) )
 OBJ = $(SRC:.cpp=.o)
@@ -19,7 +19,7 @@ bin/main: $(OBJ)
 	cp src/rplustree/node.o rplustreenode.o
 	cp src/rstartree/node.o rtstartreenode.o
 	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
-	rm test*.o
+	rm -rf test*.o
 	$(C++) $(SXX) $(C++FLAGS) *.o -o bin/main -I $(DIR)
 
 bin/tests: $(TESTOBJ) bin/main
