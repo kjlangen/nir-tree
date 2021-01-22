@@ -917,9 +917,15 @@ namespace rstartree
 				// we save this current distribution of indices to return
 				minOverlapValue = currDistOverlapVal;
 				splitIndex = curSplitPoint;
+
+				// Set this if we haven't already
+				if( minAreaValue == std::numeric_limits<unsigned int>::max() ) {
+					minAreaValue = boundingBoxA.area() + boundingBoxB.area();
+				}
 			}
 			else if (currDistOverlapVal == minOverlapValue)
 			{
+
 				// if overlap is equal, we use the distribution that creates the smallest areas
 				unsigned int currMinAreaVal = boundingBoxA.area() + boundingBoxB.area();
 
@@ -968,6 +974,12 @@ namespace rstartree
 		// Create the new node and fill it with groupB entries by doing really complicated stuff
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
 		newSibling->data.reserve(data.size()-splitIndex);
+
+		for( const auto &p : data ) {
+			std::cout << p << ",";
+		}
+		std::cout << std::endl;
+
 
 		// Copy everything to the right of the splitPOint (inclusive) to the new sibling
 		std::copy(data.begin() + splitIndex, data.end(), std::back_inserter(newSibling->data));
@@ -1064,7 +1076,7 @@ namespace rstartree
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
 		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
-		unsigned int nodesToReinsert = p * data.size();
+		unsigned int numNodesToReinsert = p * data.size();
 
 		// 4. Insert the removed entries -> OK we can also specify a flag that is
 		//		if you want to reinsert starting with largest values (i.e. start at index 0) or closest values (Start at index p)
@@ -1075,14 +1087,22 @@ namespace rstartree
             root = root->parent;
         }
 
-		for (unsigned int i = 0; i < nodesToReinsert; i += 1)
-		{
-			// For now we are working with deleting from the largest values
-			// Remove from bounding boxes
-			Point pointToReinsert = data.at(0);
-			data.erase(data.begin());
-			root->insert(pointToReinsert, hasReinsertedOnLevel); // reinsert point
-		}
+        // We need to reinsert these points.
+        // We pop them all off before hand so that any reorganization of the tree during this recursive
+        // insert does not affect which points get popped off.
+        std::vector<Point> pointsToReinsert;
+        pointsToReinsert.reserve(numNodesToReinsert);
+        
+        std::copy(data.begin(), data.begin() + numNodesToReinsert, std::back_inserter(pointsToReinsert));
+        data.erase(data.begin(), data.begin() + numNodesToReinsert);
+
+        // During this recursive insert (we are already in an insert, since we are 
+        // reInserting), we may end up here again. If we do, we should still be using the same
+        // hasReinsertedOnLevel vector because it corresponds to the activities we have performed
+        // during a single point/rectangle insertion (the top level one).
+        for(const auto &point : pointsToReinsert) {
+            root->insert(point, hasReinsertedOnLevel);
+        }
 
 		return nullptr;
 	}
@@ -1189,10 +1209,18 @@ namespace rstartree
 			// if we do forced reInsert siblingLeaf if nullptr and is properly dealt with in adjustTree
             std::cout << "It's time for overflow treatment!" << std::endl;
 			siblingLeaf = leaf->overflowTreatment(hasReinsertedOnLevel);
+			std::cout << "Overflow treatment done." << std::endl;
 		}
 
 		// I3 [Propogate overflow treatment changes upward]
 		Node *siblingNode = leaf->adjustTree(siblingLeaf, hasReinsertedOnLevel);
+
+		std::cout << "Leaf adjustment..." << std::endl;
+		for( const auto &p : leaf->data ) {
+			std::cout << p << ",";
+		}
+		std::cout << std::endl;
+
 
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)

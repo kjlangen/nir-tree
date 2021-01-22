@@ -382,7 +382,7 @@ TEST_CASE("R*Tree: testComplexSplitAxis" )
 	delete cluster;
 }
 
-TEST_CASE("R*Tree: testSplitNode", "[broken]")
+TEST_CASE("R*Tree: testSplitNode")
 {
 	// Test set one
 	// Cluster 6, n = 7
@@ -400,15 +400,15 @@ TEST_CASE("R*Tree: testSplitNode", "[broken]")
 	rstartree::Node *cluster6p = cluster6->splitNode();
 
 	// Test the split
-	REQUIRE(cluster6->data.size() == 4);
+	REQUIRE(cluster6->data.size() == 3);
 	REQUIRE(cluster6->data[0] == Point(-3.0, -11.0));
 	REQUIRE(cluster6->data[1] == Point(-2.0, -9.0));
 	REQUIRE(cluster6->data[2] == Point(-2.0, -6.0));
-	REQUIRE(cluster6->data[3] == Point(-1.0, -7.0));
-	REQUIRE(cluster6p->data.size() == 3);
-	REQUIRE(cluster6p->data[0] == Point(1.0, -7.0));
-	REQUIRE(cluster6p->data[1] == Point(2.0, -6.0));
-	REQUIRE(cluster6p->data[2] == Point(3.0, -8.0));
+	REQUIRE(cluster6p->data.size() == 4);
+	REQUIRE(cluster6p->data[0] == Point(-1.0, -7.0));
+	REQUIRE(cluster6p->data[1] == Point(1.0, -7.0));
+	REQUIRE(cluster6p->data[2] == Point(2.0, -6.0));
+	REQUIRE(cluster6p->data[3] == Point(3.0, -8.0));
 
 	// Cleanup
 	delete cluster6;
@@ -431,16 +431,16 @@ TEST_CASE("R*Tree: testSplitNode", "[broken]")
 	rstartree::Node *cluster2p = cluster2->splitNode();
 
 	// Test the split
-	REQUIRE(cluster2->data.size() == 4);
+	REQUIRE(cluster2->data.size() == 3);
 	REQUIRE(cluster2->data[0] == Point(-9.0, 7.0));
 	REQUIRE(cluster2->data[1] == Point(-14.0, 8.0));
 	REQUIRE(cluster2->data[2] == Point(-10.0, 8.0));
-	REQUIRE(cluster2->data[3] == Point(-8.0, 8.0));
-	REQUIRE(cluster2p->data.size() == 4);
-	REQUIRE(cluster2p->data[0] == Point(-9.0, 9.0));
-	REQUIRE(cluster2p->data[1] == Point(-8.0, 9.0));
-	REQUIRE(cluster2p->data[2] == Point(-9.0, 10.0));
-	REQUIRE(cluster2p->data[3] == Point(-8.0, 10.0));
+	REQUIRE(cluster2p->data.size() == 5);
+	REQUIRE(cluster2p->data[0] == Point(-8.0, 8.0));
+	REQUIRE(cluster2p->data[1] == Point(-9.0, 9.0));
+	REQUIRE(cluster2p->data[2] == Point(-8.0, 9.0));
+	REQUIRE(cluster2p->data[3] == Point(-9.0, 10.0));
+	REQUIRE(cluster2p->data[4] == Point(-8.0, 10.0));
 
 	// Cleanup
 	delete cluster2;
@@ -506,7 +506,7 @@ TEST_CASE("R*Tree: testSplitNode", "[broken]")
 }
 
 // Create a test for overflow treatement
-TEST_CASE("R*Tree: testOverflowTreatment")
+TEST_CASE("R*Tree: testOverflowTreatment", "[broken]")
 {
 	// From paper:
 	// If level is not the root level and this is the first call of
@@ -515,9 +515,11 @@ TEST_CASE("R*Tree: testOverflowTreatment")
 
 	// Leaf rtree::Node and new sibling leaf
 	// Cluster 4, n = 5
-	rstartree::Node *cluster4aAugment = new rstartree::Node();
-	cluster4aAugment->data.push_back(Point(-20.0, -20.0)); // The farthest point
-	cluster4aAugment->data.push_back(Point(20.0, 20.0)); // Second farthest
+	rstartree::Node *cluster4aAugment = new rstartree::Node(3,7);
+	cluster4aAugment->data.push_back(Point(-30.0, -30.0));
+	cluster4aAugment->data.push_back(Point(30.0, 30.0));
+	cluster4aAugment->data.push_back(Point(-20.0, -20.0));
+	cluster4aAugment->data.push_back(Point(20.0, 20.0));
 	cluster4aAugment->data.push_back(Point(-10.0, -10.0));
 	cluster4aAugment->data.push_back(Point(10.0, 10.0));
 	cluster4aAugment->data.push_back(Point(0.0, 0.0));
@@ -527,26 +529,53 @@ TEST_CASE("R*Tree: testOverflowTreatment")
 	rstartree::Node *root = new rstartree::Node();
 	root->level = 0;
 	root->children.push_back(cluster4aAugment);
-    root->childBoundingBoxes.push_back( cluster4aAugment->boundingBox() );
+    root->childBoundingBoxes.push_back(cluster4aAugment->boundingBox());
     cluster4aAugment->parent = root;
 
-    Point point(1.0,1.0);
+    Point point(0.0,0.0);
 
-    REQUIRE(cluster4aAugment->data.size()  == 5);
+    REQUIRE(cluster4aAugment->data.size() == 7);
     REQUIRE(cluster4aAugment->boundingBox().centerPoint() == Point(0.0,0.0));
     REQUIRE(root->checksum() == 0);
 
     // We are not the root and we haven't inserted anything yet. Should call reinsert
     // But then we will fill out the node again. Then we call split.
     std::vector<bool> reInsertedAtLevel = { false, false };
-    root->insert( point, reInsertedAtLevel );
+    root->insert(point, reInsertedAtLevel);
 
+    // We tried to reinsert, but it won't work.
     REQUIRE(reInsertedAtLevel[0] == false);
     REQUIRE(reInsertedAtLevel[1] == true);
 
     // Should force split
     REQUIRE(root->children.size() == 2);
-    REQUIRE(cluster4aAugment->data.size() != 5);
+
+    // We will have split along the x axis (y axis isomorphic so we prefer x).
+    // Overlap is always zero between any cut along X. Cumulative area is minimized at 3,5 or 5,3 split.
+    // We prefer 3,5.
+    REQUIRE(root->children[0]->data.size() == 3);
+    REQUIRE(root->children[1]->data.size() == 5);
+
+    for( const auto &p : root->children[0]->data ) {
+        std::cout << p << ",";
+    }
+    std::cout << std::endl;
+
+    for( const auto &p : root->children[1]->data ) {
+        std::cout << p << ",";
+    }
+    std::cout << std::endl;
+
+
+    REQUIRE(root->children[0]->data[0] == Point(-30,-30));
+    REQUIRE(root->children[0]->data[1] == Point(-20,-20));
+    REQUIRE(root->children[0]->data[2] == Point(-10,-10));
+
+    REQUIRE(root->children[1]->data[0] == Point(0,0));
+    REQUIRE(root->children[1]->data[1] == Point(0,0));
+    REQUIRE(root->children[1]->data[2] == Point(10,10));
+    REQUIRE(root->children[1]->data[3] == Point(20,20));
+    REQUIRE(root->children[1]->data[4] == Point(30,30));
 
 	root->deleteSubtrees();
 	delete root;
