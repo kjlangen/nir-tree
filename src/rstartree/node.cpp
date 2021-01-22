@@ -857,7 +857,6 @@ namespace rstartree
 		return optimalAxis;
 	}
 
-
 	// Implement ChooseSplitIndex here
 	/*
 		CSI1: Given the chosen split index
@@ -867,6 +866,17 @@ namespace rstartree
 	*/
 	std::vector<std::vector<unsigned int>> Node::chooseSplitIndex(unsigned int axis)
 	{
+
+        // We assume this is called after we have sorted this->data according to axis.
+        (void) axis;
+#if !defined(NDEBUG)
+        // Verify the sort if we are in regular (i.e., not production) mode.
+        double prevVal = -std::numeric_limits<double>::max();
+        for( const auto &point : data ) {
+            assert( point[axis] >= prevVal );
+            prevVal = point[axis];
+        }
+#endif
 		std::vector<Point>::const_iterator groupABegin = data.begin();
 		std::vector<Point>::const_iterator groupAEnd = data.begin() + minBranchFactor;
 		std::vector<Point>::const_iterator groupBBegin = data.begin() + minBranchFactor;
@@ -947,7 +957,7 @@ namespace rstartree
 	{
 		/*
 			S1: Call chooseSplitAxis to determine the axis perpendicular to which the split is performed
-			S2: Invoke chooseSplitIndex given the access to determine the best distribution along this axis
+			S2: Invoke chooseSplitIndex given the axis to determine the best distribution along this axis
 			S3: Distribute the entries among these two groups
 		*/
 
