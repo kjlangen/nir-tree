@@ -1,5 +1,5 @@
-C++ = g++
-SXX = -std=c++11 # Standard
+C++ = g++-9
+SXX = -std=c++17 # Standard
 C++FLAGS = -ggdb -Wall -DDIM=2 # -O3 Flags
 DIR = src/include # Include directory
 SRC = $(shell find . -path ./src/tests -prune -false -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) )

@@ -266,7 +266,7 @@ Rectangle::Rectangle(Point lowerLeft, Point upperRight)
 	this->upperRight = upperRight;
 }
 
-double Rectangle::area()
+double Rectangle::area() const
 {
 	double a = fabs(upperRight[0] - lowerLeft[0]);
 
@@ -278,7 +278,7 @@ double Rectangle::area()
 	return a;
 }
 
-double Rectangle::computeIntersectionArea(Rectangle givenRectangle)
+double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 {
 	// Quick exit
 	if (!intersectsRectangle(givenRectangle))
@@ -296,7 +296,7 @@ double Rectangle::computeIntersectionArea(Rectangle givenRectangle)
 	return intersectionArea;
 }
 
-double Rectangle::computeExpansionArea(Point givenPoint)
+double Rectangle::computeExpansionArea(const Point &givenPoint) const
 {
 	// Expanded rectangle area computed directly
 	double expandedArea = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
@@ -310,7 +310,7 @@ double Rectangle::computeExpansionArea(Point givenPoint)
 	return expandedArea - area();
 }
 
-double Rectangle::computeExpansionArea(Rectangle givenRectangle)
+double Rectangle::computeExpansionArea(const Rectangle &givenRectangle) const
 {
 	// Expanded rectangle area computed directly
 	double expandedArea = fabs(fmin(givenRectangle.lowerLeft[0], lowerLeft[0]) - fmax(givenRectangle.upperRight[0], upperRight[0]));
@@ -336,7 +336,7 @@ void Rectangle::expand(Rectangle givenRectangle)
 	upperRight >> givenRectangle.upperRight;
 }
 
-bool Rectangle::aligned(Rectangle givenRectangle)
+bool Rectangle::aligned(const Rectangle &givenRectangle) const
 {
 	unsigned alignedDimensions = 0;
 
@@ -351,7 +351,7 @@ bool Rectangle::aligned(Rectangle givenRectangle)
 	return alignedDimensions == dimensions - 1;
 }
 
-bool Rectangle::alignedOpposingBorders(Rectangle givenRectangle)
+bool Rectangle::alignedOpposingBorders(const Rectangle &givenRectangle) const
 {
 	bool result = false;
 
@@ -363,7 +363,7 @@ bool Rectangle::alignedOpposingBorders(Rectangle givenRectangle)
 	return result;
 }
 
-bool Rectangle::intersectsRectangle(Rectangle givenRectangle)
+bool Rectangle::intersectsRectangle(const Rectangle &givenRectangle) const
 {
 	// Compute the range intersections
 	bool interval = true;
@@ -379,7 +379,7 @@ bool Rectangle::intersectsRectangle(Rectangle givenRectangle)
 	return interval;
 }
 
-bool Rectangle::strictIntersectsRectangle(Rectangle givenRectangle)
+bool Rectangle::strictIntersectsRectangle(const Rectangle &givenRectangle) const
 {
 	// Compute the range intersections
 	bool interval = true;
@@ -395,27 +395,27 @@ bool Rectangle::strictIntersectsRectangle(Rectangle givenRectangle)
 	return interval;
 }
 
-bool Rectangle::borderOnlyIntersectsRectangle(Rectangle givenRectangle)
+bool Rectangle::borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const
 {
 	return intersectsRectangle(givenRectangle) && alignedOpposingBorders(givenRectangle);
 }
 
-bool Rectangle::containsPoint(Point givenPoint)
+bool Rectangle::containsPoint(const Point &givenPoint) const
 {
 	return lowerLeft <= givenPoint && givenPoint <= upperRight;
 }
 
-bool Rectangle::strictContainsPoint(Point givenPoint)
+bool Rectangle::strictContainsPoint(const Point &givenPoint) const
 {
 	return lowerLeft < givenPoint && givenPoint < upperRight;
 }
 
-bool Rectangle::containsRectangle(Rectangle givenRectangle)
+bool Rectangle::containsRectangle(const Rectangle &givenRectangle) const
 {
 	return containsPoint(givenRectangle.lowerLeft) && containsPoint(givenRectangle.upperRight);
 }
 
-double Rectangle::margin()
+double Rectangle::margin() const
 {
 	double margin = 0.0;
 	for( unsigned i = 0; i < dimensions; i++ ) {

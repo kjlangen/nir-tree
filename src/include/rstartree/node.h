@@ -12,11 +12,26 @@
 #include <limits>
 #include <util/geometry.h>
 #include <util/statistics.h>
+#include <variant>
 
 namespace rstartree
 {
 	class Node
 	{
+
+        public:
+        class Branch
+        {
+            public:
+                Branch( Rectangle boundingBox, Node *child ) : boundingBox( boundingBox ), child( child ){}
+
+                Rectangle boundingBox;
+                Node *child;
+        };
+        typedef std::variant<Point, Branch> NodeEntry;
+
+        private:
+
 		class ReinsertionEntry
 		{
 			public:
@@ -29,6 +44,9 @@ namespace rstartree
 		unsigned minBranchFactor;		// this cannot be 1 or else splitNode will fail
 		unsigned maxBranchFactor;
 		static constexpr float p = 0.3; 			// for reinsertion entries - set to 0.3 on default
+
+        void searchSub(Point &requestedPoint, std::vector<Point> &accumulator);
+        void searchSub(Rectangle &rectangle, std::vector<Point> &accumulator);
 
 		public:
 
@@ -52,32 +70,10 @@ namespace rstartree
                 }
             };
 
-            struct sortByXRectangleFirst
-            {
-                inline bool operator() (const Rectangle& rectangleA, const Rectangle& rectangleB)
-                {
-                    return (rectangleA.lowerLeft[0] < rectangleB.lowerLeft[0])
-                        || ((rectangleA.lowerLeft[0] == rectangleB.lowerLeft[0]) && (rectangleA.upperRight[1] < rectangleB.upperRight[1]));
-                }
-            };
-
-            struct sortByYRectangleFirst{
-                inline bool operator() (const Rectangle& rectangleA, const Rectangle& rectangleB)
-                {
-                    return (rectangleA.lowerLeft[1] < rectangleB.lowerLeft[1])
-                        || ((rectangleA.lowerLeft[1] == rectangleB.lowerLeft[1]) && (rectangleA.upperRight[0] < rectangleB.upperRight[0]));
-                }
-            };
 
 
 			Node *parent;
-
-            // I have one bounding box for each of my children if I am not a leaf node.
-			std::vector<Rectangle> childBoundingBoxes;
-			std::vector<Node *> children;
-
-            // I only have data points if I am a leaf node.
-			std::vector<Point> data;
+            std::vector<NodeEntry> entries;
 			unsigned int level = 0;
 
 			// Constructors and destructors
@@ -90,8 +86,6 @@ namespace rstartree
 			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 			void removeChild(Node *child);
 			void removeData(Point givenPoint);
-			unsigned computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Rectangle givenRectangle);
-			unsigned computeOverlapGrowth(unsigned int index, std::vector<Rectangle> boundingBoxes, Point givenPoint);
 			Node *chooseSubtree(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
@@ -122,11 +116,11 @@ namespace rstartree
 			Node *remove(Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
 
 			// Miscellaneous
-			unsigned checksum();
-			void print(unsigned n=0);
-			void printTree(unsigned n=0);
-			unsigned height();
-			void stat();
+			unsigned checksum() const;
+			void print(unsigned n=0) const;
+			void printTree(unsigned n=0) const;
+			unsigned height() const;
+			void stat() const;
 
 			// operator overlaod for sorting
 			bool operator < (const Node &otherNode) const;
@@ -135,8 +129,34 @@ namespace rstartree
 
             // Static methods 
 			static Node *overflowTreatment(Node *node, ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
-			
+
 	};
+
+    Rectangle boxFromNodeEntry( const Node::NodeEntry &entry );
+    unsigned computeOverlapGrowth(unsigned int index, const std::vector<Node::NodeEntry> &entries, const Rectangle &rect );
+
+    struct sortByXRectangleFirst
+    {
+        inline bool operator() (const Node::NodeEntry &a, const Node::NodeEntry &b)
+        {
+            Rectangle rectangleA = boxFromNodeEntry( a );
+            Rectangle rectangleB = boxFromNodeEntry( b );
+            return (rectangleA.lowerLeft[0] < rectangleB.lowerLeft[0])
+                || ((rectangleA.lowerLeft[0] == rectangleB.lowerLeft[0]) && (rectangleA.upperRight[1] < rectangleB.upperRight[1]));
+        }
+    };
+
+    struct sortByYRectangleFirst{
+        inline bool operator() (const Node::NodeEntry &a, const Node::NodeEntry &b)
+        {
+            Rectangle rectangleA = boxFromNodeEntry( a );
+            Rectangle rectangleB = boxFromNodeEntry( b );
+            return (rectangleA.lowerLeft[1] < rectangleB.lowerLeft[1])
+                || ((rectangleA.lowerLeft[1] == rectangleB.lowerLeft[1]) && (rectangleA.upperRight[0] < rectangleB.upperRight[0]));
+        }
+    };
+
+
 }
 
 

@@ -9,9 +9,6 @@ namespace rstartree
 		minBranchFactor = 3;
 		maxBranchFactor = 5;
 		parent = nullptr;
-		childBoundingBoxes.resize(0);
-		children.resize(0);
-		data.resize(0);
 	}
 
 	Node::Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p)
@@ -19,240 +16,183 @@ namespace rstartree
 		this->minBranchFactor = minBranchFactor;
 		this->maxBranchFactor = maxBranchFactor;
 		this->parent = p;
-		childBoundingBoxes.resize(0);
-		children.resize(0);
-		data.resize(0);
 	}
 
 	void Node::deleteSubtrees()
 	{
-		if (children.size() == 0)
-		{
-			return;
-		}
-		else
-		{
-			for (unsigned i = 0; i < children.size(); ++i)
-			{
-				children[i]->deleteSubtrees();
-				delete children[i];
-			}
-		}
+        if (entries.empty() || !std::holds_alternative<Branch>(entries[0]))
+        {
+            return;
+        }
+        for (const auto &entry : entries) {
+            const Branch &b = std::get<Branch>(entry);
+            b.child->deleteSubtrees();
+            delete b.child;
+        }
 	}
 
 	Rectangle Node::boundingBox()
 	{
-		Rectangle boundingBox;
+        assert( !this->entries.empty() );
+		Rectangle boundingBox( boxFromNodeEntry( this->entries[0] ) );
 
-		if (childBoundingBoxes.size() > 0)
-		{
-			boundingBox = childBoundingBoxes[0];
-			for (unsigned i = 1; i < childBoundingBoxes.size(); ++i)
-			{
-				boundingBox.expand(childBoundingBoxes[i]);
-			}
-		}
-		else
-		{
-			boundingBox = Rectangle(data[0], data[0]);
-			for (unsigned i = 0; i < data.size(); ++i)
-			{
-				boundingBox.expand(data[i]);
-			}
-		}
-
+        for( auto iter = this->entries.begin()+1; iter != this->entries.end(); iter++ ) {
+            boundingBox.expand( boxFromNodeEntry( *iter ) );
+        }
 		return boundingBox;
 	}
 
 	// TODO: Optimize maybe
 	void Node::updateBoundingBox(Node *child, Rectangle updatedBoundingBox)
 	{
-		for (unsigned i = 0; i < children.size(); ++i)
-		{
-			if (children[i] == child)
-			{
-				childBoundingBoxes[i] = updatedBoundingBox;
-				break;
-			}
-		}
+        for( auto &entry : entries ) {
+            Branch &b = std::get<Branch>( entry );
+            if( b.child == child ) {
+                b.boundingBox = updatedBoundingBox;
+                return;
+            }
+        }
 	}
 
 	// TODO: Optimize maybe
 	void Node::removeChild(Node *child)
 	{
-		for (unsigned i = 0; i < children.size(); ++i)
-		{
-			if (children[i] == child)
-			{
-				childBoundingBoxes.erase(childBoundingBoxes.begin() + i);
-				children.erase(children.begin() + i);
-				break;
-			}
-		}
+        for( auto iter = entries.begin(); iter != entries.end(); iter++ ) {
+            const Branch &b = std::get<Branch>( *iter );
+            if( b.child == child ) {
+                entries.erase( iter );
+                return;
+            }
+        }
 	}
 
 	// TODO: Optimize maybe
 	void Node::removeData(Point givenPoint)
 	{
-		for (unsigned i = 0; i < data.size(); ++i)
-		{
-			if (data[i] == givenPoint)
-			{
-				data.erase(data.begin() + i);
-				break;
-			}
-		}
+        for( auto iter = entries.begin(); iter != entries.end(); iter++ ) {
+            const Point &p = std::get<Point>( *iter );
+            if( p == givenPoint ) {
+                entries.erase( iter );
+                return;
+            }
+        }
 	}
 
 	void Node::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
 	{
-		if (children.size() == 0)
-		{
-			// We are a leaf so add our data points when they are the search point
-			for (unsigned i = 0; i < data.size(); ++i)
-			{
-				if (requestedPoint == data[i])
-				{
-					accumulator.push_back(data[i]);
-					break;
-				}
-			}
-		}
-		else
-		{
-			// Determine which branches we need to follow
-			assert(children.size() == childBoundingBoxes.size());
-			for (unsigned i = 0; i < childBoundingBoxes.size(); ++i)
-			{
-				// Recurse
-				children[i]->exhaustiveSearch(requestedPoint, accumulator);
-			}
-		}
+        if( entries.empty() ) {
+            // I don't think this can happen, so assert in case it does for some reason.
+            assert( false );
+            return;
+        }
+
+        // Am I a leaf?
+        bool isLeaf = std::holds_alternative<Point>( entries[0] );
+        if( isLeaf ) {
+            for( const auto &entry : entries ) {
+                const Point &p = std::get<Point>( entry );
+                if( p == requestedPoint ) {
+                    accumulator.push_back( p );
+                }
+            }
+        } else {
+            for( const auto &entry : entries ) {
+                const Branch &b = std::get<Branch>( entry );
+                b.child->exhaustiveSearch( requestedPoint, accumulator );
+            }
+        }
 	}
+
+    void Node::searchSub(Point &requestedPoint, std::vector<Point> &accumulator) {
+        if( entries.empty() ) {
+            // I don't think this can happen, so assert in case it does for some reason.
+            assert( false );
+            return;
+        }
+
+        // Am I a leaf?
+        bool isLeaf = std::holds_alternative<Point>( entries[0] );
+        if( isLeaf ) {
+            for( const auto &entry : entries ) {
+                const Point &p = std::get<Point>( entry );
+                if( p == requestedPoint ) {
+                    accumulator.push_back( p );
+                }
+            }
+        } else {
+            for( const auto &entry : entries ) {
+                const Branch &b = std::get<Branch>( entry );
+                if( b.boundingBox.containsPoint( requestedPoint ) ) {
+                    b.child->searchSub( requestedPoint, accumulator );
+                }
+            }
+        }
+    }
+
+    void Node::searchSub(Rectangle &rectangle, std::vector<Point> &accumulator) {
+        if( entries.empty() ) {
+            // I don't think this can happen, so assert in case it does for some reason.
+            assert( false );
+            return;
+        }
+
+        // Am I a leaf?
+        bool isLeaf = std::holds_alternative<Point>( entries[0] );
+        if( isLeaf ) {
+            for( const auto &entry : entries ) {
+                const Point &p = std::get<Point>( entry );
+                if( rectangle.containsPoint( p ) ) {
+                    accumulator.push_back( p );
+                }
+            }
+        } else {
+            for( const auto &entry : entries ) {
+                const Branch &b = std::get<Branch>( entry );
+                if( b.boundingBox.intersectsRectangle( rectangle ) ) {
+                    b.child->searchSub( rectangle, accumulator );
+                }
+            }
+        }
+    }
+
 
 	std::vector<Point> Node::search(Point &requestedPoint)
 	{
 		STATEXEC(stat());
-
-		std::vector<Point> matchingPoints;
-
-		// Initialize our context stack
-		std::stack<Node *> context;
-		context.push(this);
-		Node *currentContext;
-
-		for (;!context.empty();)
-		{
-			currentContext = context.top();
-			context.pop();
-
-			if (currentContext->children.size() == 0)
-			{
-				// We are a leaf so add our data points when they are the search point
-				for (unsigned i = 0; i < currentContext->data.size(); ++i)
-				{
-					if (requestedPoint == currentContext->data[i])
-					{
-						matchingPoints.push_back(currentContext->data[i]);
-					}
-				}
-			}
-			else
-			{
-				// Determine which branches we need to follow
-				for (unsigned i = 0; i < currentContext->childBoundingBoxes.size(); ++i)
-				{
-					if (currentContext->childBoundingBoxes[i].containsPoint(requestedPoint))
-					{
-						// Add to the nodes we will check
-						context.push(currentContext->children[i]);
-					}
-				}
-			}
-		}
-
-		return matchingPoints;
-	}
+        std::vector<Point> accumulator;
+        searchSub( requestedPoint, accumulator );
+        return accumulator;
+    }
 
 	std::vector<Point> Node::search(Rectangle &requestedRectangle)
 	{
 		STATEXEC(stat());
 
 		std::vector<Point> matchingPoints;
-
-		// Initialize our context stack
-		std::stack<Node *> context;
-		context.push(this);
-		Node *currentContext;
-
-		for (;!context.empty();)
-		{
-			currentContext = context.top();
-			context.pop();
-
-			if (currentContext->children.size() == 0)
-			{
-				// We are a leaf so add our data points when they are within the search rectangle
-				for (unsigned i = 0; i < currentContext->data.size(); ++i)
-				{
-					if (requestedRectangle.containsPoint(currentContext->data[i]))
-					{
-						matchingPoints.push_back(currentContext->data[i]);
-					}
-				}
-			}
-			else
-			{
-				// Determine which branches we need to follow
-				for (unsigned i = 0; i < currentContext->childBoundingBoxes.size(); ++i)
-				{
-					if (currentContext->childBoundingBoxes[i].intersectsRectangle(requestedRectangle))
-					{
-						// Add to the nodes we will check
-						context.push(currentContext->children[i]);
-					}
-				}
-			}
-		}
-
+        searchSub( requestedRectangle, matchingPoints );
 		return matchingPoints;
 	}
 
-	unsigned Node::computeOverlapGrowth(unsigned int index, std::vector<Rectangle> childBoundingBoxes, Rectangle givenRectangle)
+	unsigned computeOverlapGrowth(unsigned int index, const std::vector<Node::NodeEntry> &entries, const Rectangle &givenBox )
 	{
-		// ok so now that we have the bounding boxes what we need to do is this 
+        // We cannot be a leaf.
+        assert( !entries.empty() );
+        assert( std::holds_alternative<Node::Branch>( entries[0] ) );
+        
 		// 1. make a test rectangle we will use to not modify the original
-		Rectangle newRectangle = childBoundingBoxes[index];
+		Rectangle newRectangle = std::get<Node::Branch>( entries[index] ).boundingBox;
 		
 		// 2. Add the point to the copied Rectangle
-		newRectangle.expand(givenRectangle);
+		newRectangle.expand( givenBox );
 
 		// 3. now compute the overlap expansion area 
 		unsigned int overlapArea = 0;
-		for (unsigned int i = 0; i < childBoundingBoxes.size(); i += 1)
-		{
-			if (i == index) continue;
-			overlapArea += newRectangle.computeIntersectionArea(childBoundingBoxes[i]);
-		}
-
-		return overlapArea;
-	}
-
-	unsigned Node::computeOverlapGrowth(unsigned int index, std::vector<Rectangle> childBoundingBoxes, Point givenPoint)
-	{
-		// ok so now that we have the bounding boxes what we need to do is this 
-		// 1. make a test rectangle we will use to not modify the original
-		Rectangle newRectangle = childBoundingBoxes[index];
-		
-		// 2. Add the point to the copied Rectangle
-		newRectangle.expand(givenPoint);
-
-		// 3. now compute the overlap expansion area 
-		unsigned int overlapArea = 0;
-		for (unsigned int i = 0; i < childBoundingBoxes.size(); i += 1)
-		{
-			if (i == index) continue;
-			overlapArea += newRectangle.computeIntersectionArea(childBoundingBoxes[i]);
+        for( unsigned i = 0; i < entries.size(); i++ ) {
+            const auto &entry = entries[i];
+            if( i == index ) continue;
+			overlapArea += newRectangle.computeIntersectionArea(
+                std::get<Node::Branch>( entry ).boundingBox
+            );
 		}
 
 		return overlapArea;
@@ -262,10 +202,6 @@ namespace rstartree
 	// TODO: Write the analogous chooseSubtree(Rectangle searchRectangle)
 	Node *Node::chooseSubtree(Point givenPoint)
 	{
-		// This gets changed here
-
-		// Basically we need to implememt the choose subtree algorithm here
-		// Honestly not much has changed so we don't really need to do much
 		/*
 			CS1: This is CAlled on the root! Just like above
 			CS2: If N is a leaf return N (same)
@@ -280,41 +216,51 @@ namespace rstartree
 
 		// CL1 [Initialize]
 		Node *node = this;
+        assert( this->parent == nullptr );
 
 		for (;;)
 		{
+
+            std::cout << "Working on node: " << node << std::endl;
+
 			// CL2 [Leaf check]
-			if (node->children.size() == 0)
-			{
+            bool isLeaf = node->entries.empty() or !std::holds_alternative<Branch>( node->entries[0] );
+            
+			if( isLeaf ) {
 				return node;
 			}
 			// our children point to leaves
-			else if (node->children[0]->children.size() == 0)
-			{
+            const Branch &firstBranch = std::get<Branch>( node->entries[0] );
+            assert( !firstBranch.child->entries.empty() );
+            bool childrenAreLeaves = !std::holds_alternative<Branch>( std::get<Branch>( node->entries[0] ).child->entries[0] );
+			if( childrenAreLeaves ) {
 				// Choose the entry in N whose rectangle needs least overlap enlargement 
 				unsigned smallestOverlapExpansionIndex = 0;
-				float smallestOverlapExpansion = computeOverlapGrowth(0, node->childBoundingBoxes, givenPoint);
-				float smallestExpansionArea = node->childBoundingBoxes[0].computeExpansionArea(givenPoint);
-				float smallestArea = node->childBoundingBoxes[0].area();
+				float smallestOverlapExpansion = std::numeric_limits<float>::max();
+				float smallestExpansionArea = std::numeric_limits<float>::max();
+				float smallestArea = std::numeric_limits<float>::max();
 
-				// float smallestOverlapExpansion = node->childBoundingBoxes[0].computeExpansionArea(givenPoint);
-				for (unsigned i = 0; i < node->childBoundingBoxes.size(); ++i)
-				{
-					float testOverlapExpansionArea = computeOverlapGrowth(i, node->childBoundingBoxes, givenPoint);
+                Rectangle pointBox = boxFromNodeEntry( givenPoint );
+                std::cout << "PointBox: " << std::endl;
+                for( unsigned i = 0; i < node->entries.size(); i++ ) {
+                    const NodeEntry &entry = node->entries[i];
+                    
+					float testOverlapExpansionArea = computeOverlapGrowth(i, node->entries, pointBox);
 					if (smallestOverlapExpansion > testOverlapExpansionArea)
 					{
 						smallestOverlapExpansionIndex = i;
 						smallestOverlapExpansion = testOverlapExpansionArea;
 
+                        const Branch &b = std::get<Branch>( entry );
 						// update smallesExpansionArea if needed
-						float testExpansionArea = node->childBoundingBoxes[i].computeExpansionArea(givenPoint);
+						float testExpansionArea = b.boundingBox.computeExpansionArea(givenPoint);
 						if (smallestExpansionArea > testExpansionArea)
 						{
 							smallestExpansionArea = testExpansionArea;
 						}
 
 						// update area if needed
-						float testArea = node->childBoundingBoxes[i].area();
+						float testArea = b.boundingBox.area();
 						if (smallestArea > testArea)
 						{
 							smallestArea = testArea;
@@ -323,24 +269,26 @@ namespace rstartree
 					else if (smallestOverlapExpansion == testOverlapExpansionArea)
 					{
 						// Use expansion area to break tie
-						float testExpansionArea = node->childBoundingBoxes[i].computeExpansionArea(givenPoint);
+                        const Branch &b = std::get<Branch>( entry );
+						float testExpansionArea = b.boundingBox.computeExpansionArea(givenPoint);
 						if (smallestExpansionArea > testExpansionArea)
 						{
 							smallestOverlapExpansionIndex = i;
 							smallestExpansionArea = testExpansionArea;
 							
 							// update area if needed
-							float testArea = node->childBoundingBoxes[i].area();
+							float testArea = b.boundingBox.area();
 							if (smallestArea > testArea)
 							{
 								smallestArea = testArea;
 							}
 
 						}
-						else if  (smallestExpansionArea == testExpansionArea)
+						else if (smallestExpansionArea == testExpansionArea)
 						{
 							// use area to break tie
-							float testArea = node->childBoundingBoxes[i].area();
+                            const Branch &b = std::get<Branch>( entry );
+							float testArea = b.boundingBox.area();
 							if (smallestArea > testArea)
 							{
 								smallestOverlapExpansionIndex = i;
@@ -351,36 +299,35 @@ namespace rstartree
 				}
 
 				// Return Node since this is now a leaf
-				return node->children[smallestOverlapExpansionIndex];;
-			}
-			else
-			{
+				return std::get<Branch>( node->entries[smallestOverlapExpansionIndex] ).child;
+			} else {
 				// CL2 [Choose subtree]
 				// Find the bounding box with least required expansion/overlap?
-				// TODO: Break ties by using smallest area
 				unsigned smallestExpansionIndex = 0;
-				float smallestExpansionArea = node->childBoundingBoxes[0].computeExpansionArea(givenPoint);
-				float smallestArea = node->childBoundingBoxes[0].area();
+				float smallestExpansionArea = std::numeric_limits<float>::max();
+				float smallestArea = std::numeric_limits<float>::max();
 
-				for (unsigned i = 0; i < node->childBoundingBoxes.size(); ++i)
-				{
-					float testExpansionArea = node->childBoundingBoxes[i].computeExpansionArea(givenPoint);
+                for( unsigned i = 0; i < node->entries.size(); i++ ) {
+                    const NodeEntry &entry = node->entries[i];
+                    const Branch &b = std::get<Branch>( entry );
+                    std:: cout << "Entry has boundingBox: " << b.boundingBox << std::endl;
+					float testExpansionArea = b.boundingBox.computeExpansionArea(givenPoint);
 					if (smallestExpansionArea > testExpansionArea)
 					{
 						smallestExpansionIndex = i;
 						smallestExpansionArea = testExpansionArea;
 
 						// potentially update smallest area
-						float testArea = node->childBoundingBoxes[i].area();
+						float testArea = b.boundingBox.area();
 						if (smallestArea > testArea)
 						{
 							smallestArea = testArea;
 						}	
 					}
-					else if (smallestExpansionArea > testExpansionArea)
+					else if (smallestExpansionArea == testExpansionArea)
 					{
 						// use area to break tie
-						float testArea = node->childBoundingBoxes[i].area();
+						float testArea = b.boundingBox.area();
 						if (smallestArea > testArea)
 						{
 							smallestExpansionIndex = i;
@@ -390,56 +337,66 @@ namespace rstartree
 				}
 
 				// CL3 [Descend until a leaf is reached]
-				node = node->children[smallestExpansionIndex];
+				node = std::get<Branch>( node->entries[smallestExpansionIndex] ).child;
 			}
 		}
 	}
 
 	// Always called on root, this = root
+    // FIXME: read the chooseNode code again and see what the heck it is supposed to do b/c this
+    // is most def wrong.
 	Node *Node::chooseNode(ReinsertionEntry e)
 	{
 		// CL1 [Initialize]
 		Node *node = this;
+        assert( this->parent == nullptr );
 
 		for (;;)
 		{
-			// CL2 [Leaf check]
-			if (node->children.size() == 0)
-			{
-				for (unsigned i = 0; i < e.level; ++i)
-				{
-					node = node->parent;
-				}
+            assert( !node->entries.empty() );
+            bool isLeaf = !std::holds_alternative<Branch>( node->entries[0] );
 
-				return node;
+			// CL2 [Leaf check]
+			if( isLeaf ) {
+                // return root?
+                // I don't understand what the original code here does. Assert for now.
+                assert( false );
+                while( node->parent ) {
+                    node = node->parent;
+                }
+                return node;
 			}
 			// our children point to leaves
-			else if (node->children[0]->children.size() == 0)
+            bool childrenAreLeaves = !std::holds_alternative<Branch>( std::get<Branch>( node->entries[0] ).child->entries[0] );
+			if (childrenAreLeaves)
 			{
 				// Choose the entry in N whose rectangle needs least overlap enlargement 
 				unsigned smallestOverlapExpansionIndex = 0;
-				float smallestOverlapExpansion = computeOverlapGrowth(0, node->childBoundingBoxes, e.boundingBox);
-				float smallestExpansionArea = node->childBoundingBoxes[0].computeExpansionArea(e.boundingBox);
-				float smallestArea = node->childBoundingBoxes[0].area();
+				float smallestOverlapExpansion = std::numeric_limits<float>::max();
+				float smallestExpansionArea = std::numeric_limits<float>::max();
+				float smallestArea = std::numeric_limits<float>::max();
+
 
 				// find smallest overlap 
-				for (unsigned i = 0; i < node->childBoundingBoxes.size(); ++i)
+				for( unsigned i = 0; i < node->entries.size(); ++i)
 				{
-					float testOverlapExpansionArea = computeOverlapGrowth(i, node->childBoundingBoxes, e.boundingBox);
+                    const NodeEntry &entry = entries[i];
+                    const Branch &b = std::get<Branch>( entry );
+					float testOverlapExpansionArea = computeOverlapGrowth(i, node->entries, e.boundingBox);
 					if (smallestOverlapExpansion > testOverlapExpansionArea)
 					{
 						smallestOverlapExpansionIndex = i;
 						smallestOverlapExpansion = testOverlapExpansionArea;
 
 						// potentially update smallest expansion area
-						float testExpansionArea = node->childBoundingBoxes[i].computeExpansionArea(e.boundingBox);
+						float testExpansionArea = b.boundingBox.computeExpansionArea(e.boundingBox);
 						if (smallestExpansionArea > testExpansionArea)
 						{
 							smallestExpansionArea = testExpansionArea;
 						}
 
 						// potentially update smallest area
-						float testArea = node->childBoundingBoxes[i].area();
+						float testArea = b.boundingBox.area();
 						if (smallestArea > testArea)
 						{
 							smallestArea = testArea;
@@ -448,23 +405,23 @@ namespace rstartree
 					else if (smallestOverlapExpansion == testOverlapExpansionArea)
 					{
 						// Use expansion area to break tie
-						float testExpansionArea = node->childBoundingBoxes[i].computeExpansionArea(e.boundingBox);
+						float testExpansionArea = b.boundingBox.computeExpansionArea(e.boundingBox);
 						if (smallestExpansionArea > testExpansionArea)
 						{
 							smallestOverlapExpansionIndex = i;
 							smallestExpansionArea = testExpansionArea;
 
 							// potentially update smallest area
-							float testArea = node->childBoundingBoxes[i].area();
+							float testArea = b.boundingBox.area();
 							if (smallestArea > testArea)
 							{
 								smallestArea = testArea;
 							}
 						}
-						else if  (smallestExpansionArea == testExpansionArea)
+						else if (smallestExpansionArea == testExpansionArea)
 						{
 							// use area to break tie
-							float testArea = node->childBoundingBoxes[i].area();
+							float testArea = b.boundingBox.area();
 							if (smallestArea > testArea)
 							{
 								smallestOverlapExpansionIndex = i;
@@ -475,27 +432,28 @@ namespace rstartree
 				}
 
 				// we continue down to next level to properly do the leaf check
-				node = node->children[smallestOverlapExpansionIndex];;
+				node = std::get<Branch>(node->entries[smallestOverlapExpansionIndex] ).child;
 			}
 			else
 			{
 				// CL2 [Choose subtree]
 				// Find the bounding box with least required expansion/overlap?
-				// TODO: Break ties by using smallest area
 				unsigned smallestExpansionIndex = 0;
-				float smallestExpansionArea = node->childBoundingBoxes[0].computeExpansionArea(e.boundingBox);
-				float smallestArea = node->childBoundingBoxes[0].area();
+				float smallestExpansionArea = std::numeric_limits<float>::max();
+				float smallestArea = std::numeric_limits<float>::max();
 
-				for (unsigned i = 0; i < node->childBoundingBoxes.size(); ++i)
+				for (unsigned i = 0; i < node->entries.size(); ++i)
 				{
-					float testExpansionArea = node->childBoundingBoxes[i].computeExpansionArea(e.boundingBox);
+                    const NodeEntry &entry = node->entries[i];
+                    const Branch &b = std::get<Branch>( entry );
+					float testExpansionArea = b.boundingBox.computeExpansionArea(e.boundingBox);
 					if (smallestExpansionArea > testExpansionArea)
 					{
 						smallestExpansionIndex = i;
 						smallestExpansionArea = testExpansionArea;
 
 						// potentially update smallestArea
-						float testArea = node->childBoundingBoxes[i].area();
+						float testArea = b.boundingBox.area();
 						if (smallestArea > testArea)
 						{
 							smallestArea = testArea;
@@ -504,7 +462,7 @@ namespace rstartree
 					else if (smallestExpansionArea == testExpansionArea)
 					{
 						// use area to break tie
-						float testArea = node->childBoundingBoxes[i].area();
+						float testArea = b.boundingBox.area();
 						if (smallestArea > testArea)
 						{
 							smallestExpansionIndex = i;
@@ -514,67 +472,56 @@ namespace rstartree
 				}
 
 				// CL3 [Descend until a leaf is reached]
-				node = node->children[smallestExpansionIndex];
+				node = std::get<Branch>( node->entries[smallestExpansionIndex] ).child;
 			}
 		}
 	}
 
-	// TODO: Optimize
 	Node *Node::findLeaf(Point givenPoint)
 	{
-		// Initialize our context stack
-		std::stack<Node *> context;
-		context.push(this);
-		Node *currentContext;
+        // Am I a leaf.
+        assert( !this->entries.empty() );
+        bool isLeaf = !std::holds_alternative<Branch>( this->entries[0] );
+        if( isLeaf ) {
+            for( const auto &entry : entries ) {
+                const Point &p = std::get<Point>( entry );
+                if( p == givenPoint ) {
+                    return this;
+                }
+            }
+            return nullptr;
+        }
 
-		for (;!context.empty();)
-		{
-			currentContext = context.top();
-			context.pop();
-
-			if (currentContext->children.size() == 0)
-			{
-				// FL2 [Search leaf node for record]
-				// Check each entry to see if it matches E
-				for (unsigned i = 0; i < currentContext->data.size(); ++i)
-				{
-					if (currentContext->data[i] == givenPoint)
-					{
-						return currentContext;
-					}
-				}
-			}
-			else
-			{
-				// FL1 [Search subtrees]
-				// Determine which branches we need to follow
-				for (unsigned i = 0; i < currentContext->childBoundingBoxes.size(); ++i)
-				{
-					if (currentContext->childBoundingBoxes[i].containsPoint(givenPoint))
-					{
-						// Add the child to the nodes we will consider
-						context.push(currentContext->children[i]);
-					}
-				}
-			}
-		}
-
-		return nullptr;
+        for( const auto &entry : entries ) {
+            const Branch &b = std::get<Branch>( entry );
+            if( b.boundingBox.containsPoint( givenPoint ) ) {
+                Node *ptr = b.child->findLeaf( givenPoint );
+                if( ptr != nullptr ) {
+                    return ptr;
+                }
+                // Nope, keep looking...
+            }
+        }
+        return nullptr;
 	}
 
 	double Node::computeTotalMarginSumOfBoundingBoxes()
 	{
 
+        // I cannot be a leaf.
+        assert( !this->entries.empty() );
+        assert( std::holds_alternative<Branch>( this->entries[0] ) );
+
 		// use the data to find total sum of all M - 2m +2 possible distributions
 
 		// first split the vector into vectorA and vectorB with vectorA being the minimum
-		std::vector<Rectangle>::const_iterator groupABegin = childBoundingBoxes.begin();
-		std::vector<Rectangle>::const_iterator groupAEnd = childBoundingBoxes.begin() + minBranchFactor;
-		std::vector<Rectangle>::const_iterator groupBBegin = childBoundingBoxes.begin() + minBranchFactor;
-		std::vector<Rectangle>::const_iterator groupBEnd = childBoundingBoxes.end();
+		const auto groupABegin = entries.begin();
+		const auto groupAEnd = entries.begin() + minBranchFactor;
+        const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupBEnd = entries.end();
 
-		std::vector<Rectangle> groupA(groupABegin, groupAEnd);
-		std::vector<Rectangle> groupB(groupBBegin, groupBEnd);
+		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
+		std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
 
 		// Find the best size out of all the distributions
 		double sumOfAllMarginValues = 0;
@@ -582,25 +529,24 @@ namespace rstartree
 		// will test all M - 2m + 2 possible distributions
 		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
 		{
-
 			// compute the margin of groupA and groupB
-			Rectangle boundingBoxA(groupA[0]); // we do this so some values exist
-			for (unsigned int i = 1; i < groupA.size(); i += 1)
+			Rectangle boundingBoxA( std::get<Branch>( groupA[0] ).boundingBox );
+			for (unsigned int i = 1; i < groupA.size(); i++ )
 			{
-				boundingBoxA.expand(groupA[i]);
+				boundingBoxA.expand( std::get<Branch>( groupA[i] ).boundingBox );
 			}
 
-			Rectangle boundingBoxB(groupB[0]);
-			for (unsigned int i = 1; i < groupB.size(); i += 1)
+			Rectangle boundingBoxB( std::get<Branch>( groupB[0] ).boundingBox );
+			for (unsigned int i = 1; i < groupB.size(); i++ )
 			{
-				boundingBoxB.expand(groupB[i]);
+				boundingBoxB.expand( std::get<Branch>( groupB[i] ).boundingBox );
 			}
 
 			sumOfAllMarginValues += boundingBoxA.margin() + boundingBoxB.margin();
 
 			
 			// Add one new value to groupA and remove one from groupB to get to next distribution
-			Rectangle transfer = groupB.front();
+			NodeEntry transfer = groupB.front();
 			groupB.erase(groupB.begin());
 			groupA.push_back(transfer);
 		}
@@ -609,19 +555,25 @@ namespace rstartree
 
 	}
 
+    //FIXME: this is functionally the same as above. Remove later.
 	std::vector<std::vector<unsigned int>> Node::chooseSplitIndexByRectangle(unsigned int axis)
 	{
-		// split the sorted by axis childBoundingBoxes array into the ideal split
-		std::vector<Rectangle>::const_iterator groupABegin = childBoundingBoxes.begin();
-		std::vector<Rectangle>::const_iterator groupAEnd = childBoundingBoxes.begin() + minBranchFactor;
-		std::vector<Rectangle>::const_iterator groupBBegin = childBoundingBoxes.begin() + minBranchFactor;
-		std::vector<Rectangle>::const_iterator groupBEnd = childBoundingBoxes.end();
 
-		std::vector<Rectangle> groupA(groupABegin, groupAEnd);
+        // Not a leaf
+        assert( !this->entries.empty() );
+        assert( std::holds_alternative<Branch>( this->entries[0] ) );
+
+		// split the sorted by axis childBoundingBoxes array into the ideal split
+		const auto groupABegin = entries.begin();
+		const auto groupAEnd = entries.begin() + minBranchFactor;
+		const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupBEnd = entries.end();
+
+		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
 		std::vector<unsigned int> groupAIndices(groupA.size());
 		std::iota(groupAIndices.begin(), groupAIndices.end(), 0);
 
-		std::vector<Rectangle> groupB(groupBBegin, groupBEnd);
+		std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
 		std::vector<unsigned int> groupBIndices(groupB.size());
 		std::iota(groupBIndices.begin(), groupBIndices.end(), minBranchFactor);
 
@@ -629,23 +581,23 @@ namespace rstartree
 		std::vector<std::vector<unsigned int>> groups;
 
 		// Find the best size out of all the distributions
-		unsigned int minOverlapValue = std::numeric_limits<unsigned int>::max();
-		unsigned int minAreaValue = std::numeric_limits<unsigned int>::max();
+		float minOverlapValue = std::numeric_limits<float>::max();
+		float minAreaValue = std::numeric_limits<float>::max();
 
 		// will test all M - 2m + 2 possible groupings
 		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
 		{
 			// compute the margin of groupA and groupB
-			Rectangle boundingBoxA(groupA[0]);
-			for (unsigned int i = 0; i < groupA.size(); i += 1)
+			Rectangle boundingBoxA( std::get<Branch>( groupA[0] ).boundingBox );
+			for (unsigned int i = 0; i < groupA.size(); i++ )
 			{
-				boundingBoxA.expand(groupA[i]);
+				boundingBoxA.expand( std::get<Branch>( groupA[i] ).boundingBox );
 			}
 
-			Rectangle boundingBoxB(groupB[0]);
-			for (unsigned int i = 0; i < groupB.size(); i += 1)
+			Rectangle boundingBoxB( std::get<Branch>( groupB[0] ).boundingBox );
+			for (unsigned int i = 0; i < groupB.size(); i++ )
 			{
-				boundingBoxB.expand(groupB[i]);
+				boundingBoxB.expand( std::get<Branch>( groupB[i] ).boundingBox );
 			}
 
 			unsigned int currDistOverlapVal = boundingBoxA.computeIntersectionArea(boundingBoxB);
@@ -674,7 +626,7 @@ namespace rstartree
 			}
 			
 			// Add one new value to groupA and remove one from groupB to get a new grouping
-			Rectangle transferRectangle = groupB.front();
+			NodeEntry transferRectangle = groupB.front();
 			unsigned int transferIndex = groupBIndices.front();
 			groupB.erase(groupB.begin());
 			groupBIndices.erase(groupBIndices.begin());
@@ -687,24 +639,29 @@ namespace rstartree
 
 	unsigned int Node::chooseSplitAxis(Node *newChild)
 	{
+
+        // Not leaf.
+        assert( !this->entries.empty() );
+        assert( std::holds_alternative<Branch>( this->entries[0] ) );
 		// find optimal index for grouping the bouding boxes by using total margin sums
 		unsigned int optimalAxis = 0;
 		
 		// For now we will say there is only 2 axis; however, we can set up geometry.h to include an axis type
 		// eventually we can make this a loop to work with multi dimensional data
 		// Sort along x axis
-		std::sort(childBoundingBoxes.begin(), childBoundingBoxes.end(), Node::sortByXRectangleFirst());
+
+		std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
 		unsigned int marginsFromAxisX = computeTotalMarginSumOfBoundingBoxes();
 
 		// Sort along y axis
-		std::sort(childBoundingBoxes.begin(), childBoundingBoxes.end(), Node::sortByYRectangleFirst());
+		std::sort(entries.begin(), entries.end(), sortByYRectangleFirst());
 		unsigned int marginsFromAxisY = computeTotalMarginSumOfBoundingBoxes();
 
 		if (marginsFromAxisX < marginsFromAxisY)
 		{
 			// X axis is better
 			// resort childBoundingBoxes
-			std::sort(childBoundingBoxes.begin(), childBoundingBoxes.end(), Node::sortByXRectangleFirst());
+			std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
 			optimalAxis = 0;
 		}
 		else
@@ -716,6 +673,8 @@ namespace rstartree
 		return optimalAxis;
 	}
 
+    // This is simlar to the other one, but relies on that confusing copy thing. FIXME.
+    // Combine methods.
 	Node *Node::splitNode(Node *newChild)
 	{
 		/*
@@ -724,15 +683,15 @@ namespace rstartree
 			S3: Distribute the entries among these two groups
 		*/
 
-		std::cout << "GOT THAT WEIRD SPLIT" << std::endl;
-
 		STATSPLIT();
 
-		float dataSize = data.size();
 
 		// We first insert the point into the data to do computations
-		children.push_back(newChild);
-		childBoundingBoxes.push_back(newChild->boundingBox());
+
+        
+        Branch b( newChild->boundingBox(), newChild );
+        entries.emplace_back( std::move( b ) );
+
 		newChild->parent = this; //	I hope we didn't do this already
 
 		// Call chooseSplitAxis to determine the axis perpendicular to which the split is perfromed
@@ -750,25 +709,16 @@ namespace rstartree
 		// Given split indices, Create the new node and fill it with groupB entries by doing complicated stuff
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
 		unsigned groupASize = groupA.size();
-		unsigned groupALastIndex = groupASize - 1;
 		unsigned iGroupB;
 		for (unsigned i = 0; i < groupB.size(); ++i)
 		{
 			iGroupB = groupB[i];
-			children[iGroupB]->parent = newSibling;	// this may include our new child so its parent is reset from this
-			newSibling->childBoundingBoxes.push_back(childBoundingBoxes[iGroupB]);
-			newSibling->children.push_back(children[iGroupB]);
-
-			childBoundingBoxes[iGroupB] = childBoundingBoxes[groupA[groupALastIndex]];
-			children[iGroupB] = children[groupA[groupALastIndex]];
-
-			groupALastIndex = groupALastIndex == 0 ? 0 : groupALastIndex - 1;
+            NodeEntry &groupBEnt = entries[iGroupB];
+            Branch &groupBBranch = std::get<Branch>( groupBEnt );
+            groupBBranch.child->parent = newSibling;
+			newSibling->entries.push_back(groupBEnt);
 		}
-		childBoundingBoxes.resize(groupASize);
-		children.resize(groupASize);
-
-		// Add newChild which caused this split in the first place
-		Rectangle newBox = newChild->boundingBox();
+        entries.resize(groupASize);
 
 		// Return our newly minted sibling
 		return newSibling;
@@ -782,13 +732,13 @@ namespace rstartree
 	{
 		// use the data to find possible matches (1, M - 2m +2) possible distributions
 		// first split the vector into vectorA and vectorB with vectorA being the minimum
-		std::vector<Point>::const_iterator groupABegin = data.begin();
-		std::vector<Point>::const_iterator groupAEnd = data.begin() + minBranchFactor;
-		std::vector<Point>::const_iterator groupBBegin = data.begin() + minBranchFactor;
-		std::vector<Point>::const_iterator groupBEnd = data.end();
+		const auto groupABegin = entries.begin();
+		const auto groupAEnd = entries.begin() + minBranchFactor;
+		const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupBEnd = entries.end();
 
-		std::vector<Point> groupA(groupABegin, groupAEnd);
-		std::vector<Point> groupB(groupBBegin, groupBEnd);
+		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
+		std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
 
 		// Find the total margin sum size out of all the distributions along given axis
 		double sumOfAllMarginValues = 0;
@@ -796,16 +746,16 @@ namespace rstartree
 		// will test all M - 2m + 2 groupings
 		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
 		{
-			Rectangle boundingBoxA(groupA[0], groupA[0]); // we do this so some values exist
-			for (unsigned int i = 1; i < groupA.size(); i += 1)
+			Rectangle boundingBoxA = boxFromNodeEntry( groupA[0] );
+			for (unsigned int i = 1; i < groupA.size(); i++)
 			{
-				boundingBoxA.expand(groupA[i]);
+				boundingBoxA.expand( boxFromNodeEntry( groupA[i] ) );
 			}
 
-			Rectangle boundingBoxB(groupB[0], groupB[0]);
-			for (unsigned int i = 1; i < groupB.size(); i += 1)
+			Rectangle boundingBoxB = boxFromNodeEntry( groupB[0] );
+			for (unsigned int i = 1; i < groupB.size(); i++)
 			{
-				boundingBoxB.expand(groupB[i]);
+				boundingBoxB.expand( boxFromNodeEntry( groupB[i] ) );
 			}
 
 			// Calculate new margin sum
@@ -813,7 +763,7 @@ namespace rstartree
 			
 			// Add one new value to groupA and remove one from groupB
 			// ok that's the next step and repeat
-			Point transfer = groupB.front();
+			NodeEntry transfer = groupB.front();
 			groupB.erase(groupB.begin());
 			groupA.push_back(transfer);
 		}
@@ -836,18 +786,18 @@ namespace rstartree
 		// For now we will say there is only 2 axis; however, we can set up geometry.h to include an axis type
 		// eventually we can make this a loop to work with multi dimensional data
 		// Sort along x axis
-		std::sort(data.begin(), data.end(), Node::sortByXFirst());
+		std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
 		double marginsFromAxisX = computeTotalMarginSum();
 
 		// Sort along y axis
-		std::sort(data.begin(), data.end(), Node::sortByYFirst());
+		std::sort(entries.begin(), entries.end(), sortByYRectangleFirst());
 		double marginsFromAxisY = computeTotalMarginSum();
 
 
 		if (marginsFromAxisX < marginsFromAxisY)
 		{
 			// X axis is better and resort data
-			std::sort(data.begin(), data.end(), Node::sortByXFirst());
+			std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
 			optimalAxis = 0;
 		}
 		else
@@ -871,22 +821,14 @@ namespace rstartree
 
 		// We assume this is called after we have sorted this->data according to axis.
 		(void) axis;
-#if !defined(NDEBUG)
-        // Verify the sort if we are in regular (i.e., not production) mode.
-		double prevVal = -std::numeric_limits<double>::max();
-		for(const auto &point : data)
-		{
-			assert(point[axis] >= prevVal);
-			prevVal = point[axis];
-		}
-#endif
-		std::vector<Point>::const_iterator groupABegin = data.begin();
-		std::vector<Point>::const_iterator groupAEnd = data.begin() + minBranchFactor;
-		std::vector<Point>::const_iterator groupBBegin = data.begin() + minBranchFactor;
-		std::vector<Point>::const_iterator groupBEnd = data.end();
 
-		std::vector<Point> groupA(groupABegin, groupAEnd);
-		std::vector<Point> groupB(groupBBegin, groupBEnd);
+		const auto groupABegin = entries.begin();
+		const auto groupAEnd = entries.begin() + minBranchFactor;
+		const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupBEnd = entries.end();
+
+		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
+		std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
 		unsigned splitIndex;
 
 		// Find the best size out of all the distributions
@@ -900,16 +842,16 @@ namespace rstartree
 		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
 		{
 			// compute the margin of groupA and groupB
-			Rectangle boundingBoxA(groupA[0], groupA[0]);
+			Rectangle boundingBoxA = boxFromNodeEntry( groupA[0] );
 			for (unsigned int i = 1; i < groupA.size(); i += 1)
 			{
-				boundingBoxA.expand(groupA[i]);
+				boundingBoxA.expand( boxFromNodeEntry( groupA[i] ) );
 			}
 
-			Rectangle boundingBoxB(groupB[0], groupB[0]);
+			Rectangle boundingBoxB = boxFromNodeEntry(groupB[0]);
 			for (unsigned int i = 1; i < groupB.size(); i += 1)
 			{
-				boundingBoxB.expand(groupB[i]);
+				boundingBoxB.expand( boxFromNodeEntry( groupB[i] ) );
 			}
 
 			// Computer intersection area to determine best grouping of data points
@@ -940,7 +882,7 @@ namespace rstartree
 			}
 			
 			// Add one new value to groupA and remove one from groupB to obtain next distribution
-			Point transferPoint = groupB.front();
+			NodeEntry transferPoint = groupB.front();
 			groupB.erase(groupB.begin());
 			groupA.push_back(transferPoint);
 
@@ -960,12 +902,8 @@ namespace rstartree
 			S3: Distribute the entries among these two groups
 		*/
 
-		// Verify that I am a leaf.
-		assert(this->children.size() == 0);
-
 		STATSPLIT();
 
-		float dataSize = data.size();
         std::cout << "Going to split Node." << std::endl;
 
 		// Call chooseSplitAxis to determine the axis perpendicular to which the split is performed
@@ -975,19 +913,13 @@ namespace rstartree
 
 		// Create the new node and fill it with groupB entries by doing really complicated stuff
 		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		newSibling->data.reserve(data.size()-splitIndex);
+		newSibling->entries.reserve(entries.size()-splitIndex);
 
-		for( const auto &p : data ) {
-			std::cout << p << ",";
-		}
-		std::cout << std::endl;
-
-
-		// Copy everything to the right of the splitPOint (inclusive) to the new sibling
-		std::copy(data.begin() + splitIndex, data.end(), std::back_inserter(newSibling->data));
+		// Copy everything to the right of the splitPoint (inclusive) to the new sibling
+		std::copy(entries.begin() + splitIndex, entries.end(), std::back_inserter(newSibling->entries));
 
 		// Chop our node's data down.
-		data.resize(splitIndex);
+		entries.resize(splitIndex);
 
 		// Return our newly minted sibling
 		return newSibling;
@@ -996,10 +928,6 @@ namespace rstartree
 
 	Node *Node::overflowTreatment(Node *nodeToInsert, std::vector<bool> &hasReinsertedOnLevel)
 	{
-		// I cannot be a leaf node.
-		assert( this->children.size() > 0 );
-		assert( this->data.size() == 0 );
-
 		Node *node = this;
 		if (hasReinsertedOnLevel.at(node->level)) {
 			std::cout << "Calling split for node." << std::endl;
@@ -1049,11 +977,10 @@ namespace rstartree
 				if (siblingNode != nullptr)
 				{
 					// AT4 [Propogate the node split upwards]
-					node->parent->childBoundingBoxes.push_back(siblingNode->boundingBox());
-					node->parent->children.push_back(siblingNode);
-					siblingNode->parent = node->parent;
+                    Branch b( siblingNode->boundingBox(), siblingNode );
+                    node->parent->entries.emplace_back( std::move( b ) );
 
-					if( node->parent->children.size() > node->parent->maxBranchFactor ) {
+					if( node->parent->entries.size() > node->parent->maxBranchFactor ) {
 						std::cout << "We don't have enough room in parent to add this guy." << std::endl;
 						Node *siblingParent = node->parent->overflowTreatment(hasReinsertedOnLevel);
 						node = node->parent;
@@ -1082,13 +1009,14 @@ namespace rstartree
 
 		Point globalCenterPoint = boundingBox().centerPoint();
 
-		std::sort(data.begin(), data.end(), [globalCenterPoint](Point pointA, Point pointB) {
-			return pointA.distance(globalCenterPoint) > pointB.distance(globalCenterPoint);
+        // FIXME: what to do about rectangles here.
+		std::sort(entries.begin(), entries.end(), [globalCenterPoint](NodeEntry a, NodeEntry b) {
+			return boxFromNodeEntry( a ).centerPoint().distance(globalCenterPoint) > boxFromNodeEntry( b ).centerPoint().distance(globalCenterPoint);
 		});
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
 		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
-		unsigned int numNodesToReinsert = p * data.size();
+		unsigned int numNodesToReinsert = p * entries.size();
 
 		// 4. Insert the removed entries -> OK we can also specify a flag that is
 		//		if you want to reinsert starting with largest values (i.e. start at index 0) or closest values (Start at index p)
@@ -1099,22 +1027,25 @@ namespace rstartree
             root = root->parent;
         }
 
-        // We need to reinsert these points.
+        // We need to reinsert these entries
         // We pop them all off before hand so that any reorganization of the tree during this recursive
-        // insert does not affect which points get popped off.
-        std::vector<Point> pointsToReinsert;
-        pointsToReinsert.reserve(numNodesToReinsert);
+        // insert does not affect which entries get popped off.
+        std::vector<NodeEntry> entriesToReinsert;
+        entriesToReinsert.reserve(numNodesToReinsert);
         
-        std::copy(data.begin(), data.begin() + numNodesToReinsert, std::back_inserter(pointsToReinsert));
-        data.erase(data.begin(), data.begin() + numNodesToReinsert);
+        std::copy(entries.begin(), entries.begin() + numNodesToReinsert, std::back_inserter(entriesToReinsert));
+        entries.erase(entries.begin(), entries.begin() + numNodesToReinsert);
 
         // During this recursive insert (we are already in an insert, since we are 
         // reInserting), we may end up here again. If we do, we should still be using the same
         // hasReinsertedOnLevel vector because it corresponds to the activities we have performed
         // during a single point/rectangle insertion (the top level one).
-        for(const auto &point : pointsToReinsert) {
+        for(const auto &entry: entriesToReinsert) {
             // the root may change. Update it.
-            root = root->insert(point, hasReinsertedOnLevel);
+            // FIXME: I'm going to assume this a point for now, but it could also be a Branch.
+            // If this is a branch, construct a reinsertion entry and throw it through.
+            // Better --- make insert take a NodeEntry!
+            root = root->insert( std::get<Point>( entry ), hasReinsertedOnLevel);
         }
 
 		return nullptr;
@@ -1124,8 +1055,8 @@ namespace rstartree
 		// reinsert children of node that has overflowed
 
 		// temporarily add the newly inserted child's boundingBox into your own
-		childBoundingBoxes.push_back(e.child->boundingBox());
-		children.push_back(e.child);
+        Branch b( e.child->boundingBox(), e.child );
+        entries.emplace_back( std::move( b ) );
 		e.child->parent = this;
 		e.child->level = this->level + 1; // temproarily set new level
 
@@ -1134,26 +1065,23 @@ namespace rstartree
 		// 2. RI2 Sort the entries by DECREASING index
 		Point globalCenterPoint = boundingBox().centerPoint();
 	
-		std::sort(childBoundingBoxes.begin(), childBoundingBoxes.end(), [globalCenterPoint](Rectangle boundingBoxA, Rectangle boundingBoxB) {
-			return (boundingBoxA.centerPoint().distance(globalCenterPoint) > boundingBoxB.centerPoint().distance(globalCenterPoint));
+		std::sort(entries.begin(), entries.end(), [globalCenterPoint](NodeEntry a, NodeEntry b) {
+			return (boxFromNodeEntry(a).centerPoint().distance(globalCenterPoint) > boxFromNodeEntry(b).centerPoint().distance(globalCenterPoint));
 		});
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
 		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
-		unsigned int nodesToReinsert = p * childBoundingBoxes.size();
+		unsigned int nodesToReinsert = p * entries.size();
 
 		// 4. Insert the removed entries -> OK we can also specify a flag that is
 		//		if you want to reinsert starting with largest values (i.e. start at index 0) or closest values (Start at index p)
-		for (unsigned int i = 0; i < nodesToReinsert; i += 1)
-		{
-			// For now we are working with deleting from the largest values
-			// Remove from bounding boxes
-			childBoundingBoxes.erase(childBoundingBoxes.begin());
-			children.erase(children.begin());
-
+        std::vector<NodeEntry> entriesToReinsert(entries.begin(), entries.begin() + nodesToReinsert);
+        entries.erase(entries.begin(), entries.begin()+nodesToReinsert);
+        for( const auto &entry : entriesToReinsert ) {
+            // FIXME: can probably just reinsert entries directly
 			ReinsertionEntry e = {};
-			e.boundingBox = childBoundingBoxes[i];
-			e.child = children[i];
+			e.boundingBox = std::get<Branch>( entry ).boundingBox;
+			e.child = std::get<Branch>( entry ).child;
 			e.level = level;
 			insert(e, hasReinsertedOnLevel); // reinsert child
 		}
@@ -1210,10 +1138,10 @@ namespace rstartree
 		Node *siblingLeaf = nullptr;
 
 		// I2 [Add record to leaf node]
-	    leaf->data.push_back(givenPoint);
+	    leaf->entries.push_back(givenPoint);
 
         // If we exceed maxBranchFactor, need to do sometyhing about it.
-        if (leaf->data.size() > maxBranchFactor) 
+        if (leaf->entries.size() > maxBranchFactor) 
 		{
 			// we call overflow treatment to determine how our sibling node is treated
 			// if we do forced reInsert siblingLeaf if nullptr and is properly dealt with in adjustTree
@@ -1232,12 +1160,12 @@ namespace rstartree
 			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
-			newRoot->childBoundingBoxes.push_back(this->boundingBox());
-			newRoot->children.push_back(this);
+            Branch b1( this->boundingBox(), this );
+            newRoot->entries.emplace_back( std::move( b1 ) );
 
 			siblingNode->parent = newRoot;
-			newRoot->childBoundingBoxes.push_back(siblingNode->boundingBox());
-			newRoot->children.push_back(siblingNode);
+            Branch b2( siblingNode->boundingBox(), siblingNode );
+            newRoot->entries.emplace_back(std::move( b2 ) );
 
 			// fix the reinserted length
 			hasReinsertedOnLevel.push_back(false);
@@ -1278,12 +1206,12 @@ namespace rstartree
 		Node *siblingNode = nullptr;
 
 		// I2 [Add record to node]
-		if (node->children.size() < node->maxBranchFactor)
+		if (node->entries.size() < node->maxBranchFactor)
 		{
 			e.child->parent = node;
 			e.child->level = node->level + 1;
-			node->childBoundingBoxes.push_back(e.boundingBox);
-			node->children.push_back(e.child);
+            Branch b( e.boundingBox, e.child );
+			node->entries.emplace_back( std::move( b ) );
 		}
 		else
 		{
@@ -1300,12 +1228,12 @@ namespace rstartree
 			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
-			newRoot->childBoundingBoxes.push_back(this->boundingBox());
-			newRoot->children.push_back(this);
+            Branch b( this->boundingBox(), this );
+            newRoot->entries.emplace_back( std::move( b ) );
 
 			siblingNode->parent = newRoot;
-			newRoot->childBoundingBoxes.push_back(siblingNode->boundingBox());
-			newRoot->children.push_back(siblingNode);
+            Branch b2( siblingNode->boundingBox(), siblingNode );
+            newRoot->entries.emplace_back( std::move( b2 ) );
 
 			return newRoot;
 		}
@@ -1325,14 +1253,13 @@ namespace rstartree
 		std::vector<ReinsertionEntry> Q;
 
 		// CT2 [Find parent entry]
-		unsigned nodeBoundingBoxesSize, nodeDataSize;
+		unsigned entriesSize;
 		while (node->parent != nullptr)
 		{
-			nodeBoundingBoxesSize = node->childBoundingBoxes.size();
-			nodeDataSize = node->data.size();
+            entriesSize = node->entries.size();
+
 			// CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
-			if (nodeBoundingBoxesSize >= node->minBranchFactor || nodeDataSize >= node->minBranchFactor)
-			{
+			if (entriesSize >= node->minBranchFactor ) {
 				STATSHRINK();
 
 				node->parent->updateBoundingBox(node, node->boundingBox());
@@ -1350,23 +1277,26 @@ namespace rstartree
 				node->parent->removeChild(node);
 
 				// Add a reinsertion entry for each data point or branch of this node
-				for (unsigned i = 0; i < nodeDataSize; ++i)
-				{
-					ReinsertionEntry e = {};
-					e.child = nullptr;
-					e.data = node->data[i];
-					e.level = 0;
-					Q.push_back(e);
-				}
-
-				for (unsigned i = 0; i < nodeBoundingBoxesSize; ++i)
-				{
-					ReinsertionEntry e = {};
-					e.boundingBox = node->childBoundingBoxes[i];
-					e.child = node->children[i];
-					e.level = level;
-					Q.push_back(e);
-				}
+                // FIXME: combine and just do an entry reinsert
+                assert( !node->entries.empty() );
+                bool isLeaf = !std::holds_alternative<Branch>( node->entries[0] );
+                if( isLeaf ) {
+                    for( const auto &entry : node->entries ) {
+                        ReinsertionEntry e = {};
+                        e.child = nullptr;
+                        e.data = std::get<Point>( entry );
+                        e.level = 0;
+                        Q.push_back(e);
+                    }
+                } else {
+                    for( const auto &entry : node->entries ) {
+                        ReinsertionEntry e = {};
+                        const Branch &b = std::get<Branch>( entry );
+                        e.boundingBox = b.boundingBox;
+                        e.child = b.child;
+                        e.level = level;
+                        Q.push_back(e);
+                    }
 
 				// Prepare for garbage collection
 				Node *garbage = node;
@@ -1378,12 +1308,12 @@ namespace rstartree
 
 				// Cleanup ourselves without deleting children b/c they will be reinserted
 				delete garbage;
+                }
 			}
 		}
 
 		// CT6 [Re-insert oprhaned entries]
-		for (unsigned i = 0; i < Q.size(); ++i)
-		{
+		for (unsigned i = 0; i < Q.size(); ++i) {
 			node = node->insert(Q[i], hasReinsertedOnLevel);
 		}
 
@@ -1410,13 +1340,14 @@ namespace rstartree
 		Node *root = leaf->condenseTree(hasReinsertedOnLevel);
 
 		// D4 [Shorten tree]
-		if (root->children.size() == 1)
+		if (root->entries.size() == 1)
 		{
 			// slice the hasReinsertedOnLevel
 			// we are removing the root to shorten the tree so we then decide to remove the root
 			hasReinsertedOnLevel.erase(hasReinsertedOnLevel.begin());
-			root->children[0]->parent = nullptr;
-			return root->children[0];
+            Branch &b = std::get<Branch>( root->entries[0] );
+            b.child->parent = nullptr;
+			return b.child;
 		}
 		else
 		{
@@ -1424,98 +1355,86 @@ namespace rstartree
 		}
 	}
 
-	void Node::print(unsigned n)
+	void Node::print(unsigned n) const
 	{
-		std::string indendtation(n * 4, ' ');
-		std::cout << indendtation << "Node " << (void *)this << std::endl;
-		std::cout << indendtation << "{" << std::endl;
-		std::cout << indendtation << "    Parent: " << (void *)parent << std::endl;
-		std::cout << indendtation << "    Bounding Boxes: " << std::endl;
-		for (unsigned i = 0; i < childBoundingBoxes.size(); ++i)
-		{
-			std::cout << indendtation << "		" << childBoundingBoxes[i] << std::endl;
-		}
-		std::cout << std::endl << indendtation << "    Children: ";
-		for (unsigned i = 0; i < children.size(); ++i)
-		{
-			std::cout << (void *)children[i] << ' ';
-		}
-		std::cout << std::endl << indendtation << "    Data: ";
-		for (unsigned i = 0; i < data.size(); ++i)
-		{
-			std::cout << data[i];
-		}
-		std::cout << std::endl << indendtation << "}" << std::endl;
+		std::string indentation(n * 4, ' ');
+		std::cout << indentation << "Node " << (void *)this << std::endl;
+		std::cout << indentation << "{" << std::endl;
+		std::cout << indentation << "    Parent: " << (void *)parent << std::endl;
+		std::cout << indentation << "    Entries: " << std::endl;
+        bool isLeaf = !std::holds_alternative<Branch>( entries[0] );
+        if( isLeaf ) {
+            for( const auto &entry : entries ) {
+                std::cout << indentation << "		" << std::get<Point>( entry ) << std::endl;
+            }
+        } else {
+            for( const auto &entry : entries ) {
+                const Branch &b = std::get<Branch>( entry );
+                std::cout << indentation << "		" << b.boundingBox << ", ptr: " << b.child << std::endl;
+            }
+        }
+		std::cout << std::endl << indentation << "}" << std::endl;
 	}
 
-	void Node::printTree(unsigned n)
+	void Node::printTree(unsigned n) const
 	{
 		// Print this node first
 		print(n);
 
 		// Print any of our children with one more level of indentation
-		if (children.size() > 0)
-		{
-			for (unsigned i = 0; i < childBoundingBoxes.size(); ++i)
-			{
-				// Recurse
-				children[i]->printTree(n + 1);
-			}
-		}
+        if( std::holds_alternative<Branch>( entries[0] ) ) {
+            for( const auto &entry : entries ) {
+                const Branch &b = std::get<Branch>( entry );
+                b.child->printTree(n + 1);
+            }
+        }
 	}
 
-	unsigned Node::checksum()
+	unsigned Node::checksum() const
 	{
 		unsigned sum = 0;
 
-		if (children.size() == 0)
-		{
-			for (unsigned i = 0; i < data.size(); ++i)
-			{
-                std::cout << data[i] << std::endl;
-				sum += (unsigned)data[i][0];
-				sum += (unsigned)data[i][1];
-			}
-		}
-		else
-		{
-            for(unsigned i = 0; i < children.size(); i++)
-            {
+        bool isLeaf = !std::holds_alternative<Branch>( entries[0] );
+        if( isLeaf ) {
+            for( const auto &entry : entries ) {
+                const Point &p = std::get<Point>( entry );
+                sum += (unsigned)p[0];
+                sum += (unsigned)p[1];
+            }
+		} else {
+            for( const auto &entry : entries ) {
 				// Recurse
-				sum += children[i]->checksum();
+                const Branch &b = std::get<Branch>( entry );
+				sum += b.child->checksum();
             }
 		}
 
 		return sum;
 	}
 
-	unsigned Node::height()
+	unsigned Node::height() const
 	{
 		unsigned ret = 0;
-		Node *node = this;
+		const Node *node = this;
 
-		for (;;)
-		{
+		for (;;) {
 			ret++;
-			if (node->children.size() == 0)
-			{
-				return ret;
-			}
-			else
-			{
-				node = node->children[0];
-			}
+            if( std::holds_alternative<Branch>( node->entries[0] ) ) {
+                node = std::get<Branch>( node->entries[0] ).child;
+            } else {
+                return ret;
+            }
 		}
 	}
 
-	void Node::stat()
+	void Node::stat() const
 	{
 		STATHEIGHT(height());
 
 		// Initialize our context stack
-		std::stack<Node *> context;
+		std::stack<const Node *> context;
 		context.push(this);
-		Node *currentContext;
+		const Node *currentContext;
 		size_t memoryFootprint = 0;
 
 		for (;!context.empty();)
@@ -1523,23 +1442,28 @@ namespace rstartree
 			currentContext = context.top();
 			context.pop();
 
-			if (currentContext->children.size() == 0)
-			{
-				STATBRANCH(currentContext->data.size());
-				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);
-			}
-			else
-			{
-				STATBRANCH(currentContext->children.size());
-				memoryFootprint += sizeof(Node) + currentContext->children.size() * sizeof(Node *) + currentContext->childBoundingBoxes.size() * sizeof(Rectangle);
+            bool isLeaf = !std::holds_alternative<Branch>( currentContext->entries[0] );
+            if( isLeaf ) {
+				STATBRANCH(currentContext->entries.size());
+				memoryFootprint += sizeof(Node) + currentContext->entries.size() * sizeof(Point);
+            } else {
+				STATBRANCH(currentContext->entries.size());
+				memoryFootprint += sizeof(Node) + currentContext->entries.size() * sizeof(Node *) + currentContext->entries.size() * sizeof(Rectangle);
 				// Determine which branches we need to follow
-				for (unsigned i = 0; i < currentContext->childBoundingBoxes.size(); ++i)
-				{
-					context.push(currentContext->children[i]);
+                for( const auto &entry : currentContext->entries ) {
+                    context.push( std::get<Branch>( entry ).child );
 				}
 			}
 		}
 
 		STATMEM(memoryFootprint);
 	}
+
+    Rectangle boxFromNodeEntry( const Node::NodeEntry &entry ) {
+        if( std::holds_alternative<Node::Branch>( entry ) ) {
+            return std::get<Node::Branch>( entry ).boundingBox;
+        }
+        const Point &p = std::get<Point>( entry );
+        return Rectangle( p, p );
+    }
 }
