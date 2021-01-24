@@ -358,10 +358,8 @@ namespace rstartree
 
 			// CL2 [Leaf check]
 			if( isLeaf ) {
-                // return root?
-                // I don't understand what the original code here does. Assert for now.
-                assert( false );
-                while( node->parent ) {
+                // Walk back up to the level at which we should insert.
+                for( unsigned i = 0; i < e.level; i++ ) {
                     node = node->parent;
                 }
                 return node;
@@ -1126,32 +1124,44 @@ namespace rstartree
 		}
 	}
 
-	// Always called on root, this = root
-	Node *Node::insert(Point givenPoint, std::vector<bool> &hasReinsertedOnLevel)
+	Node *Node::insert( NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel)
 	{
 
+        // Always called on root, this = root
         assert( this->level == 0 );
+
+        bool nodeEntryIsPoint = std::holds_alternative<Point>( nodeEntry );
 		STATEXEC(stat());
 
+        Node *insertionPoint;
 		// I1 [Find position for new record]
-		Node *leaf = chooseSubtree(givenPoint);
-		Node *siblingLeaf = nullptr;
+        if( nodeEntryIsPoint ) {
+            insertionPoint = chooseSubtree( std::get<Point>( nodeEntry ) );
+        } else {
+            ReinsertionEntry e;
+            Branch &b = std::get<Branch>( nodeEntry );
+            e.boundingBox = b.boundingBox;
+            e.child = b.child;
+            e.level = b.child->level+1;
+            insertionPoint = chooseNode( e );
+        }
+		Node *sibling = nullptr;
 
 		// I2 [Add record to leaf node]
-	    leaf->entries.push_back(givenPoint);
+	    insertionPoint->entries.push_back(nodeEntry);
 
         // If we exceed maxBranchFactor, need to do sometyhing about it.
-        if (leaf->entries.size() > maxBranchFactor) 
+        if (insertionPoint->entries.size() > maxBranchFactor) 
 		{
 			// we call overflow treatment to determine how our sibling node is treated
 			// if we do forced reInsert siblingLeaf if nullptr and is properly dealt with in adjustTree
             std::cout << "It's time for overflow treatment!" << std::endl;
-			siblingLeaf = leaf->overflowTreatment(hasReinsertedOnLevel);
+			sibling = insertionPoint->overflowTreatment(hasReinsertedOnLevel);
 			std::cout << "Overflow treatment done." << std::endl;
 		}
 
 		// I3 [Propogate overflow treatment changes upward]
-		Node *siblingNode = leaf->adjustTree(siblingLeaf, hasReinsertedOnLevel);
+		Node *siblingNode = insertionPoint->adjustTree(sibling, hasReinsertedOnLevel);
 
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)

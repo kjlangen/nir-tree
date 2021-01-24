@@ -112,7 +112,7 @@ namespace rstartree
 			std::vector<Point> search(Rectangle &requestedRectangle);
 
 			// These return the root of the tree.
-			Node *insert(Point givenPoint, std::vector<bool> &hasReinsertedOnLevel);
+			Node *insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel);
 			Node *remove(Point givenPoint, std::vector<bool> hasReinsertedOnLevel);
 
 			// Miscellaneous
