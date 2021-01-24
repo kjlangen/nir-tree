@@ -198,9 +198,7 @@ namespace rstartree
 		return overlapArea;
 	}
 
-	// Always called on root, this = root
-	// TODO: Write the analogous chooseSubtree(Rectangle searchRectangle)
-	Node *Node::chooseSubtree(Point givenPoint)
+	Node *Node::chooseSubtree(NodeEntry givenNodeEntry)
 	{
 		/*
 			CS1: This is CAlled on the root! Just like above
@@ -216,23 +214,38 @@ namespace rstartree
 
 		// CL1 [Initialize]
 		Node *node = this;
+
+        // Always called on root, this = root
         assert( this->parent == nullptr );
+
+        bool entryIsBranch = std::holds_alternative<Branch>( givenNodeEntry );
+        Rectangle givenEntryBoundingBox = boxFromNodeEntry( givenNodeEntry );
 
 		for (;;)
 		{
-
-            std::cout << "Working on node: " << node << std::endl;
 
 			// CL2 [Leaf check]
             bool isLeaf = node->entries.empty() or !std::holds_alternative<Branch>( node->entries[0] );
             
 			if( isLeaf ) {
+
+                // If this node is at level 3, I need to walk up 3 levels from the leaf to get
+                // to level 4 for an insert.
+
+                if( entryIsBranch ) {
+                    const Branch &b = std::get<Branch>( givenNodeEntry );
+                    for( unsigned i = 0; i < b.child->level; i++ ) {
+                        node = node->parent;
+                    }
+                }
 				return node;
 			}
+
 			// our children point to leaves
             const Branch &firstBranch = std::get<Branch>( node->entries[0] );
             assert( !firstBranch.child->entries.empty() );
             bool childrenAreLeaves = !std::holds_alternative<Branch>( std::get<Branch>( node->entries[0] ).child->entries[0] );
+
 			if( childrenAreLeaves ) {
 				// Choose the entry in N whose rectangle needs least overlap enlargement 
 				unsigned smallestOverlapExpansionIndex = 0;
@@ -240,20 +253,18 @@ namespace rstartree
 				float smallestExpansionArea = std::numeric_limits<float>::max();
 				float smallestArea = std::numeric_limits<float>::max();
 
-                Rectangle pointBox = boxFromNodeEntry( givenPoint );
-                std::cout << "PointBox: " << std::endl;
                 for( unsigned i = 0; i < node->entries.size(); i++ ) {
                     const NodeEntry &entry = node->entries[i];
+                    const Branch &b = std::get<Branch>( entry );
                     
-					float testOverlapExpansionArea = computeOverlapGrowth(i, node->entries, pointBox);
+					float testOverlapExpansionArea = computeOverlapGrowth(i, node->entries, givenEntryBoundingBox);
 					if (smallestOverlapExpansion > testOverlapExpansionArea)
 					{
 						smallestOverlapExpansionIndex = i;
 						smallestOverlapExpansion = testOverlapExpansionArea;
 
-                        const Branch &b = std::get<Branch>( entry );
 						// update smallesExpansionArea if needed
-						float testExpansionArea = b.boundingBox.computeExpansionArea(givenPoint);
+						float testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
 						if (smallestExpansionArea > testExpansionArea)
 						{
 							smallestExpansionArea = testExpansionArea;
@@ -269,8 +280,7 @@ namespace rstartree
 					else if (smallestOverlapExpansion == testOverlapExpansionArea)
 					{
 						// Use expansion area to break tie
-                        const Branch &b = std::get<Branch>( entry );
-						float testExpansionArea = b.boundingBox.computeExpansionArea(givenPoint);
+						float testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
 						if (smallestExpansionArea > testExpansionArea)
 						{
 							smallestOverlapExpansionIndex = i;
@@ -287,7 +297,6 @@ namespace rstartree
 						else if (smallestExpansionArea == testExpansionArea)
 						{
 							// use area to break tie
-                            const Branch &b = std::get<Branch>( entry );
 							float testArea = b.boundingBox.area();
 							if (smallestArea > testArea)
 							{
@@ -297,9 +306,9 @@ namespace rstartree
 						}
 					}
 				}
+                // Proceed to leaf check.
+				node = std::get<Branch>( node->entries[smallestOverlapExpansionIndex] ).child;
 
-				// Return Node since this is now a leaf
-				return std::get<Branch>( node->entries[smallestOverlapExpansionIndex] ).child;
 			} else {
 				// CL2 [Choose subtree]
 				// Find the bounding box with least required expansion/overlap?
@@ -311,7 +320,7 @@ namespace rstartree
                     const NodeEntry &entry = node->entries[i];
                     const Branch &b = std::get<Branch>( entry );
                     std:: cout << "Entry has boundingBox: " << b.boundingBox << std::endl;
-					float testExpansionArea = b.boundingBox.computeExpansionArea(givenPoint);
+					float testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
 					if (smallestExpansionArea > testExpansionArea)
 					{
 						smallestExpansionIndex = i;
@@ -333,139 +342,6 @@ namespace rstartree
 							smallestExpansionIndex = i;
 							smallestArea = testArea;
 						}	
-					}
-				}
-
-				// CL3 [Descend until a leaf is reached]
-				node = std::get<Branch>( node->entries[smallestExpansionIndex] ).child;
-			}
-		}
-	}
-
-	// Always called on root, this = root
-    // FIXME: read the chooseNode code again and see what the heck it is supposed to do b/c this
-    // is most def wrong.
-	Node *Node::chooseNode(ReinsertionEntry e)
-	{
-		// CL1 [Initialize]
-		Node *node = this;
-        assert( this->parent == nullptr );
-
-		for (;;)
-		{
-            assert( !node->entries.empty() );
-            bool isLeaf = !std::holds_alternative<Branch>( node->entries[0] );
-
-			// CL2 [Leaf check]
-			if( isLeaf ) {
-                // Walk back up to the level at which we should insert.
-                for( unsigned i = 0; i < e.level; i++ ) {
-                    node = node->parent;
-                }
-                return node;
-			}
-			// our children point to leaves
-            bool childrenAreLeaves = !std::holds_alternative<Branch>( std::get<Branch>( node->entries[0] ).child->entries[0] );
-			if (childrenAreLeaves)
-			{
-				// Choose the entry in N whose rectangle needs least overlap enlargement 
-				unsigned smallestOverlapExpansionIndex = 0;
-				float smallestOverlapExpansion = std::numeric_limits<float>::max();
-				float smallestExpansionArea = std::numeric_limits<float>::max();
-				float smallestArea = std::numeric_limits<float>::max();
-
-
-				// find smallest overlap 
-				for( unsigned i = 0; i < node->entries.size(); ++i)
-				{
-                    const NodeEntry &entry = entries[i];
-                    const Branch &b = std::get<Branch>( entry );
-					float testOverlapExpansionArea = computeOverlapGrowth(i, node->entries, e.boundingBox);
-					if (smallestOverlapExpansion > testOverlapExpansionArea)
-					{
-						smallestOverlapExpansionIndex = i;
-						smallestOverlapExpansion = testOverlapExpansionArea;
-
-						// potentially update smallest expansion area
-						float testExpansionArea = b.boundingBox.computeExpansionArea(e.boundingBox);
-						if (smallestExpansionArea > testExpansionArea)
-						{
-							smallestExpansionArea = testExpansionArea;
-						}
-
-						// potentially update smallest area
-						float testArea = b.boundingBox.area();
-						if (smallestArea > testArea)
-						{
-							smallestArea = testArea;
-						}
-					} 
-					else if (smallestOverlapExpansion == testOverlapExpansionArea)
-					{
-						// Use expansion area to break tie
-						float testExpansionArea = b.boundingBox.computeExpansionArea(e.boundingBox);
-						if (smallestExpansionArea > testExpansionArea)
-						{
-							smallestOverlapExpansionIndex = i;
-							smallestExpansionArea = testExpansionArea;
-
-							// potentially update smallest area
-							float testArea = b.boundingBox.area();
-							if (smallestArea > testArea)
-							{
-								smallestArea = testArea;
-							}
-						}
-						else if (smallestExpansionArea == testExpansionArea)
-						{
-							// use area to break tie
-							float testArea = b.boundingBox.area();
-							if (smallestArea > testArea)
-							{
-								smallestOverlapExpansionIndex = i;
-								smallestArea = testArea;
-							}
-						}
-					}
-				}
-
-				// we continue down to next level to properly do the leaf check
-				node = std::get<Branch>(node->entries[smallestOverlapExpansionIndex] ).child;
-			}
-			else
-			{
-				// CL2 [Choose subtree]
-				// Find the bounding box with least required expansion/overlap?
-				unsigned smallestExpansionIndex = 0;
-				float smallestExpansionArea = std::numeric_limits<float>::max();
-				float smallestArea = std::numeric_limits<float>::max();
-
-				for (unsigned i = 0; i < node->entries.size(); ++i)
-				{
-                    const NodeEntry &entry = node->entries[i];
-                    const Branch &b = std::get<Branch>( entry );
-					float testExpansionArea = b.boundingBox.computeExpansionArea(e.boundingBox);
-					if (smallestExpansionArea > testExpansionArea)
-					{
-						smallestExpansionIndex = i;
-						smallestExpansionArea = testExpansionArea;
-
-						// potentially update smallestArea
-						float testArea = b.boundingBox.area();
-						if (smallestArea > testArea)
-						{
-							smallestArea = testArea;
-						}
-					}
-					else if (smallestExpansionArea == testExpansionArea)
-					{
-						// use area to break tie
-						float testArea = b.boundingBox.area();
-						if (smallestArea > testArea)
-						{
-							smallestExpansionIndex = i;
-							smallestArea = testArea;
-						}
 					}
 				}
 
@@ -1122,21 +998,11 @@ namespace rstartree
         // Always called on root, this = root
         assert( this->level == 0 );
 
-        bool nodeEntryIsPoint = std::holds_alternative<Point>( nodeEntry );
 		STATEXEC(stat());
 
         Node *insertionPoint;
 		// I1 [Find position for new record]
-        if( nodeEntryIsPoint ) {
-            insertionPoint = chooseSubtree( std::get<Point>( nodeEntry ) );
-        } else {
-            ReinsertionEntry e;
-            Branch &b = std::get<Branch>( nodeEntry );
-            e.boundingBox = b.boundingBox;
-            e.child = b.child;
-            e.level = b.child->level+1;
-            insertionPoint = chooseNode( e );
-        }
+        insertionPoint = chooseSubtree( nodeEntry );
 		Node *sibling = nullptr;
 
 		// I2 [Add record to leaf node]

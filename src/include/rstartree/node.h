@@ -86,8 +86,7 @@ namespace rstartree
 			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 			void removeChild(Node *child);
 			void removeData(Point givenPoint);
-			Node *chooseSubtree(Point givenPoint);
-			Node *chooseNode(ReinsertionEntry e);
+			Node *chooseSubtree(NodeEntry nodeEntry);
 			Node *findLeaf(Point givenPoint);
 			double computeTotalMarginSumOfBoundingBoxes();
 			unsigned int chooseSplitAxis(Node *newChild);
