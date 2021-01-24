@@ -917,6 +917,9 @@ namespace rstartree
 		Node *node = this;
 		unsigned level = 0;
 
+        // Is Leaf
+        assert( this->entries.empty() || std::holds_alternative<Point>(  this->entries[0] ) );
+
 		std::vector<NodeEntry> Q;
 
 		// CT2 [Find parent entry]
@@ -971,6 +974,10 @@ namespace rstartree
 	// Always called on root, this = root
 	Node *Node::remove(Point givenPoint, std::vector<bool> hasReinsertedOnLevel)
 	{
+
+        assert( this->level == 0 );
+        assert( this->parent == nullptr );
+
 		STATEXEC(stat());
 
 		// D1 [Find node containing record]

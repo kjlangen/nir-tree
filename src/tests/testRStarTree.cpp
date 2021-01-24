@@ -637,7 +637,7 @@ TEST_CASE("R*Tree: testSplitNonLeafNode", "[broken]")
     REQUIRE( accumulator.size() == maxBranchFactor * maxBranchFactor + 1 );
 
 	newRoot->deleteSubtrees();
-	delete root;
+	delete newRoot;
 }
 
 TEST_CASE("R*Tree: computeTotalMarginSum") {
