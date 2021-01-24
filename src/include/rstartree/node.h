@@ -96,13 +96,10 @@ namespace rstartree
 			unsigned int chooseSplitAxis();
 			unsigned chooseSplitIndex(unsigned int axis);
 			Node *splitNode();
-			Node *adjustTree(Node *siblingLeaf, std::vector<bool> hasReinsertedOnLevel);
+			Node *adjustTree(Node *siblingLeaf, std::vector<bool> &hasReinsertedOnLevel);
 			Node *reInsert(std::vector<bool> &hasReinsertedOnLevel);
-			Node *reInsert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
-
 			Node *overflowTreatment(std::vector<bool> &hasReinsertedOnLevel);
-
-			Node *condenseTree(std::vector<bool> hasReinsertedOnLevel);
+			Node *condenseTree(std::vector<bool> &hasReinsertedOnLevel);
 
 			// Datastructure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
@@ -122,12 +119,6 @@ namespace rstartree
 
 			// operator overlaod for sorting
 			bool operator < (const Node &otherNode) const;
-
-			Node *overflowTreatment(Node *nodeToInsert, std::vector<bool> &hasReinsertedOnLevel); // TODO: duplicated code; investigate ways to merge this with above
-
-            // Static methods 
-			static Node *overflowTreatment(Node *node, ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
-
 	};
 
     Rectangle boxFromNodeEntry( const Node::NodeEntry &entry );

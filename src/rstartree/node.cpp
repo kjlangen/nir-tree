@@ -799,36 +799,7 @@ namespace rstartree
 		return newSibling;
 	}
 
-
-	Node *Node::overflowTreatment(Node *nodeToInsert, std::vector<bool> &hasReinsertedOnLevel)
-	{
-		Node *node = this;
-		if (hasReinsertedOnLevel.at(node->level)) {
-			std::cout << "Calling split for node." << std::endl;
-			return node->splitNode(nodeToInsert);
-		} else {
-			std::cout << "Calling reInsert for node." << std::endl;
-			hasReinsertedOnLevel.at(node->level) = true;
-			ReinsertionEntry e{};
-			e.boundingBox = nodeToInsert->boundingBox();
-			e.child = nodeToInsert;
-			e.level = node->level;
-
-			// In the Point variant of this code, we iterate over all the points in the thing
-			// and reinsert them. In this variant, we iterate over all of the childBoundingBoxes
-			// in the thing and reinsert those as children elsewhere.
-
-			Node *root = this;
-			while( root->parent ) {
-				root = root->parent;
-			}
-
-			return root->reInsert(e, hasReinsertedOnLevel);
-		}
-		
-	}
-
-	Node *Node::adjustTree(Node *sibling, std::vector<bool> hasReinsertedOnLevel)
+	Node *Node::adjustTree(Node *sibling, std::vector<bool> &hasReinsertedOnLevel)
 	{
 		// AT1 [Initialize]
 		Node *node = this;
@@ -921,40 +892,6 @@ namespace rstartree
 
 		return nullptr;
 	}
-
-	Node *Node::reInsert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel) {
-		// reinsert children of node that has overflowed
-
-		// temporarily add the newly inserted child's boundingBox into your own
-        Branch b( e.child->boundingBox(), e.child );
-        entries.emplace_back( std::move( b ) );
-		e.child->parent = this;
-		e.child->level = this->level + 1; // temproarily set new level
-
-		// 1. RI1 Compute distance between each of the boundBoxes.ceter and the 
-		//		gloabl bounding box -> parent's bounding box at that index
-		// 2. RI2 Sort the entries by DECREASING index
-		Point globalCenterPoint = boundingBox().centerPoint();
-	
-		std::sort(entries.begin(), entries.end(), [globalCenterPoint](NodeEntry a, NodeEntry b) {
-			return (boxFromNodeEntry(a).centerPoint().distance(globalCenterPoint) > boxFromNodeEntry(b).centerPoint().distance(globalCenterPoint));
-		});
-
-		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
-		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
-		unsigned int nodesToReinsert = p * entries.size();
-
-		// 4. Insert the removed entries -> OK we can also specify a flag that is
-		//		if you want to reinsert starting with largest values (i.e. start at index 0) or closest values (Start at index p)
-        std::vector<NodeEntry> entriesToReinsert(entries.begin(), entries.begin() + nodesToReinsert);
-        entries.erase(entries.begin(), entries.begin()+nodesToReinsert);
-        for( const auto &entry : entriesToReinsert ) {
-			insert(entry, hasReinsertedOnLevel); // reinsert child
-		}
-
-		return nullptr;
-	}
-
 	
 	/*
 		overflow treatement for dealing with a leaf node that is too big (overflow)
@@ -972,24 +909,6 @@ namespace rstartree
 			return reInsert(hasReinsertedOnLevel);
 		}
 		
-	}
-
-	/*
-		overflow treatement for reinserting an entry/subtree, e, to node
-		TODO: we need to modify this to acutally pass in a level
-	*/
-	Node *Node::overflowTreatment(Node *node, ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel)
-	{
-		// if not root and we have already done a forced reinsert on this level we split the node to deal with overflow
-		if (hasReinsertedOnLevel.at(node->level))
-		{
-			return node->splitNode(e.child);
-		}
-		else	// this is our first time overflowing this level and we do a forced reInsert
-		{
-			hasReinsertedOnLevel.at(node->level) = true;
-			return node->reInsert(e, hasReinsertedOnLevel);
-		}
 	}
 
 	Node *Node::insert( NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel)
@@ -1061,7 +980,7 @@ namespace rstartree
 	}
 
 	// To be called on a leaf
-	Node *Node::condenseTree(std::vector<bool> hasReinsertedOnLevel)
+	Node *Node::condenseTree(std::vector<bool> &hasReinsertedOnLevel)
 	{
 		// CT1 [Initialize]
 		Node *node = this;
