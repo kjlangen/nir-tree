@@ -103,7 +103,7 @@ namespace rstartree
         }
 	}
 
-    void Node::searchSub(Point &requestedPoint, std::vector<Point> &accumulator) {
+    void Node::searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const {
         if( entries.empty() ) {
             // I don't think this can happen, so assert in case it does for some reason.
             assert( false );
@@ -129,7 +129,7 @@ namespace rstartree
         }
     }
 
-    void Node::searchSub(Rectangle &rectangle, std::vector<Point> &accumulator) {
+    void Node::searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const {
         if( entries.empty() ) {
             // I don't think this can happen, so assert in case it does for some reason.
             assert( false );
@@ -156,7 +156,7 @@ namespace rstartree
     }
 
 
-	std::vector<Point> Node::search(Point &requestedPoint)
+	std::vector<Point> Node::search( const Point &requestedPoint ) const
 	{
 		STATEXEC(stat());
         std::vector<Point> accumulator;
@@ -164,7 +164,7 @@ namespace rstartree
         return accumulator;
     }
 
-	std::vector<Point> Node::search(Rectangle &requestedRectangle)
+	std::vector<Point> Node::search( const Rectangle &requestedRectangle ) const
 	{
 		STATEXEC(stat());
 
@@ -510,94 +510,7 @@ namespace rstartree
 
 		return groups;
 	}
-
-	unsigned int Node::chooseSplitAxis(Node *newChild)
-	{
-
-        // Not leaf.
-        assert( !this->entries.empty() );
-        assert( std::holds_alternative<Branch>( this->entries[0] ) );
-		// find optimal index for grouping the bouding boxes by using total margin sums
-		unsigned int optimalAxis = 0;
-		
-		// For now we will say there is only 2 axis; however, we can set up geometry.h to include an axis type
-		// eventually we can make this a loop to work with multi dimensional data
-		// Sort along x axis
-
-		std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
-		unsigned int marginsFromAxisX = computeTotalMarginSumOfBoundingBoxes();
-
-		// Sort along y axis
-		std::sort(entries.begin(), entries.end(), sortByYRectangleFirst());
-		unsigned int marginsFromAxisY = computeTotalMarginSumOfBoundingBoxes();
-
-		if (marginsFromAxisX < marginsFromAxisY)
-		{
-			// X axis is better
-			// resort childBoundingBoxes
-			std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
-			optimalAxis = 0;
-		}
-		else
-		{
-			// Y axis is better
-			optimalAxis = 1;
-		}
-
-		return optimalAxis;
-	}
-
-    // This is simlar to the other one, but relies on that confusing copy thing. FIXME.
-    // Combine methods.
-	Node *Node::splitNode(Node *newChild)
-	{
-		/*
-			S1: Call chooseSplitAxis to determine the axis in which the split of the childBoundingBoxes will be performed
-			S2: Invoke chooseSplitIndex given the access to determine the best distribution along a sorting on this axis
-			S3: Distribute the entries among these two groups
-		*/
-
-		STATSPLIT();
-
-
-		// We first insert the point into the data to do computations
-
-        
-        Branch b( newChild->boundingBox(), newChild );
-        entries.emplace_back( std::move( b ) );
-
-		newChild->parent = this; //	I hope we didn't do this already
-
-		// Call chooseSplitAxis to determine the axis perpendicular to which the split is perfromed
-		// 	For now we will save the axis as a int -> since this allows for room for growth in the future
-		unsigned int axis = chooseSplitAxis(newChild);
-
-		// Call ChooseSplitIndex to create a grouping of the vaues
-		std::vector<std::vector<unsigned>> groups = chooseSplitIndexByRectangle(axis);
-
-		// Take the two groups and modify the actual node
-		// Setup the two groups which will be the entries in the two new nodes
-		std::vector<unsigned> groupA = groups.at(0);
-		std::vector<unsigned> groupB = groups.at(1);
-
-		// Given split indices, Create the new node and fill it with groupB entries by doing complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
-		unsigned groupASize = groupA.size();
-		unsigned iGroupB;
-		for (unsigned i = 0; i < groupB.size(); ++i)
-		{
-			iGroupB = groupB[i];
-            NodeEntry &groupBEnt = entries[iGroupB];
-            Branch &groupBBranch = std::get<Branch>( groupBEnt );
-            groupBBranch.child->parent = newSibling;
-			newSibling->entries.push_back(groupBEnt);
-		}
-        entries.resize(groupASize);
-
-		// Return our newly minted sibling
-		return newSibling;
-	}
-
+	
 	/*
 		Helper function that takes a pre-sorted data and then computes the sum
 		of all margin values over all possible M - 2m + 2 distributions
@@ -778,7 +691,9 @@ namespace rstartree
 
 		STATSPLIT();
 
-        std::cout << "Going to split Node." << std::endl;
+        std::cout << "Going to split node." << std::endl;
+        std::cout << std::boolalpha << "Is Leaf: " << std::holds_alternative<Point>( this->entries[0] ) << std::endl;
+        std::cout << std::boolalpha << "Is root: " << (this->parent == nullptr ) << std::endl;
 
 		// Call chooseSplitAxis to determine the axis perpendicular to which the split is performed
 		// 	For now we will save the axis as a int -> since this allows for room for growth in the future
@@ -795,6 +710,9 @@ namespace rstartree
 		// Chop our node's data down.
 		entries.resize(splitIndex);
 
+        assert( !entries.empty() );
+        assert( !newSibling->entries.empty() );
+
 		// Return our newly minted sibling
 		return newSibling;
 	}
@@ -807,6 +725,7 @@ namespace rstartree
 
 		for (;;)
 		{
+            assert( node != nullptr );
             std::cout << "In adjustTree, am root: " << (node->parent == nullptr) << std::endl;
 			// AT2 [If node is the root, stop]
 			if (node->parent == nullptr)
@@ -827,13 +746,24 @@ namespace rstartree
 
 					if( node->parent->entries.size() > node->parent->maxBranchFactor ) {
 						std::cout << "We don't have enough room in parent to add this guy." << std::endl;
+                        Node *parentBefore = node->parent;
 						Node *siblingParent = node->parent->overflowTreatment(hasReinsertedOnLevel);
-						node = node->parent;
-						siblingNode = siblingParent;
+                        std::cout << "Overflow on node parent done." << std::endl;
 
-					}
-					node = node->parent;
-					siblingNode = nullptr;
+                        if( siblingParent ) {
+                            // We split our parent, so now we have two (possible) parents.
+                            assert( node->parent == siblingParent || node->parent == parentBefore );
+                            assert( siblingNode->parent == siblingParent || siblingNode->parent == parentBefore );
+
+                            // Need to keep traversing up.
+                            node = node->parent;
+                            siblingNode = siblingParent;
+                            assert( node != siblingNode );
+                        }
+					} else {
+                        node = node->parent;
+                        siblingNode = nullptr;
+                    }
 				}
 				else
 				{
@@ -938,6 +868,7 @@ namespace rstartree
 		}
 
 		// I3 [Propogate overflow treatment changes upward]
+        std::cout << "Insertion done. Going to do adjustTree. " << std::endl;
 		Node *siblingNode = insertionPoint->adjustTree(sibling, hasReinsertedOnLevel);
 
 		// I4 [Grow tree taller]

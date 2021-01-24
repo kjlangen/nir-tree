@@ -45,8 +45,8 @@ namespace rstartree
 		unsigned maxBranchFactor;
 		static constexpr float p = 0.3; 			// for reinsertion entries - set to 0.3 on default
 
-        void searchSub(Point &requestedPoint, std::vector<Point> &accumulator);
-        void searchSub(Rectangle &rectangle, std::vector<Point> &accumulator);
+        void searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const;
+        void searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const;
 
 		public:
 
@@ -70,8 +70,6 @@ namespace rstartree
                 }
             };
 
-
-
 			Node *parent;
             std::vector<NodeEntry> entries;
 			unsigned int level = 0;
@@ -89,9 +87,7 @@ namespace rstartree
 			Node *chooseSubtree(NodeEntry nodeEntry);
 			Node *findLeaf(Point givenPoint);
 			double computeTotalMarginSumOfBoundingBoxes();
-			unsigned int chooseSplitAxis(Node *newChild);
 			std::vector<std::vector<unsigned int>> chooseSplitIndexByRectangle(unsigned int axis);
-			Node *splitNode(Node *newChild);
 			double computeTotalMarginSum();
 			unsigned int chooseSplitAxis();
 			unsigned chooseSplitIndex(unsigned int axis);
@@ -103,8 +99,8 @@ namespace rstartree
 
 			// Datastructure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
-			std::vector<Point> search(Point &requestedPoint);
-			std::vector<Point> search(Rectangle &requestedRectangle);
+			std::vector<Point> search(const Point &requestedPoint) const;
+			std::vector<Point> search(const Rectangle &requestedRectangle) const;
 
 			// These return the root of the tree.
 			Node *insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel);

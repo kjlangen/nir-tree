@@ -121,7 +121,7 @@ TEST_CASE("R*Tree: testRemoveData")
 	REQUIRE(parentNode.entries.size() == 3);
 }
 
-TEST_CASE("R*Tree: testChooseLeaf", "[broken]")
+TEST_CASE("R*Tree: testChooseLeaf")
 {
 	// Create rtree::Nodes
     rstartree::Node *root = new rstartree::Node();
@@ -472,7 +472,8 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster3extra->entries.push_back(Point(2.0, 2.0));
 
 	// Test the split
-	rstartree::Node *cluster3p = cluster3->splitNode(cluster3extra);
+    cluster3->entries.push_back(createBranchEntry(cluster3extra->boundingBox(), cluster3extra ) );
+	rstartree::Node *cluster3p = cluster3->splitNode();
 
 	REQUIRE(cluster3->entries.size() == 4);
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3->entries[0]).boundingBox == Rectangle(-7.0, 1.0, -5.0, 3.0));
@@ -589,7 +590,7 @@ TEST_CASE("R*Tree: testInsertGrowTreeHeight")
 }
 
 
-/*TEST_CASE("R*Tree: testSplitNonLeafNode")
+TEST_CASE("R*Tree: testSplitNonLeafNode", "[broken]")
 {
 	unsigned maxBranchFactor = 7;
 	rstartree::Node *root = new rstartree::Node(3,7);
@@ -604,15 +605,40 @@ TEST_CASE("R*Tree: testInsertGrowTreeHeight")
 		root->entries.emplace_back( std::move( b ) );
 	}
 
+    // Should be 49 points
+    std::vector<Point> accumulator = root->search( Point(0.0,0.0) );
+    REQUIRE( accumulator.size() == maxBranchFactor * maxBranchFactor );
+
 	REQUIRE(root->entries.size() == maxBranchFactor);
 	std::vector<bool> reInsertedAtLevel = { false, false };
-	rstartree::Node *newRoot = root->insert(Point(0.0), reInsertedAtLevel);
+	rstartree::Node *newRoot = root->insert(Point(0.0, 0.0), reInsertedAtLevel);
 
-	REQUIRE( newRoot->entries.size() != 8 );
+    // Confirm tree structure
+	REQUIRE( newRoot->entries.size() == 2 );
+    const rstartree::Node::Branch &bLeft = std::get<rstartree::Node::Branch>( newRoot->entries[0] );
+    const rstartree::Node::Branch &bRight = std::get<rstartree::Node::Branch>( newRoot->entries[1] );
+    REQUIRE( bLeft.child->entries.size() == 3 );
+    REQUIRE( bRight.child->entries.size() == 5 );
 
-	root->deleteSubtrees();
+    for( const auto &entry : bLeft.child->entries ) {
+        rstartree::Node *child = std::get<rstartree::Node::Branch>( entry ).child;
+        // These are all leaves
+        REQUIRE( std::holds_alternative<Point>( child->entries[0] ) );
+    }
+
+    for( const auto &entry : bRight.child->entries ) {
+        rstartree::Node *child = std::get<rstartree::Node::Branch>( entry ).child;
+        // These are all leaves
+        REQUIRE( std::holds_alternative<Point>( child->entries[0] ) );
+    }
+
+    // Count
+    accumulator = newRoot->search( Point(0.0,0.0) );
+    REQUIRE( accumulator.size() == maxBranchFactor * maxBranchFactor + 1 );
+
+	newRoot->deleteSubtrees();
 	delete root;
-}*/
+}
 
 TEST_CASE("R*Tree: computeTotalMarginSum") {
 	// Leaf rtree::Node and new sibling leaf
