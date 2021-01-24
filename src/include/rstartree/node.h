@@ -10,12 +10,18 @@
 #include <numeric>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <util/geometry.h>
 #include <util/statistics.h>
 #include <variant>
 
+
+
 namespace rstartree
 {
+
+    class RStarTree;
+
 	class Node
 	{
 
@@ -31,19 +37,8 @@ namespace rstartree
         typedef std::variant<Point, Branch> NodeEntry;
 
         private:
-
-		class ReinsertionEntry
-		{
-			public:
-				Rectangle boundingBox;
-				Point data;
-				Node *child;
-				unsigned level;
-		};
 		
-		unsigned minBranchFactor;		// this cannot be 1 or else splitNode will fail
-		unsigned maxBranchFactor;
-		static constexpr float p = 0.3; 			// for reinsertion entries - set to 0.3 on default
+        const RStarTree &treeRef;
 
         void searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const;
         void searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const;
@@ -75,8 +70,7 @@ namespace rstartree
 			unsigned int level = 0;
 
 			// Constructors and destructors
-			Node();
-			Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p=nullptr);
+			Node( const RStarTree &treeRef, Node *p=nullptr );
 			void deleteSubtrees();
 
 			// Helper functions

@@ -1,21 +1,10 @@
 #include <rstartree/node.h>
+#include <rstartree/rstartree.h>
 
 namespace rstartree
 {
-	Node::Node()
+	Node::Node( const RStarTree &treeRef, Node *parent) : treeRef( treeRef ), parent( parent )
 	{
-        // FIXME: this is not actually a valid m, M setting per R* paper.
-        // Should be 2 <= m <= M/2.
-		minBranchFactor = 3;
-		maxBranchFactor = 5;
-		parent = nullptr;
-	}
-
-	Node::Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p)
-	{
-		this->minBranchFactor = minBranchFactor;
-		this->maxBranchFactor = maxBranchFactor;
-		this->parent = p;
 	}
 
 	void Node::deleteSubtrees()
@@ -319,7 +308,6 @@ namespace rstartree
                 for( unsigned i = 0; i < node->entries.size(); i++ ) {
                     const NodeEntry &entry = node->entries[i];
                     const Branch &b = std::get<Branch>( entry );
-                    std:: cout << "Entry has boundingBox: " << b.boundingBox << std::endl;
 					float testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
 					if (smallestExpansionArea > testExpansionArea)
 					{
@@ -390,8 +378,8 @@ namespace rstartree
 
 		// first split the vector into vectorA and vectorB with vectorA being the minimum
 		const auto groupABegin = entries.begin();
-		const auto groupAEnd = entries.begin() + minBranchFactor;
-        const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupAEnd = entries.begin() + treeRef.minBranchFactor;
+        const auto groupBBegin = entries.begin() + treeRef.minBranchFactor;
 		const auto groupBEnd = entries.end();
 
 		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
@@ -401,7 +389,7 @@ namespace rstartree
 		double sumOfAllMarginValues = 0;
 
 		// will test all M - 2m + 2 possible distributions
-		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
+		while (groupA.size() <= treeRef.maxBranchFactor && groupB.size() >= treeRef.minBranchFactor)
 		{
 			// compute the margin of groupA and groupB
 			Rectangle boundingBoxA( std::get<Branch>( groupA[0] ).boundingBox );
@@ -439,8 +427,8 @@ namespace rstartree
 
 		// split the sorted by axis childBoundingBoxes array into the ideal split
 		const auto groupABegin = entries.begin();
-		const auto groupAEnd = entries.begin() + minBranchFactor;
-		const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupAEnd = entries.begin() + treeRef.minBranchFactor;
+		const auto groupBBegin = entries.begin() + treeRef.minBranchFactor;
 		const auto groupBEnd = entries.end();
 
 		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
@@ -449,7 +437,7 @@ namespace rstartree
 
 		std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
 		std::vector<unsigned int> groupBIndices(groupB.size());
-		std::iota(groupBIndices.begin(), groupBIndices.end(), minBranchFactor);
+		std::iota(groupBIndices.begin(), groupBIndices.end(), treeRef.minBranchFactor);
 
 		// return value
 		std::vector<std::vector<unsigned int>> groups;
@@ -459,7 +447,7 @@ namespace rstartree
 		float minAreaValue = std::numeric_limits<float>::max();
 
 		// will test all M - 2m + 2 possible groupings
-		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
+		while (groupA.size() <= treeRef.maxBranchFactor && groupB.size() >= treeRef.minBranchFactor)
 		{
 			// compute the margin of groupA and groupB
 			Rectangle boundingBoxA( std::get<Branch>( groupA[0] ).boundingBox );
@@ -520,8 +508,8 @@ namespace rstartree
 		// use the data to find possible matches (1, M - 2m +2) possible distributions
 		// first split the vector into vectorA and vectorB with vectorA being the minimum
 		const auto groupABegin = entries.begin();
-		const auto groupAEnd = entries.begin() + minBranchFactor;
-		const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupAEnd = entries.begin() + treeRef.minBranchFactor;
+		const auto groupBBegin = entries.begin() + treeRef.minBranchFactor;
 		const auto groupBEnd = entries.end();
 
 		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
@@ -531,7 +519,7 @@ namespace rstartree
 		double sumOfAllMarginValues = 0;
 
 		// will test all M - 2m + 2 groupings
-		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
+		while (groupA.size() <= treeRef.maxBranchFactor && groupB.size() >= treeRef.minBranchFactor)
 		{
 			Rectangle boundingBoxA = boxFromNodeEntry( groupA[0] );
 			for (unsigned int i = 1; i < groupA.size(); i++)
@@ -554,7 +542,6 @@ namespace rstartree
 			groupB.erase(groupB.begin());
 			groupA.push_back(transfer);
 		}
-        std::cout << "Computed Margin: " << sumOfAllMarginValues << std::endl;
 
 		return sumOfAllMarginValues;
 	}
@@ -610,8 +597,8 @@ namespace rstartree
 		(void) axis;
 
 		const auto groupABegin = entries.begin();
-		const auto groupAEnd = entries.begin() + minBranchFactor;
-		const auto groupBBegin = entries.begin() + minBranchFactor;
+		const auto groupAEnd = entries.begin() + treeRef.minBranchFactor;
+		const auto groupBBegin = entries.begin() + treeRef.minBranchFactor;
 		const auto groupBEnd = entries.end();
 
 		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
@@ -623,10 +610,10 @@ namespace rstartree
 		unsigned int minAreaValue = std::numeric_limits<unsigned int>::max();
 
 		// For tracking what the current "cut" mark is.
-		unsigned curSplitPoint = minBranchFactor;
+		unsigned curSplitPoint = treeRef.minBranchFactor;
 
 		// this will try each of the M-2m + 2 groups
-		while (groupA.size() <= maxBranchFactor && groupB.size() >= minBranchFactor)
+		while (groupA.size() <= treeRef.maxBranchFactor && groupB.size() >= treeRef.minBranchFactor)
 		{
 			// compute the margin of groupA and groupB
 			Rectangle boundingBoxA = boxFromNodeEntry( groupA[0] );
@@ -691,17 +678,13 @@ namespace rstartree
 
 		STATSPLIT();
 
-        std::cout << "Going to split node." << std::endl;
-        std::cout << std::boolalpha << "Is Leaf: " << std::holds_alternative<Point>( this->entries[0] ) << std::endl;
-        std::cout << std::boolalpha << "Is root: " << (this->parent == nullptr ) << std::endl;
-
 		// Call chooseSplitAxis to determine the axis perpendicular to which the split is performed
 		// 	For now we will save the axis as a int -> since this allows for room for growth in the future
 		// Call ChooseSplitIndex to create optimal splitting of data array
 		unsigned splitIndex = chooseSplitIndex(chooseSplitAxis());
 
 		// Create the new node and fill it with groupB entries by doing really complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		Node *newSibling = new Node(treeRef, parent);
 		newSibling->entries.reserve(entries.size()-splitIndex);
 
 		// Copy everything to the right of the splitPoint (inclusive) to the new sibling
@@ -726,7 +709,6 @@ namespace rstartree
 		for (;;)
 		{
             assert( node != nullptr );
-            std::cout << "In adjustTree, am root: " << (node->parent == nullptr) << std::endl;
 			// AT2 [If node is the root, stop]
 			if (node->parent == nullptr)
 			{
@@ -744,11 +726,9 @@ namespace rstartree
                     Branch b( siblingNode->boundingBox(), siblingNode );
                     node->parent->entries.emplace_back( std::move( b ) );
 
-					if( node->parent->entries.size() > node->parent->maxBranchFactor ) {
-						std::cout << "We don't have enough room in parent to add this guy." << std::endl;
+					if( node->parent->entries.size() > node->parent->treeRef.maxBranchFactor ) {
                         Node *parentBefore = node->parent;
 						Node *siblingParent = node->parent->overflowTreatment(hasReinsertedOnLevel);
-                        std::cout << "Overflow on node parent done." << std::endl;
 
                         if( siblingParent ) {
                             // We split our parent, so now we have two (possible) parents.
@@ -791,7 +771,7 @@ namespace rstartree
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
 		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
-		unsigned int numNodesToReinsert = p * entries.size();
+		unsigned int numNodesToReinsert = treeRef.p * entries.size();
 
 		// 4. Insert the removed entries -> OK we can also specify a flag that is
 		//		if you want to reinsert starting with largest values (i.e. start at index 0) or closest values (Start at index p)
@@ -857,25 +837,21 @@ namespace rstartree
 		// I2 [Add record to leaf node]
 	    insertionPoint->entries.push_back(nodeEntry);
 
-        // If we exceed maxBranchFactor, need to do sometyhing about it.
-        if (insertionPoint->entries.size() > maxBranchFactor) 
+        // If we exceed treeRef.maxBranchFactor, need to do sometyhing about it.
+        if (insertionPoint->entries.size() > treeRef.maxBranchFactor) 
 		{
 			// we call overflow treatment to determine how our sibling node is treated
 			// if we do forced reInsert siblingLeaf if nullptr and is properly dealt with in adjustTree
-            std::cout << "It's time for overflow treatment!" << std::endl;
 			sibling = insertionPoint->overflowTreatment(hasReinsertedOnLevel);
-			std::cout << "Overflow treatment done." << std::endl;
 		}
 
 		// I3 [Propogate overflow treatment changes upward]
-        std::cout << "Insertion done. Going to do adjustTree. " << std::endl;
 		Node *siblingNode = insertionPoint->adjustTree(sibling, hasReinsertedOnLevel);
 
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
-            std::cout << "Growing tree..." << std::endl;
-			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
+			Node *newRoot = new Node(treeRef);
 
 			this->parent = newRoot;
             Branch b1( this->boundingBox(), this );
@@ -929,7 +905,7 @@ namespace rstartree
             entriesSize = node->entries.size();
 
 			// CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
-			if (entriesSize >= node->minBranchFactor ) {
+			if (entriesSize >= node->treeRef.minBranchFactor ) {
 				STATSHRINK();
 
 				node->parent->updateBoundingBox(node, node->boundingBox());

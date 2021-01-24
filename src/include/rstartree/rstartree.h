@@ -16,11 +16,13 @@ namespace rstartree
 	{
 		public:
 			Node *root;
-			std::vector<bool> hasReinsertedOnLevel;
+            const unsigned minBranchFactor;
+            const unsigned maxBranchFactor;
+            static constexpr float p = 0.3; // for reinsertion entries - set to 0.3 on default
+            std::vector<bool> hasReinsertedOnLevel;
 
 			// Constructors and destructors
 			RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-			RStarTree(Node *root);
 			~RStarTree();
 
 			// Datastructure interface
@@ -32,7 +34,10 @@ namespace rstartree
 
 			// Miscellaneous
 			unsigned checksum() override;
-			void print();
+			void print() override;
+            bool validate() override;
+	        void stat() override;
+	        void visualize() override;
 	};
 }
 

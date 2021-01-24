@@ -2,14 +2,10 @@
 
 namespace rstartree
 {
-	RStarTree::RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor)
+	RStarTree::RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor) : minBranchFactor( minBranchFactor ), maxBranchFactor( maxBranchFactor )
 	{
-		root = new Node(minBranchFactor, maxBranchFactor);
-	}
-
-	RStarTree::RStarTree(Node *root)
-	{
-		this->root = root;
+        hasReinsertedOnLevel = { false };
+		root = new Node(*this);
 	}
 
 	RStarTree::~RStarTree()
@@ -38,11 +34,13 @@ namespace rstartree
 
 	void RStarTree::insert(Point givenPoint)
 	{
+        std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
 		root = root->insert(givenPoint, hasReinsertedOnLevel);
 	}
 
 	void RStarTree::remove(Point givenPoint)
 	{
+        std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
 		root = root->remove(givenPoint, hasReinsertedOnLevel);
 	}
 
@@ -55,4 +53,14 @@ namespace rstartree
 	{
 		root->printTree();
 	}
+
+    bool RStarTree::validate() {
+        return true;
+    }
+	void RStarTree::stat() {
+        root->stat();
+    }
+	void RStarTree::visualize() {
+    }
+
 }
