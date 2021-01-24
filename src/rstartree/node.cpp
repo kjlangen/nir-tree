@@ -1040,10 +1040,7 @@ namespace rstartree
         // during a single point/rectangle insertion (the top level one).
         for(const auto &entry: entriesToReinsert) {
             // the root may change. Update it.
-            // FIXME: I'm going to assume this a point for now, but it could also be a Branch.
-            // If this is a branch, construct a reinsertion entry and throw it through.
-            // Better --- make insert take a NodeEntry!
-            root = root->insert( std::get<Point>( entry ), hasReinsertedOnLevel);
+            root = root->insert(entry, hasReinsertedOnLevel);
         }
 
 		return nullptr;
@@ -1076,12 +1073,7 @@ namespace rstartree
         std::vector<NodeEntry> entriesToReinsert(entries.begin(), entries.begin() + nodesToReinsert);
         entries.erase(entries.begin(), entries.begin()+nodesToReinsert);
         for( const auto &entry : entriesToReinsert ) {
-            // FIXME: can probably just reinsert entries directly
-			ReinsertionEntry e = {};
-			e.boundingBox = std::get<Branch>( entry ).boundingBox;
-			e.child = std::get<Branch>( entry ).child;
-			e.level = level;
-			insert(e, hasReinsertedOnLevel); // reinsert child
+			insert(entry, hasReinsertedOnLevel); // reinsert child
 		}
 
 		return nullptr;
@@ -1202,57 +1194,6 @@ namespace rstartree
 		}
 	}
 
-	// Attempt to insert subtree e back into the tree.
-	Node *Node::insert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel)
-	{
-		// If reinserting a leaf then use normal insert - this should mimick basically the exact same insert as before
-		if (e.level == 0)
-		{
-			return insert(e.data, hasReinsertedOnLevel);
-		}
-
-		// I1 [Find position for new record]
-		Node *node = chooseNode(e);
-		Node *siblingNode = nullptr;
-
-		// I2 [Add record to node]
-		if (node->entries.size() < node->maxBranchFactor)
-		{
-			e.child->parent = node;
-			e.child->level = node->level + 1;
-            Branch b( e.boundingBox, e.child );
-			node->entries.emplace_back( std::move( b ) );
-		}
-		else
-		{
-			// use overflowTreatement to decide if we must do a reinsert or a splitNode on this level
-			siblingNode = overflowTreatment(node, e, hasReinsertedOnLevel); // this is fine
-		}
-
-		// I3 [Propogate overflow treatment changes upward]
-		siblingNode = node->adjustTree(siblingNode, hasReinsertedOnLevel);
-
-		// I4 [Grow tree taller]
-		if (siblingNode != nullptr)
-		{
-			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
-
-			this->parent = newRoot;
-            Branch b( this->boundingBox(), this );
-            newRoot->entries.emplace_back( std::move( b ) );
-
-			siblingNode->parent = newRoot;
-            Branch b2( siblingNode->boundingBox(), siblingNode );
-            newRoot->entries.emplace_back( std::move( b2 ) );
-
-			return newRoot;
-		}
-		else
-		{
-			return this;
-		}
-	}
-
 	// To be called on a leaf
 	Node *Node::condenseTree(std::vector<bool> hasReinsertedOnLevel)
 	{
@@ -1260,7 +1201,7 @@ namespace rstartree
 		Node *node = this;
 		unsigned level = 0;
 
-		std::vector<ReinsertionEntry> Q;
+		std::vector<NodeEntry> Q;
 
 		// CT2 [Find parent entry]
 		unsigned entriesSize;
@@ -1285,28 +1226,10 @@ namespace rstartree
 
 				// Remove ourselves from our parent
 				node->parent->removeChild(node);
-
-				// Add a reinsertion entry for each data point or branch of this node
-                // FIXME: combine and just do an entry reinsert
                 assert( !node->entries.empty() );
-                bool isLeaf = !std::holds_alternative<Branch>( node->entries[0] );
-                if( isLeaf ) {
-                    for( const auto &entry : node->entries ) {
-                        ReinsertionEntry e = {};
-                        e.child = nullptr;
-                        e.data = std::get<Point>( entry );
-                        e.level = 0;
-                        Q.push_back(e);
-                    }
-                } else {
-                    for( const auto &entry : node->entries ) {
-                        ReinsertionEntry e = {};
-                        const Branch &b = std::get<Branch>( entry );
-                        e.boundingBox = b.boundingBox;
-                        e.child = b.child;
-                        e.level = level;
-                        Q.push_back(e);
-                    }
+
+                // Steal vector
+                Q = std::move(node->entries);
 
 				// Prepare for garbage collection
 				Node *garbage = node;
@@ -1318,7 +1241,6 @@ namespace rstartree
 
 				// Cleanup ourselves without deleting children b/c they will be reinserted
 				delete garbage;
-                }
 			}
 		}
 

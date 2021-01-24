@@ -104,7 +104,6 @@ namespace rstartree
 			Node *overflowTreatment(std::vector<bool> &hasReinsertedOnLevel);
 
 			Node *condenseTree(std::vector<bool> hasReinsertedOnLevel);
-			Node *insert(ReinsertionEntry e, std::vector<bool> hasReinsertedOnLevel);
 
 			// Datastructure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
