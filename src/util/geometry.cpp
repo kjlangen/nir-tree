@@ -298,6 +298,12 @@ double Rectangle::computeIntersectionArea(Rectangle givenRectangle)
 
 double Rectangle::computeExpansionArea(Point givenPoint)
 {
+	// Early exit
+	if (containsPoint(givenPoint))
+	{
+		return -1.0;
+	}
+
 	// Expanded rectangle area computed directly
 	double expandedArea = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
 
@@ -555,6 +561,12 @@ double IsotheticPolygon::computeIntersectionArea(Rectangle givenRectangle)
 
 IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(Point givenPoint)
 {
+	// Early exit
+	if (containsPoint(givenPoint))
+	{
+		return {0, -1.0};
+	}
+
 	// Take the minimum expansion area
 	OptimalExpansion expansion = {0, basicRectangles[0].computeExpansionArea(givenPoint)};
 	double evalArea;

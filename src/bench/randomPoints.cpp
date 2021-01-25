@@ -114,8 +114,8 @@ Point *generateCalifornia()
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
-	Point *points = new Point[2 * CaliforniaDataSize];
-	std::cout << "Beginning initialization of " << 2 * CaliforniaDataSize << " points..." << std::endl;
+	Point *points = new Point[CaliforniaDataSize];
+	std::cout << "Beginning initialization of " << CaliforniaDataSize << " points..." << std::endl;
 	for (unsigned i = 0; i < CaliforniaDataSize; ++i)
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
@@ -125,7 +125,7 @@ Point *generateCalifornia()
 			points[i][d] = *doubleBuffer;
 			file.read(buffer, sizeof(double));
 			file.sync();
-			points[CaliforniaDataSize + i][d] = *doubleBuffer;
+			points[i][d] = (points[i][d] + *doubleBuffer) / 2;
 		}
 	}
 	std::cout << "Initialization OK." << std::endl;
@@ -378,7 +378,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else if (configU["distribution"] == CALIFORNIA)
 	{
-		configU["size"] = 2 * CaliforniaDataSize;
+		configU["size"] = CaliforniaDataSize;
 		points = generateCalifornia();
 	}
 	else if (configU["distribution"] == BIOLOGICAL)
