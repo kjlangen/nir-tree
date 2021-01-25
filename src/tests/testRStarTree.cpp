@@ -625,20 +625,42 @@ TEST_CASE("R*Tree: testSplitNonLeafNode")
 
 TEST_CASE("R*Tree: RemoveLeafNode", "[broken]") {
 	unsigned maxBranchFactor = 7;
-    rstartree::RStarTree tree(3,7);
+    unsigned minBranchFactor = 3;
+    rstartree::RStarTree tree(minBranchFactor,maxBranchFactor);
 
-	for(unsigned i = 0; i < maxBranchFactor; i++) {
-        tree.insert( Point(0.0,0.0) );
-        tree.search( Point(0.0,0.0) );
+	for(unsigned i = 0; i < maxBranchFactor*maxBranchFactor+1; i++) {
+        tree.insert( Point(i,i) );
 	}
 
-    for( unsigned j = 0; j < 37; j++ ) {
-        tree.insert(Point(0.0,0.0));
-        tree.search( Point(0.0,0.0) );
+    for( unsigned i = 0; i < maxBranchFactor*maxBranchFactor+1; i++ ) {
+        Point p(i,i);
+        REQUIRE( tree.search( p ).size() == 1 );
     }
 
-    std::vector<Point> pts = tree.search(Point(0.0,0.0));
-    REQUIRE( pts.size() == 44 );
+    //Find a leaf
+    rstartree::Node *node = tree.root;
+    while( std::holds_alternative<rstartree::Node::Branch>( node->entries[0] ) ) {
+        const rstartree::Node::Branch &b = std::get<rstartree::Node::Branch>( node->entries[0] );
+        node = b.child;
+    }
+    REQUIRE( std::holds_alternative<Point>( node->entries[0] ) );
+    size_t cnt = node->entries.size();
+    std::vector<rstartree::Node::NodeEntry> nodesToRemove( node->entries.begin(), node->entries.begin() + (cnt-minBranchFactor+1) );
+    for( const auto &entry : nodesToRemove ) {
+        const Point &p = std::get<Point>( entry );
+        tree.remove( p );
+    }
+
+    for( unsigned i = 0; i < maxBranchFactor*maxBranchFactor+1; i++ ) {
+        Point p(i,i);
+        rstartree::Node::NodeEntry ne = p;
+        if( std::find(nodesToRemove.begin(), nodesToRemove.end(), ne) == nodesToRemove.end() ) {
+            REQUIRE( tree.search( p ).size() == 1 );
+        } else {
+            REQUIRE( tree.search( p ).size() == 0 );
+        }
+    }
+    
 }
 
 TEST_CASE("R*Tree: computeTotalMarginSum") {

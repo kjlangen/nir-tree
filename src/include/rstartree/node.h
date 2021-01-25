@@ -32,6 +32,10 @@ namespace rstartree
                 Branch( Rectangle boundingBox, Node *child ) : boundingBox( boundingBox ), child( child ){}
                 Branch( const Branch &other ) : boundingBox( other.boundingBox ), child( other.child ) { }
 
+                bool operator==(const Branch &o) const {
+                    return child == o.child and boundingBox == o.boundingBox;
+                }
+
                 ~Branch() { child = nullptr; }
 
                 Rectangle boundingBox;
@@ -77,7 +81,7 @@ namespace rstartree
 			void deleteSubtrees();
 
 			// Helper functions
-			Rectangle boundingBox();
+			Rectangle boundingBox() const;
 			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 			void removeChild(Node *child);
 			void removeData(Point givenPoint);

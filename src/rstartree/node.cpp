@@ -25,7 +25,7 @@ namespace rstartree
         }
 	}
 
-	Rectangle Node::boundingBox()
+	Rectangle Node::boundingBox() const
 	{
         assert( !this->entries.empty() );
 		Rectangle boundingBox( boxFromNodeEntry( this->entries[0] ) );
@@ -46,6 +46,10 @@ namespace rstartree
                 return;
             }
         }
+#if !defined( NDEBUG )
+        print();
+        assert( false );
+#endif
 	}
 
 	// TODO: Optimize maybe
@@ -598,6 +602,12 @@ namespace rstartree
 
 		// Copy everything to the right of the splitPoint (inclusive) to the new sibling
 		std::copy(entries.begin() + splitIndex, entries.end(), std::back_inserter(newSibling->entries));
+        if( std::holds_alternative<Branch>( newSibling->entries[0] ) ) {
+            for( const auto &entry : newSibling->entries ) {
+                // Update parents
+                std::get<Branch>( entry ).child->parent = newSibling;
+            }
+        }
 
 		// Chop our node's data down.
 		entries.erase(entries.begin()+splitIndex, entries.end());
@@ -750,6 +760,9 @@ namespace rstartree
         bool firstIsPoint = entries.empty() or std::holds_alternative<Point>( insertionPoint->entries[0] );
         assert( (givenIsLeaf and firstIsPoint) or (!givenIsLeaf and !firstIsPoint) );
 	    insertionPoint->entries.push_back(nodeEntry);
+        if( !givenIsLeaf ) {
+            std::get<Branch>( nodeEntry ).child->parent = insertionPoint;
+        }
 
         // If we exceed treeRef.maxBranchFactor, need to do sometyhing about it.
         if (insertionPoint->entries.size() > treeRef.maxBranchFactor) 
@@ -909,6 +922,7 @@ namespace rstartree
 		std::string indentation(n * 4, ' ');
 		std::cout << indentation << "Node " << (void *)this << std::endl;
 		std::cout << indentation << "{" << std::endl;
+        std::cout << indentation << "    BoundingBox: " << boundingBox() << std::endl;
 		std::cout << indentation << "    Parent: " << (void *)parent << std::endl;
 		std::cout << indentation << "    Entries: " << std::endl;
         bool isLeaf = !std::holds_alternative<Branch>( entries[0] );
@@ -1011,11 +1025,8 @@ namespace rstartree
     Rectangle boxFromNodeEntry( const Node::NodeEntry &entry ) {
         if( std::holds_alternative<Node::Branch>( entry ) ) {
             return std::get<Node::Branch>( entry ).boundingBox;
-        } else if( std::holds_alternative<Point>( entry ) ) {
-            const Point &p = std::get<Point>( entry );
-            return Rectangle( p, p );
-        } else {
-            assert( false );
         }
+        const Point &p = std::get<Point>( entry );
+        return Rectangle( p, p );
     }
 }
