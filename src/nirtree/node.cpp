@@ -180,7 +180,6 @@ namespace nirtree
 
 	std::vector<Point> Node::search(Rectangle &requestedRectangle)
 	{
-
 		std::vector<Point> accumulator;
 
 		// Initialize our context stack
@@ -250,16 +249,17 @@ namespace nirtree
 				unsigned smallestExpansionBranchIndex = 0;
 				IsotheticPolygon::OptimalExpansion smallestExpansion = context->branches[0].boundingPoly.computeExpansionArea(givenPoint);
 				IsotheticPolygon::OptimalExpansion evalExpansion;
-				for (unsigned i = 1; i < branchesSize; ++i)
+				for (unsigned i = 1; i < branchesSize && smallestExpansion.area != -1.0; ++i)
 				{
+					// if (context->branches[i].boundingPoly.containsPoint(givenPoint))
+					// {
+					// 	smallestExpansionBranchIndex = i;
+					// 	smallestExpansion = {0, -1.0};
+					// 	break;
+					// }
+					// else 
 
-					if (context->branches[i].boundingPoly.containsPoint(givenPoint))
-					{
-						smallestExpansionBranchIndex = i;
-						smallestExpansion = {0, -1.0};
-						break;
-					}
-					else if ((evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint)).area < smallestExpansion.area)
+					if ((evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint)).area < smallestExpansion.area)
 					{
 						smallestExpansionBranchIndex = i;
 						smallestExpansion = evalExpansion;
@@ -346,81 +346,129 @@ namespace nirtree
 	{
 		nirtree::Node::Partition defaultPartition;
 		double totalMass = 0.0;
+		unsigned branchesSize = branches.size();
+		unsigned costMetric = std::numeric_limits<unsigned>::max();
 
-		if (branches.size() == 0)
+		if (branchesSize == 0)
 		{
-			// Setup variance values
-			Point variance = Point::atOrigin;
-			Point average = Point::atOrigin;
-			Point sumOfSquares = Point::atOrigin;
+			// // Setup variance values
+			// Point variance = Point::atOrigin;
+			// Point average = Point::atOrigin;
+			// Point sumOfSquares = Point::atOrigin;
 
-			for (Point d : data)
+			// for (Point d : data)
+			// {
+			// 	average += d;
+			// 	sumOfSquares += d * d;
+			// 	totalMass += 1.0;
+			// }
+
+			// // Compute final terms
+			// average /= totalMass;
+			// sumOfSquares /= totalMass;
+
+			// // Compute final variance
+			// variance = sumOfSquares - average * average;
+
+			// // Choose most variate dimension
+			// defaultPartition.dimension = 0;
+
+			// for (unsigned i = 0; i < dimensions; ++i)
+			// {
+			// 	defaultPartition.dimension = variance[i] > variance[defaultPartition.dimension] ? i : defaultPartition.dimension;
+			// }
+			// defaultPartition.location = average[defaultPartition.dimension];
+
+			unsigned dataSize = data.size();
+
+			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				average += d;
-				sumOfSquares += d * d;
-				totalMass += 1.0;
+				// Sort along dimension d
+				std::sort(data.begin(), data.end(), [d](Point a, Point b){return a[d] < b[d];});
+
+				// Compute cost
+				unsigned duplicates = 0;
+				for (Point dataPoint : data)
+				{
+					if (dataPoint[d] == data[dataSize / 2 - 1][d])
+					{
+						++duplicates;
+					}
+				}
+
+				// Compare cost
+				if (duplicates < costMetric)
+				{
+					defaultPartition.dimension = d;
+					defaultPartition.location = data[dataSize / 2 - 1][d];
+					costMetric = duplicates;
+				}
 			}
-
-			// Compute final terms
-			average /= totalMass;
-			sumOfSquares /= totalMass;
-
-
-			// Compute final variance
-			variance = sumOfSquares - average * average;
-
-			// Choose most variate dimension
-			defaultPartition.dimension = 0;
-
-			for (unsigned i = 0; i < dimensions; ++i)
-			{
-				defaultPartition.dimension = variance[i] > variance[defaultPartition.dimension] ? i : defaultPartition.dimension;
-			}
-			defaultPartition.location = average[defaultPartition.dimension];
 
 			return defaultPartition;
 		}
 		else
 		{
-			Point centreOfMass = Point::atOrigin;
-			std::vector<Rectangle> sortableBoundingBoxes;
-
-			for (Branch b : branches)
-			{
-				sortableBoundingBoxes.insert(sortableBoundingBoxes.end(), b.boundingPoly.basicRectangles.begin(), b.boundingPoly.basicRectangles.end());
-			}
-
-			for (Rectangle boundingBox : sortableBoundingBoxes)
-			{
-				centreOfMass += boundingBox.lowerLeft;
-				centreOfMass += boundingBox.upperRight;
-				totalMass += 2.0;
-			}
-
-			centreOfMass /= totalMass;
-
-			unsigned minInducedSplits = std::numeric_limits<unsigned>::max();
+			std::vector<double> sortable;
+			unsigned bestBalance = branchesSize;
+			std::vector<double> deduplicated;
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				// Compute # of splits if d is chosen
-				unsigned inducedSplits = 0;
-
-				for (unsigned i = 0; i < sortableBoundingBoxes.size(); ++i)
+				// Make rightmost limits sortable
+				for (unsigned i = 0; i < branchesSize; ++i)
 				{
-					if (sortableBoundingBoxes[i].lowerLeft[d] < centreOfMass[d] && centreOfMass[d] < sortableBoundingBoxes[i].upperRight[d])
+					sortable.push_back(branches[i].boundingPoly.boundingBox.upperRight[d]);
+				}
+
+				// Sort along d
+				std::sort(sortable.begin(), sortable.end());
+
+				// Deduplicate
+				deduplicated.push_back(sortable[0]);
+				for (unsigned i = 1; i < branchesSize; ++i)
+				{
+					if (sortable[i] != sortable[i - 1])
 					{
-						inducedSplits++;
+						deduplicated.push_back(sortable[i]);
 					}
 				}
 
-				// Decide if defaultPartition should be updated
-				if (inducedSplits < minInducedSplits)
+				// Compute cost
+				unsigned currentLeftSize = 0;
+				for (Branch b : branches)
+				{
+					if (b.boundingPoly.boundingBox.upperRight[d] <= deduplicated[deduplicated.size() / 2])
+					{
+						++currentLeftSize;
+					}
+				}
+
+				// Compare cost
+				unsigned balance = branchesSize / 2 > currentLeftSize ? branchesSize / 2 - currentLeftSize : currentLeftSize - branchesSize / 2;
+				if (balance < bestBalance)
 				{
 					defaultPartition.dimension = d;
-					defaultPartition.location = centreOfMass[d];
-					minInducedSplits = inducedSplits;
+					defaultPartition.location = deduplicated[deduplicated.size() / 2];
+					bestBalance = balance;
 				}
+
+				deduplicated.clear();
+				sortable.clear();
+			}
+
+			unsigned rightSize = 0;
+			for (Branch b : branches)
+			{
+				if (b.boundingPoly.boundingBox.upperRight[defaultPartition.dimension] <= defaultPartition.location)
+				{
+					++rightSize;
+				}
+			}
+
+			if (defaultPartition.dimension > dimensions || rightSize == 0 || rightSize > maxBranchFactor)
+			{
+				assert(false);
 			}
 
 			return defaultPartition;
@@ -448,13 +496,13 @@ namespace nirtree
 		{
 			for (unsigned i = 0; i < dataSize; ++i)
 			{
-				if (data[i][p.dimension] > p.location)
+				if (data[i][p.dimension] <= p.location && split.leftBranch.child->data.size() < maxBranchFactor)
 				{
-					split.rightBranch.child->data.push_back(data[i]);
+					split.leftBranch.child->data.push_back(data[i]);
 				}
 				else
 				{
-					split.leftBranch.child->data.push_back(data[i]);
+					split.rightBranch.child->data.push_back(data[i]);
 				}
 			}
 			data.clear();
@@ -498,6 +546,22 @@ namespace nirtree
 		split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
 		split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
 
+		if (split.leftBranch.child->data.size() > 0)
+		{
+			for (Point dataPoint : split.leftBranch.child->data)
+			{
+				DASSERT(split.leftBranch.boundingPoly.containsPoint(dataPoint));
+			}
+		}
+
+		if (split.rightBranch.child->data.size() > 0)
+		{
+			for (Point dataPoint : split.rightBranch.child->data)
+			{
+				DASSERT(split.rightBranch.boundingPoly.containsPoint(dataPoint));
+			}
+		}
+
 		return split;
 	}
 
@@ -537,23 +601,23 @@ namespace nirtree
 				}
 			}
 
-			// If there are too many branches or too much data at this level then create a split to
-			// be propagated otherwise we may finish and return a non-split
-			if (dataSize > currentContext->maxBranchFactor || branchesSize > currentContext->maxBranchFactor)
+			// Early exit if this node does not overflow
+			if (dataSize <= currentContext->maxBranchFactor && branchesSize <= currentContext->maxBranchFactor)
 			{
-				propagationSplit = currentContext->splitNode();
-				if (currentContext->parent != nullptr)
-				{
-					currentContext->parent->removeBranch(currentContext);
-				}
-			}
-			else
-			{
-				propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
+				propagationSplit = {{nullptr, Rectangle()}, {nullptr, Rectangle()}};
 				break;
 			}
 
-			// Ascend
+			// Otherwise, split node
+			propagationSplit = currentContext->splitNode();
+
+			// Cleanup before ascending
+			if (currentContext->parent != nullptr)
+			{
+				currentContext->parent->removeBranch(currentContext);
+			}
+
+			// Ascend, propagating splits
 			currentContext = propagationSplit.leftBranch.child->parent;
 		}
 
@@ -580,16 +644,16 @@ namespace nirtree
 		// Find the appropriate position for the new point
 		Node *adjustContext = chooseNode(givenPoint);
 
+		if (adjustContext->parent != nullptr)
+		{
+			DASSERT(adjustContext->parent->locateBranch(adjustContext).boundingPoly.containsPoint(givenPoint));
+		}
+
 		// Adjust the tree
 		if (adjustContext->branches.size() == 0)
 		{
 			// Add just the data
 			adjustContext->data.push_back(givenPoint);
-		}
-		else
-		{
-			// Add a whole new branch
-			adjustContext->pushDown(givenPoint);
 		}
 
 		// There is no guarantee that the root will still exist after adjustment so backup branch factors
@@ -694,14 +758,14 @@ namespace nirtree
 
 	bool Node::validate(Node *expectedParent, unsigned index)
 	{
-		if (parent != expectedParent || branches.size() > maxBranchFactor)
+		if (parent != expectedParent || branches.size() > maxBranchFactor || data.size() > maxBranchFactor)
 		{
 			std::cout << "node = " << (void *)this << std::endl;
 			std::cout << "parent = " << (void *)parent << " expectedParent = " << (void *)expectedParent << std::endl;
 			std::cout << "maxBranchFactor = " << maxBranchFactor << std::endl;
 			std::cout << "branches.size() = " << branches.size() << std::endl;
+			std::cout << "data.size() = " << data.size() << std::endl;
 			assert(parent == expectedParent);
-			assert(branches.size() <= maxBranchFactor);
 		}
 
 		if (expectedParent != nullptr)
@@ -798,7 +862,7 @@ namespace nirtree
 		std::vector<unsigned long> histogramPolygon;
 		histogramPolygon.resize(10000, 0);
 		std::vector<unsigned long> histogramFanout;
-		histogramFanout.resize(maxBranchFactor + 200, 0);
+		histogramFanout.resize(maxBranchFactor, 0);
 
 		for (;!context.empty();)
 		{
@@ -808,6 +872,10 @@ namespace nirtree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
+			if (fanout > histogramFanout.size())
+			{
+				histogramFanout.resize(fanout, 0);
+			}
 			++histogramFanout[fanout];
 
 			if (branchesSize == 0 && dataSize > 0)
