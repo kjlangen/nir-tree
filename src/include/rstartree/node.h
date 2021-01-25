@@ -30,6 +30,9 @@ namespace rstartree
         {
             public:
                 Branch( Rectangle boundingBox, Node *child ) : boundingBox( boundingBox ), child( child ){}
+                Branch( const Branch &other ) : boundingBox( other.boundingBox ), child( other.child ) { }
+
+                ~Branch() { child = nullptr; }
 
                 Rectangle boundingBox;
                 Node *child;
@@ -81,7 +84,6 @@ namespace rstartree
 			Node *chooseSubtree(NodeEntry nodeEntry);
 			Node *findLeaf(Point givenPoint);
 			double computeTotalMarginSumOfBoundingBoxes();
-			std::vector<std::vector<unsigned int>> chooseSplitIndexByRectangle(unsigned int axis);
 			double computeTotalMarginSum();
 			unsigned int chooseSplitAxis();
 			unsigned chooseSplitIndex(unsigned int axis);

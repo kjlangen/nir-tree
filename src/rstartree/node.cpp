@@ -5,6 +5,11 @@ namespace rstartree
 {
 	Node::Node( const RStarTree &treeRef, Node *parent) : treeRef( treeRef ), parent( parent )
 	{
+        if( parent == nullptr ) {
+            level = 0;
+        } else {
+            level = parent->level + 1;
+        }
 	}
 
 	void Node::deleteSubtrees()
@@ -69,12 +74,6 @@ namespace rstartree
 
 	void Node::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
 	{
-        if( entries.empty() ) {
-            // I don't think this can happen, so assert in case it does for some reason.
-            assert( false );
-            return;
-        }
-
         // Am I a leaf?
         bool isLeaf = std::holds_alternative<Point>( entries[0] );
         if( isLeaf ) {
@@ -93,12 +92,6 @@ namespace rstartree
 	}
 
     void Node::searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const {
-        if( entries.empty() ) {
-            // I don't think this can happen, so assert in case it does for some reason.
-            assert( false );
-            return;
-        }
-
         // Am I a leaf?
         bool isLeaf = std::holds_alternative<Point>( entries[0] );
         if( isLeaf ) {
@@ -119,12 +112,6 @@ namespace rstartree
     }
 
     void Node::searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const {
-        if( entries.empty() ) {
-            // I don't think this can happen, so assert in case it does for some reason.
-            assert( false );
-            return;
-        }
-
         // Am I a leaf?
         bool isLeaf = std::holds_alternative<Point>( entries[0] );
         if( isLeaf ) {
@@ -217,6 +204,9 @@ namespace rstartree
             bool isLeaf = node->entries.empty() or !std::holds_alternative<Branch>( node->entries[0] );
             
 			if( isLeaf ) {
+                if( node->parent != nullptr ) {
+                    assert( node->level > 0 );
+                }
 
                 // If this node is at level 3, I need to walk up 3 levels from the leaf to get
                 // to level 4 for an insert.
@@ -417,88 +407,7 @@ namespace rstartree
 
 	}
 
-    //FIXME: this is functionally the same as above. Remove later.
-	std::vector<std::vector<unsigned int>> Node::chooseSplitIndexByRectangle(unsigned int axis)
-	{
 
-        // Not a leaf
-        assert( !this->entries.empty() );
-        assert( std::holds_alternative<Branch>( this->entries[0] ) );
-
-		// split the sorted by axis childBoundingBoxes array into the ideal split
-		const auto groupABegin = entries.begin();
-		const auto groupAEnd = entries.begin() + treeRef.minBranchFactor;
-		const auto groupBBegin = entries.begin() + treeRef.minBranchFactor;
-		const auto groupBEnd = entries.end();
-
-		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
-		std::vector<unsigned int> groupAIndices(groupA.size());
-		std::iota(groupAIndices.begin(), groupAIndices.end(), 0);
-
-		std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
-		std::vector<unsigned int> groupBIndices(groupB.size());
-		std::iota(groupBIndices.begin(), groupBIndices.end(), treeRef.minBranchFactor);
-
-		// return value
-		std::vector<std::vector<unsigned int>> groups;
-
-		// Find the best size out of all the distributions
-		float minOverlapValue = std::numeric_limits<float>::max();
-		float minAreaValue = std::numeric_limits<float>::max();
-
-		// will test all M - 2m + 2 possible groupings
-		while (groupA.size() <= treeRef.maxBranchFactor && groupB.size() >= treeRef.minBranchFactor)
-		{
-			// compute the margin of groupA and groupB
-			Rectangle boundingBoxA( std::get<Branch>( groupA[0] ).boundingBox );
-			for (unsigned int i = 0; i < groupA.size(); i++ )
-			{
-				boundingBoxA.expand( std::get<Branch>( groupA[i] ).boundingBox );
-			}
-
-			Rectangle boundingBoxB( std::get<Branch>( groupB[0] ).boundingBox );
-			for (unsigned int i = 0; i < groupB.size(); i++ )
-			{
-				boundingBoxB.expand( std::get<Branch>( groupB[i] ).boundingBox );
-			}
-
-			unsigned int currDistOverlapVal = boundingBoxA.computeIntersectionArea(boundingBoxB);
-
-			if (currDistOverlapVal < minOverlapValue) {
-				// we save this current distribution of indices to return
-				minOverlapValue = currDistOverlapVal;
-				groups.clear();
-				groups.push_back(groupAIndices);
-				groups.push_back(groupBIndices);
-
-			}
-			else if (currDistOverlapVal == minOverlapValue)
-			{
-				// if tied we use the minimum total value or bounding boxes to decide on grouping
-				unsigned int currMinAreaVal = boundingBoxA.area() + boundingBoxB.area();
-
-				if (currMinAreaVal < minAreaValue)
-				{
-					// we save this current distribution of indices to return
-					minAreaValue = currMinAreaVal;
-					groups.clear();
-					groups.push_back(groupAIndices);
-					groups.push_back(groupBIndices);
-				}
-			}
-			
-			// Add one new value to groupA and remove one from groupB to get a new grouping
-			NodeEntry transferRectangle = groupB.front();
-			unsigned int transferIndex = groupBIndices.front();
-			groupB.erase(groupB.begin());
-			groupBIndices.erase(groupBIndices.begin());
-			groupA.push_back(transferRectangle);
-			groupAIndices.push_back(transferIndex);
-		}
-
-		return groups;
-	}
-	
 	/*
 		Helper function that takes a pre-sorted data and then computes the sum
 		of all margin values over all possible M - 2m + 2 distributions
@@ -691,7 +600,7 @@ namespace rstartree
 		std::copy(entries.begin() + splitIndex, entries.end(), std::back_inserter(newSibling->entries));
 
 		// Chop our node's data down.
-		entries.resize(splitIndex);
+		entries.erase(entries.begin()+splitIndex, entries.end());
 
         assert( !entries.empty() );
         assert( !newSibling->entries.empty() );
@@ -731,6 +640,7 @@ namespace rstartree
 						Node *siblingParent = node->parent->overflowTreatment(hasReinsertedOnLevel);
 
                         if( siblingParent ) {
+                            
                             // We split our parent, so now we have two (possible) parents.
                             assert( node->parent == siblingParent || node->parent == parentBefore );
                             assert( siblingNode->parent == siblingParent || siblingNode->parent == parentBefore );
@@ -739,11 +649,11 @@ namespace rstartree
                             node = node->parent;
                             siblingNode = siblingParent;
                             assert( node != siblingNode );
+                            continue;
                         }
-					} else {
-                        node = node->parent;
-                        siblingNode = nullptr;
                     }
+                    node = node->parent;
+                    siblingNode = nullptr;
 				}
 				else
 				{
@@ -764,9 +674,12 @@ namespace rstartree
 
 		Point globalCenterPoint = boundingBox().centerPoint();
 
-        // FIXME: what to do about rectangles here.
-		std::sort(entries.begin(), entries.end(), [globalCenterPoint](NodeEntry a, NodeEntry b) {
-			return boxFromNodeEntry( a ).centerPoint().distance(globalCenterPoint) > boxFromNodeEntry( b ).centerPoint().distance(globalCenterPoint);
+        assert( hasReinsertedOnLevel.at( level ) );
+
+		std::sort(entries.begin(), entries.end(), [&globalCenterPoint](NodeEntry a, NodeEntry b) {
+            Rectangle rectA = boxFromNodeEntry( a );
+            Rectangle rectB = boxFromNodeEntry( b );
+			return rectA.centerPoint().distance(globalCenterPoint) > rectB.centerPoint().distance(globalCenterPoint);
 		});
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
@@ -787,17 +700,15 @@ namespace rstartree
         // insert does not affect which entries get popped off.
         std::vector<NodeEntry> entriesToReinsert;
         entriesToReinsert.reserve(numNodesToReinsert);
-        
-        std::copy(entries.begin(), entries.begin() + numNodesToReinsert, std::back_inserter(entriesToReinsert));
-        entries.erase(entries.begin(), entries.begin() + numNodesToReinsert);
 
+        std::copy( entries.begin(), entries.begin() + numNodesToReinsert, std::back_inserter( entriesToReinsert ) );
+        entries.erase(entries.begin(), entries.begin() + numNodesToReinsert);
         // During this recursive insert (we are already in an insert, since we are 
         // reInserting), we may end up here again. If we do, we should still be using the same
         // hasReinsertedOnLevel vector because it corresponds to the activities we have performed
         // during a single point/rectangle insertion (the top level one).
-        for(const auto &entry: entriesToReinsert) {
-            // the root may change. Update it.
-            root = root->insert(entry, hasReinsertedOnLevel);
+        for( const auto &entry : entriesToReinsert ) {
+            root = root->insert( entry, hasReinsertedOnLevel );
         }
 
 		return nullptr;
@@ -809,8 +720,8 @@ namespace rstartree
 	Node *Node::overflowTreatment(std::vector<bool> &hasReinsertedOnLevel)
 	{
 
-		if (hasReinsertedOnLevel.at(hasReinsertedOnLevel.size() - 1))
-		{
+        assert( hasReinsertedOnLevel.size() > this->level );
+		if( hasReinsertedOnLevel.at(this->level) ){
 			return splitNode();
 		}
 		else
@@ -835,6 +746,9 @@ namespace rstartree
 		Node *sibling = nullptr;
 
 		// I2 [Add record to leaf node]
+        bool givenIsLeaf = std::holds_alternative<Point>( nodeEntry );
+        bool firstIsPoint = entries.empty() or std::holds_alternative<Point>( insertionPoint->entries[0] );
+        assert( (givenIsLeaf and firstIsPoint) or (!givenIsLeaf and !firstIsPoint) );
 	    insertionPoint->entries.push_back(nodeEntry);
 
         // If we exceed treeRef.maxBranchFactor, need to do sometyhing about it.
@@ -851,6 +765,7 @@ namespace rstartree
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
+
 			Node *newRoot = new Node(treeRef);
 
 			this->parent = newRoot;
@@ -859,15 +774,16 @@ namespace rstartree
 
 			siblingNode->parent = newRoot;
             Branch b2( siblingNode->boundingBox(), siblingNode );
-            newRoot->entries.emplace_back(std::move( b2 ) );
+            newRoot->entries.emplace_back( std::move( b2 ) );
+            assert( !newRoot->entries.empty() );
 
 			// fix the reinserted length
-			hasReinsertedOnLevel.push_back(false);
+			hasReinsertedOnLevel.insert(hasReinsertedOnLevel.begin(), false);
 
 			// Adjust levels.
 			newRoot->level = this->level;
+			siblingNode->level = this->level+1;
 			this->level = this->level+1;
-			siblingNode->level = this->level;
 
 			return newRoot;
 		}
@@ -978,6 +894,8 @@ namespace rstartree
 			hasReinsertedOnLevel.erase(hasReinsertedOnLevel.begin());
             Branch &b = std::get<Branch>( root->entries[0] );
             b.child->parent = nullptr;
+            //FIXME?
+            delete root;
 			return b.child;
 		}
 		else
@@ -1093,8 +1011,11 @@ namespace rstartree
     Rectangle boxFromNodeEntry( const Node::NodeEntry &entry ) {
         if( std::holds_alternative<Node::Branch>( entry ) ) {
             return std::get<Node::Branch>( entry ).boundingBox;
+        } else if( std::holds_alternative<Point>( entry ) ) {
+            const Point &p = std::get<Point>( entry );
+            return Rectangle( p, p );
+        } else {
+            assert( false );
         }
-        const Point &p = std::get<Point>( entry );
-        return Rectangle( p, p );
     }
 }

@@ -7,13 +7,13 @@ static rstartree::Node::NodeEntry createBranchEntry( const Rectangle &boundingBo
     return b;
 }
 
-static rstartree::Node *createFullLeafNode( const rstartree::RStarTree &treeRef ) {
+static rstartree::Node *createFullLeafNode( const rstartree::RStarTree &treeRef, Point p=Point(0.0,0.0) ) {
 	rstartree::Node *node = new rstartree::Node( treeRef );
 	std::vector<bool> reInsertedAtLevel = { false };
 
 	for(unsigned i = 0; i < treeRef.maxBranchFactor; i++)
 	{
-		node = node->insert(Point(0.0,0.0),	reInsertedAtLevel);
+		node = node->insert(p, reInsertedAtLevel);
 		REQUIRE(reInsertedAtLevel[0] == false);
 	}
 	return node;
@@ -140,27 +140,35 @@ TEST_CASE("R*Tree: testChooseLeaf")
 	// Setup rtree::Nodes
     // NB: All of these bounding rectangles are wrong, but that's fine for the purposes of this test.
 	leftChild0->parent = left;
+	leftChild0->level = 2;
 	left->entries.push_back(createBranchEntry(Rectangle(8.0, 12.0, 10.0, 14.0), leftChild0));
 
 	leftChild1->parent = left;
+	leftChild1->level = 2;
 	left->entries.push_back(createBranchEntry(Rectangle(10.0, 12.0, 12.0, 14.0), leftChild1));
 
 	leftChild2->parent = left;
+	leftChild2->level = 2;
 	left->entries.push_back(createBranchEntry(Rectangle(12.0, 12.0, 14.0, 14.0), leftChild2));
 
 	rightChild0->parent = right;
+	rightChild0->level = 2;
 	right->entries.push_back(createBranchEntry(Rectangle(8.0, 1.0, 12.0, 5.0), rightChild0));
 
 	rightChild1->parent = right;
+	rightChild1->level = 2;
 	right->entries.push_back(createBranchEntry(Rectangle(12.0, -4.0, 16.0, -2.0), rightChild1));
 
 	rightChild2->parent = right;
+	rightChild2->level = 2;
 	right->entries.push_back(createBranchEntry(Rectangle(8.0, -6.0, 10.0, -4.0), rightChild2));
 
 	left->parent = root;
+	left->level = 1;
 	root->entries.push_back(createBranchEntry(Rectangle(8.0, 12.0, 14.0, 14.0), left));
 
 	right->parent = root;
+	right->level = 1;
 	root->entries.push_back(createBranchEntry(Rectangle(8.0, -6.0, 16.0, 5.0), right));
 
     REQUIRE( !root->entries.empty() );
@@ -613,6 +621,24 @@ TEST_CASE("R*Tree: testSplitNonLeafNode")
     // Count
     accumulator = newRoot->search( Point(0.0,0.0) );
     REQUIRE( accumulator.size() == maxBranchFactor * maxBranchFactor + 1 );
+}
+
+TEST_CASE("R*Tree: RemoveLeafNode", "[broken]") {
+	unsigned maxBranchFactor = 7;
+    rstartree::RStarTree tree(3,7);
+
+	for(unsigned i = 0; i < maxBranchFactor; i++) {
+        tree.insert( Point(0.0,0.0) );
+        tree.search( Point(0.0,0.0) );
+	}
+
+    for( unsigned j = 0; j < 37; j++ ) {
+        tree.insert(Point(0.0,0.0));
+        tree.search( Point(0.0,0.0) );
+    }
+
+    std::vector<Point> pts = tree.search(Point(0.0,0.0));
+    REQUIRE( pts.size() == 44 );
 }
 
 TEST_CASE("R*Tree: computeTotalMarginSum") {

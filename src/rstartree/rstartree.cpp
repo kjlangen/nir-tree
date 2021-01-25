@@ -24,6 +24,7 @@ namespace rstartree
 
 	std::vector<Point> RStarTree::search(Point requestedPoint)
 	{
+        assert( root->parent == nullptr );
 		return root->search(requestedPoint);
 	}
 
@@ -32,9 +33,13 @@ namespace rstartree
 		return root->search(requestedRectangle);
 	}
 
-	void RStarTree::insert(Point givenPoint)
+	void RStarTree::insert( Point givenPoint )
 	{
+        assert( root->parent == nullptr );
         std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
+        for( const auto &b : hasReinsertedOnLevel ) {
+            assert( !b );
+        }
 		root = root->insert(givenPoint, hasReinsertedOnLevel);
 	}
 
