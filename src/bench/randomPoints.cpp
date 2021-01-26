@@ -440,8 +440,8 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Insertion OK." << std::endl;
 
 	// Gather statistics
-	spatialIndex->stat();
-	std::cout << "Statistics OK." << std::endl;
+	STATEXEC(spatialIndex->stat());
+	STATEXEC(std::cout << "Statistics OK." << std::endl);
 
 	// Visualize the tree
 	// spatialIndex->visualize();

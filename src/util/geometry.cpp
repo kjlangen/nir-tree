@@ -448,7 +448,6 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
 	// Quick exit
 	if (!intersectsRectangle(clippingRectangle) || borderOnlyIntersectsRectangle(clippingRectangle))
 	{
-		DEXEC(Rectangle rAtInfinity);
 		v.push_back(Rectangle(lowerLeft, upperRight));
 		return v;
 	}
@@ -568,16 +567,15 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(Point 
 	}
 
 	// Take the minimum expansion area
-	OptimalExpansion expansion = {0, basicRectangles[0].computeExpansionArea(givenPoint)};
+	OptimalExpansion expansion = {0, std::numeric_limits<double>::infinity()};
 	double evalArea;
 
 	unsigned basicsSize = basicRectangles.size();
-
-	for (unsigned i = 1; i < basicsSize; ++i)
+	for (unsigned i = 0; i < basicsSize; ++i)
 	{
 		evalArea = basicRectangles[i].computeExpansionArea(givenPoint);
 
-		if (evalArea < expansion.area)
+		if (evalArea < expansion.area && basicRectangles[i].area() != 0.0)
 		{
 			expansion.index = i;
 			expansion.area = evalArea;

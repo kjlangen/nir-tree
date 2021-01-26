@@ -279,7 +279,6 @@ namespace nirtree
 						}
 					}
 
-
 					if (context->parent != nullptr)
 					{
 						subsetPolygon.intersection(context->parent->branches[enclosingPolyIndex].boundingPoly);
@@ -345,7 +344,7 @@ namespace nirtree
 	Node::Partition Node::partitionNode()
 	{
 		nirtree::Node::Partition defaultPartition;
-		double totalMass = 0.0;
+		// double totalMass = 0.0;
 		unsigned branchesSize = branches.size();
 		unsigned costMetric = std::numeric_limits<unsigned>::max();
 
@@ -546,22 +545,6 @@ namespace nirtree
 		split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
 		split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
 
-		if (split.leftBranch.child->data.size() > 0)
-		{
-			for (Point dataPoint : split.leftBranch.child->data)
-			{
-				DASSERT(split.leftBranch.boundingPoly.containsPoint(dataPoint));
-			}
-		}
-
-		if (split.rightBranch.child->data.size() > 0)
-		{
-			for (Point dataPoint : split.rightBranch.child->data)
-			{
-				DASSERT(split.rightBranch.boundingPoly.containsPoint(dataPoint));
-			}
-		}
-
 		return split;
 	}
 
@@ -643,11 +626,6 @@ namespace nirtree
 	{
 		// Find the appropriate position for the new point
 		Node *adjustContext = chooseNode(givenPoint);
-
-		if (adjustContext->parent != nullptr)
-		{
-			DASSERT(adjustContext->parent->locateBranch(adjustContext).boundingPoly.containsPoint(givenPoint));
-		}
 
 		// Adjust the tree
 		if (adjustContext->branches.size() == 0)
@@ -872,7 +850,7 @@ namespace nirtree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
-			if (fanout > histogramFanout.size())
+			if (fanout > histogramFanout.size() - 1)
 			{
 				histogramFanout.resize(fanout, 0);
 			}

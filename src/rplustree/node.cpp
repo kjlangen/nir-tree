@@ -711,7 +711,7 @@ namespace rplustree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
-			if (fanout > histogramFanout.size())
+			if (fanout > histogramFanout.size() - 1)
 			{
 				histogramFanout.resize(fanout, 0);
 			}
