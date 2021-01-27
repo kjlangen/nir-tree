@@ -21,8 +21,7 @@ void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, 
 	std::cout << "  n = " << configU["size"] << std::endl;
 	std::cout << "  seed = " << configU["seed"] << std::endl;
 	std::cout << "  search rectangles = " << configU["rectanglescount"] << std::endl;
-	std::cout << "  skew factor = " << configD["skewfactor"] << std::endl;
-	std::cout << "  cluster count = " << configU["clustercount"] << std::endl;
+	std::cout << "  visualization = " << (configU["visualization"] ? "on" : "off") << std::endl;
 	std::cout << "### ### ### ### ### ###" << std::endl << std::endl;
 }
 
@@ -49,12 +48,11 @@ int main(int argc, char *argv[])
 	configU.emplace("distribution", UNIFORM);
 	configU.emplace("seed", 3141);
 	configU.emplace("rectanglescount", 5000);
-	configU.emplace("clustercount", 20);
+	configU.emplace("visualization", false);
 
 	std::map<std::string, double> configD;
-	configD.emplace("skewfactor", 9.0);
 
-	while ((option = getopt(argc, argv, "t:m:a:b:n:s:r:c:f:")) != -1)
+	while ((option = getopt(argc, argv, "t:m:a:b:n:s:r:v:")) != -1)
 	{
 		switch (option)
 		{
@@ -93,19 +91,22 @@ int main(int argc, char *argv[])
 				configU["rectanglescount"] = atoi(optarg);
 				break;
 			}
-			case 'c': // Number of clusters
+			case 'v': // Visualization
 			{
-				configU["clustercount"] = atoi(optarg);
-				break;
-			}
-			case 'f': // Skew factor
-			{
-				configD["skewfactor"] = (double) atof(optarg);
+				configU["visualization"] = true;
 				break;
 			}
 			default:
 			{
-				std::cout << "Bad option. Exiting." << std::endl;
+				std::cout << "Bad option. Usage:" << std::endl;
+				std::cout << "    -t  Specifies tree type {0 = R-Tree, 1 = R+-Tree, 2 = NIR-Tree}" << std::endl;
+				std::cout << "    -m  Specifies benchmark type {0 = Uniform, 1 = Skew, 2 = Clustered, 3 = California, 4 = Biological, 5 = Forest}" << std::endl;
+				std::cout << "    -a  Minimum fanout for nodes in the selected tree" << std::endl;
+				std::cout << "    -b  Maximum fanout for nodes in the selected tree" << std::endl;
+				std::cout << "    -n  Specified benchmark size if size is not constant for benchmark type" << std::endl;
+				std::cout << "    -s  Specifies benchmark seed if benchmark type is randomly generated" << std::endl;
+				std::cout << "    -r  Specifies number of rectangles to search in benchmark if size is not constant for benchmark type" << std::endl;
+				std::cout << "    -v  Turns visualization on or off for first two dimensions of the selected tree" << std::endl;
 				return 1;
 			}
 		}

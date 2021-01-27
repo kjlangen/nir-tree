@@ -26,78 +26,72 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 	return points;
 }
 
-Point *generateSkewed(unsigned benchmarkSize, unsigned seed, double skewFactor)
+Point *generateBits()
 {
-	// Setup random generators
-	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-	std::cout << "Skewing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
+	// Dataset is pre-generated and requires 2 dimensions
+	assert(dimensions == 2 || dimensions == 3);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02" : "/home/kjlangen/nir-tree/data/bit03";
+	file.open(dataPath.c_str());
+	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
+	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
-	Point *points = new Point[benchmarkSize];
-	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
+	Point *points = new Point[BitDataSize];
+	std::cout << "Beginning initialization of " << BitDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < BitDataSize; ++i)
 	{
-		// Create the point
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			points[i][d] = pointDist(generator);
+			file.read(buffer, sizeof(double));
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[i][d] = *doubleBuffer;
 		}
-		points[i][dimensions - 1] = pow(points[i][dimensions - 1], skewFactor);
-
-		// Print the new point
-		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
 	}
 	std::cout << "Initialization OK." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
 
 	return points;
 }
 
-Point *generateClustered(unsigned benchmarkSize, unsigned seed, unsigned clusterCount)
+Point *generateHaze()
 {
-	// Setup random generators
-	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-	std::normal_distribution<double> clusterDist(0.0, 0.001);
-	std::cout << "Clustering points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
+	// Dataset is pre-generated and requires 2 dimensions
+	assert(dimensions == 2 || dimensions == 3);
 
-	// Initialize cluster centres
-	Point *centres = new Point[clusterCount];
-	std::cout << "Beginning initialization of " << clusterCount << " clusters..." << std::endl;
-	for (unsigned i = 0; i < clusterCount; ++i)
-	{
-		// Create the point
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			centres[i][d] = pointDist(generator);
-		}
-
-		// Print the centre
-		// std::cout << "Centre[" << i << "] " << centres[i] << std::endl;
-	}
-	std::cout << "Finished initialization of " << clusterCount << " clusters." << std::endl;
+	// Setup file reader and double buffer
+	std::fstream file;
+	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02" : "/home/kjlangen/nir-tree/data/pha03";
+	file.open(dataPath.c_str());
+	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
+	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
-	Point *points = new Point[benchmarkSize];
-	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize;)
+	Point *points = new Point[HazeDataSize];
+	std::cout << "Beginning initialization of " << HazeDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < HazeDataSize; ++i)
 	{
-		for (unsigned j = 0; j < clusterCount && i < benchmarkSize; ++j)
+		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			// Create the point
-			for (unsigned d = 0; d < dimensions; ++d)
-			{
-				points[i][d] = centres[j][d] + clusterDist(generator);
-			}
-
-			// Print the new point
-			// std::cout << "Point[" << i << "] " << points[i] << std::endl;
-
-			// Move to the next point
-			i++;
+			file.read(buffer, sizeof(double));
+			file.read(buffer, sizeof(double));
+			file.sync();
+			points[i][d] = *doubleBuffer;
 		}
 	}
-	std::cout << "Finished initialization of " << benchmarkSize << " points." << std::endl;
+	std::cout << "Initialization OK." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
 
 	return points;
 }
@@ -206,6 +200,102 @@ Point *generateForest()
 	return points;
 }
 
+Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
+{
+	std::default_random_engine generator(seed + benchmarkSize);
+	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
+
+	// Initialize rectangles
+	Point ll;
+	Point ur;
+	Rectangle *rectangles = new Rectangle[rectanglesSize];
+	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles..." << std::endl;
+	for (unsigned i = 0; i < rectanglesSize; ++i)
+	{
+		// Generate a new point and then create a square from it that covers 5% of the total area
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			ll[d] = pointDist(generator);
+			ur[d] = ll[d] + 0.05;
+		}
+
+		rectangles[i] = Rectangle(ll, ur);
+	}
+	std::cout << "Initialization OK." << std::endl;
+
+	return rectangles;
+}
+
+Rectangle *generateBitRectangles()
+{
+	// Query set is pre-generated and requires 2 or 3 dimensions
+	assert(dimensions == 2 || dimensions == 3);
+
+	// Setup file reader and double buffef
+	std::fstream file;
+	std::string queryPath = dimensions == 2 ? "/home/kjlangen/nir-tree/bit02.2" : "/home/kjlangen/nir-tree/bit03.2";
+	file.open(queryPath.c_str());
+	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[BitQuerySize];
+	std::cout << "Beginning initialization of " << BitQuerySize << " computer rectangles..." << std::endl;
+	for (unsigned i = 0; i < BitQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Initialization OK." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return rectangles;
+}
+
+Rectangle *generateHazeRectangles()
+{
+	// Query set is pre-generated and requires 2 or 3 dimensions
+	assert(dimensions == 2 || dimensions == 3);
+
+	// Setup file reader and double buffef
+	std::fstream file;
+	std::string queryPath = dimensions == 2 ? "/home/kjlangen/nir-tree/pha02.2" : "/home/kjlangen/nir-tree/pha03.2";
+	file.open(queryPath.c_str());
+	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
+	double *doubleBuffer = (double *)buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[HazeQuerySize];
+	std::cout << "Beginning initialization of " << HazeQuerySize << " hazy rectangles..." << std::endl;
+	for (unsigned i = 0; i < HazeQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			file.read(buffer, sizeof(double));
+			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			file.read(buffer, sizeof(double));
+			rectangles[i].upperRight[d] = *doubleBuffer;
+		}
+	}
+	std::cout << "Initialization OK." << std::endl;
+
+	// Cleanup
+	file.close();
+	delete [] buffer;
+
+	return rectangles;
+}
+
 Rectangle *generateCaliRectangles()
 {
 	// Query set is pre-generated and requires 2 dimensions
@@ -213,7 +303,7 @@ Rectangle *generateCaliRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/home/kjlangen/nirtree/data/rea02.2");
+	file.open("/home/kjlangen/nir-tree/data/rea02.2");
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -308,32 +398,6 @@ Rectangle *generateForestRectangles()
 	return rectangles;
 }
 
-Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
-{
-	std::default_random_engine generator(seed + benchmarkSize);
-	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-
-	// Initialize rectangles
-	Point ll;
-	Point ur;
-	Rectangle *rectangles = new Rectangle[rectanglesSize];
-	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles..." << std::endl;
-	for (unsigned i = 0; i < rectanglesSize; ++i)
-	{
-		// Generate a new point and then create a square from it that covers 5% of the total area
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			ll[d] = pointDist(generator);
-			ur[d] = ll[d] + 0.05;
-		}
-
-		rectangles[i] = Rectangle(ll, ur);
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	return rectangles;
-}
-
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
 	// Setup checksums
@@ -376,11 +440,13 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else if (configU["distribution"] == SKEW)
 	{
-		points = generateSkewed(configU["size"], configU["seed"], (double) configD["skewfactor"]);
+		configU["size"] = BitDataSize;
+		points = generateBits();
 	}
 	else if (configU["distribution"] == CLUSTER)
 	{
-		points = generateClustered(configU["size"], configU["seed"], configU["clustercount"]);
+		configU["size"] = HazeDataSize;
+		points = generateHaze();
 	}
 	else if (configU["distribution"] == CALIFORNIA)
 	{
@@ -404,7 +470,17 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 
 	// Initialize search rectangles
 	Rectangle *searchRectangles;
-	if (configU["distribution"] == CALIFORNIA)
+	if (configU["distribution"] == SKEW)
+	{
+		configU["rectanglescount"] = BitQuerySize;
+		searchRectangles = generateBitRectangles();
+	}
+	else if (configU["distribution"] == CLUSTER)
+	{
+		configU["rectanglescount"] = HazeQuerySize;
+		searchRectangles = generateHazeRectangles();
+	}
+	else if (configU["distribution"] == CALIFORNIA)
 	{
 		configU["rectanglescount"] = CaliforniaQuerySize;
 		searchRectangles = generateCaliRectangles();
@@ -450,8 +526,11 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	STATEXEC(std::cout << "Statistics OK." << std::endl);
 
 	// Visualize the tree
-	// spatialIndex->visualize();
-	// std::cout << "Visualization OK." << std::endl;
+	if (configU["visualization"])
+	{
+		spatialIndex->visualize();
+		std::cout << "Visualization OK." << std::endl;
+	}
 
 	// Validate checksum
 	assert(spatialIndex->checksum() == directSum);
