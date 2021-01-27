@@ -111,6 +111,7 @@ Point *generateCalifornia()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea02");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
@@ -146,6 +147,7 @@ Point *generateBiological()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea03");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
@@ -179,6 +181,7 @@ Point *generateForest()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea05");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
@@ -212,6 +215,7 @@ Rectangle *generateCaliRectangles()
 	std::fstream file;
 	file.open("/home/kjlangen/nirtree/data/rea02.2");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
@@ -245,6 +249,7 @@ Rectangle *generateBioRectangles()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea03.2");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
@@ -278,6 +283,7 @@ Rectangle *generateForestRectangles()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea05.2");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles

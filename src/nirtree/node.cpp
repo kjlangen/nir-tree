@@ -90,7 +90,7 @@ namespace nirtree
 		unsigned childIndex;
 		for (childIndex = 0; branches[childIndex].child != child && childIndex < branchesSize; ++childIndex) {}
 
-		// Delete the child deleting it and overwriting its branch
+		// Delete the child by deleting it and overwriting its branch
 		delete child;
 		branches[childIndex] = branches.back();
 		branches.pop_back();
