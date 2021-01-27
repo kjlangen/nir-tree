@@ -344,9 +344,9 @@ namespace nirtree
 	Node::Partition Node::partitionNode()
 	{
 		nirtree::Node::Partition defaultPartition;
-		// double totalMass = 0.0;
 		unsigned branchesSize = branches.size();
 		unsigned costMetric = std::numeric_limits<unsigned>::max();
+		// double totalMass = 0.0;
 
 		if (branchesSize == 0)
 		{
@@ -454,20 +454,6 @@ namespace nirtree
 
 				deduplicated.clear();
 				sortable.clear();
-			}
-
-			unsigned rightSize = 0;
-			for (Branch b : branches)
-			{
-				if (b.boundingPoly.boundingBox.upperRight[defaultPartition.dimension] <= defaultPartition.location)
-				{
-					++rightSize;
-				}
-			}
-
-			if (defaultPartition.dimension > dimensions || rightSize == 0 || rightSize > maxBranchFactor)
-			{
-				assert(false);
 			}
 
 			return defaultPartition;
