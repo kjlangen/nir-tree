@@ -28,7 +28,7 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 
 Point *generateBits()
 {
-	// Dataset is pre-generated and requires 2 dimensions
+	// Dataset is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
 
 	// Setup file reader and double buffer
@@ -63,7 +63,7 @@ Point *generateBits()
 
 Point *generateHaze()
 {
-	// Dataset is pre-generated and requires 2 dimensions
+	// Dataset is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
 
 	// Setup file reader and double buffer
