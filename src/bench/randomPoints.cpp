@@ -111,11 +111,12 @@ Point *generateCalifornia()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea02");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
-	Point *points = new Point[2 * CaliforniaDataSize];
-	std::cout << "Beginning initialization of " << 2 * CaliforniaDataSize << " points..." << std::endl;
+	Point *points = new Point[CaliforniaDataSize];
+	std::cout << "Beginning initialization of " << CaliforniaDataSize << " points..." << std::endl;
 	for (unsigned i = 0; i < CaliforniaDataSize; ++i)
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
@@ -125,7 +126,7 @@ Point *generateCalifornia()
 			points[i][d] = *doubleBuffer;
 			file.read(buffer, sizeof(double));
 			file.sync();
-			points[CaliforniaDataSize + i][d] = *doubleBuffer;
+			points[i][d] = (points[i][d] + *doubleBuffer) / 2;
 		}
 	}
 	std::cout << "Initialization OK." << std::endl;
@@ -146,6 +147,7 @@ Point *generateBiological()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea03");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
@@ -179,6 +181,7 @@ Point *generateForest()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea05");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize points
@@ -212,6 +215,7 @@ Rectangle *generateCaliRectangles()
 	std::fstream file;
 	file.open("/home/kjlangen/nirtree/data/rea02.2");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
@@ -245,6 +249,7 @@ Rectangle *generateBioRectangles()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea03.2");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
@@ -278,6 +283,7 @@ Rectangle *generateForestRectangles()
 	std::fstream file;
 	file.open("/home/kjlangen/nir-tree/data/rea05.2");
 	char *buffer = new char[sizeof(double)];
+	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
@@ -378,7 +384,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else if (configU["distribution"] == CALIFORNIA)
 	{
-		configU["size"] = 2 * CaliforniaDataSize;
+		configU["size"] = CaliforniaDataSize;
 		points = generateCalifornia();
 	}
 	else if (configU["distribution"] == BIOLOGICAL)
@@ -440,8 +446,8 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Insertion OK." << std::endl;
 
 	// Gather statistics
-	spatialIndex->stat();
-	std::cout << "Statistics OK." << std::endl;
+	STATEXEC(spatialIndex->stat());
+	STATEXEC(std::cout << "Statistics OK." << std::endl);
 
 	// Visualize the tree
 	// spatialIndex->visualize();

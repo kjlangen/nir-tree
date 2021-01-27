@@ -14,7 +14,7 @@
 #include <nirtree/nirtree.h>
 
 const unsigned CaliforniaDataSize = 1888012;
-const unsigned CaliforniaQuerySize = 11948;
+const unsigned CaliforniaQuerySize = 5974;
 const unsigned BiologicalDataSize = 11958999;
 const unsigned BiologicalQuerySize = 37844;
 const unsigned ForestDataSize = 581012;

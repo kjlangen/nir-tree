@@ -220,7 +220,7 @@ namespace rplustree
 				unsigned smallestExpansionIndex = 0;
 				double smallestExpansionArea = context->branches[0].boundingBox.computeExpansionArea(givenPoint);
 				double expansionArea;
-				for (unsigned i = 1; i < context->branches.size(); ++i)
+				for (unsigned i = 1; i < context->branches.size() && smallestExpansionArea != -1.0; ++i)
 				{
 					expansionArea = context->branches[i].boundingBox.computeExpansionArea(givenPoint);
 					if (expansionArea < smallestExpansionArea)
@@ -229,7 +229,11 @@ namespace rplustree
 						smallestExpansionArea = expansionArea;
 					}
 				}
-				context->branches[smallestExpansionIndex].boundingBox.expand(givenPoint);
+
+				if (smallestExpansionArea != -1.0)
+				{
+					context->branches[smallestExpansionIndex].boundingBox.expand(givenPoint);
+				}
 
 				// Descend
 				context = context->branches[smallestExpansionIndex].child;
@@ -282,25 +286,37 @@ namespace rplustree
 	Node::Partition Node::partitionNode()
 	{
 		rplustree::Node::Partition defaultPartition;
+		unsigned costMetric = std::numeric_limits<unsigned>::max();
+		double location;
 
 		if (branches.size() == 0)
 		{
 			unsigned dataSize = data.size();
-			double greatestDistance = - std::numeric_limits<double>::infinity();
-			double currentDistance = 0.0;
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
 				// Sort along dimension d
 				std::sort(data.begin(), data.end(), [d](Point a, Point b){return a[d] < b[d];});
 
-				currentDistance = data[dataSize / 2 + 1][d] - data[dataSize / 2][d];
+				// Pick at least half the data
+				location = data[dataSize / 2 - 1][d];
 
-				if (currentDistance > greatestDistance)
+				// Compute cost, # of duplicates of this location
+				unsigned duplicateCount = 0;
+				for (Point dataPoint : data)
 				{
-					greatestDistance = currentDistance;
+					if (location == dataPoint[d])
+					{
+						++duplicateCount;
+					}
+				}
+
+				// Compare cost
+				if (duplicateCount < costMetric)
+				{
 					defaultPartition.dimension = d;
-					defaultPartition.location = data[dataSize / 2][d];
+					defaultPartition.location = location;
+					costMetric = duplicateCount;
 				}
 			}
 
@@ -309,40 +325,36 @@ namespace rplustree
 		else
 		{
 			std::vector<Rectangle> sortableBoundingBoxes;
-			std::vector<double> sortable;
 
 			for (Branch b : branches)
 			{
 				sortableBoundingBoxes.push_back(b.boundingBox);
 			}
 
-			unsigned inducedSplits = std::numeric_limits<unsigned>::max();
-
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
 				// Sort along d
 				std::sort(sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(), [d](Rectangle a, Rectangle b){return a.upperRight[d] < b.upperRight[d];});
 
-				// Pick half of the rectangles
-				double location = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2].upperRight[d];
+				// Pick at least half of the rectangles
+				location = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 - 1].upperRight[d];
 
-				// Compute # of splits if d is chosen
+				// Compute cost, # of splits if d is chosen
 				unsigned currentInducedSplits = 0;
-
 				for (unsigned i = 0; i < sortableBoundingBoxes.size(); ++i)
 				{
 					if (sortableBoundingBoxes[i].lowerLeft[d] < location && location < sortableBoundingBoxes[i].upperRight[d])
 					{
-						currentInducedSplits++;
+						++currentInducedSplits;
 					}
 				}
 
-				// Decide if defaultPartition should be updated
-				if (currentInducedSplits < inducedSplits)
+				// Compare cost
+				if (currentInducedSplits < costMetric)
 				{
 					defaultPartition.dimension = d;
 					defaultPartition.location = location;
-					inducedSplits = currentInducedSplits;
+					costMetric = currentInducedSplits;
 				}
 			}
 
@@ -362,7 +374,7 @@ namespace rplustree
 		{
 			for (Point dataPoint : data)
 			{
-				if (dataPoint[p.dimension] <= p.location)
+				if (dataPoint[p.dimension] <= p.location && left->data.size() < maxBranchFactor)
 				{
 					left->data.push_back(dataPoint);
 				}
@@ -371,6 +383,7 @@ namespace rplustree
 					right->data.push_back(dataPoint);
 				}
 			}
+			data.clear();
 		}
 		else
 		{
@@ -688,7 +701,7 @@ namespace rplustree
 		unsigned long totalLeaves = 0;
 
 		std::vector<unsigned long> histogramFanout;
-		histogramFanout.resize(maxBranchFactor + 10, 0);
+		histogramFanout.resize(maxBranchFactor, 0);
 
 		for (;!context.empty();)
 		{
@@ -698,6 +711,10 @@ namespace rplustree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
+			if (fanout > histogramFanout.size() - 1)
+			{
+				histogramFanout.resize(fanout, 0);
+			}
 			++histogramFanout[fanout];
 
 			if (branchesSize == 0 && dataSize > 0)
