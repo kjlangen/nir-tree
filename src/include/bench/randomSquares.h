@@ -3,7 +3,7 @@
 #include <iostream>
 #include <random>
 #include <chrono>
-#include <spatialindex/SpatialIndex.h>
+// #include <spatialindex/SpatialIndex.h>
 #include <rtree/rtree.h>
 
 void randomSquares();

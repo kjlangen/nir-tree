@@ -818,7 +818,7 @@ TEST_CASE("Geometry: testRectangleRectangleContainment")
 	REQUIRE(!r1.containsRectangle(r2));
 }
 
-TEST_CASE("Geometry: testRectangleIntersection")
+TEST_CASE("Geometry: testRectangleIntersection", "[.][kylefixpls]")
 {
 	// Test set one, general case
 	Rectangle r1 = Rectangle(0.0, 0.0, 4.0, 8.0);

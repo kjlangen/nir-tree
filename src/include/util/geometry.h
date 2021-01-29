@@ -23,8 +23,11 @@ class Point
 		static Point atOrigin;
 
 		Point();
+
 		Point(double x, double y);
 		Point(double value);
+
+        double distance(Point p) const;
 
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
@@ -47,6 +50,7 @@ class Point
 		friend bool operator==(const Point &lhs, const Point &rhs);
 		friend bool operator!=(const Point &lhs, const Point &rhs);
 		friend std::ostream& operator<<(std::ostream &os, const Point &point);
+
 };
 
 bool operator<(const Point &lhs, const Point &rhs);
@@ -69,20 +73,22 @@ class Rectangle
 		Rectangle();
 		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
-		double area();
-		double computeIntersectionArea(Rectangle givenRectangle);
-		double computeExpansionArea(Point givenPoint);
-		double computeExpansionArea(Rectangle givenRectangle);
+		double area() const;
+		double margin() const;
+		double computeIntersectionArea(const Rectangle &givenRectangle) const;
+		double computeExpansionArea(const Point &givenPoint) const;
+		double computeExpansionArea(const Rectangle &givenRectangle) const;
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
-		bool aligned(Rectangle givenRectangle);
-		bool alignedOpposingBorders(Rectangle givenRectangle);
-		bool intersectsRectangle(Rectangle givenRectangle);
-		bool strictIntersectsRectangle(Rectangle givenRectangle);
-		bool borderOnlyIntersectsRectangle(Rectangle givenRectangle);
-		bool containsPoint(Point givenPoint);
-		bool strictContainsPoint(Point givenPoint);
-		bool containsRectangle(Rectangle givenRectangle);
+		bool aligned(const Rectangle &givenRectangle) const;
+		bool alignedOpposingBorders(const Rectangle &givenRectangle) const;
+		bool intersectsRectangle(const Rectangle &givenRectangle) const;
+		bool strictIntersectsRectangle(const Rectangle &givenRectangle) const;
+		bool borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const;
+		bool containsPoint(const Point &givenPoint) const;
+		bool strictContainsPoint(const Point &givenPoint) const;
+		bool containsRectangle(const Rectangle &givenRectangle) const;
+		Point centerPoint() const;
 		Rectangle intersection(Rectangle clippingRectangle);
 		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
 
