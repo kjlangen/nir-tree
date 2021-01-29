@@ -461,10 +461,17 @@ TEST_CASE("R*Tree: testSplitNode")
 	dummys[5]->parent = cluster3;
 	cluster3->entries.push_back(createBranchEntry(Rectangle(-7.0, 1.0, -5.0, 3.0), dummys[5]));
 
+
 	// Extra rstartree::Node causing the split
 	rstartree::Node *cluster3extra = new rstartree::Node(tree3);
 	cluster3extra->entries.push_back(Point(1.0, 1.0));
 	cluster3extra->entries.push_back(Point(2.0, 2.0));
+
+    // Set proper tree levels on everything
+    for( unsigned int i = 0; i < 6; i++ ) {
+        dummys[i]->level = 1;
+    }
+    cluster3extra->level = 1;
 
 	// Test the split
     cluster3->entries.push_back(createBranchEntry(cluster3extra->boundingBox(), cluster3extra ) );
@@ -480,7 +487,7 @@ TEST_CASE("R*Tree: testSplitNode")
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[0]).boundingBox == Rectangle(-2.0, 0.0, 0.0, 2.0));
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[1]).boundingBox == Rectangle(-2.0, 2.0, 0.0, 4.0));
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[2]).boundingBox == Rectangle(1.0, 1.0, 2.0, 2.0));
-	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[2]).child== cluster3extra);
+	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[2]).child == cluster3extra);
 	
 }
 

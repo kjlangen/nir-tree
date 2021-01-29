@@ -1,14 +1,23 @@
 C++ = g++-9
-SXX = -std=c++17 # Standard
-C++FLAGS = -ggdb -Wall -DDIM=2 # -O3 Flags
 DIR = src/include # Include directory
+SXX = -std=c++17 # Standard
+CXXFLAGS = -Wall
+CPPFLAGS = -DDIM2 -I $(DIR)
+
+ifndef PROD
+CXXFLAGS := -ggdb $(CXXFLAGS)
+else
+CPPFLAGS := -DNDEBUG $(CPPFLAGS)
+CXXFLAGS := $(CXXFLAGS) -O3
+endif
+
 SRC = $(shell find . -path ./src/tests -prune -false -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) )
 OBJ = $(SRC:.cpp=.o)
 TESTSRC = $(shell find ./src/tests -name '*.cpp')
 TESTOBJ = $(TESTSRC:.cpp=.o)
 
 %.o: %.cpp
-	$(C++) $(SXX) $(C++FLAGS) -I $(DIR) -c $< -o $@
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 all: bin/main bin/tests
 
@@ -20,15 +29,15 @@ bin/main: $(OBJ)
 	cp src/rstartree/node.o rtstartreenode.o
 	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
 	rm -rf test*.o
-	$(C++) $(SXX) $(C++FLAGS) *.o -o bin/main -I $(DIR)
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/main -I $(DIR)
 
 bin/tests: $(TESTOBJ) bin/main
 	find ./src/tests \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
 	mv main.o main.nocompile || echo
-	$(C++) $(SXX) $(C++FLAGS) *.o -o bin/tests -I $(DIR)
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/tests
 	mv main.nocompile main.o || echo
-    
-.PHONY: all clean
+
+.PHONY: all clean prod
 
 clean:
 	rm -rf bin/*

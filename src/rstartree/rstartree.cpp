@@ -67,5 +67,4 @@ namespace rstartree
     }
 	void RStarTree::visualize() {
     }
-
 }

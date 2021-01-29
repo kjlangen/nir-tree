@@ -108,8 +108,8 @@ namespace rstartree
 
 			// Miscellaneous
 			unsigned checksum() const;
-			void print(unsigned n=0) const;
-			void printTree(unsigned n=0) const;
+			void print() const;
+			void printTree() const;
 			unsigned height() const;
 			void stat() const;
 
@@ -118,7 +118,7 @@ namespace rstartree
 	};
 
     Rectangle boxFromNodeEntry( const Node::NodeEntry &entry );
-    unsigned computeOverlapGrowth(unsigned int index, const std::vector<Node::NodeEntry> &entries, const Rectangle &rect );
+    double computeOverlapGrowth(unsigned int index, const std::vector<Node::NodeEntry> &entries, const Rectangle &rect);
 
     struct sortByXRectangleFirst
     {

@@ -5,8 +5,6 @@
 	#include <iostream>
 
 	#define STATEXEC(e) e
-	#define STATSPLIT() std::cout << "SPLIT" << std::endl;
-	#define STATSHRINK() std::cout << "SHRINK" << std::endl;
 	#define STATMEM(mem) std::cout << "Memory Usage: " << (mem / 1024) << "KB, " << (mem / (1024 * 1024)) << "MB, " << (mem / (1024 * 1024 * 1024)) << "GB" << std::endl
 	#define STATHEIGHT(height) std::cout << "Tree Height: " << height << std::endl
 	#define STATSIZE(n) std::cout << "Tree Nodes: " << n << std::endl
@@ -18,8 +16,6 @@
 	#define STATHIST(bucket, count) std::cout << "  " << bucket << " : " << count << std::endl
 #else
 	#define STATEXEC(e)
-	#define STATSPLIT()
-	#define STATSHRINK()
 	#define STATMEM(mem)
 	#define STATHEIGHT(height)
 	#define STATSIZE(n)

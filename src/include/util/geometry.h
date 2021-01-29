@@ -27,6 +27,8 @@ class Point
 		Point(double x, double y);
 		Point(double value);
 
+        double distance(Point p) const;
+
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
 		Point &operator/=(double scalar);
@@ -49,7 +51,6 @@ class Point
 		friend bool operator!=(const Point &lhs, const Point &rhs);
 		friend std::ostream& operator<<(std::ostream &os, const Point &point);
 
-        double distance(Point p) const;
 };
 
 bool operator<(const Point &lhs, const Point &rhs);

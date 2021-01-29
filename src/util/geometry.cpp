@@ -28,11 +28,22 @@ Point::Point(double value)
 	}
 }
 
+double Point::distance(Point p) const
+{
+	double dist = 0.0;
+	for( unsigned d = 0; d < dimensions; d++ ) {
+		dist += pow(abs((*this)[d] - p[d]), 2);
+	}
+	return sqrt(dist);
+}
+
+
+
 Point &Point::operator-=(const Point &rhs)
 {
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		values[i] -= rhs.values[i];
+		values[d] -= rhs.values[d];
 	}
 
 	return *this;
@@ -40,9 +51,9 @@ Point &Point::operator-=(const Point &rhs)
 
 Point &Point::operator+=(const Point &rhs)
 {
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		values[i] += rhs.values[i];
+		values[d] += rhs.values[d];
 	}
 
 	return *this;
@@ -50,9 +61,9 @@ Point &Point::operator+=(const Point &rhs)
 
 Point &Point::operator/=(double scalar)
 {
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		values[i] /= scalar;
+		values[d] /= scalar;
 	}
 
 	return *this;
@@ -60,9 +71,9 @@ Point &Point::operator/=(double scalar)
 
 Point &Point::operator*=(double scalar)
 {
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		values[i] *= scalar;
+		values[d] *= scalar;
 	}
 
 	return *this;
@@ -70,9 +81,9 @@ Point &Point::operator*=(double scalar)
 
 Point &Point::operator*=(const Point &rhs)
 {
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		values[i] *= rhs[i];
+		values[d] *= rhs[d];
 	}
 
 	return *this;
@@ -91,9 +102,9 @@ const double Point::operator[](unsigned index) const
 Point &Point::operator<<(const Point &p)
 {
 	// Set this point to be the Hamming minimum between itself and p
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		values[i] = values[i] < p[i] ? values[i] : p[i];
+		values[d] = values[d] < p[d] ? values[d] : p[d];
 	}
 
 	return *this;
@@ -102,9 +113,9 @@ Point &Point::operator<<(const Point &p)
 Point &Point::operator>>(const Point &p)
 {
 	// Set this point to be the Hamming maximum between itself and p
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		values[i] = values[i] > p[i] ? values[i] : p[i];
+		values[d] = values[d] > p[d] ? values[d] : p[d];
 	}
 
 	return *this;
@@ -114,9 +125,9 @@ Point operator-(const Point &lhs, const Point &rhs)
 {
 	Point r;
 
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		r.values[i] = lhs[i] - rhs[i];
+		r.values[d] = lhs[d] - rhs[d];
 	}
 
 	return r;
@@ -126,9 +137,9 @@ Point operator+(const Point &lhs, const Point &rhs)
 {
 	Point r;
 
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		r.values[i] = lhs[i] + rhs[i];
+		r.values[d] = lhs[d] + rhs[d];
 	}
 
 	return r;
@@ -138,9 +149,9 @@ Point operator*(const Point &lhs, const double scalar)
 {
 	Point r;
 
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		r.values[i] = lhs[i] * scalar;
+		r.values[d] = lhs[d] * scalar;
 	}
 
 	return r;
@@ -150,9 +161,9 @@ Point operator*(const Point &lhs, const Point &rhs)
 {
 	Point r;
 
-	for (unsigned i = 0; i < dimensions; ++i)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		r.values[i] = lhs[i] * rhs[i];
+		r.values[d] = lhs[d] * rhs[d];
 	}
 
 	return r;
@@ -162,9 +173,9 @@ bool operator<(const Point &lhs, const Point &rhs)
 {
 	bool result = true;
 
-	for (unsigned i = 0; i < dimensions && result; ++i)
+	for (unsigned d = 0; d < dimensions && result; ++d)
 	{
-		result = result && lhs[i] < rhs[i];
+		result = result && lhs[d] < rhs[d];
 	}
 
 	return result;
@@ -174,9 +185,9 @@ bool operator>(const Point &lhs, const Point &rhs)
 {
 	bool result = true;
 
-	for (unsigned i = 0; i < dimensions && result; ++i)
+	for (unsigned d = 0; d < dimensions && result; ++d)
 	{
-		result = result && lhs[i] > rhs[i];
+		result = result && lhs[d] > rhs[d];
 	}
 
 	return result;
@@ -186,9 +197,9 @@ bool operator<=(const Point &lhs, const Point &rhs)
 {
 	bool result = true;
 
-	for (unsigned i = 0; i < dimensions && result; ++i)
+	for (unsigned d = 0; d < dimensions && result; ++d)
 	{
-		result = result && lhs[i] <= rhs[i];
+		result = result && lhs[d] <= rhs[d];
 	}
 
 	return result;
@@ -198,9 +209,9 @@ bool operator>=(const Point &lhs, const Point &rhs)
 {
 	bool result = true;
 
-	for (unsigned i = 0; i < dimensions && result; ++i)
+	for (unsigned d = 0; d < dimensions && result; ++d)
 	{
-		result = result && lhs[i] >= rhs[i];
+		result = result && lhs[d] >= rhs[d];
 	}
 
 	return result;
@@ -210,9 +221,9 @@ bool operator==(const Point &lhs, const Point &rhs)
 {
 	bool result = true;
 
-	for (unsigned i = 0; i < dimensions && result; ++i)
+	for (unsigned d = 0; d < dimensions && result; ++d)
 	{
-		result = result && lhs[i] == rhs[i];
+		result = result && lhs[d] == rhs[d];
 	}
 
 	return result;
@@ -222,9 +233,9 @@ bool operator!=(const Point &lhs, const Point &rhs)
 {
 	bool result = false;
 
-	for (unsigned i = 0; i < dimensions && !result; ++i)
+	for (unsigned d = 0; d < dimensions && !result; ++d)
 	{
-		result = result || lhs[i] != rhs[i];
+		result = result || lhs[d] != rhs[d];
 	}
 
 	return result;
@@ -270,9 +281,9 @@ double Rectangle::area() const
 {
 	double a = fabs(upperRight[0] - lowerLeft[0]);
 
-	for (unsigned i = 1; i < dimensions; ++i)
+	for (unsigned d = 1; d < dimensions; ++d)
 	{
-		a = a * fabs(upperRight[i] - lowerLeft[i]);
+		a = a * fabs(upperRight[d] - lowerLeft[d]);
 	}
 
 	return a;
@@ -288,9 +299,9 @@ double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 
 	double intersectionArea = fabs(fmin(upperRight[0], givenRectangle.upperRight[0]) - fmax(lowerLeft[0], givenRectangle.lowerLeft[0]));
 
-	for (unsigned i = 1; i < dimensions; ++i)
+	for (unsigned d = 1; d < dimensions; ++d)
 	{
-		intersectionArea = intersectionArea * fabs(fmin(upperRight[i], givenRectangle.upperRight[i]) - fmax(lowerLeft[i], givenRectangle.lowerLeft[i]));
+		intersectionArea = intersectionArea * fabs(fmin(upperRight[d], givenRectangle.upperRight[d]) - fmax(lowerLeft[d], givenRectangle.lowerLeft[d]));
 	}
 
 	return intersectionArea;
@@ -301,9 +312,9 @@ double Rectangle::computeExpansionArea(const Point &givenPoint) const
 	// Expanded rectangle area computed directly
 	double expandedArea = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
 
-	for (unsigned i = 1; i < dimensions; ++i)
+	for (unsigned d = 1; d < dimensions; ++d)
 	{
-		expandedArea = expandedArea * fabs(fmin(lowerLeft[i], givenPoint[i]) - fmax(upperRight[i], givenPoint[i]));
+		expandedArea = expandedArea * fabs(fmin(lowerLeft[d], givenPoint[d]) - fmax(upperRight[d], givenPoint[d]));
 	}
 
 	// Compute the difference
@@ -315,9 +326,9 @@ double Rectangle::computeExpansionArea(const Rectangle &givenRectangle) const
 	// Expanded rectangle area computed directly
 	double expandedArea = fabs(fmin(givenRectangle.lowerLeft[0], lowerLeft[0]) - fmax(givenRectangle.upperRight[0], upperRight[0]));
 
-	for (unsigned i = 1; i < dimensions; ++i)
+	for (unsigned d = 1; d < dimensions; ++d)
 	{
-		expandedArea = expandedArea * fabs(fmin(givenRectangle.lowerLeft[i], lowerLeft[i]) - fmax(givenRectangle.upperRight[i], upperRight[i]));
+		expandedArea = expandedArea * fabs(fmin(givenRectangle.lowerLeft[d], lowerLeft[d]) - fmax(givenRectangle.upperRight[d], upperRight[d]));
 	}
 
 	// Compute the difference
@@ -355,9 +366,9 @@ bool Rectangle::alignedOpposingBorders(const Rectangle &givenRectangle) const
 {
 	bool result = false;
 
-	for (unsigned i = 0; i < dimensions && !result; ++i)
+	for (unsigned d = 0; d < dimensions && !result; ++d)
 	{
-		result = result || lowerLeft[i] == givenRectangle.upperRight[i] || upperRight[i] == givenRectangle.lowerLeft[i];
+		result = result || lowerLeft[d] == givenRectangle.upperRight[d] || upperRight[d] == givenRectangle.lowerLeft[d];
 	}
 
 	return result;
@@ -368,12 +379,12 @@ bool Rectangle::intersectsRectangle(const Rectangle &givenRectangle) const
 	// Compute the range intersections
 	bool interval = true;
 
-	for (unsigned i = 0; i < dimensions && interval; ++i)
+	for (unsigned d = 0; d < dimensions && interval; ++d)
 	{
 		interval =
 			interval &&
-			((lowerLeft[i] <= givenRectangle.lowerLeft[i] && givenRectangle.lowerLeft[i] <= upperRight[i]) ||
-			(givenRectangle.lowerLeft[i] <= lowerLeft[i] && lowerLeft[i] <= givenRectangle.upperRight[i]));
+			((lowerLeft[d] <= givenRectangle.lowerLeft[d] && givenRectangle.lowerLeft[d] <= upperRight[d]) ||
+			(givenRectangle.lowerLeft[d] <= lowerLeft[d] && lowerLeft[d] <= givenRectangle.upperRight[d]));
 	}
 
 	return interval;
@@ -384,12 +395,12 @@ bool Rectangle::strictIntersectsRectangle(const Rectangle &givenRectangle) const
 	// Compute the range intersections
 	bool interval = true;
 
-	for (unsigned i = 0; i < dimensions && interval; ++i)
+	for (unsigned d = 0; d < dimensions && interval; ++d)
 	{
 		interval =
 			interval &&
-			((lowerLeft[i] < givenRectangle.lowerLeft[i] && givenRectangle.lowerLeft[i] < upperRight[i]) ||
-			(givenRectangle.lowerLeft[i] < lowerLeft[i] && lowerLeft[i] < givenRectangle.upperRight[i]));
+			((lowerLeft[d] < givenRectangle.lowerLeft[d] && givenRectangle.lowerLeft[d] < upperRight[d]) ||
+			(givenRectangle.lowerLeft[d] < lowerLeft[d] && lowerLeft[d] < givenRectangle.upperRight[d]));
 	}
 
 	return interval;
@@ -418,19 +429,10 @@ bool Rectangle::containsRectangle(const Rectangle &givenRectangle) const
 double Rectangle::margin() const
 {
 	double margin = 0.0;
-	for( unsigned i = 0; i < dimensions; i++ ) {
-		margin += abs(upperRight[i] - lowerLeft[i]) * 2;
+	for( unsigned d = 0; d < dimensions; d++ ) {
+		margin += abs(upperRight[d] - lowerLeft[d]) * 2;
 	}
 	return margin;
-}
-
-double Point::distance(Point p) const
-{
-	double dist = 0.0;
-	for( unsigned i = 0; i < dimensions; i++ ) {
-		dist += pow(abs((*this)[0] - p[0]), 2);
-	}
-	return sqrt(dist);
 }
 
 Point Rectangle::centerPoint() const
