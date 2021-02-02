@@ -521,10 +521,6 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	std::cout << "Insertion OK." << std::endl;
 
-	// Gather statistics
-	STATEXEC(spatialIndex->stat());
-	STATEXEC(std::cout << "Statistics OK." << std::endl);
-
 	// Visualize the tree
 	if (configU["visualization"])
 	{
@@ -580,6 +576,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		// std::cout << v.size() << " points verified." << std::endl;
 	}
 	std::cout << "Range search OK." << std::endl;
+
+	// Gather statistics
+	STATEXEC(spatialIndex->stat());
+	STATEXEC(std::cout << "Statistics OK." << std::endl);
 
 	// Validate checksum
 	assert(spatialIndex->checksum() == directSum);

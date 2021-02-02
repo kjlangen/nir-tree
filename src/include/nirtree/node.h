@@ -15,6 +15,7 @@
 #include <chrono>
 #include <algorithm>
 #include <omp.h>
+#include <globals/globals.h>
 #include <util/geometry.h>
 #include <util/graph.h>
 #include <util/debug.h>
@@ -35,6 +36,11 @@ namespace nirtree
 
 			unsigned minBranchFactor;
 			unsigned maxBranchFactor;
+
+			static std::vector<unsigned> histogramSearch;
+			static std::vector<unsigned> histogramLeaves;
+			static std::vector<unsigned> histogramRangeSearch;
+			static std::vector<unsigned> histogramRangeLeaves;
 
 		public:
 			struct Branch

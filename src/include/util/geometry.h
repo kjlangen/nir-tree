@@ -26,6 +26,8 @@ class Point
 		Point(double x, double y);
 		Point(double value);
 
+		bool completeCompare(Point &rhs, unsigned startingDimension);
+
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
 		Point &operator/=(double scalar);
@@ -75,7 +77,7 @@ class Rectangle
 		double computeExpansionArea(Rectangle givenRectangle);
 		void expand(Point givenPoint);
 		void expand(Rectangle givenRectangle);
-		bool aligned(Rectangle givenRectangle);
+		bool alignedForMerging(Rectangle givenRectangle);
 		bool alignedOpposingBorders(Rectangle givenRectangle);
 		bool intersectsRectangle(Rectangle givenRectangle);
 		bool strictIntersectsRectangle(Rectangle givenRectangle);
@@ -121,6 +123,7 @@ class IsotheticPolygon
 		bool intersectsPolygon(IsotheticPolygon &givenPolygon);
 		bool borderOnlyIntersectsRectangle(Rectangle givenRectangle);
 		bool containsPoint(Point requestedPoint);
+		bool disjoint(IsotheticPolygon &givenPolygon);
 		std::vector<Rectangle> intersection(Rectangle givenRectangle);
 		void intersection(IsotheticPolygon &constraintPolygon);
 		void increaseResolution(Rectangle clippingRectangle);
@@ -131,11 +134,13 @@ class IsotheticPolygon
 		void remove(unsigned basicRectangleIndex);
 		void deduplicate();
 		void refine();
+		void shrink(std::vector<Point> &pinPoints);
 		void sort(bool min, unsigned d=0);
 
-		bool disjoint();
 		bool exists();
+		bool valid();
 		bool unique();
+		bool lineFree();
 		bool infFree();
 
 		friend bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);

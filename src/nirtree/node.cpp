@@ -2,6 +2,11 @@
 
 namespace nirtree
 {
+	std::vector<unsigned> Node::histogramSearch = std::vector<unsigned>(1000, 0);
+	std::vector<unsigned> Node::histogramLeaves = std::vector<unsigned>(1000000, 0);
+	std::vector<unsigned> Node::histogramRangeSearch = std::vector<unsigned>(1000000, 0);
+	std::vector<unsigned> Node::histogramRangeLeaves = std::vector<unsigned>(1000000, 0);
+
 	Node::Node()
 	{
 		minBranchFactor = 0;
@@ -141,6 +146,8 @@ namespace nirtree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
+		STATEXEC(unsigned nodesSearched = 0);
+		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
@@ -149,6 +156,8 @@ namespace nirtree
 
 			unsigned branchesSize = currentContext->branches.size();
 			unsigned dataSize = currentContext->data.size();
+
+			STATEXEC(++nodesSearched);
 
 			if (branchesSize == 0)
 			{
@@ -160,6 +169,8 @@ namespace nirtree
 						accumulator.push_back(currentContext->data[i]);
 					}
 				}
+
+				STATEXEC(++leavesSearched);
 			}
 			else
 			{
@@ -175,6 +186,9 @@ namespace nirtree
 			}
 		}
 
+		STATEXEC(++histogramSearch[nodesSearched]);
+		STATEXEC(++histogramLeaves[leavesSearched]);
+
 		return accumulator;
 	}
 
@@ -187,6 +201,8 @@ namespace nirtree
 		context.push(this);
 		Node *currentContext;
 		unsigned branchesSize, dataSize;
+		STATEXEC(unsigned nodesSearched = 0);
+		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
@@ -195,6 +211,8 @@ namespace nirtree
 
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
+
+			STATEXEC(++nodesSearched);
 
 			if (branchesSize == 0)
 			{
@@ -206,6 +224,8 @@ namespace nirtree
 						accumulator.push_back(currentContext->data[i]);
 					}
 				}
+
+				STATEXEC(++leavesSearched);
 			}
 			else
 			{
@@ -220,6 +240,9 @@ namespace nirtree
 				}
 			}
 		}
+
+		STATEXEC(++histogramRangeSearch[nodesSearched]);
+		STATEXEC(++histogramRangeLeaves[leavesSearched]);
 
 		return accumulator;
 	}
@@ -251,15 +274,7 @@ namespace nirtree
 				IsotheticPolygon::OptimalExpansion evalExpansion;
 				for (unsigned i = 1; i < branchesSize && smallestExpansion.area != -1.0; ++i)
 				{
-					// if (context->branches[i].boundingPoly.containsPoint(givenPoint))
-					// {
-					// 	smallestExpansionBranchIndex = i;
-					// 	smallestExpansion = {0, -1.0};
-					// 	break;
-					// }
-					// else 
-
-					if ((evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint)).area < smallestExpansion.area)
+					if ((evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(givenPoint)).area < smallestExpansion.area && evalExpansion.area != 0.0)
 					{
 						smallestExpansionBranchIndex = i;
 						smallestExpansion = evalExpansion;
@@ -286,6 +301,15 @@ namespace nirtree
 
 					context->branches[smallestExpansionBranchIndex].boundingPoly.remove(smallestExpansion.index);
 					context->branches[smallestExpansionBranchIndex].boundingPoly.merge(subsetPolygon);
+
+					if (context->branches[smallestExpansionBranchIndex].child->data.size() > 0)
+					{
+						context->branches[smallestExpansionBranchIndex].child->data.push_back(givenPoint);
+						context->branches[smallestExpansionBranchIndex].boundingPoly.shrink(context->branches[smallestExpansionBranchIndex].child->data);
+						context->branches[smallestExpansionBranchIndex].child->data.pop_back();
+					}
+
+					context->branches[smallestExpansionBranchIndex].boundingPoly.refine();
 				}
 
 				// Descend
@@ -346,114 +370,81 @@ namespace nirtree
 		nirtree::Node::Partition defaultPartition;
 		unsigned branchesSize = branches.size();
 		unsigned costMetric = std::numeric_limits<unsigned>::max();
-		// double totalMass = 0.0;
+		double totalMass = 0.0;
 
 		if (branchesSize == 0)
 		{
-			// // Setup variance values
-			// Point variance = Point::atOrigin;
-			// Point average = Point::atOrigin;
-			// Point sumOfSquares = Point::atOrigin;
+			// Setup variance values
+			Point variance = Point::atOrigin;
+			Point average = Point::atOrigin;
+			Point sumOfSquares = Point::atOrigin;
 
-			// for (Point d : data)
-			// {
-			// 	average += d;
-			// 	sumOfSquares += d * d;
-			// 	totalMass += 1.0;
-			// }
+			for (Point d : data)
+			{
+				average += d;
+				sumOfSquares += d * d;
+				totalMass += 1.0;
+			}
 
-			// // Compute final terms
-			// average /= totalMass;
-			// sumOfSquares /= totalMass;
+			// Compute final terms
+			average /= totalMass;
+			sumOfSquares /= totalMass;
 
-			// // Compute final variance
-			// variance = sumOfSquares - average * average;
+			// Compute final variance
+			variance = sumOfSquares - average * average;
 
-			// // Choose most variate dimension
-			// defaultPartition.dimension = 0;
-
-			// for (unsigned i = 0; i < dimensions; ++i)
-			// {
-			// 	defaultPartition.dimension = variance[i] > variance[defaultPartition.dimension] ? i : defaultPartition.dimension;
-			// }
-			// defaultPartition.location = average[defaultPartition.dimension];
-
-			unsigned dataSize = data.size();
+			// Choose most variate dimension
+			defaultPartition.dimension = 0;
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				// Sort along dimension d
-				std::sort(data.begin(), data.end(), [d](Point a, Point b){return a[d] < b[d];});
-
-				// Compute cost
-				unsigned duplicates = 0;
-				for (Point dataPoint : data)
-				{
-					if (dataPoint[d] == data[dataSize / 2 - 1][d])
-					{
-						++duplicates;
-					}
-				}
-
-				// Compare cost
-				if (duplicates < costMetric)
-				{
-					defaultPartition.dimension = d;
-					defaultPartition.location = data[dataSize / 2 - 1][d];
-					costMetric = duplicates;
-				}
+				defaultPartition.dimension = variance[d] > variance[defaultPartition.dimension] ? d : defaultPartition.dimension;
 			}
+			defaultPartition.location = average[defaultPartition.dimension];
 
 			return defaultPartition;
 		}
 		else
 		{
-			std::vector<double> sortable;
-			unsigned bestBalance = branchesSize;
-			std::vector<double> deduplicated;
+			Point centreOfMass = Point::atOrigin;
+			std::vector<Rectangle> sortable;
+			double location;
+
+			for (Branch b : branches)
+			{
+				sortable.insert(sortable.end(), b.boundingPoly.basicRectangles.begin(), b.boundingPoly.basicRectangles.end());
+			}
+
+			for (Rectangle boundingBox : sortable)
+			{
+				centreOfMass += boundingBox.lowerLeft;
+				centreOfMass += boundingBox.upperRight;
+				totalMass += 2.0;
+			}
+
+			centreOfMass /= totalMass;
 
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
-				// Make rightmost limits sortable
-				for (unsigned i = 0; i < branchesSize; ++i)
-				{
-					sortable.push_back(branches[i].boundingPoly.boundingBox.upperRight[d]);
-				}
+				location = centreOfMass[d];
 
-				// Sort along d
-				std::sort(sortable.begin(), sortable.end());
-
-				// Deduplicate
-				deduplicated.push_back(sortable[0]);
-				for (unsigned i = 1; i < branchesSize; ++i)
+				// Compute cost, # of splits if d is chosen
+				unsigned currentInducedSplits = 0;
+				for (unsigned i = 0; i < sortable.size(); ++i)
 				{
-					if (sortable[i] != sortable[i - 1])
+					if (sortable[i].lowerLeft[d] < location && location < sortable[i].upperRight[d])
 					{
-						deduplicated.push_back(sortable[i]);
-					}
-				}
-
-				// Compute cost
-				unsigned currentLeftSize = 0;
-				for (Branch b : branches)
-				{
-					if (b.boundingPoly.boundingBox.upperRight[d] <= deduplicated[deduplicated.size() / 2])
-					{
-						++currentLeftSize;
+						++currentInducedSplits;
 					}
 				}
 
 				// Compare cost
-				unsigned balance = branchesSize / 2 > currentLeftSize ? branchesSize / 2 - currentLeftSize : currentLeftSize - branchesSize / 2;
-				if (balance < bestBalance)
+				if (currentInducedSplits < costMetric)
 				{
 					defaultPartition.dimension = d;
-					defaultPartition.location = deduplicated[deduplicated.size() / 2];
-					bestBalance = balance;
+					defaultPartition.location = location;
+					costMetric = currentInducedSplits;
 				}
-
-				deduplicated.clear();
-				sortable.clear();
 			}
 
 			return defaultPartition;
@@ -477,20 +468,41 @@ namespace nirtree
 		unsigned branchesSize = branches.size();
 		unsigned dataSize = data.size();
 
+		split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
+		split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
+
+		split.leftBranch.boundingPoly.refine();
+		split.rightBranch.boundingPoly.refine();
+
 		if (branchesSize == 0 && dataSize > 0)
 		{
+			bool containedLeft, containedRight;
 			for (unsigned i = 0; i < dataSize; ++i)
 			{
-				if (data[i][p.dimension] <= p.location && split.leftBranch.child->data.size() < maxBranchFactor)
+				containedLeft = split.leftBranch.boundingPoly.containsPoint(data[i]);
+				containedRight = split.rightBranch.boundingPoly.containsPoint(data[i]);
+
+				if (containedLeft && !containedRight)
 				{
 					split.leftBranch.child->data.push_back(data[i]);
 				}
-				else
+				else if (!containedLeft && containedRight)
 				{
 					split.rightBranch.child->data.push_back(data[i]);
 				}
+				else if (split.rightBranch.child->data.size() < split.leftBranch.child->data.size())
+				{
+					split.rightBranch.child->data.push_back(data[i]);
+				}
+				else
+				{
+					split.leftBranch.child->data.push_back(data[i]);
+				}
 			}
 			data.clear();
+
+			split.leftBranch.boundingPoly.shrink(split.leftBranch.child->data);
+			split.rightBranch.boundingPoly.shrink(split.rightBranch.child->data);
 		}
 		else
 		{
@@ -527,9 +539,6 @@ namespace nirtree
 			}
 			branches.clear();
 		}
-
-		split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
-		split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
 
 		return split;
 	}
@@ -744,6 +753,19 @@ namespace nirtree
 			}
 		}
 
+		for (unsigned i = 0; i < branches.size(); ++i)
+		{
+			for (unsigned j = 0; j < branches.size(); ++j)
+			{
+				if (i != j && !branches[i].boundingPoly.disjoint(branches[j].boundingPoly))
+				{
+					std::cout << "Branch " << i << " is not disjoint from sibling Branch " << j << std::endl;
+					std::cout << "branches[" << i << "].boundingPoly = " << branches[i].boundingPoly << std::endl;
+					std::cout << "branches[" << j << "].boundingPoly = " << branches[j].boundingPoly << std::endl;
+				}
+			}
+		}
+
 		bool valid = true;
 		for (unsigned i = 0; i < branches.size(); ++i)
 		{
@@ -818,6 +840,8 @@ namespace nirtree
 		unsigned long branchesSize;
 		unsigned long dataSize;
 		unsigned long polygonSize;
+		unsigned long totalPolygonSize = 0;
+		unsigned long totalLines = 0;
 		size_t memoryFootprint = 0;
 		unsigned long totalNodes = 1;
 		unsigned long singularBranches = 0;
@@ -860,6 +884,15 @@ namespace nirtree
 
 					polygonSize = currentContext->branches[i].boundingPoly.basicRectangles.size();
 					++histogramPolygon[polygonSize];
+					totalPolygonSize += polygonSize;
+
+					for (Rectangle r : currentContext->branches[i].boundingPoly.basicRectangles)
+					{
+						if (r.area() == 0.0)
+						{
+							++totalLines;
+						}
+					}
 
 					context.push(currentContext->branches[i].child);
 				}
@@ -882,12 +915,46 @@ namespace nirtree
 				STATHIST(i, histogramFanout[i]);
 			}
 		}
+		STATLINES(totalLines);
+		STATTOTALPOLYSIZE(totalPolygonSize);
 		STATPOLYHIST();
 		for (unsigned i = 0; i < histogramPolygon.size(); ++i)
 		{
 			if (histogramPolygon[i] > 0)
 			{
 				STATHIST(i, histogramPolygon[i]);
+			}
+		}
+		STATSEARCHHIST();
+		for (unsigned i = 0; i < histogramSearch.size(); ++i)
+		{
+			if (histogramSearch[i] > 0)
+			{
+				STATHIST(i, histogramSearch[i]);
+			}
+		}
+		STATLEAVESHIST();
+		for (unsigned i = 0; i < histogramLeaves.size(); ++i)
+		{
+			if (histogramLeaves[i] > 0)
+			{
+				STATHIST(i, histogramLeaves[i]);
+			}
+		}
+		STATRANGESEARCHHIST();
+		for (unsigned i = 0; i < histogramRangeSearch.size(); ++i)
+		{
+			if (histogramRangeSearch[i] > 0)
+			{
+				STATHIST(i, histogramRangeSearch[i]);
+			}
+		}
+		STATRANGELEAVESHIST();
+		for (unsigned i = 0; i < histogramRangeLeaves.size(); ++i)
+		{
+			if (histogramRangeLeaves[i] > 0)
+			{
+				STATHIST(i, histogramRangeLeaves[i]);
 			}
 		}
 		STATEXEC(std::cout << "### ### ### ###" << std::endl);

@@ -2,6 +2,11 @@
 
 namespace rplustree
 {
+	std::vector<unsigned> Node::histogramSearch = std::vector<unsigned>(1000, 0);
+	std::vector<unsigned> Node::histogramLeaves = std::vector<unsigned>(1000000, 0);
+	std::vector<unsigned> Node::histogramRangeSearch = std::vector<unsigned>(1000000, 0);
+	std::vector<unsigned> Node::histogramRangeLeaves = std::vector<unsigned>(1000000, 0);
+
 	Node::Node()
 	{
 		minBranchFactor = 0;
@@ -123,11 +128,15 @@ namespace rplustree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
+		STATEXEC(unsigned nodesSearched = 0);
+		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
+
+			STATEXEC(++nodesSearched);
 
 			if (currentContext->branches.size() == 0)
 			{
@@ -139,6 +148,8 @@ namespace rplustree
 						matchingPoints.push_back(currentContext->data[i]);
 					}
 				}
+
+				STATEXEC(++leavesSearched);
 			}
 			else
 			{
@@ -154,6 +165,9 @@ namespace rplustree
 			}
 		}
 
+		STATEXEC(++histogramSearch[nodesSearched]);
+		STATEXEC(++histogramLeaves[leavesSearched]);
+
 		return matchingPoints;
 	}
 
@@ -165,11 +179,15 @@ namespace rplustree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
+		STATEXEC(unsigned nodesSearched = 0);
+		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
+
+			STATEXEC(++nodesSearched);
 
 			if (currentContext->branches.size() == 0)
 			{
@@ -181,6 +199,8 @@ namespace rplustree
 						matchingPoints.push_back(currentContext->data[i]);
 					}
 				}
+
+				STATEXEC(++leavesSearched);
 			}
 			else
 			{
@@ -195,6 +215,9 @@ namespace rplustree
 				}
 			}
 		}
+
+		STATEXEC(++histogramRangeSearch[nodesSearched]);
+		STATEXEC(++histogramRangeLeaves[leavesSearched]);
 
 		return matchingPoints;
 	}
@@ -751,6 +774,38 @@ namespace rplustree
 			if (histogramFanout[i] > 0)
 			{
 				STATHIST(i, histogramFanout[i]);
+			}
+		}
+		STATSEARCHHIST();
+		for (unsigned i = 0; i < histogramSearch.size(); ++i)
+		{
+			if (histogramSearch[i] > 0)
+			{
+				STATHIST(i, histogramSearch[i]);
+			}
+		}
+		STATLEAVESHIST();
+		for (unsigned i = 0; i < histogramLeaves.size(); ++i)
+		{
+			if (histogramLeaves[i] > 0)
+			{
+				STATHIST(i, histogramLeaves[i]);
+			}
+		}
+		STATRANGESEARCHHIST();
+		for (unsigned i = 0; i < histogramRangeSearch.size(); ++i)
+		{
+			if (histogramRangeSearch[i] > 0)
+			{
+				STATHIST(i, histogramRangeSearch[i]);
+			}
+		}
+		STATRANGELEAVESHIST();
+		for (unsigned i = 0; i < histogramRangeLeaves.size(); ++i)
+		{
+			if (histogramRangeLeaves[i] > 0)
+			{
+				STATHIST(i, histogramRangeLeaves[i]);
 			}
 		}
 	}
