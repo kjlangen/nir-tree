@@ -520,7 +520,7 @@ TEST_CASE("R*Tree: testInsertOverflowReInsertAndSplit" )
 	Point point(0.0,0.0);
 
 	REQUIRE(cluster4aAugment->entries.size() == 7);
-	REQUIRE(cluster4aAugment->boundingBox().centerPoint() == Point(0.0,0.0));
+	REQUIRE(cluster4aAugment->boundingBox().centrePoint() == Point(0.0,0.0));
 	REQUIRE(root->checksum() == 0);
 
 	// We are not the root and we haven't inserted anything yet. Should call reinsert

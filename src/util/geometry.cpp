@@ -338,8 +338,8 @@ double Rectangle::computeExpansionArea(const Point &givenPoint) const
 
 	for (unsigned d = 1; d < dimensions; ++d)
 	{
-		expandedArea *= fabs(fmin(lowerLeft[i], givenPoint[i]) - fmax(upperRight[i], givenPoint[i]));
-		existingArea *= fabs(lowerLeft[i] - upperRight[i]);
+		expandedArea *= fabs(fmin(lowerLeft[d], givenPoint[d]) - fmax(upperRight[d], givenPoint[d]));
+		existingArea *= fabs(lowerLeft[d] - upperRight[d]);
 	}
 
 	// Compute the difference
@@ -476,10 +476,10 @@ double Rectangle::margin() const
 	return margin;
 }
 
-Point Rectangle::centerPoint() const
+Point Rectangle::centrePoint() const
 {
-	Point centerPoint((lowerLeft[0] + upperRight[0])/2, (lowerLeft[1] + upperRight[1])/2);
-	return centerPoint;
+	Point centrePoint((lowerLeft[0] + upperRight[0])/2, (lowerLeft[1] + upperRight[1])/2);
+	return centrePoint;
 }
 
 Rectangle Rectangle::intersection(const Rectangle &clippingRectangle) const

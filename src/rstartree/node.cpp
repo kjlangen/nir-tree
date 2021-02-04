@@ -692,14 +692,14 @@ namespace rstartree
 		// 2. RI2 Sort the entries by DECREASING index -> ok let's define an
 		// 		extra helper function that gets to do this and pass it into sort
 
-		Point globalCenterPoint = boundingBox().centerPoint();
+		Point globalCenterPoint = boundingBox().centrePoint();
 
         assert( hasReinsertedOnLevel.at( level ) );
 
 		std::sort(entries.begin(), entries.end(), [&globalCenterPoint](NodeEntry a, NodeEntry b) {
             Rectangle rectA = boxFromNodeEntry( a );
             Rectangle rectB = boxFromNodeEntry( b );
-			return rectA.centerPoint().distance(globalCenterPoint) > rectB.centerPoint().distance(globalCenterPoint);
+			return rectA.centrePoint().distance(globalCenterPoint) > rectB.centrePoint().distance(globalCenterPoint);
 		});
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model

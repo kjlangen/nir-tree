@@ -30,7 +30,7 @@ class Point
 		Point(double value);
 
 		bool orderedCompare(const Point &rhs, unsigned startingDimension) const;
-    double distance(Point p) const;
+		double distance(const Point &p) const;
 
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
@@ -77,7 +77,7 @@ class Rectangle
 		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
 		double area() const;
-    double margin() const;
+		double margin() const;
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;
 		double computeExpansionArea(const Point &givenPoint) const;
 		double computeExpansionArea(const Rectangle &givenRectangle) const;
@@ -91,6 +91,7 @@ class Rectangle
 		bool containsPoint(const Point &givenPoint) const;
 		bool strictContainsPoint(const Point &givenPoint) const;
 		bool containsRectangle(const Rectangle &givenRectangle) const;
+		Point centrePoint() const;
 		Rectangle intersection(const Rectangle &clippingRectangle) const;
 		std::vector<Rectangle> fragmentRectangle(const Rectangle &clippingRectangle) const;
 
