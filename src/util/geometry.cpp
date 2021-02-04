@@ -1020,7 +1020,7 @@ void IsotheticPolygon::deduplicate()
 	}
 
 	std::vector<Rectangle> deduplicated;
-	std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle a, Rectangle b){return a.lowerLeft[0] < b.lowerLeft[0];});
+	std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle &a, Rectangle &b){return a.lowerLeft[0] < b.lowerLeft[0];});
 
 	deduplicated.push_back(basicRectangles[0]);
 	for (unsigned i = 1; i < basicRectangles.size(); ++i)
@@ -1052,7 +1052,7 @@ void IsotheticPolygon::refine()
 	for (unsigned d = 0; d < dimensions; ++d)
 	{
 		// Refine along d
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft.orderedCompare(b.lowerLeft, d);});
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.lowerLeft.orderedCompare(b.lowerLeft, d);});
 		rIndex = 0;
 		for (unsigned i = 1; i < basicRectangles.size(); ++i)
 		{
@@ -1126,11 +1126,11 @@ void IsotheticPolygon::sort(bool min, unsigned d)
 {
 	if (min)
 	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.lowerLeft[d] < b.lowerLeft[d];});
 	}
 	else
 	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.upperRight[d] < b.upperRight[d];});
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.upperRight[d] < b.upperRight[d];});
 	}
 }
 
