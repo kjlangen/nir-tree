@@ -818,7 +818,7 @@ TEST_CASE("Geometry: testRectangleRectangleContainment")
 	REQUIRE(!r1.containsRectangle(r2));
 }
 
-TEST_CASE("Geometry: testRectangleIntersection", "[.][kylefixpls]")
+TEST_CASE("Geometry: testRectangleIntersection")
 {
 	// Test set one, general case
 	Rectangle r1 = Rectangle(0.0, 0.0, 4.0, 8.0);
@@ -838,7 +838,7 @@ TEST_CASE("Geometry: testRectangleIntersection", "[.][kylefixpls]")
 	// Test set four, side on side intersection
 	r1 = Rectangle(0.0, 0.0, 12.3, 13.4);
 	r2 = Rectangle(-12.3, 0.0, 0.0, 13.4);
-	REQUIRE(r1.intersection(r2) == Rectangle::atInfinity);
+	REQUIRE(r1.intersection(r2) == Rectangle(0.0, 0.0, 0.0, 13.4));
 }
 
 TEST_CASE("Geometry: testRectangleFragmentation")

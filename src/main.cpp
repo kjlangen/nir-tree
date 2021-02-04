@@ -3,15 +3,15 @@
 #include <string>
 #include <globals/globals.h>
 #include <rtree/rtree.h>
-#include <nirtree/nirtree.h>
 #include <rplustree/rplustree.h>
 #include <rstartree/rstartree.h>
+#include <nirtree/nirtree.h>
 #include <bench/randomPoints.h>
 #include <unistd.h>
 
 void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, double> configD)
 {
-	std::string treeTypes[] = {"R_TREE", "R_PLUS_TREE", "NIR_TREE"};
+	std::string treeTypes[] = {"R_TREE", "R_PLUS_TREE", "R_STAR_TREE", "NIR_TREE"};
 	std::string benchTypes[] = {"UNIFORM", "SKEW", "CLUSTER", "CALIFORNIA", "BIOLOGICAL", "FOREST"};
 
 	std::cout << "### BENCHMARK PARAMETERS ###" << std::endl;
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 			default:
 			{
 				std::cout << "Bad option. Usage:" << std::endl;
-				std::cout << "    -t  Specifies tree type {0 = R-Tree, 1 = R+-Tree, 2 = NIR-Tree}" << std::endl;
+				std::cout << "    -t  Specifies tree type {0 = R-Tree, 1 = R+-Tree, 2 = R*-Tree, 3 = NIR-Tree}" << std::endl;
 				std::cout << "    -m  Specifies benchmark type {0 = Uniform, 1 = Skew, 2 = Clustered, 3 = California, 4 = Biological, 5 = Forest}" << std::endl;
 				std::cout << "    -a  Minimum fanout for nodes in the selected tree" << std::endl;
 				std::cout << "    -b  Maximum fanout for nodes in the selected tree" << std::endl;
