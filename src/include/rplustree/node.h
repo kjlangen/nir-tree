@@ -35,6 +35,11 @@ namespace rplustree
 			unsigned minBranchFactor;
 			unsigned maxBranchFactor;
 
+			static std::vector<unsigned> histogramSearch;
+			static std::vector<unsigned> histogramLeaves;
+			static std::vector<unsigned> histogramRangeSearch;
+			static std::vector<unsigned> histogramRangeLeaves;
+
 		public:
 			struct Branch
 			{

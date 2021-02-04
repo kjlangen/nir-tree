@@ -611,7 +611,7 @@ TEST_CASE("Geometry: testRectangleComputeExpansionArea")
 	// Test set three, expansion area for a point on a rectangle boundary
 	Rectangle r4 = Rectangle(0.0, 0.0, 4.0, 4.0);
 	Point p2 = Point(4.0, 3.0);
-	REQUIRE(r4.computeExpansionArea(p2) == 0.0);
+	REQUIRE(r4.computeExpansionArea(p2) == -1.0);
 
 	// Test set four, expansion area for a rectangle partially inside another rectangle
 	Rectangle r5 = Rectangle(-9.0, 4.0, 1.0, 8.0);
@@ -621,7 +621,7 @@ TEST_CASE("Geometry: testRectangleComputeExpansionArea")
 	// Test set five, expansion area for a rectangle wholly inside another rectangle
 	Rectangle r7 = Rectangle(-4.0, -3.0, 3.0, 5.0);
 	Rectangle r8 = Rectangle(-2.5, -1.0, 0.5, 2.0);
-	REQUIRE(r7.computeExpansionArea(r8) == 0.0);
+	REQUIRE(r7.computeExpansionArea(r8) == -1.0);
 }
 
 TEST_CASE("Geometry: testRectangleExpansion")
@@ -672,7 +672,7 @@ TEST_CASE("Geometry: testRectangleAlignment")
 	// Test set one, general case
 	Rectangle r1 = Rectangle(-1.578, -3.452, 7878.0, 9889.0);
 	Rectangle r2 = Rectangle(7878.0, -3.452, 898989.89, 9889.0);
-	REQUIRE(r1.aligned(r2));
+	REQUIRE(r1.alignedForMerging(r2));
 
 	// Test set two, general case
 	r1 = Rectangle(-1.578, -3.452, 7878.78, 9898.98);
@@ -682,7 +682,7 @@ TEST_CASE("Geometry: testRectangleAlignment")
 	// Test set three, unaligned case
 	r1 = Rectangle(-2.2, -3.7, 4.4, 6.7);
 	r2 = Rectangle(4.4, -5.0, 7.1, 6.7);
-	REQUIRE(!r1.aligned(r2));
+	REQUIRE(!r1.alignedForMerging(r2));
 
 	// Test set four, unaligned case
 	r1 = Rectangle(-2.2, 4.4, 3.7, 6.9);
@@ -828,7 +828,7 @@ TEST_CASE("Geometry: testRectangleIntersection", "[.][kylefixpls]")
 	// Test set two, corner on corner intersection
 	r1 = Rectangle(0.0, 0.0, 12.3, 13.4);
 	r2 = Rectangle(12.3, 13.4, 19.7, 82.0);
-	REQUIRE(r1.intersection(r2) == Rectangle::atInfinity);
+	REQUIRE(r1.intersection(r2) == Rectangle(12.3, 13.4, 12.3, 13.4));
 
 	// Test set three, no intersection
 	r1 = Rectangle(0.0, 0.0, 12.3, 13.4);
@@ -902,4 +902,140 @@ TEST_CASE("Geometry: testRectangleFragmentation")
 	REQUIRE(v[0] == Rectangle(5.0, 0.0, 8.0, 4.0));
 	REQUIRE(v[1] == Rectangle(0.0, 0.0, 1.0, 4.0));
 	REQUIRE(v[2] == Rectangle(1.0, 1.0, 5.0, 4.0));
+}
+
+TEST_CASE("Geometry: testPolygonRefine")
+{
+	// Test set one, general case
+	Rectangle r1 = Rectangle(-2.0, 0.0, 4.0, 4.0);
+	Rectangle r2 = Rectangle(-5.0, 0.0, 0.0, 4.0);
+	Rectangle r3 = Rectangle(3.0, 0.0, 7.0, 4.0);
+	Rectangle r4 = Rectangle(7.0, 0.0, 9.0, 7.0);
+
+	IsotheticPolygon p1;
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+	p1.basicRectangles.push_back(r4);
+	p1.basicRectangles.push_back(r3);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 2);
+	REQUIRE(p1.basicRectangles[0] == Rectangle(-5.0, 0.0, 7.0, 4.0));
+	REQUIRE(p1.basicRectangles[1] == Rectangle(7.0, 0.0, 9.0, 7.0));
+
+	// Test set two, ducks in a row
+	r1 = Rectangle(-4.0, -1.0, 0.0, 3.0);
+	r2 = Rectangle(0.0, -1.0, 4.0, 3.0);
+	r3 = Rectangle(4.0, -1.0, 8.0, 3.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r3);
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 1);
+	REQUIRE(p1.basicRectangles[0] == Rectangle(-4.0, -1.0, 8.0, 3.0));
+
+	// Test set three, edge case
+	r1 = Rectangle(0.0, 0.0, 5.0, 4.0);
+	r2 = Rectangle(3.0, 0.0, 9.0, 0.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 2);
+	REQUIRE(p1.basicRectangles[0] == Rectangle(0.0, 0.0, 5.0, 4.0));
+	REQUIRE(p1.basicRectangles[1] == Rectangle(3.0, 0.0, 9.0, 0.0));
+
+	// Test set four, edge case
+	r1 = Rectangle(1.0, 1.0, 7.0, 4.0);
+	r2 = Rectangle(1.0, 1.0, 7.0, 1.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r2);
+	p1.basicRectangles.push_back(r1);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 1);
+	REQUIRE(p1.basicRectangles[0] == Rectangle(1.0, 1.0, 7.0, 4.0));
+
+	// Test set five, corner case
+	r1 = Rectangle(4.0, 4.0, 5.0, 7.0);
+	r2 = Rectangle(0.0, 0.0, 4.0, 4.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 2);
+	REQUIRE(p1.basicRectangles[0] == Rectangle(0.0, 0.0, 4.0, 4.0));
+	REQUIRE(p1.basicRectangles[1] == Rectangle(4.0, 4.0, 5.0, 7.0));
+
+	// Test set six, square with hole
+	r1 = Rectangle(2.0, 4.0, 4.0, 6.0);
+	r2 = Rectangle(4.0, 0.0, 6.0, 6.0);
+	r3 = Rectangle(2.0, 0.0, 4.0, 2.0);
+	r4 = Rectangle(0.0, 0.0, 2.0, 6.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+	p1.basicRectangles.push_back(r3);
+	p1.basicRectangles.push_back(r4);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 4);
+	REQUIRE(p1.basicRectangles[0] == r4);
+	REQUIRE(p1.basicRectangles[1] == r3);
+	REQUIRE(p1.basicRectangles[2] == r2);
+	REQUIRE(p1.basicRectangles[3] == r1);
+
+	// Test set seven, no touchy
+	r1 = Rectangle(0.0, 0.0, 2.0, 4.0);
+	r2 = Rectangle(4.0, 0.0, 6.0, 4.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 2);
+	REQUIRE(p1.basicRectangles[0] == r1);
+	REQUIRE(p1.basicRectangles[1] == r2);
+
+	// Test set eight, H formation
+	r1 = Rectangle(2.0, 2.0, 3.0, 3.0);
+	r2 = Rectangle(0.0, 0.0, 2.0, 4.0);
+	r3 = Rectangle(3.0, 0.0, 5.0, 4.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+	p1.basicRectangles.push_back(r3);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 3);
+	REQUIRE(p1.basicRectangles[0] == r2);
+	REQUIRE(p1.basicRectangles[1] == r3);
+	REQUIRE(p1.basicRectangles[2] == r1);
+
+	// Test set nine, combinanble in X then in Y
+	r1 = Rectangle(0.0, 2.0, 3.0, 4.0);
+	r2 = Rectangle(0.0, 1.0, 6.0, 2.0);
+	r3 = Rectangle(3.0, 2.0, 6.0, 4.0);
+	r4 = Rectangle(0.0, 0.0, 6.0, 1.0);
+
+	p1.basicRectangles.clear();
+	p1.basicRectangles.push_back(r1);
+	p1.basicRectangles.push_back(r2);
+	p1.basicRectangles.push_back(r3);
+	p1.basicRectangles.push_back(r4);
+
+	p1.refine();
+	REQUIRE(p1.basicRectangles.size() == 1);
+	REQUIRE(p1.basicRectangles[0] == Rectangle(0.0, 0.0, 6.0, 4.0));
 }

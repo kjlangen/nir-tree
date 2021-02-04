@@ -10,6 +10,8 @@
 #include <cstring>
 #include <limits>
 #include <cfenv>
+#include <iterator>
+#include <functional>
 #include <util/debug.h>
 #include <globals/globals.h>
 
@@ -27,7 +29,8 @@ class Point
 		Point(double x, double y);
 		Point(double value);
 
-        double distance(Point p) const;
+		bool orderedCompare(const Point &rhs, unsigned startingDimension) const;
+    double distance(Point p) const;
 
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
@@ -74,13 +77,13 @@ class Rectangle
 		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
 		double area() const;
-		double margin() const;
+    double margin() const;
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;
 		double computeExpansionArea(const Point &givenPoint) const;
 		double computeExpansionArea(const Rectangle &givenRectangle) const;
-		void expand(Point givenPoint);
-		void expand(Rectangle givenRectangle);
-		bool aligned(const Rectangle &givenRectangle) const;
+		void expand(const Point &givenPoint);
+		void expand(const Rectangle &givenRectangle);
+		bool alignedForMerging(const Rectangle &givenRectangle) const;
 		bool alignedOpposingBorders(const Rectangle &givenRectangle) const;
 		bool intersectsRectangle(const Rectangle &givenRectangle) const;
 		bool strictIntersectsRectangle(const Rectangle &givenRectangle) const;
@@ -88,9 +91,8 @@ class Rectangle
 		bool containsPoint(const Point &givenPoint) const;
 		bool strictContainsPoint(const Point &givenPoint) const;
 		bool containsRectangle(const Rectangle &givenRectangle) const;
-		Point centerPoint() const;
-		Rectangle intersection(Rectangle clippingRectangle);
-		std::vector<Rectangle> fragmentRectangle(Rectangle clippingRectangle);
+		Rectangle intersection(const Rectangle &clippingRectangle) const;
+		std::vector<Rectangle> fragmentRectangle(const Rectangle &clippingRectangle) const;
 
 		friend bool operator==(const Rectangle &lr, const Rectangle &rr);
 		friend bool operator!=(const Rectangle &lr, const Rectangle &rr);
@@ -113,36 +115,39 @@ class IsotheticPolygon
 		std::vector<Rectangle> basicRectangles;
 
 		IsotheticPolygon();
-		IsotheticPolygon(Rectangle baseRectangle);
+		IsotheticPolygon(const Rectangle &baseRectangle);
 		IsotheticPolygon(const IsotheticPolygon &basePolygon);
-		double area();
-		double computeIntersectionArea(Rectangle givenRectangle);
-		OptimalExpansion computeExpansionArea(Point givenPoint);
-		OptimalExpansion computeExpansionArea(Rectangle givenRectangle);
-		void expand(Point givenPoint);
-		void expand(Point givenPoint, OptimalExpansion expansion);
-		void expand(Point givenPoint, IsotheticPolygon &constraintPolygon);
-		void expand(Point givenPoint, IsotheticPolygon &constraintPolygon, OptimalExpansion expansion);
-		bool intersectsRectangle(Rectangle &givenRectangle);
-		bool intersectsPolygon(IsotheticPolygon &givenPolygon);
-		bool borderOnlyIntersectsRectangle(Rectangle givenRectangle);
-		bool containsPoint(Point requestedPoint);
-		std::vector<Rectangle> intersection(Rectangle givenRectangle);
-		void intersection(IsotheticPolygon &constraintPolygon);
-		void increaseResolution(Rectangle clippingRectangle);
-		void increaseResolution(IsotheticPolygon &clippingPolygon);
+		double area() const;
+		double computeIntersectionArea(const Rectangle &givenRectangle) const;
+		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;
+		OptimalExpansion computeExpansionArea(const Rectangle &givenRectangle) const;
+		void expand(const Point &givenPoint);
+		void expand(const Point &givenPoint, OptimalExpansion &expansion);
+		void expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon);
+		void expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon, OptimalExpansion &expansion);
+		bool intersectsRectangle(const Rectangle &givenRectangle) const;
+		bool intersectsPolygon(const IsotheticPolygon &givenPolygon) const;
+		bool borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const;
+		bool containsPoint(const Point &givenPoint) const ;
+		bool disjoint(const IsotheticPolygon &givenPolygon) const;
+		std::vector<Rectangle> intersection(const Rectangle &givenRectangle) const;
+		void intersection(const IsotheticPolygon &constraintPolygon);
+		void increaseResolution(const Rectangle &clippingRectangle);
+		void increaseResolution(const IsotheticPolygon &clippingPolygon);
 		void maxLimit(double limit, unsigned d=0);
 		void minLimit(double limit, unsigned d=0);
 		void merge(const IsotheticPolygon &mergePolygon);
 		void remove(unsigned basicRectangleIndex);
 		void deduplicate();
 		void refine();
+		void shrink(const std::vector<Point> &pinPoints);
 		void sort(bool min, unsigned d=0);
 
-		bool disjoint();
-		bool exists();
-		bool unique();
-		bool infFree();
+		bool exists() const;
+		bool valid() const;
+		bool unique() const;
+		bool lineFree() const;
+		bool infFree() const;
 
 		friend bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 		friend bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);

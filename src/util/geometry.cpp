@@ -28,7 +28,26 @@ Point::Point(double value)
 	}
 }
 
-double Point::distance(Point p) const
+bool Point::orderedCompare(const Point &rhs, unsigned startingDimension) const
+{
+	unsigned currentDimension = startingDimension;
+	for (unsigned d = 0; d < dimensions; ++d)
+	{
+		currentDimension = (startingDimension + d) % dimensions;
+		if (values[currentDimension] < rhs.values[currentDimension])
+		{
+			return true;
+		}
+		else if (values[currentDimension] > rhs.values[currentDimension])
+		{
+			return false;
+		}
+	}
+
+	return false;
+}
+
+double Point::distance(const Point &p) const
 {
 	double dist = 0.0;
 	for( unsigned d = 0; d < dimensions; d++ ) {
@@ -36,8 +55,6 @@ double Point::distance(Point p) const
 	}
 	return sqrt(dist);
 }
-
-
 
 Point &Point::operator-=(const Point &rhs)
 {
@@ -317,18 +334,26 @@ double Rectangle::computeExpansionArea(const Point &givenPoint) const
 
 	// Expanded rectangle area computed directly
 	double expandedArea = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
+	double existingArea = fabs(lowerLeft[0] - upperRight[0]);
 
 	for (unsigned d = 1; d < dimensions; ++d)
 	{
-		expandedArea = expandedArea * fabs(fmin(lowerLeft[d], givenPoint[d]) - fmax(upperRight[d], givenPoint[d]));
+		expandedArea *= fabs(fmin(lowerLeft[i], givenPoint[i]) - fmax(upperRight[i], givenPoint[i]));
+		existingArea *= fabs(lowerLeft[i] - upperRight[i]);
 	}
 
 	// Compute the difference
-	return expandedArea - area();
+	return expandedArea - existingArea;
 }
 
 double Rectangle::computeExpansionArea(const Rectangle &givenRectangle) const
 {
+	// Early exit
+	if (containsRectangle(givenRectangle))
+	{
+		return -1.0;
+	}
+
 	// Expanded rectangle area computed directly
 	double expandedArea = fabs(fmin(givenRectangle.lowerLeft[0], lowerLeft[0]) - fmax(givenRectangle.upperRight[0], upperRight[0]));
 
@@ -341,31 +366,41 @@ double Rectangle::computeExpansionArea(const Rectangle &givenRectangle) const
 	return expandedArea - area();
 }
 
-void Rectangle::expand(Point givenPoint)
+void Rectangle::expand(const Point &givenPoint)
 {
 	lowerLeft << givenPoint;
 	upperRight >> givenPoint;
 }
 
-void Rectangle::expand(Rectangle givenRectangle)
+void Rectangle::expand(const Rectangle &givenRectangle)
 {
 	lowerLeft << givenRectangle.lowerLeft;
 	upperRight >> givenRectangle.upperRight;
 }
 
-bool Rectangle::aligned(const Rectangle &givenRectangle) const
+bool Rectangle::alignedForMerging(const Rectangle &givenRectangle) const
 {
 	unsigned alignedDimensions = 0;
+	unsigned intersectingDimensions = 0;
 
 	for (unsigned d = 0; d < dimensions; ++d)
 	{
 		if (lowerLeft[d] == givenRectangle.lowerLeft[d] && upperRight[d] == givenRectangle.upperRight[d])
 		{
-			alignedDimensions++;
+			++alignedDimensions;
+		}
+		else if ((lowerLeft[d] <= givenRectangle.lowerLeft[d] && givenRectangle.lowerLeft[d] <= upperRight[d]) ||
+				(givenRectangle.lowerLeft[d] <= lowerLeft[d] && lowerLeft[d] <= givenRectangle.upperRight[d]))
+		{
+			++intersectingDimensions;
+			if (intersectingDimensions > 1)
+			{
+				return false;
+			}
 		}
 	}
 
-	return alignedDimensions == dimensions - 1;
+	return alignedDimensions == dimensions - 1 && intersectingDimensions == 1;
 }
 
 bool Rectangle::alignedOpposingBorders(const Rectangle &givenRectangle) const
@@ -447,7 +482,7 @@ Point Rectangle::centerPoint() const
 	return centerPoint;
 }
 
-Rectangle Rectangle::intersection(Rectangle clippingRectangle)
+Rectangle Rectangle::intersection(const Rectangle &clippingRectangle) const
 {
 	// Return rectangle
 	Rectangle r = Rectangle(lowerLeft, upperRight);
@@ -465,14 +500,14 @@ Rectangle Rectangle::intersection(Rectangle clippingRectangle)
 	return r;
 }
 
-std::vector<Rectangle> Rectangle::fragmentRectangle(Rectangle clippingRectangle)
+std::vector<Rectangle> Rectangle::fragmentRectangle(const Rectangle &clippingRectangle) const
 {
 	// Return vector
 	std::vector<Rectangle> v;
 	v.reserve(dimensions);
 
 	// Quick exit
-	if (!intersectsRectangle(clippingRectangle) || borderOnlyIntersectsRectangle(clippingRectangle))
+	if (!intersectsRectangle(clippingRectangle) || alignedOpposingBorders(clippingRectangle))
 	{
 		v.push_back(Rectangle(lowerLeft, upperRight));
 		return v;
@@ -547,7 +582,7 @@ IsotheticPolygon::IsotheticPolygon()
 {
 }
 
-IsotheticPolygon::IsotheticPolygon(Rectangle baseRectangle)
+IsotheticPolygon::IsotheticPolygon(const Rectangle &baseRectangle)
 {
 	boundingBox = baseRectangle;
 	basicRectangles.push_back(baseRectangle);
@@ -560,11 +595,11 @@ IsotheticPolygon::IsotheticPolygon(const IsotheticPolygon &basePolygon)
 	basicRectangles.insert(basicRectangles.end(), basePolygon.basicRectangles.begin(), basePolygon.basicRectangles.end());
 }
 
-double IsotheticPolygon::area()
+double IsotheticPolygon::area() const
 {
 	double area = 0.0;
 
-	for (Rectangle basicRectangle : basicRectangles)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		area += basicRectangle.area();
 	}
@@ -572,11 +607,11 @@ double IsotheticPolygon::area()
 	return area;
 }
 
-double IsotheticPolygon::computeIntersectionArea(Rectangle givenRectangle)
+double IsotheticPolygon::computeIntersectionArea(const Rectangle &givenRectangle) const
 {
 	double runningTotal = 0.0;
 
-	for (Rectangle basicRectangle : basicRectangles)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		runningTotal += basicRectangle.computeIntersectionArea(givenRectangle);
 	}
@@ -584,7 +619,7 @@ double IsotheticPolygon::computeIntersectionArea(Rectangle givenRectangle)
 	return runningTotal;
 }
 
-IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(Point givenPoint)
+IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const Point &givenPoint) const
 {
 	// Early exit
 	if (containsPoint(givenPoint))
@@ -611,14 +646,13 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(Point 
 	return expansion;
 }
 
-IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(Rectangle givenRectangle)
+IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const Rectangle &givenRectangle) const
 {
 	// Take the minimum expansion area
 	OptimalExpansion expansion = {0, basicRectangles[0].computeExpansionArea(givenRectangle)};
 	double evalArea;
 
 	unsigned basicsSize = basicRectangles.size();
-
 	for (unsigned i = 1; i < basicsSize; ++i)
 	{
 		evalArea = basicRectangles[i].computeExpansionArea(givenRectangle);
@@ -633,7 +667,7 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(Rectan
 	return expansion;
 }
 
-void IsotheticPolygon::expand(Point givenPoint)
+void IsotheticPolygon::expand(const Point &givenPoint)
 {
 	unsigned minIndex = 0;
 	double minArea = basicRectangles[0].computeExpansionArea(givenPoint);
@@ -657,13 +691,13 @@ void IsotheticPolygon::expand(Point givenPoint)
 	boundingBox.expand(givenPoint);
 }
 
-void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon::OptimalExpansion expansion)
+void IsotheticPolygon::expand(const Point &givenPoint, IsotheticPolygon::OptimalExpansion &expansion)
 {
 	basicRectangles[expansion.index].expand(givenPoint);
 	boundingBox.expand(givenPoint);
 }
 
-void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPolygon)
+void IsotheticPolygon::expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon)
 {
 	// Expand as if without restraint
 	unsigned minIndex = 0;
@@ -700,7 +734,7 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 
 }
 
-void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPolygon, IsotheticPolygon::OptimalExpansion expansion)
+void IsotheticPolygon::expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon, IsotheticPolygon::OptimalExpansion &expansion)
 {
 	// Expand as if without restraint
 	basicRectangles[expansion.index].expand(givenPoint);
@@ -718,7 +752,7 @@ void IsotheticPolygon::expand(Point givenPoint, IsotheticPolygon &constraintPoly
 	basicRectangles.insert(basicRectangles.end(), intersectionPieces.begin(), intersectionPieces.end());
 }
 
-bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
+bool IsotheticPolygon::intersectsRectangle(const Rectangle &givenRectangle) const
 {
 	if (!boundingBox.intersectsRectangle(givenRectangle))
 	{
@@ -726,9 +760,9 @@ bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
 	}
 
 	// Short circuit checking if we find a positive
-	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
-		if (givenRectangle.intersectsRectangle(basicRectangles[i]))
+		if (givenRectangle.intersectsRectangle(basicRectangle))
 		{
 			return true;
 		}
@@ -737,7 +771,7 @@ bool IsotheticPolygon::intersectsRectangle(Rectangle &givenRectangle)
 	return false;
 }
 
-bool IsotheticPolygon::intersectsPolygon(IsotheticPolygon &givenPolygon)
+bool IsotheticPolygon::intersectsPolygon(const IsotheticPolygon &givenPolygon) const
 {
 	if (!boundingBox.intersectsRectangle(givenPolygon.boundingBox))
 	{
@@ -745,9 +779,9 @@ bool IsotheticPolygon::intersectsPolygon(IsotheticPolygon &givenPolygon)
 	}
 
 	// Short circuit checking if we find a positive
-	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
-		if (givenPolygon.intersectsRectangle(basicRectangles[i]))
+		if (givenPolygon.intersectsRectangle(basicRectangle))
 		{
 			return true;
 		}
@@ -756,18 +790,18 @@ bool IsotheticPolygon::intersectsPolygon(IsotheticPolygon &givenPolygon)
 	return false;
 }
 
-bool IsotheticPolygon::borderOnlyIntersectsRectangle(Rectangle givenRectangle)
+bool IsotheticPolygon::borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const
 {
 	// Final decision
 	bool result = false;
 
-	for (auto r : basicRectangles)
+	for (const Rectangle &basicRectangle: basicRectangles)
 	{
-		if (!r.intersectsRectangle(givenRectangle))
+		if (!basicRectangle.intersectsRectangle(givenRectangle))
 		{
 			continue;
 		}
-		else if (!r.alignedOpposingBorders(givenRectangle))
+		else if (!basicRectangle.alignedOpposingBorders(givenRectangle))
 		{
 			result = false;
 			break;
@@ -781,17 +815,17 @@ bool IsotheticPolygon::borderOnlyIntersectsRectangle(Rectangle givenRectangle)
 	return result;
 }
 
-bool IsotheticPolygon::containsPoint(Point requestedPoint)
+bool IsotheticPolygon::containsPoint(const Point &givenPoint) const
 {
-	if (!boundingBox.containsPoint(requestedPoint))
+	if (!boundingBox.containsPoint(givenPoint))
 	{
 		return false;
 	}
 
 	// Short circuit checking if we find a positive
-	for (Rectangle basicRectangle : basicRectangles)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
-		if (basicRectangle.containsPoint(requestedPoint))
+		if (basicRectangle.containsPoint(givenPoint))
 		{
 			return true;
 		}
@@ -800,11 +834,31 @@ bool IsotheticPolygon::containsPoint(Point requestedPoint)
 	return false;
 }
 
-std::vector<Rectangle> IsotheticPolygon::intersection(Rectangle givenRectangle)
+bool IsotheticPolygon::disjoint(const IsotheticPolygon &givenPolygon) const
+{
+	bool rectanglesStrictIntersect, nonZeroArea;
+	for (const Rectangle &basicRectangle : basicRectangles)
+	{
+		for (const Rectangle &givenBasicRectangle : givenPolygon.basicRectangles)
+		{
+			rectanglesStrictIntersect = basicRectangle.strictIntersectsRectangle(givenBasicRectangle);
+			nonZeroArea = basicRectangle.intersection(givenBasicRectangle).area() != 0.0;
+
+			if (rectanglesStrictIntersect && nonZeroArea)
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+std::vector<Rectangle> IsotheticPolygon::intersection(const Rectangle &givenRectangle) const
 {
 	std::vector<Rectangle> v;
 
-	for (Rectangle basicRectangle : basicRectangles)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		Rectangle r = basicRectangle.intersection(givenRectangle);
 		if (r != Rectangle::atInfinity)
@@ -816,14 +870,14 @@ std::vector<Rectangle> IsotheticPolygon::intersection(Rectangle givenRectangle)
 	return v;
 }
 
-void IsotheticPolygon::intersection(IsotheticPolygon &constraintPolygon)
+void IsotheticPolygon::intersection(const IsotheticPolygon &constraintPolygon)
 {
 	Rectangle r;
 	std::vector<Rectangle> v;
 
-	for (Rectangle basicRectangle : basicRectangles)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
-		for (Rectangle constraintRectangle : constraintPolygon.basicRectangles)
+		for (const Rectangle &constraintRectangle : constraintPolygon.basicRectangles)
 		{
 			r = basicRectangle.intersection(constraintRectangle);
 			if (r != Rectangle::atInfinity)
@@ -834,17 +888,15 @@ void IsotheticPolygon::intersection(IsotheticPolygon &constraintPolygon)
 	}
 	basicRectangles.clear();
 	basicRectangles.swap(v);
-
-	deduplicate();
 }
 
-void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
+void IsotheticPolygon::increaseResolution(const Rectangle &clippingRectangle)
 {
 	// Fragment each of our constiuent rectangles based on the clippingRectangle. This may result in
 	// no splitting of the constiuent rectangles and that's okay.
 	std::vector<Rectangle> extraRectangles;
 
-	for (Rectangle basicRectangle : basicRectangles)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		if (!basicRectangle.intersectsRectangle(clippingRectangle))
 		{
@@ -853,7 +905,7 @@ void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 		else
 		{
 			// Break the rectangle and add the fragments to extras
-			for (Rectangle fragment : basicRectangle.fragmentRectangle(clippingRectangle))
+			for (const Rectangle &fragment : basicRectangle.fragmentRectangle(clippingRectangle))
 			{
 				extraRectangles.push_back(fragment);
 			}
@@ -863,10 +915,9 @@ void IsotheticPolygon::increaseResolution(Rectangle clippingRectangle)
 	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
 	basicRectangles.clear();
 	basicRectangles.swap(extraRectangles);
-	deduplicate();
 }
 
-void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
+void IsotheticPolygon::increaseResolution(const IsotheticPolygon &clippingPolygon)
 {
 	// Quick exit
 	if (!boundingBox.intersectsRectangle(clippingPolygon.boundingBox))
@@ -874,7 +925,7 @@ void IsotheticPolygon::increaseResolution(IsotheticPolygon &clippingPolygon)
 		return;
 	}
 
-	for (Rectangle basicClippingRectangle : clippingPolygon.basicRectangles)
+	for (const Rectangle &basicClippingRectangle : clippingPolygon.basicRectangles)
 	{
 		increaseResolution(basicClippingRectangle);
 	}
@@ -890,8 +941,7 @@ void IsotheticPolygon::maxLimit(double limit, unsigned d)
 		basicRectangles[i].upperRight[d] = std::min(basicRectangles[i].upperRight[d], limit);
 	}
 
-	// Remove all rectangles whose minimum in d is greater than limit and at the same time resize
-	// the bounding box
+	// Remove all rectangles whose minimum in d is greater than limit
 	for (unsigned i = 0; i < startingSize; ++i)
 	{
 		if (basicRectangles[i].lowerLeft[d] > limit || basicRectangles[i].lowerLeft[d] > basicRectangles[i].upperRight[d])
@@ -903,13 +953,12 @@ void IsotheticPolygon::maxLimit(double limit, unsigned d)
 		}
 	}
 
-	boundingBox = basicRectangles[0];
-	for (unsigned i = 1; i < startingSize; ++i)
+	// Recompute the bounding box
+	boundingBox = Rectangle(Point::atInfinity, Point::atNegInfinity);
+	for (Rectangle &basicRectangle : basicRectangles)
 	{
-		boundingBox.expand(basicRectangles[i]);
+		boundingBox.expand(basicRectangle);
 	}
-
-	deduplicate();
 }
 
 void IsotheticPolygon::minLimit(double limit, unsigned d)
@@ -922,8 +971,7 @@ void IsotheticPolygon::minLimit(double limit, unsigned d)
 		basicRectangles[i].lowerLeft[d] = std::max(basicRectangles[i].lowerLeft[d], limit);
 	}
 
-	// Remove all rectangles whose minimum in d is greater than limit ant at the same time resize
-	// the bounding box
+	// Remove all rectangles whose minimum in d is greater than limit
 	for (unsigned i = 0; i < startingSize; ++i)
 	{
 		if (basicRectangles[i].upperRight[d] < limit || basicRectangles[i].lowerLeft[d] > basicRectangles[i].upperRight[d])
@@ -935,32 +983,57 @@ void IsotheticPolygon::minLimit(double limit, unsigned d)
 		}
 	}
 
-	boundingBox = basicRectangles[0];
-	for (unsigned i = 1; i < startingSize; ++i)
+	// Recompute the bounding box
+	boundingBox = Rectangle(Point::atInfinity, Point::atNegInfinity);
+	for (Rectangle &basicRectangle :basicRectangles)
 	{
-		boundingBox.expand(basicRectangles[i]);
+		boundingBox.expand(basicRectangle);
 	}
-
-	deduplicate();
 }
 
 void IsotheticPolygon::merge(const IsotheticPolygon &mergePolygon)
 {
-	boundingBox.expand(mergePolygon.boundingBox);
+	// Merge basic rectangles
 	basicRectangles.reserve(basicRectangles.size() + mergePolygon.basicRectangles.size());
-
-	for (Rectangle mergeRectangle : mergePolygon.basicRectangles)
+	for (const Rectangle &mergeRectangle : mergePolygon.basicRectangles)
 	{
 		basicRectangles.push_back(mergeRectangle);
 	}
 
-	deduplicate();
+	// Recompute the bounding box
+	if (basicRectangles.size() == 0)
+	{
+		boundingBox = Rectangle::atInfinity;
+	}
+	else
+	{
+		boundingBox = basicRectangles[0];
+		for (Rectangle &basicRectangle : basicRectangles)
+		{
+			boundingBox.expand(basicRectangle);
+		}
+	}
 }
 
 void IsotheticPolygon::remove(unsigned basicRectangleIndex)
 {
+	// Remove basic rectangle
 	basicRectangles[basicRectangleIndex] = basicRectangles[basicRectangles.size() - 1];
 	basicRectangles.pop_back();
+
+	// Recompute the bounding box
+	if (basicRectangles.size() == 0)
+	{
+		boundingBox = Rectangle::atInfinity;
+	}
+	else
+	{
+		boundingBox = basicRectangles[0];
+		for (Rectangle &basicRectangle : basicRectangles)
+		{
+			boundingBox.expand(basicRectangle);
+		}
+	}
 }
 
 void IsotheticPolygon::deduplicate()
@@ -971,10 +1044,9 @@ void IsotheticPolygon::deduplicate()
 	}
 
 	std::vector<Rectangle> deduplicated;
-	std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle a, Rectangle b){return a.lowerLeft[0] < b.lowerLeft[0];});
+	std::sort(basicRectangles.begin(), basicRectangles.end(), [](Rectangle &a, Rectangle &b){return a.lowerLeft[0] < b.lowerLeft[0];});
 
 	deduplicated.push_back(basicRectangles[0]);
-
 	for (unsigned i = 1; i < basicRectangles.size(); ++i)
 	{
 		if (basicRectangles[i - 1] != basicRectangles[i])
@@ -987,71 +1059,108 @@ void IsotheticPolygon::deduplicate()
 	basicRectangles.swap(deduplicated);
 }
 
+// TODO: Optimize maybe?
 void IsotheticPolygon::refine()
 {
-	for (unsigned k = 0; k < 7 && basicRectangles.size(); ++k)
+	// Early exit
+	if (basicRectangles.size() < 2)
 	{
-		Rectangle r;
-		std::vector<Rectangle> rectangleSetRefined;
+		return;
+	}
 
-		for (unsigned d = 0; d < dimensions; ++d)
+	assert(basicRectangles.size() > 0);
+
+	unsigned rIndex;
+	std::vector<Rectangle> rectangleSetRefined;
+
+	for (unsigned d = 0; d < dimensions; ++d)
+	{
+		// Refine along d
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.lowerLeft.orderedCompare(b.lowerLeft, d);});
+		rIndex = 0;
+		for (unsigned i = 1; i < basicRectangles.size(); ++i)
 		{
-			// Refine along x
-			r = basicRectangles[0];
-			std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
-			r = basicRectangles[0];
-			for (unsigned i = 1; i < basicRectangles.size(); ++i)
+			// If a rectangle is contained in another rectangle get rid of. This implicts means
+			// duplicates and zero-area rectangles located entirely on the border of another rectangle
+			// will be removed. Other rectanlges which are all in a "row" in dimension d are merged
+			// if (rectangleRefs[rIndex].get().containsRectangle(rectangleRefs[i].get()))
+			if (basicRectangles[rIndex].containsRectangle(basicRectangles[i]))
 			{
-				if (r.aligned(basicRectangles[i]) && r.intersectsRectangle(basicRectangles[i]))
-				{
-					r.expand(basicRectangles[i]);
-				}
-				else
-				{
-					rectangleSetRefined.push_back(r);
-					r = basicRectangles[i];
-				}
+				continue;
 			}
-			rectangleSetRefined.push_back(r);
-			basicRectangles.swap(rectangleSetRefined);
-			rectangleSetRefined.clear();
+			else if (basicRectangles[i].containsRectangle(basicRectangles[rIndex]))
+			{
+				rIndex = i;
+			}
+			else if (basicRectangles[rIndex].alignedForMerging(basicRectangles[i]))
+			{
+				basicRectangles[rIndex].expand(basicRectangles[i]);
+			}
+			else
+			{
+				rectangleSetRefined.push_back(basicRectangles[rIndex]);
+				rIndex = i;
+			}
+		}
+		rectangleSetRefined.push_back(basicRectangles[rIndex]);
+		basicRectangles.swap(rectangleSetRefined);
+		rectangleSetRefined.clear();
+	}
+
+	assert(basicRectangles.size() > 0);
+}
+
+void IsotheticPolygon::shrink(const std::vector<Point> &pinPoints)
+{
+	// Early exit
+	if (pinPoints.size() == 0 || basicRectangles.size() == 0)
+	{
+		return;
+	}
+
+	assert(pinPoints.size() > 0);
+
+	std::vector<Rectangle> rectangleSetShrunk;
+	for (const Rectangle &basicRectangle : basicRectangles)
+	{
+		bool addRectangle = false;
+		Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
+		for (const Point &pinPoint : pinPoints)
+		{
+			if (basicRectangle.containsPoint(pinPoint))
+			{
+				shrunkRectangle.expand(pinPoint);
+				addRectangle = true;
+				assert(shrunkRectangle.containsPoint(pinPoint));
+			}
+		}
+
+		if (addRectangle)
+		{
+			rectangleSetShrunk.emplace_back(std::move(shrunkRectangle));
 		}
 	}
 
-	sort(true);
+	assert(rectangleSetShrunk.size() > 0);
+
+	basicRectangles.swap(rectangleSetShrunk);
 }
 
 void IsotheticPolygon::sort(bool min, unsigned d)
 {
 	if (min)
 	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.lowerLeft[d] < b.lowerLeft[d];});
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.lowerLeft[d] < b.lowerLeft[d];});
 	}
 	else
 	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle a, Rectangle b){return a.upperRight[d] < b.upperRight[d];});
+		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.upperRight[d] < b.upperRight[d];});
 	}
 }
 
-bool IsotheticPolygon::disjoint()
+bool IsotheticPolygon::exists() const
 {
-	for (unsigned i = 0; i < basicRectangles.size(); ++i)
-	{
-		for (unsigned j = 0; j < basicRectangles.size(); ++j)
-		{
-			if (i != j && basicRectangles[i].intersectsRectangle(basicRectangles[j]) && !basicRectangles[i].borderOnlyIntersectsRectangle(basicRectangles[j]))
-			{
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-bool IsotheticPolygon::exists()
-{
-	for (Rectangle basicRectangle : basicRectangles)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		if (basicRectangle.lowerLeft == basicRectangle.upperRight)
 		{
@@ -1062,7 +1171,20 @@ bool IsotheticPolygon::exists()
 	return basicRectangles.size() > 0;
 }
 
-bool IsotheticPolygon::unique()
+bool IsotheticPolygon::valid() const
+{
+	for (const Rectangle &basicRectangle : basicRectangles)
+	{
+		if (!(basicRectangle.lowerLeft <= basicRectangle.upperRight))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool IsotheticPolygon::unique() const
 {
 	for (unsigned i = 0; i < basicRectangles.size(); ++i)
 	{
@@ -1078,11 +1200,24 @@ bool IsotheticPolygon::unique()
 	return true;
 }
 
-bool IsotheticPolygon::infFree()
+bool IsotheticPolygon::lineFree() const
 {
-	for (unsigned i = 0; i < basicRectangles.size(); ++i)
+	for (const Rectangle &basicRectangle : basicRectangles)
 	{
-		if (basicRectangles[i] == Rectangle::atInfinity)
+		if (basicRectangle.area() == 0.0)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool IsotheticPolygon::infFree() const
+{
+	for (const Rectangle &basicRectangle : basicRectangles)
+	{
+		if (basicRectangle == Rectangle::atInfinity)
 		{
 			return false;
 		}
