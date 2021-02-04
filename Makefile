@@ -1,102 +1,45 @@
-SXX = -std=c++11 # Standard
-FLAGS = -g -Wall -O3 -DDIM=2 # Flags
+C++ = g++-9
 DIR = src/include # Include directory
-OBJECTS = geometry.o graph.o btree.o node.o rtree.o nirnode.o nirtree.o rplustree.o rplusnode.o randomPoints.o bmpPrinter.o
-TESTS = testGeometry.o testRStarTree.o testRPlusTree.o testNIRTree.o testBMPPrinter.o
+SXX = -std=c++17 # Standard
+CXXFLAGS = -Wall
+CPPFLAGS = -DDIM2 -I $(DIR)
 
-.PHONY : clean tests
+ifndef PROD
+CXXFLAGS := -ggdb $(CXXFLAGS)
+else
+CPPFLAGS := -DNDEBUG $(CPPFLAGS)
+CXXFLAGS := $(CXXFLAGS) -O3
+endif
 
-# Build btree
-btree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/btree/btree.cpp
+SRC = $(shell find . -path ./src/tests -prune -false -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) )
+OBJ = $(SRC:.cpp=.o)
+TESTSRC = $(shell find ./src/tests -name '*.cpp')
+TESTOBJ = $(TESTSRC:.cpp=.o)
 
-# Build utils
-geometry.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/geometry.cpp
+%.o: %.cpp
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-graph.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/graph.cpp
+all: bin/main bin/tests
 
-# Build node
-node.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/node.cpp
-
-# Build rtree
-rtree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rtree/rtree.cpp
-
-# Build rplustree node
-rplusnode.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/node.cpp -o rplusnode.o
-
-# Build rplustree
-rplustree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/rplustree/rplustree.cpp
-
-# Build nirtree node
-nirnode.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/node.cpp -o nirnode.o
-
-# Build nirtree
-nirtree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/nirtree/nirtree.cpp
-
-# Build pencil printer
-# pencilPrinter.o:
-#	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/pencilPrinter.cpp
-
-# Build BMP printer
-bmpPrinter.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/util/bmpPrinter.cpp
-
-# Build benchmarks
-randomPoints.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/bench/randomPoints.cpp
-
-# Build tests
-testGeometry.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testGeometry.cpp
-
-testRStarTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRStarTree.cpp
-
-testRPlusTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testRPlusTree.cpp
-
-testNIRTree.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testNIRTree.cpp
-
-testBMPPrinter.o:
-	g++ ${SXX} ${FLAGS} -I ${DIR} -c src/tests/testBMPPrinter.cpp
-
-# Unit tests
-tests: ${OBJECTS} ${TESTS}
+bin/main: $(OBJ)
 	mkdir -p bin
-	g++ ${SXX} ${FLAGS} -DUNIT_TESTING src/main.cpp ${OBJECTS} ${TESTS} -o bin/tests -I ${DIR}
+	cp src/nirtree/node.o nirtreenode.o
+	cp src/rtree/node.o rtreenode.o
+	cp src/rplustree/node.o rplustreenode.o
+	cp src/rstartree/node.o rtstartreenode.o
+	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
+	rm -rf test*.o
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/main -I $(DIR)
 
-# Clean all together
+bin/tests: $(TESTOBJ) bin/main
+	find ./src/tests \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
+	mv main.o main.nocompile || echo
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/tests
+	mv main.nocompile main.o || echo
+
+.PHONY: all clean prod
+
 clean:
-	rm -rf bin/* *.o *.d
-
-# Alter flags to include profiling
-profile:
-	$(eval FLAGS += -pg)
-
-perf:
-	$(eval FLAGS += -ggdb)
-
-# Alter flags to include debugging
-debug:
-	$(eval FLAGS += -DDEBUG0)
-
-trace:
-	$(eval FLAGS += -DDEBUG1)
-
-# Alter flags to include statistics
-stat:
-	$(eval FLAGS += -DSTAT)
-
-# Build all together
-all: ${OBJECTS}
-	mkdir -p bin
-	g++ ${SXX} ${FLAGS} src/main.cpp ${OBJECTS} -o bin/main -I ${DIR}
+	rm -rf bin/*
+	find . -name "*.o" -delete
+	find . -name "*.d" -delete

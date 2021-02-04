@@ -25,10 +25,12 @@ class Point
 		static Point atOrigin;
 
 		Point();
+
 		Point(double x, double y);
 		Point(double value);
 
 		bool orderedCompare(const Point &rhs, unsigned startingDimension) const;
+    double distance(Point p) const;
 
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
@@ -51,6 +53,7 @@ class Point
 		friend bool operator==(const Point &lhs, const Point &rhs);
 		friend bool operator!=(const Point &lhs, const Point &rhs);
 		friend std::ostream& operator<<(std::ostream &os, const Point &point);
+
 };
 
 bool operator<(const Point &lhs, const Point &rhs);
@@ -74,6 +77,7 @@ class Rectangle
 		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
 		double area() const;
+    double margin() const;
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;
 		double computeExpansionArea(const Point &givenPoint) const;
 		double computeExpansionArea(const Rectangle &givenRectangle) const;

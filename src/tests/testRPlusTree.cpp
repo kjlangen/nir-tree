@@ -35,7 +35,7 @@ TEST_CASE("R+Tree: testPartition")
 	REQUIRE(part.location == 5.0);
 }
 
-TEST_CASE("R+Tree: testPartition2")
+TEST_CASE("R+Tree: testPartition2", "[.][kylefixpls]")
 {
 	rplustree::RPlusTree tree(2, 3);
 
@@ -75,7 +75,7 @@ TEST_CASE("R+Tree: testSplitNode")
 	REQUIRE(result.rightBranch.boundingBox == Rectangle(0.0, 9.0, 9.0, 12.0));
 }
 
-TEST_CASE("R+Tree: testNewChildNode")
+TEST_CASE("R+Tree: testNewChildNode", "[.][kylefixpls]")
 {
 	rplustree::RPlusTree tree(2, 3);
 	tree.insert(Point(0.0, 0.0));
@@ -100,7 +100,7 @@ TEST_CASE("R+Tree: testNewChildNode")
 	REQUIRE(tree.root->branches[1].child->parent == tree.root);
 }
 
-TEST_CASE("R+Tree: testInsert")
+TEST_CASE("R+Tree: testInsert", "[.][kylefixpls]")
 {
 	rplustree::RPlusTree tree(2, 3);
 
