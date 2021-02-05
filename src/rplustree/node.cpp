@@ -753,7 +753,7 @@ namespace rplustree
 				{
 					if (currentContext->branches[i].child->branches.size() == 1 || currentContext->branches[i].child->data.size() == 1)
 					{
-						singularBranches++;
+						++singularBranches;
 					}
 
 					context.push(currentContext->branches[i].child);

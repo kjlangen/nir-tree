@@ -24,6 +24,13 @@ namespace rstartree
 	class Node
 	{
 		private:
+			static std::vector<unsigned> histogramSearch;
+			static std::vector<unsigned> histogramLeaves;
+			static std::vector<unsigned> histogramRangeSearch;
+			static std::vector<unsigned> histogramRangeLeaves;
+			static unsigned leavesSearched;
+			static unsigned nodesSearched;
+
 			const RStarTree &treeRef;
 
 			void searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const;
