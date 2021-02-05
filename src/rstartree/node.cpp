@@ -3,6 +3,13 @@
 
 namespace rstartree
 {
+	std::vector<unsigned> Node::histogramSearch = std::vector<unsigned>(1000, 0);
+	std::vector<unsigned> Node::histogramLeaves = std::vector<unsigned>(1000000, 0);
+	std::vector<unsigned> Node::histogramRangeSearch = std::vector<unsigned>(1000000, 0);
+	std::vector<unsigned> Node::histogramRangeLeaves = std::vector<unsigned>(1000000, 0);
+	unsigned Node::leavesSearched = 0;
+	unsigned Node::nodesSearched = 0;
+
 	template <typename N, typename functor>
 	void treeWalker(N root, functor &f)
 	{
@@ -175,6 +182,8 @@ namespace rstartree
 		bool isLeaf = std::holds_alternative<Point>(entries[0]);
 		if (isLeaf)
 		{
+			STATEXEC(++leavesSearched);
+			STATEXEC(++nodesSearched);
 			for (const auto &entry : entries)
 			{
 				const Point &p = std::get<Point>(entry);
@@ -187,6 +196,7 @@ namespace rstartree
 		}
 		else
 		{
+			STATEXEC(++nodesSearched);
 			for (const auto &entry : entries)
 			{
 				const Branch &b = std::get<Branch>(entry);
@@ -205,6 +215,8 @@ namespace rstartree
 		bool isLeaf = std::holds_alternative<Point>(entries[0]);
 		if (isLeaf)
 		{
+			STATEXEC(++leavesSearched);
+			STATEXEC(++nodesSearched);
 			for (const auto &entry : entries)
 			{
 				const Point &p = std::get<Point>(entry);
@@ -217,6 +229,7 @@ namespace rstartree
 		}
 		else
 		{
+			STATEXEC(++nodesSearched);
 			for (const auto &entry : entries)
 			{
 				const Branch &b = std::get<Branch>(entry);
@@ -233,7 +246,14 @@ namespace rstartree
 	std::vector<Point> Node::search(const Point &requestedPoint) const
 	{
 		std::vector<Point> accumulator;
+
+		STATEXEC(leavesSearched = 0);
+		STATEXEC(nodesSearched = 0);
+
 		searchSub(requestedPoint, accumulator);
+
+		STATEXEC(++histogramLeaves[leavesSearched]);
+		STATEXEC(++histogramSearch[nodesSearched]);
 
 		return accumulator;
 	}
@@ -241,7 +261,14 @@ namespace rstartree
 	std::vector<Point> Node::search(const Rectangle &requestedRectangle) const
 	{
 		std::vector<Point> matchingPoints;
+
+		STATEXEC(leavesSearched = 0);
+		STATEXEC(nodesSearched = 0);
+
 		searchSub(requestedRectangle, matchingPoints);
+
+		STATEXEC(++histogramRangeLeaves[leavesSearched]);
+		STATEXEC(++histogramRangeSearch[nodesSearched]);
 
 		return matchingPoints;
 	}
@@ -277,7 +304,6 @@ namespace rstartree
 
 	Node *Node::chooseSubtree(const NodeEntry &givenNodeEntry)
 	{
-
 		// CS1: This is CAlled on the root! Just like above
 		// CS2: If N is a leaf return N (same)
 		// CS3: If the child pointers (bounding boxes) -> choose reactangle that needs least
@@ -324,7 +350,9 @@ namespace rstartree
 			}
 
 			// Our children point to leaves
+#ifndef NDEBUG
 			const Branch &firstBranch = std::get<Branch>(node->entries[0]);
+#endif
 			assert(!firstBranch.child->entries.empty());
 
 			unsigned descentIndex = 0;
@@ -415,7 +443,7 @@ namespace rstartree
 						if (smallestArea > testArea)
 						{
 							smallestArea = testArea;
-						}	
+						}
 					}
 					else if (smallestExpansionArea == testExpansionArea)
 					{
@@ -425,7 +453,7 @@ namespace rstartree
 						{
 							descentIndex = i;
 							smallestArea = testArea;
-						}	
+						}
 					}
 				}
 			}
@@ -586,7 +614,7 @@ namespace rstartree
 
 		std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
 		std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
-		unsigned splitIndex;
+		unsigned splitIndex = entries.size() / 2;
 
 		// Find the best size out of all the distributions
 		unsigned minOverlap = std::numeric_limits<unsigned>::max();
@@ -745,7 +773,9 @@ namespace rstartree
 #endif
 					if (node->parent->entries.size() > node->parent->treeRef.maxBranchFactor)
 					{
+#ifndef NDEBUG
 						Node *parentBefore = node->parent;
+#endif
 						Node *siblingParent = node->parent->overflowTreatment(hasReinsertedOnLevel);
 
 						if (siblingParent)
@@ -1149,36 +1179,103 @@ namespace rstartree
 
 	void Node::stat() const
 	{
-		struct MemComsumptionFunctor
+		struct StatWalker
 		{
 			size_t memoryFootprint;
+			unsigned long totalNodes;
+			unsigned long singularBranches;
+			unsigned long totalLeaves;
+			std::vector<unsigned long> histogramFanout;
 
-			MemComsumptionFunctor()
+			StatWalker(unsigned long maxBranchFactor)
 			{
 				memoryFootprint = 0;
+				totalNodes = 0;
+				singularBranches = 0;
+				totalLeaves = 0;
+				histogramFanout.resize(maxBranchFactor, 0);
 			}
 
 			void operator()(Node * const node)
 			{
-				bool isLeaf = node->entries.empty() || !std::holds_alternative<Point>(node->entries[0]);
+				unsigned entriesSize = node->entries.size();
+
+				if (entriesSize == 1)
+				{
+					++singularBranches;
+				}
+
+				++totalNodes;
+
+				if (entriesSize > histogramFanout.size() - 1)
+				{
+					histogramFanout.resize(entriesSize, 0);
+				}
+				++histogramFanout[entriesSize];
+
+				bool isLeaf = node->entries.empty() || std::holds_alternative<Point>(node->entries[0]);
 				if (isLeaf)
 				{
-					STATBRANCH(node->entries.size());
-					memoryFootprint += sizeof(Node) + node->entries.size() * sizeof(Point);
+					++totalLeaves;
+					memoryFootprint += sizeof(Node) + entriesSize * sizeof(Point);
 				}
 				else
 				{
-					memoryFootprint += sizeof(Node) + node->entries.size() * sizeof(Node *) + node->entries.size() * sizeof(Rectangle);
+					memoryFootprint += sizeof(Node) + entriesSize * sizeof(Node *) + entriesSize * sizeof(Rectangle);
 				}
 			}
 		};
 
-		MemComsumptionFunctor mf;
-		treeWalker(const_cast<Node * const>(this), mf);
+		StatWalker sw(treeRef.maxBranchFactor);
+		treeWalker(const_cast<Node * const>(this), sw);
 
+		// Print out what we have found
+		STATMEM(sw.memoryFootprint);
 		STATHEIGHT(height());
-
-		STATMEM(mf.memoryFootprint);
+		STATSIZE(sw.totalNodes);
+		STATSINGULAR(sw.singularBranches);
+		STATLEAF(sw.totalLeaves);
+		STATBRANCH(sw.totalNodes - 1);
+		STATFANHIST();
+		for (unsigned i = 0; i < sw.histogramFanout.size(); ++i)
+		{
+			if (sw.histogramFanout[i] > 0)
+			{
+				STATHIST(i, sw.histogramFanout[i]);
+			}
+		}
+		STATSEARCHHIST();
+		for (unsigned i = 0; i < histogramSearch.size(); ++i)
+		{
+			if (histogramSearch[i] > 0)
+			{
+				STATHIST(i, histogramSearch[i]);
+			}
+		}
+		STATLEAVESHIST();
+		for (unsigned i = 0; i < histogramLeaves.size(); ++i)
+		{
+			if (histogramLeaves[i] > 0)
+			{
+				STATHIST(i, histogramLeaves[i]);
+			}
+		}
+		STATRANGESEARCHHIST();
+		for (unsigned i = 0; i < histogramRangeSearch.size(); ++i)
+		{
+			if (histogramRangeSearch[i] > 0)
+			{
+				STATHIST(i, histogramRangeSearch[i]);
+			}
+		}
+		STATRANGELEAVESHIST();
+		for (unsigned i = 0; i < histogramRangeLeaves.size(); ++i)
+		{
+			if (histogramRangeLeaves[i] > 0)
+			{
+				STATHIST(i, histogramRangeLeaves[i]);
+			}
+		}
 	}
 
 	Rectangle boxFromNodeEntry(const Node::NodeEntry &entry)

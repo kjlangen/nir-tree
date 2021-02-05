@@ -39,10 +39,12 @@ namespace rstartree
 		assert(root->parent == nullptr);
 
 		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
+#ifndef NDEBUG
 		for (const auto &b : hasReinsertedOnLevel)
 		{
 			assert(!b);
 		}
+#endif
 
 		root = root->insert(givenPoint, hasReinsertedOnLevel);
 	}
