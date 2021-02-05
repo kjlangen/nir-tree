@@ -423,13 +423,17 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	{
 		spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
 	}
+	else if (configU["tree"] == R_STAR_TREE)
+	{
+		spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
+	}
 	else if (configU["tree"] == NIR_TREE)
 	{
 		spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
 	}
 	else
 	{
-		assert(false);
+		return;
 	}
 
 	// Initialize points
@@ -465,11 +469,15 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else
 	{
-		assert(false);
+		return;
 	}
 
 	// Initialize search rectangles
 	Rectangle *searchRectangles;
+	if (configU["distribution"] == UNIFORM)
+	{
+		searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
+	}
 	if (configU["distribution"] == SKEW)
 	{
 		configU["rectanglescount"] = BitQuerySize;
@@ -497,7 +505,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 	else
 	{
-		searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
+		return;
 	}
 
 	// Insert points and time their insertion

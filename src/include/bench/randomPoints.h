@@ -11,6 +11,7 @@
 #include <index/index.h>
 #include <rtree/rtree.h>
 #include <rplustree/rplustree.h>
+#include <rstartree/rstartree.h>
 #include <nirtree/nirtree.h>
 
 const unsigned BitDataSize = 60000;
@@ -25,7 +26,7 @@ const unsigned ForestDataSize = 581012;
 const unsigned ForestQuerySize = 1838;
 
 enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST};
-enum TreeType {R_TREE, R_PLUS_TREE, NIR_TREE};
+enum TreeType {R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE};
 
 Point *generateUniform(unsigned benchmarkSize, unsigned seed);
 Point *generateBits();
