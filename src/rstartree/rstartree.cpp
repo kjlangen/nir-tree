@@ -2,9 +2,9 @@
 
 namespace rstartree
 {
-	RStarTree::RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor) : minBranchFactor( minBranchFactor ), maxBranchFactor( maxBranchFactor )
+	RStarTree::RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor) : minBranchFactor(minBranchFactor), maxBranchFactor(maxBranchFactor)
 	{
-        hasReinsertedOnLevel = { false };
+		hasReinsertedOnLevel = {false};
 		root = new Node(*this);
 	}
 
@@ -24,7 +24,8 @@ namespace rstartree
 
 	std::vector<Point> RStarTree::search(Point requestedPoint)
 	{
-        assert( root->parent == nullptr );
+		assert(root->parent == nullptr);
+
 		return root->search(requestedPoint);
 	}
 
@@ -33,19 +34,22 @@ namespace rstartree
 		return root->search(requestedRectangle);
 	}
 
-	void RStarTree::insert( Point givenPoint )
+	void RStarTree::insert(Point givenPoint)
 	{
-        assert( root->parent == nullptr );
-        std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
-        for( const auto &b : hasReinsertedOnLevel ) {
-            assert( !b );
-        }
+		assert(root->parent == nullptr);
+
+		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
+		for (const auto &b : hasReinsertedOnLevel)
+		{
+			assert(!b);
+		}
+
 		root = root->insert(givenPoint, hasReinsertedOnLevel);
 	}
 
 	void RStarTree::remove(Point givenPoint)
 	{
-        std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
+		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
 		root = root->remove(givenPoint, hasReinsertedOnLevel);
 	}
 
@@ -59,12 +63,18 @@ namespace rstartree
 		root->printTree();
 	}
 
-    bool RStarTree::validate() {
-        return true;
-    }
-	void RStarTree::stat() {
-        root->stat();
-    }
-	void RStarTree::visualize() {
-    }
+	bool RStarTree::validate()
+	{
+		return true;
+	}
+
+	void RStarTree::stat()
+	{
+		root->stat();
+	}
+
+	void RStarTree::visualize()
+	{
+		return;
+	}
 }
