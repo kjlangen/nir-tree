@@ -470,7 +470,8 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster3extra->entries.push_back(Point(2.0, 2.0));
 
 	// Set proper tree levels on everything
-	for( unsigned int i = 0; i < 6; i++ ) {
+	for (unsigned i = 0; i < 6; ++i)
+	{
 		dummys[i]->level = 1;
 	}
 	cluster3extra->level = 1;
