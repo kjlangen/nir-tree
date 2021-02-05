@@ -447,6 +447,30 @@ namespace rstartree
 		return sumOfAllMarginValues;
 	}
 
+	void Node::entrySort(unsigned startingDimension)
+	{
+		assert(entries.size() > 0);
+		bool isLeaf = !std::holds_alternative<Branch>(entries[0]);
+		if (isLeaf)
+		{
+			std::sort(entries.begin(), entries.end(),
+				[startingDimension](NodeEntry &a, NodeEntry &b)
+				{
+					return std::get<Point>(a).orderedCompare(std::get<Point>(b), startingDimension);
+				});
+		}
+		else
+		{
+			std::sort(entries.begin(), entries.end(),
+				[startingDimension](NodeEntry &a, NodeEntry &b)
+				{
+					Rectangle A = boxFromNodeEntry(std::get<Branch>(a));
+					Rectangle B = boxFromNodeEntry(std::get<Branch>(b));
+					return A.lowerLeft.orderedCompare(B.lowerLeft, startingDimension) && A.upperRight.orderedCompare(B.upperRight, startingDimension);
+				});
+		}
+	}
+
 	
 	/*
 		CSA1: Sort entries by lower and upper bound along each axis and compute S -> sum of all margin values for the different distributions
@@ -454,46 +478,37 @@ namespace rstartree
 			// we can first call a helper function that returns an array of all possible distributions for it?
 		CSA2: Return the Axis that has the minimum total sum of all the distributions
 	*/
-	unsigned int Node::chooseSplitAxis()
+	unsigned Node::chooseSplitAxis()
 	{
-		unsigned int optimalAxis = 0;
-		
-		// For now we will say there is only 2 axis; however, we can set up geometry.h to include an axis type
-		// eventually we can make this a loop to work with multi dimensional data
-		// Sort along x axis
-		std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
-		double marginsFromAxisX = computeTotalMarginSum();
+		unsigned optimalAxis = 0;
+		double optimalMargin = std::numeric_limits<double>::infinity();
+		double evalMargin;
 
-		// Sort along y axis
-		std::sort(entries.begin(), entries.end(), sortByYRectangleFirst());
-		double marginsFromAxisY = computeTotalMarginSum();
-
-
-		if (marginsFromAxisX < marginsFromAxisY)
+		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			// X axis is better and resort data
-			std::sort(entries.begin(), entries.end(), sortByXRectangleFirst());
-			optimalAxis = 0;
+			entrySort(d);
+			evalMargin = computeTotalMarginSum();
+
+			if (evalMargin < optimalMargin)
+			{
+				optimalAxis = d;
+				optimalMargin = evalMargin;
+			}
 		}
-		else
-		{
-			// Y axis is better
-			optimalAxis = 1;
-		}
+
+		// Sort because optimalAxis may not have been the last considered
+		entrySort(optimalAxis);
 
 		return optimalAxis;
 	}
 
 	// Implement ChooseSplitIndex here
-	/*
-		CSI1: Given the chosen split index
-			group all the entries into multiple groups and choose the one that has the least
-			overlap value; resolve ties with the minimum area
-			returns tuple of best distribution group indices
-	*/
+	// CSI1: Given the chosen split index
+	// 	group all the entries into multiple groups and choose the one that has the least
+	// 	overlap value; resolve ties with the minimum area
+	// 	returns tuple of best distribution group indices
 	unsigned Node::chooseSplitIndex(unsigned int axis)
 	{
-
 		// We assume this is called after we have sorted this->data according to axis.
 		(void) axis;
 
@@ -529,7 +544,7 @@ namespace rstartree
 				boundingBoxB.expand( boxFromNodeEntry( groupB[i] ) );
 			}
 
-			// Computer intersection area to determine best grouping of data points
+			// Compute intersection area to determine best grouping of data points
 			unsigned int currDistOverlapVal = boundingBoxA.computeIntersectionArea(boundingBoxB);
 
 			if (currDistOverlapVal < minOverlapValue) {
@@ -696,11 +711,13 @@ namespace rstartree
 
         assert( hasReinsertedOnLevel.at( level ) );
 
-		std::sort(entries.begin(), entries.end(), [&globalCenterPoint](NodeEntry a, NodeEntry b) {
-            Rectangle rectA = boxFromNodeEntry( a );
-            Rectangle rectB = boxFromNodeEntry( b );
-			return rectA.centrePoint().distance(globalCenterPoint) > rectB.centrePoint().distance(globalCenterPoint);
-		});
+		std::sort(entries.begin(), entries.end(),
+			[&globalCenterPoint](NodeEntry a, NodeEntry b)
+			{
+				Rectangle rectA = boxFromNodeEntry( a );
+				Rectangle rectB = boxFromNodeEntry( b );
+				return rectA.centrePoint().distance(globalCenterPoint) > rectB.centrePoint().distance(globalCenterPoint);
+			});
 
 		// 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
 		//		to include a specified "p" value -> this should be unique to the node -> so it's a node variable

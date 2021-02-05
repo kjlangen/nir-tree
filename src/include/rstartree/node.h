@@ -16,7 +16,6 @@
 #include <variant>
 
 
-
 namespace rstartree
 {
 
@@ -51,27 +50,6 @@ namespace rstartree
         void searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const;
 
 		public:
-
-            // sorting structs to help in splitNode
-            // TODO: As a note since points are X/Y, this will need to be updated when we
-            // 		get to multi dimensional data
-            struct sortByXFirst
-            {
-                inline bool operator() (const Point& pointA, const Point& pointB)
-                {
-                    // FIXME: multi-dimensional
-                    return (pointA[0] < pointB[0]) || ((pointA[0] == pointB[0]) && (pointA[1] < pointB[1]));
-                }
-            };
-
-            struct sortByYFirst{
-                inline bool operator() (const Point& pointA, const Point& pointB)
-                {
-                    // FIXME: multi-dimensional
-                    return (pointA[1] < pointB[1]) || ((pointA[1] == pointB[1]) && (pointA[0] < pointB[0]));
-                }
-            };
-
 			Node *parent;
             std::vector<NodeEntry> entries;
 			unsigned int level = 0;
@@ -87,8 +65,8 @@ namespace rstartree
 			void removeData(Point givenPoint);
 			Node *chooseSubtree(NodeEntry nodeEntry);
 			Node *findLeaf(Point givenPoint);
-			double computeTotalMarginSumOfBoundingBoxes();
 			double computeTotalMarginSum();
+            void entrySort(unsigned startingDimension);
 			unsigned int chooseSplitAxis();
 			unsigned chooseSplitIndex(unsigned int axis);
 			Node *splitNode();
@@ -119,29 +97,6 @@ namespace rstartree
 
     Rectangle boxFromNodeEntry( const Node::NodeEntry &entry );
     double computeOverlapGrowth(unsigned int index, const std::vector<Node::NodeEntry> &entries, const Rectangle &rect);
-
-    struct sortByXRectangleFirst
-    {
-        inline bool operator() (const Node::NodeEntry &a, const Node::NodeEntry &b)
-        {
-            Rectangle rectangleA = boxFromNodeEntry( a );
-            Rectangle rectangleB = boxFromNodeEntry( b );
-            return (rectangleA.lowerLeft[0] < rectangleB.lowerLeft[0])
-                || ((rectangleA.lowerLeft[0] == rectangleB.lowerLeft[0]) && (rectangleA.upperRight[1] < rectangleB.upperRight[1]));
-        }
-    };
-
-    struct sortByYRectangleFirst{
-        inline bool operator() (const Node::NodeEntry &a, const Node::NodeEntry &b)
-        {
-            Rectangle rectangleA = boxFromNodeEntry( a );
-            Rectangle rectangleB = boxFromNodeEntry( b );
-            return (rectangleA.lowerLeft[1] < rectangleB.lowerLeft[1])
-                || ((rectangleA.lowerLeft[1] == rectangleB.lowerLeft[1]) && (rectangleA.upperRight[0] < rectangleB.upperRight[0]));
-        }
-    };
-
-
 }
 
 

@@ -174,6 +174,18 @@ Point operator*(const Point &lhs, const double scalar)
 	return r;
 }
 
+Point operator/(const Point &lhs, const double scalar)
+{
+	Point r;
+
+	for (unsigned d = 0; d < dimensions; ++d)
+	{
+		r.values[d] = lhs[d] / scalar;
+	}
+
+	return r;
+}
+
 Point operator*(const Point &lhs, const Point &rhs)
 {
 	Point r;
@@ -470,28 +482,29 @@ bool Rectangle::containsRectangle(const Rectangle &givenRectangle) const
 double Rectangle::margin() const
 {
 	double margin = 0.0;
-	for( unsigned d = 0; d < dimensions; d++ ) {
-		margin += abs(upperRight[d] - lowerLeft[d]) * 2;
+	for(unsigned d = 0; d < dimensions; d++)
+	{
+		margin += abs(upperRight[d] - lowerLeft[d]) * 2.0;
 	}
+
 	return margin;
 }
 
 Point Rectangle::centrePoint() const
 {
-	Point centrePoint((lowerLeft[0] + upperRight[0])/2, (lowerLeft[1] + upperRight[1])/2);
-	return centrePoint;
+	return (lowerLeft + upperRight) / 2.0;
 }
 
 Rectangle Rectangle::intersection(const Rectangle &clippingRectangle) const
 {
-	// Return rectangle
-	Rectangle r = Rectangle(lowerLeft, upperRight);
-
 	// Quick exit
 	if (!intersectsRectangle(clippingRectangle))
 	{
 		return Rectangle::atInfinity;
 	}
+
+	// Return rectangle
+	Rectangle r = Rectangle(lowerLeft, upperRight);
 
 	// Revise inward whenever the clippingRectangle is inside us
 	r.lowerLeft >> clippingRectangle.lowerLeft;

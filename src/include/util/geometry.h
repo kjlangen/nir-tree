@@ -45,6 +45,7 @@ class Point
 		friend Point operator-(const Point &lhs, const Point &rhs);
 		friend Point operator+(const Point &lhs, const Point &rhs);
 		friend Point operator*(const Point &lhs, const double scalar);
+		friend Point operator/(const Point &lsh, const double scalar);
 		friend Point operator*(const Point &lhs, const Point &rhs);
 		friend bool operator<(const Point &lhs, const Point &rhs);
 		friend bool operator>(const Point &lhs, const Point &rhs);

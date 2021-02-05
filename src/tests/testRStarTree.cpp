@@ -333,11 +333,11 @@ TEST_CASE("R*Tree: testComplexComputeMargin" )
 	cluster->entries.push_back(Point(3.0, -9.0));
 
     // Check that produce the right margin under X order
-    std::sort(cluster->entries.begin(), cluster->entries.end(), rstartree::sortByXRectangleFirst());
+    cluster->entrySort(0);
     REQUIRE( cluster->computeTotalMarginSum() == 14 + 18 + 18 );
 
     // Check that produce the right margin under Y order
-    std::sort(cluster->entries.begin(), cluster->entries.end(), rstartree::sortByYRectangleFirst());
+    cluster->entrySort(1);
     REQUIRE( cluster->computeTotalMarginSum() == 26 + 26 + 24 );
 }
 
