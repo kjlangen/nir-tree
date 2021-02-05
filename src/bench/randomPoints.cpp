@@ -478,7 +478,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	{
 		searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
 	}
-	if (configU["distribution"] == SKEW)
+	else if (configU["distribution"] == SKEW)
 	{
 		configU["rectanglescount"] = BitQuerySize;
 		searchRectangles = generateBitRectangles();
