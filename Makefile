@@ -4,11 +4,14 @@ SXX = -std=c++17 # Standard
 CXXFLAGS = -Wall
 CPPFLAGS = -DDIM2 -I $(DIR)
 
-ifndef PROD
-CXXFLAGS := -ggdb $(CXXFLAGS)
-else
+ifdef PROD
 CPPFLAGS := -DNDEBUG $(CPPFLAGS)
 CXXFLAGS := $(CXXFLAGS) -O3
+else ifdef EXP
+CPPFLAGS := -DNDEBUG -DSTAT $(CPPFLAGS)
+CXXFLAGS := $(CXXFLAGS) -O3
+else
+CXXFLAGS := -ggdb $(CXXFLAGS)
 endif
 
 SRC = $(shell find . -path ./src/tests -prune -false -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) )

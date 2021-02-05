@@ -438,7 +438,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 
 	// Initialize points
 	Point *points;
-	if(configU["distribution"] == UNIFORM)
+	if (configU["distribution"] == UNIFORM)
 	{
 		points = generateUniform(configU["size"], configU["seed"]);
 	}
@@ -537,11 +537,17 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 
 	// Validate checksum
-	assert(spatialIndex->checksum() == directSum);
+	if (spatialIndex->checksum() != directSum)
+	{
+		exit(1);
+	}
 	std::cout << "Checksum OK." << std::endl;
 
 	// Validate tree
-	assert(spatialIndex->validate());
+	if (!spatialIndex->validate())
+	{
+		exit(1);
+	}
 	std::cout << "Validation OK." << std::endl;
 
 	// Search for points and time their retrieval
@@ -550,7 +556,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		assert(spatialIndex->search(points[i])[0] == points[i]);
+		if (spatialIndex->search(points[i])[0] != points[i])
+		{
+			exit(1);
+		}
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
@@ -560,7 +569,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Search OK." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex->checksum() == directSum);
+	if (spatialIndex->checksum() != directSum)
+	{
+		exit(1);
+	}
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for rectangles
@@ -576,12 +588,14 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		totalRangeSearches += 1;
 		// std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
 
+#ifndef NDEBUG
 		// Validate points returned in the search
 		for (unsigned j = 0; j < v.size(); ++j)
 		{
 			assert(searchRectangles[i].containsPoint(v[j]));
 		}
 		// std::cout << v.size() << " points verified." << std::endl;
+#endif
 	}
 	std::cout << "Range search OK." << std::endl;
 
@@ -590,7 +604,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	STATEXEC(std::cout << "Statistics OK." << std::endl);
 
 	// Validate checksum
-	assert(spatialIndex->checksum() == directSum);
+	if (spatialIndex->checksum() != directSum)
+	{
+		exit(1);
+	}
 	std::cout << "Checksum OK." << std::endl;
 
 	// Delete points and time their deletion
@@ -609,7 +626,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Deletion OK." << std::endl;
 
 	// Validate checksum
-	assert(spatialIndex->checksum() == 0);
+	if (spatialIndex->checksum() != 0)
+	{
+		exit(1);
+	}
 	std::cout << "Checksum OK." << std::endl;
 
 	// Timing Statistics
