@@ -1,5 +1,6 @@
 #ifndef __RSTARTREE__
 #define __RSTARTREE__
+
 #include <cassert>
 #include <vector>
 #include <stack>
@@ -11,14 +12,13 @@
 
 namespace rstartree
 {
-	// For now we will work with an RTree that only stores points
 	class RStarTree: public Index
 	{
 		public:
 			Node *root;
             const unsigned minBranchFactor;
             const unsigned maxBranchFactor;
-            static constexpr float p = 0.3; // for reinsertion entries - set to 0.3 on default
+            static constexpr float p = 0.3; // For reinsertion entries. 0.3 by default
             std::vector<bool> hasReinsertedOnLevel;
 
 			// Constructors and destructors
@@ -27,17 +27,17 @@ namespace rstartree
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);
-			std::vector<Point> search(Point requestedPoint) override;
-			std::vector<Point> search(Rectangle requestedRectangle) override;
-			void insert(Point givenPoint) override;
-			void remove(Point givenPoint) override;
+			std::vector<Point> search(Point requestedPoint);
+			std::vector<Point> search(Rectangle requestedRectangle);
+			void insert(Point givenPoint);
+			void remove(Point givenPoint);
 
 			// Miscellaneous
-			unsigned checksum() override;
-			void print() override;
-            bool validate() override;
-	        void stat() override;
-	        void visualize() override;
+			unsigned checksum();
+			void print();
+            bool validate();
+	        void stat();
+	        void visualize();
 	};
 }
 

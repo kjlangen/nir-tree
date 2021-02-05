@@ -538,8 +538,8 @@ TEST_CASE("R*Tree: testInsertOverflowReInsertAndSplit" )
 	// We will have split along the x axis (y axis isomorphic so we prefer x).
 	// Overlap is always zero between any cut along X. Cumulative area is minimized at 3,5 or 5,3 split.
 	// We prefer 3,5.
-    rstartree::Node::Branch bLeft = std::get<rstartree::Node::Branch>( root->entries[0] );
-    rstartree::Node::Branch bRight = std::get<rstartree::Node::Branch>( root->entries[1] );
+    rstartree::Node::Branch bLeft = std::get<rstartree::Node::Branch>(root->entries[0]);
+    rstartree::Node::Branch bRight = std::get<rstartree::Node::Branch>(root->entries[1]);
 	REQUIRE(bLeft.child->entries.size() == 3);
 	REQUIRE(bRight.child->entries.size() == 5);
 
