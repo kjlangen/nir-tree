@@ -27,6 +27,15 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 	return points;
 }
 
+void fileGoodOrDie(std::fstream &file, std::string &str)
+{
+	if (!file.good())
+	{
+		std::cout << "Could not read from file: " << str << std::endl;
+		exit(1);
+	}
+}
+
 Point *generateBits()
 {
 	// Dataset is pre-generated and requires 2 or 3 dimensions
@@ -36,6 +45,7 @@ Point *generateBits()
 	std::fstream file;
 	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/bit02" : "/hdd1/nir-tree/data/bit03";
 	file.open(dataPath.c_str());
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -47,9 +57,10 @@ Point *generateBits()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
-			file.sync();
 			points[i][d] = *doubleBuffer;
 		}
 	}
@@ -71,6 +82,7 @@ Point *generateHaze()
 	std::fstream file;
 	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/pha02" : "/hdd1/nir-tree/data/pha03";
 	file.open(dataPath.c_str());
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -82,9 +94,10 @@ Point *generateHaze()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
-			file.sync();
 			points[i][d] = *doubleBuffer;
 		}
 	}
@@ -104,12 +117,10 @@ Point *generateCalifornia()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/hdd1/nir-tree/data/rea02");
+	std::string dataPath = "/hdd1/nir-tree/data/rea02";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
 
-    if( !file.good() ) {
-        std::cout << "File could not be opened!" << std::endl;
-        exit(1);
-    }
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -121,10 +132,10 @@ Point *generateCalifornia()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-            assert( file.good() );
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
-			file.sync();
 			points[i][d] = *doubleBuffer;
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			file.sync();
 			points[i][d] = (points[i][d] + *doubleBuffer) / 2;
@@ -146,7 +157,10 @@ Point *generateBiological()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/hdd1/nir-tree/data/rea03");
+    
+	std::string dataPath = "/hdd1/nir-tree/data/rea03";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -158,9 +172,10 @@ Point *generateBiological()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
-			file.sync();
 			points[i][d] = *doubleBuffer;
 		}
 	}
@@ -180,7 +195,9 @@ Point *generateForest()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/hdd1/nir-tree/data/rea05");
+	std::string dataPath ="/hdd1/nir-tree/data/rea05";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -192,9 +209,10 @@ Point *generateForest()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
-			file.sync();
 			points[i][d] = *doubleBuffer;
 		}
 	}
@@ -240,8 +258,9 @@ Rectangle *generateBitRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string queryPath = dimensions == 2 ? "/hdd1/nir-tree/bit02.2" : "/hdd1/nir-tree/bit03.2";
-	file.open(queryPath.c_str());
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/bit02.2" : "/hdd1/nir-tree/bit03.2";
+	file.open(dataPath.c_str());
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -253,8 +272,10 @@ Rectangle *generateBitRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -275,8 +296,9 @@ Rectangle *generateHazeRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string queryPath = dimensions == 2 ? "/hdd1/nir-tree/pha02.2" : "/hdd1/nir-tree/pha03.2";
-	file.open(queryPath.c_str());
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/pha02.2" : "/hdd1/nir-tree/pha03.2";
+	file.open(dataPath.c_str());
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -288,8 +310,10 @@ Rectangle *generateHazeRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -310,7 +334,9 @@ Rectangle *generateCaliRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/hdd1/nir-tree/data/rea02.2");
+	std::string dataPath = "/hdd1/nir-tree/data/rea02.2";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -322,8 +348,10 @@ Rectangle *generateCaliRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -344,7 +372,9 @@ Rectangle *generateBioRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/hdd1/nir-tree/data/rea03.2");
+	std::string dataPath = "/hdd1/nir-tree/data/rea03.2";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -356,8 +386,10 @@ Rectangle *generateBioRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -378,7 +410,9 @@ Rectangle *generateForestRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/hdd1/nir-tree/data/rea05.2");
+	std::string dataPath = "/hdd1/nir-tree/data/rea05.2";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -390,8 +424,10 @@ Rectangle *generateForestRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			fileGoodOrDie(file, dataPath);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
