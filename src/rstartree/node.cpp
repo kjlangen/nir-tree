@@ -785,7 +785,7 @@ namespace rstartree
 							// Need to keep traversing up
 							node = parentBefore;
 							siblingNode = siblingParent;
-							assert( node != siblingNode );
+							assert(node != siblingNode);
 
 							continue;
 						}
@@ -1040,7 +1040,6 @@ namespace rstartree
 
 		if (leaf == nullptr)
 		{
-            assert( false );
 			return nullptr;
 		}
 
@@ -1051,7 +1050,7 @@ namespace rstartree
 		Node *root = leaf->condenseTree(hasReinsertedOnLevel);
 
 		// D4 [Shorten tree]
-		if (root->entries.size() == 1 and !isLeafNode() )
+		if (root->entries.size() == 1 and !isLeafNode())
 		{
 			// Slice the hasReinsertedOnLevel
 			hasReinsertedOnLevel.erase(hasReinsertedOnLevel.begin());
@@ -1069,7 +1068,6 @@ namespace rstartree
 		}
 		else
 		{
-            assert( root != nullptr );
 			return root;
 		}
 	}
