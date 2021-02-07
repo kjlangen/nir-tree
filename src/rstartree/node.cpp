@@ -154,7 +154,7 @@ namespace rstartree
 	void Node::exhaustiveSearch(const Point &requestedPoint, std::vector<Point> &accumulator) const
 	{
 		// Am I a leaf?
-		bool isLeaf = std::holds_alternative<Point>(entries[0]);
+		bool isLeaf = isLeafNode();
 		if (isLeaf)
 		{
 			for (const auto &entry : entries)
@@ -179,7 +179,7 @@ namespace rstartree
 	void Node::searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const
 	{
 		// Am I a leaf?
-		bool isLeaf = std::holds_alternative<Point>(entries[0]);
+		bool isLeaf = isLeafNode();
 		if (isLeaf)
 		{
 			STATEXEC(++leavesSearched);
@@ -212,7 +212,7 @@ namespace rstartree
 	void Node::searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const
 	{
 		// Am I a leaf?
-		bool isLeaf = std::holds_alternative<Point>(entries[0]);
+		bool isLeaf = isLeafNode();
 		if (isLeaf)
 		{
 			STATEXEC(++leavesSearched);
@@ -326,7 +326,7 @@ namespace rstartree
 		for (;;)
 		{
 			// CL2 [Leaf check]
-			bool isLeaf = node->entries.empty() || !std::holds_alternative<Branch>(node->entries[0]);
+			bool isLeaf = node->isLeafNode();
 			if (isLeaf)
 			{
 				if (node->parent != nullptr)
@@ -468,7 +468,7 @@ namespace rstartree
 		assert(!entries.empty());
 
 		// Am I a leaf?
-		bool isLeaf = !std::holds_alternative<Branch>(entries[0]);
+		bool isLeaf = isLeafNode();
 		if (isLeaf)
 		{
 			for (const auto &entry : entries)
@@ -548,7 +548,7 @@ namespace rstartree
 	void Node::entrySort(unsigned startingDimension)
 	{
 		assert(entries.size() > 0);
-		bool isLeaf = !std::holds_alternative<Branch>(entries[0]);
+		bool isLeaf = isLeafNode();
 		if (isLeaf)
 		{
 			std::sort(entries.begin(), entries.end(),
@@ -773,9 +773,7 @@ namespace rstartree
 #endif
 					if (node->parent->entries.size() > node->parent->treeRef.maxBranchFactor)
 					{
-#ifndef NDEBUG
 						Node *parentBefore = node->parent;
-#endif
 						Node *siblingParent = node->parent->overflowTreatment(hasReinsertedOnLevel);
 
 						if (siblingParent)
@@ -785,9 +783,10 @@ namespace rstartree
 							assert(siblingNode->parent == siblingParent || siblingNode->parent == parentBefore);
 
 							// Need to keep traversing up
-							node = node->parent;
+							node = parentBefore;
 							siblingNode = siblingParent;
-							assert(node != siblingNode);
+							assert( node != siblingNode );
+
 							continue;
 						}
 					}
@@ -1041,6 +1040,7 @@ namespace rstartree
 
 		if (leaf == nullptr)
 		{
+            assert( false );
 			return nullptr;
 		}
 
@@ -1051,7 +1051,7 @@ namespace rstartree
 		Node *root = leaf->condenseTree(hasReinsertedOnLevel);
 
 		// D4 [Shorten tree]
-		if (root->entries.size() == 1)
+		if (root->entries.size() == 1 and !isLeafNode() )
 		{
 			// Slice the hasReinsertedOnLevel
 			hasReinsertedOnLevel.erase(hasReinsertedOnLevel.begin());
@@ -1062,12 +1062,14 @@ namespace rstartree
 			adjustNodeLevels(b.child, [](int level){return level - 1;});
 
 			// Get rid of the old root
+			Node *child = b.child;
 			delete root;
 
-			return b.child;
+			return child;
 		}
 		else
 		{
+            assert( root != nullptr );
 			return root;
 		}
 	}
@@ -1081,7 +1083,7 @@ namespace rstartree
 		std::cout << indentation << "    Parent: " << (void *)parent << std::endl;
 		std::cout << indentation << "    Entries: " << std::endl;
 		
-		bool isLeaf = !std::holds_alternative<Branch>(entries[0]);
+		bool isLeaf = isLeafNode();
 		if (isLeaf)
 		{
 			for (const auto &entry : entries)
@@ -1213,7 +1215,7 @@ namespace rstartree
 				}
 				++histogramFanout[entriesSize];
 
-				bool isLeaf = node->entries.empty() || std::holds_alternative<Point>(node->entries[0]);
+				bool isLeaf = node->isLeafNode();
 				if (isLeaf)
 				{
 					++totalLeaves;

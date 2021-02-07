@@ -1,4 +1,5 @@
 #include <bench/randomPoints.h>
+#include <unistd.h>
 
 Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 {
@@ -33,7 +34,7 @@ Point *generateBits()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02" : "/home/kjlangen/nir-tree/data/bit03";
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/bit02" : "/hdd1/nir-tree/data/bit03";
 	file.open(dataPath.c_str());
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
@@ -68,7 +69,7 @@ Point *generateHaze()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02" : "/home/kjlangen/nir-tree/data/pha03";
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/pha02" : "/hdd1/nir-tree/data/pha03";
 	file.open(dataPath.c_str());
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
@@ -103,7 +104,12 @@ Point *generateCalifornia()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/home/kjlangen/nir-tree/data/rea02");
+	file.open("/hdd1/nir-tree/data/rea02");
+
+    if( !file.good() ) {
+        std::cout << "File could not be opened!" << std::endl;
+        exit(1);
+    }
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -115,6 +121,7 @@ Point *generateCalifornia()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
+            assert( file.good() );
 			file.read(buffer, sizeof(double));
 			file.sync();
 			points[i][d] = *doubleBuffer;
@@ -139,7 +146,7 @@ Point *generateBiological()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/home/kjlangen/nir-tree/data/rea03");
+	file.open("/hdd1/nir-tree/data/rea03");
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -173,7 +180,7 @@ Point *generateForest()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/home/kjlangen/nir-tree/data/rea05");
+	file.open("/hdd1/nir-tree/data/rea05");
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -233,7 +240,7 @@ Rectangle *generateBitRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string queryPath = dimensions == 2 ? "/home/kjlangen/nir-tree/bit02.2" : "/home/kjlangen/nir-tree/bit03.2";
+	std::string queryPath = dimensions == 2 ? "/hdd1/nir-tree/bit02.2" : "/hdd1/nir-tree/bit03.2";
 	file.open(queryPath.c_str());
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
@@ -268,7 +275,7 @@ Rectangle *generateHazeRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string queryPath = dimensions == 2 ? "/home/kjlangen/nir-tree/pha02.2" : "/home/kjlangen/nir-tree/pha03.2";
+	std::string queryPath = dimensions == 2 ? "/hdd1/nir-tree/pha02.2" : "/hdd1/nir-tree/pha03.2";
 	file.open(queryPath.c_str());
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
@@ -303,7 +310,7 @@ Rectangle *generateCaliRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/home/kjlangen/nir-tree/data/rea02.2");
+	file.open("/hdd1/nir-tree/data/rea02.2");
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -337,7 +344,7 @@ Rectangle *generateBioRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/home/kjlangen/nir-tree/data/rea03.2");
+	file.open("/hdd1/nir-tree/data/rea03.2");
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -371,7 +378,7 @@ Rectangle *generateForestRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	file.open("/home/kjlangen/nir-tree/data/rea05.2");
+	file.open("/hdd1/nir-tree/data/rea05.2");
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
