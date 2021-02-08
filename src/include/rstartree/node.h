@@ -66,6 +66,7 @@ namespace rstartree
 			void removeData(const Point &givenPoint);
 			Node *chooseSubtree(const NodeEntry &nodeEntry);
 			Node *findLeaf(const Point &givenPoint);
+			inline bool isLeafNode() const { return entries.empty() or std::holds_alternative<Point>( entries[0] ); }
 			double computeTotalMarginSum();
 			void entrySort(unsigned startingDimension);
 			unsigned chooseSplitAxis();
