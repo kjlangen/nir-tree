@@ -904,6 +904,604 @@ TEST_CASE("Geometry: testRectangleFragmentation")
 	REQUIRE(v[2] == Rectangle(1.0, 1.0, 5.0, 4.0));
 }
 
+TEST_CASE("Geometry: testPolygonArea")
+{
+	// Test case one, general case
+	IsotheticPolygon p1(Rectangle(0.0, 0.0, 1.0, 1.0));
+	p1.basicRectangles.push_back(Rectangle(1.0, 0.0, 2.0, 1.0));
+	p1.basicRectangles.push_back(Rectangle(2.0, 0.0, 3.0, 1.0));
+	p1.basicRectangles.push_back(Rectangle(3.0, 0.0, 4.0, 1.0));
+	p1.basicRectangles.push_back(Rectangle(4.0, 0.0, 5.0, 1.0));
+
+	REQUIRE(p1.area() == 5.0);
+
+	// Test case two, polygon composed of a single rectangle
+	IsotheticPolygon p2(Rectangle(7.3, -1.0, 9.3, 3.0));
+	REQUIRE(trunc(p2.area()) == 8.0);
+
+	// Test case three, polygon with zero area
+	IsotheticPolygon p3;
+
+	REQUIRE(p3.area() == 0.0);
+}
+
+TEST_CASE("Geometry: testPolygonExpansionArea")
+{
+	Rectangle r1(0.0, 1.0, 1.0, 5.0);
+	Rectangle r2(2.0, 1.0, 3.0, 5.0);
+	Rectangle r3(3.0, 0.0, 4.0, 3.0);
+	Rectangle r4(3.0, 2.0, 5.0, 3.0);
+	Rectangle r5(5.0, 2.0, 6.0, 5.0);
+
+	IsotheticPolygon ip1(r1);
+	ip1.basicRectangles.push_back(r2);
+	ip1.basicRectangles.push_back(r3);
+	ip1.basicRectangles.push_back(r4);
+	ip1.basicRectangles.push_back(r5);
+	ip1.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	// Test set one, general case
+	Point p1(5.5, 5.5);
+	IsotheticPolygon::OptimalExpansion expansion = ip1.computeExpansionArea(p1);
+
+	REQUIRE(expansion.index == 4);
+	REQUIRE(expansion.area == 0.5);
+
+	// Test set two, point contained
+	Point p2(3.5, 2.3);
+	expansion = ip1.computeExpansionArea(p2);
+
+	REQUIRE(expansion.index == 0);
+	REQUIRE(expansion.area == -1.0);
+
+	// Test set three, point causes same expansion area in two rectangles
+	Point p3(1.5, 0.5);
+	expansion = ip1.computeExpansionArea(p3);
+
+	REQUIRE(expansion.index == 0);
+	REQUIRE(expansion.area == 2.75);
+}
+
+TEST_CASE("Geometry: testPolygonExpand")
+{
+	Rectangle r1(0.0, 1.0, 1.0, 5.0);
+	Rectangle r2(2.0, 1.0, 3.0, 5.0);
+	Rectangle r3(3.0, 0.0, 4.0, 3.0);
+	Rectangle r4(3.0, 2.0, 5.0, 3.0);
+	Rectangle r5(5.0, 2.0, 6.0, 5.0);
+
+	IsotheticPolygon reference(r1);
+	reference.basicRectangles.push_back(r2);
+	reference.basicRectangles.push_back(r3);
+	reference.basicRectangles.push_back(r4);
+	reference.basicRectangles.push_back(r5);
+	reference.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	// Test set one, general case with pre-computed area
+	Point p1(5.5, 5.5);
+	IsotheticPolygon ip1(reference);
+	IsotheticPolygon ip2(reference);
+	ip1.expand(p1, ip1.computeExpansionArea(p1)); // with pre-computed area
+	ip2.expand(p1); // without pre-computed area
+
+	REQUIRE(ip1.basicRectangles[4] != r5);
+	REQUIRE(ip2.basicRectangles[4] != r5);
+	REQUIRE(ip1.basicRectangles[4] == Rectangle(5.0, 2.0, 6.0, 5.5));
+	REQUIRE(ip2.basicRectangles[4] == Rectangle(5.0, 2.0, 6.0, 5.5));
+	REQUIRE(ip1.basicRectangles[4] == ip2.basicRectangles[4]);
+	REQUIRE(ip1.basicRectangles[4].area() == r5.area() + 0.5);
+	REQUIRE(ip2.basicRectangles[4].area() == r5.area() + 0.5);
+	REQUIRE(ip1.basicRectangles[4].area() == ip2.basicRectangles[4].area());
+
+	// Test set two, point contained
+	Point p2(3.5, 2.3);
+	IsotheticPolygon ip3(reference);
+	IsotheticPolygon ip4(reference);
+	ip3.expand(p2, ip3.computeExpansionArea(p2)); // with pre-computed area
+	ip4.expand(p2); // without pre-computed area
+
+	REQUIRE(ip3.basicRectangles[2] == r3);
+	REQUIRE(ip3.basicRectangles[3] == r4);
+	REQUIRE(ip4.basicRectangles[2] == r3);
+	REQUIRE(ip4.basicRectangles[3] == r4);
+	REQUIRE(ip3.basicRectangles[2] == ip4.basicRectangles[2]);
+	REQUIRE(ip3.basicRectangles[3] == ip4.basicRectangles[3]);
+
+	// Test set three, point causes same expansion area in two rectangles
+	Point p3(1.5, 0.5);
+	IsotheticPolygon ip5(reference);
+	IsotheticPolygon ip6(reference);
+	ip5.expand(p3, ip5.computeExpansionArea(p3));
+	ip6.expand(p3);
+
+	REQUIRE(ip5.basicRectangles[0] != r1);
+	REQUIRE(ip6.basicRectangles[0] != r1);
+	REQUIRE(ip5.basicRectangles[0] == Rectangle(0.0, 0.5, 1.5, 5.0));
+	REQUIRE(ip6.basicRectangles[0] == Rectangle(0.0, 0.5, 1.5, 5.0));
+	REQUIRE(ip5.basicRectangles[0] == ip6.basicRectangles[0]);
+	REQUIRE(ip5.basicRectangles[0].area() == r1.area() + 2.75);
+	REQUIRE(ip6.basicRectangles[0].area() == r1.area() + 2.75);
+	REQUIRE(ip5.basicRectangles[0].area() == ip6.basicRectangles[0].area());
+}
+
+TEST_CASE("Geometry: testPolygonContainsPoint")
+{
+	Rectangle r1(0.0, 1.0, 1.0, 5.0);
+	Rectangle r2(2.0, 0.0, 3.0, 5.0);
+	Rectangle r3(3.0, 0.0, 4.0, 3.0);
+	Rectangle r4(3.0, 2.0, 5.0, 3.0);
+	Rectangle r5(5.0, 2.0, 6.0, 5.0);
+
+	IsotheticPolygon ip1(r1);
+	ip1.basicRectangles.push_back(r2);
+	ip1.basicRectangles.push_back(r3);
+	ip1.basicRectangles.push_back(r4);
+	ip1.basicRectangles.push_back(r5);
+	ip1.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	// Test set one, general case
+	Point p1(2.5, 4.75);
+
+	REQUIRE(ip1.containsPoint(p1));
+
+	// Test set two, point not contained
+	Point p2(-1.0, 1.0);
+
+	REQUIRE(!ip1.containsPoint(p2));
+
+	// Test set three, point on border
+	Point p3(4.0, 1.83);
+
+	REQUIRE(ip1.containsPoint(p3));
+
+	// Test set four, point contained in three
+	Point p4(3.0, 2.0);
+
+	REQUIRE(ip1.containsPoint(p4));
+
+	// Test set five, point on corner
+	Point p5(6.0, 5.0);
+
+	REQUIRE(ip1.containsPoint(p5));
+}
+
+TEST_CASE("Geometry: testPolygonDisjoint")
+{
+	Rectangle r1(0.0, 1.0, 1.0, 5.0);
+	Rectangle r2(2.0, 1.0, 3.0, 5.0);
+	Rectangle r3(3.0, 0.0, 4.0, 3.0);
+	Rectangle r4(3.0, 2.0, 5.0, 3.0);
+	Rectangle r5(5.0, 2.0, 6.0, 5.0);
+
+	IsotheticPolygon reference(r1);
+	reference.basicRectangles.push_back(r2);
+	reference.basicRectangles.push_back(r3);
+	reference.basicRectangles.push_back(r4);
+	reference.basicRectangles.push_back(r5);
+	reference.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	// Test set one, polygons disjoint
+	IsotheticPolygon ip1(Rectangle(7.0, 1.0, 9.0, 2.0));
+	ip1.basicRectangles.push_back(Rectangle(8.0, 2.0, 9.0, 3.5));
+	ip1.basicRectangles.push_back(Rectangle(9.0, 1.0, 10.0, 4.0));
+	ip1.basicRectangles.push_back(Rectangle(9.0, 4.0, 11.5, 4.5));
+
+	REQUIRE(ip1.disjoint(reference));
+
+	// Test set two, polygons not disjoint
+	IsotheticPolygon ip2(Rectangle(0.0, 1.0, 2.0, 2.0));
+	ip2.basicRectangles.push_back(Rectangle(1.0, 2.0, 2.0, 3.5));
+	ip2.basicRectangles.push_back(Rectangle(2.0, 1.0, 3.0, 4.0));
+	ip2.basicRectangles.push_back(Rectangle(2.0, 4.0, 4.5, 4.5));
+
+	REQUIRE(!ip2.disjoint(reference));
+
+	// Test set three, polygons lay edge-on-edge
+	IsotheticPolygon ip3(Rectangle(2.0, 5.0, 4.0, 6.0));
+	ip3.basicRectangles.push_back(Rectangle(3.0, 6.0, 4.0, 7.5));
+	ip3.basicRectangles.push_back(Rectangle(4.0, 5.0, 5.0, 8.0));
+	ip3.basicRectangles.push_back(Rectangle(4.0, 8.0, 6.5, 8.5));
+
+	REQUIRE(ip3.disjoint(reference));
+
+	// Test set four, polygons lay corner-on-corner
+	IsotheticPolygon ip4(Rectangle(Rectangle(-4.5, 2.0, -2.5, 3.0)));
+	ip4.basicRectangles.push_back(Rectangle(Rectangle(-3.5, 3.0, -2.5, 4.5)));
+	ip4.basicRectangles.push_back(Rectangle(Rectangle(-2.5, 2.0, -1.5, 5.0)));
+	ip4.basicRectangles.push_back(Rectangle(Rectangle(-2.5, 5.0, 0.0, 5.5)));
+
+	REQUIRE(ip4.disjoint(reference));
+}
+
+TEST_CASE("Geometry: testPolygonIntersection")
+{
+	// Test set one, general case rectangle
+	IsotheticPolygon ip1(Rectangle(0.0, 1.0, 1.0, 5.0));
+	ip1.basicRectangles.push_back(Rectangle(2.0, 1.0, 3.0, 5.0));
+	ip1.basicRectangles.push_back(Rectangle(3.0, 0.0, 4.0, 3.0));
+	ip1.basicRectangles.push_back(Rectangle(3.0, 2.0, 5.0, 3.0));
+	ip1.basicRectangles.push_back(Rectangle(5.0, 2.0, 6.0, 5.0));
+	ip1.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	Rectangle r1 = Rectangle(0.0, 3.0, 6.0, 4.0);
+
+	double geometricIntersectionArea = ip1.computeIntersectionArea(r1);
+	std::vector<Rectangle> geometricIntersection = ip1.intersection(r1);
+
+	REQUIRE(geometricIntersectionArea == 3.0);
+	REQUIRE(geometricIntersection.size() == 5);
+	REQUIRE(geometricIntersection[0] == Rectangle(0.0, 3.0, 1.0, 4.0));
+	REQUIRE(geometricIntersection[1] == Rectangle(2.0, 3.0, 3.0, 4.0));
+	REQUIRE(geometricIntersection[2] == Rectangle(3.0, 3.0, 4.0, 3.0));
+	REQUIRE(geometricIntersection[3] == Rectangle(3.0, 3.0, 5.0, 3.0));
+	REQUIRE(geometricIntersection[4] == Rectangle(5.0, 3.0, 6.0, 4.0));
+
+	// Test set one, a general complicated intersection
+	IsotheticPolygon ip2(Rectangle(0.0, 1.0, 1.0, 5.0));
+	ip2.basicRectangles.push_back(Rectangle(2.0, 1.0, 3.0, 5.0));
+	ip2.basicRectangles.push_back(Rectangle(3.0, 0.0, 4.0, 3.0));
+	ip2.basicRectangles.push_back(Rectangle(3.0, 2.0, 5.0, 3.0));
+	ip2.basicRectangles.push_back(Rectangle(5.0, 2.0, 6.0, 5.0));
+	ip2.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	IsotheticPolygon ip3(Rectangle(0.0, 1.0, 2.0, 2.0));
+	ip3.basicRectangles.push_back(Rectangle(1.0, 2.0, 2.0, 3.5));
+	ip3.basicRectangles.push_back(Rectangle(2.0, 1.0, 3.0, 4.0));
+	ip3.basicRectangles.push_back(Rectangle(2.0, 4.0, 4.5, 4.5));
+	ip3.boundingBox = Rectangle(0.0, 1.0, 4.5, 4.5);
+
+	ip2.intersection(ip3);
+
+	REQUIRE(ip2.basicRectangles.size() == 8);
+	REQUIRE(ip2.basicRectangles[0] == Rectangle(0.0, 1.0, 1.0, 2.0));
+	REQUIRE(ip2.basicRectangles[1] == Rectangle(1.0, 2.0, 1.0, 3.5));
+	REQUIRE(ip2.basicRectangles[2] == Rectangle(2.0, 1.0, 2.0, 2.0));
+	REQUIRE(ip2.basicRectangles[3] == Rectangle(2.0, 2.0, 2.0, 3.5));
+	REQUIRE(ip2.basicRectangles[4] == Rectangle(2.0, 1.0, 3.0, 4.0));
+	REQUIRE(ip2.basicRectangles[5] == Rectangle(2.0, 4.0, 3.0, 4.5));
+	REQUIRE(ip2.basicRectangles[6] == Rectangle(3.0, 1.0, 3.0, 3.0));
+	REQUIRE(ip2.basicRectangles[7] == Rectangle(3.0, 2.0, 3.0, 3.0));
+}
+
+TEST_CASE("Geometry: testPolygonIncreaseResolution")
+{
+	Rectangle r1 = Rectangle(0.0, 1.0, 1.0, 5.0);
+	Rectangle r2 = Rectangle(2.0, 0.0, 3.0, 5.0);
+	Rectangle r3 = Rectangle(3.0, 0.0, 4.0, 3.0);
+	Rectangle r4 = Rectangle(3.0, 2.0, 5.0, 3.0);
+	Rectangle r5 = Rectangle(5.0, 2.0, 6.0, 5.0);
+
+	IsotheticPolygon reference(r1);
+	reference.basicRectangles.push_back(r2);
+	reference.basicRectangles.push_back(r3);
+	reference.basicRectangles.push_back(r4);
+	reference.basicRectangles.push_back(r5);
+	reference.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	// Test set one, general and minimum intersection of the reference
+	IsotheticPolygon ip1(reference);
+	IsotheticPolygon ip2(Rectangle(0.0, 0.0, 1.0, 1.5));
+	ip2.basicRectangles.push_back(Rectangle(1.0, 1.5, 2.5, 3.0));
+
+	ip1.increaseResolution(ip2);
+
+	REQUIRE(ip1.basicRectangles.size() == 7);
+	REQUIRE(ip1.basicRectangles[0] == Rectangle(0.0, 1.5, 1.0, 5.0));
+	REQUIRE(ip1.basicRectangles[1] == Rectangle(2.5, 0.0, 3.0, 5.0));
+	REQUIRE(ip1.basicRectangles[2] == Rectangle(2.0, 3.0, 2.5, 5.0));
+	REQUIRE(ip1.basicRectangles[3] == Rectangle(2.0, 0.0, 2.5, 1.5));
+	REQUIRE(ip1.basicRectangles[4] == r3);
+	REQUIRE(ip1.basicRectangles[5] == r4);
+	REQUIRE(ip1.basicRectangles[6] == r5);
+
+	// Test set two, limited and maximum intersection of the reference
+	IsotheticPolygon ip3(reference);
+	IsotheticPolygon ip4(Rectangle(4.25, 0.5, 5.0, 2.5));
+	ip4.basicRectangles.push_back(Rectangle(3.25, 0.5, 3.75, 1.5));
+
+	ip3.increaseResolution(ip4);
+
+	REQUIRE(ip3.basicRectangles.size() == 9);
+	REQUIRE(ip3.basicRectangles[0] == r1);
+	REQUIRE(ip3.basicRectangles[1] == r2);
+	REQUIRE(ip3.basicRectangles[2] == Rectangle(3.75, 0.0, 4.0, 3.0));
+	REQUIRE(ip3.basicRectangles[3] == Rectangle(3.0, 0.0, 3.25, 3.0));
+	REQUIRE(ip3.basicRectangles[4] == Rectangle(3.25, 1.5, 3.75, 3.0));
+	REQUIRE(ip3.basicRectangles[5] == Rectangle(3.25, 0.0, 3.75, 0.5));
+	REQUIRE(ip3.basicRectangles[6] == Rectangle(3.0, 2.0, 4.25, 3.0));
+	REQUIRE(ip3.basicRectangles[7] == Rectangle(4.25, 2.5, 5.0, 3.0));
+	REQUIRE(ip3.basicRectangles[8] == r5);
+}
+
+TEST_CASE("Geometry: testPolygonMinMaxLimit")
+{
+	Rectangle r1 = Rectangle(0.0, 1.0, 1.0, 5.0);
+	Rectangle r2 = Rectangle(2.0, 0.0, 3.0, 5.0);
+	Rectangle r3 = Rectangle(3.0, 0.0, 4.0, 3.0);
+	Rectangle r4 = Rectangle(3.0, 2.0, 5.0, 3.0);
+	Rectangle r5 = Rectangle(5.0, 2.0, 6.0, 5.0);
+
+	IsotheticPolygon reference(r1);
+	reference.basicRectangles.push_back(r2);
+	reference.basicRectangles.push_back(r3);
+	reference.basicRectangles.push_back(r4);
+	reference.basicRectangles.push_back(r5);
+	reference.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	// Test set one, min limit in empty space
+	IsotheticPolygon ip1(reference);
+	ip1.minLimit(1.5, 0);
+
+	REQUIRE(ip1.basicRectangles.size() == 4);
+	REQUIRE(ip1.basicRectangles[0] == r5);
+	REQUIRE(ip1.basicRectangles[1] == r2);
+	REQUIRE(ip1.basicRectangles[2] == r3);
+	REQUIRE(ip1.basicRectangles[3] == r4);
+
+	// Test set two, max limit in empty space
+	IsotheticPolygon ip2(reference);
+	ip2.maxLimit(1.5, 0);
+
+	REQUIRE(ip2.basicRectangles.size() == 1);
+	REQUIRE(ip2.basicRectangles[0] == r1);
+
+	// Test set three, min limit cuts some rectangles
+	IsotheticPolygon ip3(reference);
+	ip3.minLimit(3.5, 1);
+
+	REQUIRE(ip3.basicRectangles.size() == 3);
+	REQUIRE(ip3.basicRectangles[0] == Rectangle(0.0, 3.5, 1.0, 5.0));
+	REQUIRE(ip3.basicRectangles[1] == Rectangle(2.0, 3.5, 3.0, 5.0));
+	REQUIRE(ip3.basicRectangles[2] == Rectangle(5.0, 3.5, 6.0, 5.0));
+
+	// Test set four, max limit cuts some rectangles
+	IsotheticPolygon ip4(reference);
+	ip4.maxLimit(3.5, 1);
+
+	REQUIRE(ip4.basicRectangles.size() == 5);
+	REQUIRE(ip4.basicRectangles[0] == Rectangle(0.0, 1.0, 1.0, 3.5));
+	REQUIRE(ip4.basicRectangles[1] == Rectangle(2.0, 0.0, 3.0, 3.5));
+	REQUIRE(ip4.basicRectangles[2] == r3);
+	REQUIRE(ip4.basicRectangles[3] == r4);
+	REQUIRE(ip4.basicRectangles[4] == Rectangle(5.0, 2.0, 6.0, 3.5));
+
+	// Test set five, min limit cuts all rectangles
+	IsotheticPolygon ip5(reference);
+	ip5.minLimit(2.5, 1);
+
+	REQUIRE(ip5.basicRectangles.size() == 5);
+	REQUIRE(ip5.basicRectangles[0] == Rectangle(0.0, 2.5, 1.0, 5.0));
+	REQUIRE(ip5.basicRectangles[1] == Rectangle(2.0, 2.5, 3.0, 5.0));
+	REQUIRE(ip5.basicRectangles[2] == Rectangle(3.0, 2.5, 4.0, 3.0));
+	REQUIRE(ip5.basicRectangles[3] == Rectangle(3.0, 2.5, 5.0, 3.0));
+	REQUIRE(ip5.basicRectangles[4] == Rectangle(5.0, 2.5, 6.0, 5.0));
+
+	// Test set six, max limit cuts all rectangles
+	IsotheticPolygon ip6(reference);
+	ip6.maxLimit(2.5, 1);
+
+	REQUIRE(ip6.basicRectangles.size() == 5);
+	REQUIRE(ip6.basicRectangles[0] == Rectangle(0.0, 1.0, 1.0, 2.5));
+	REQUIRE(ip6.basicRectangles[1] == Rectangle(2.0, 0.0, 3.0, 2.5));
+	REQUIRE(ip6.basicRectangles[2] == Rectangle(3.0, 0.0, 4.0, 2.5));
+	REQUIRE(ip6.basicRectangles[3] == Rectangle(3.0, 2.0, 5.0, 2.5));
+	REQUIRE(ip6.basicRectangles[4] == Rectangle(5.0, 2.0, 6.0, 2.5));
+
+	// Test set seven, min limit along border
+	IsotheticPolygon ip7(reference);
+	ip7.minLimit(4.0, 0);
+
+	REQUIRE(ip7.basicRectangles.size() == 3);
+	REQUIRE(ip7.basicRectangles[0] == r5);
+	REQUIRE(ip7.basicRectangles[1] == Rectangle(4.0, 2.0, 5.0, 3.0));
+	REQUIRE(ip7.basicRectangles[2] == Rectangle(4.0, 0.0, 4.0, 3.0));
+
+	// Test set eight, max limit along border
+	IsotheticPolygon ip8(reference);
+	ip8.maxLimit(4.0, 0);
+
+	REQUIRE(ip8.basicRectangles.size() == 4);
+	REQUIRE(ip8.basicRectangles[0] == r1);
+	REQUIRE(ip8.basicRectangles[1] == r2);
+	REQUIRE(ip8.basicRectangles[2] == r3);
+	REQUIRE(ip8.basicRectangles[3] == Rectangle(3.0, 2.0, 4.0, 3.0));
+}
+
+TEST_CASE("Geometry: testPolygonMerge")
+{
+	Rectangle r1 = Rectangle(70.1, 80.2, 80.2, 90.3);
+	Rectangle r2 = Rectangle(60.0, 60.0, 70.1, 80.2);
+	Rectangle r3 = Rectangle(100.3, 200.4, 105.3, 205.4);
+	Rectangle r4 = Rectangle(1.0, 1.0, 2.0, 2.0);
+	Rectangle r5 = Rectangle(2.0, 1.0, 3.0, 2.0);
+
+	// Test case one, general case
+	IsotheticPolygon p1(r1);
+	p1.basicRectangles.push_back(r2);
+
+	IsotheticPolygon p2(r3);
+	p2.basicRectangles.push_back(r4);
+	p2.basicRectangles.push_back(r5);
+
+	p1.merge(p2);
+
+	REQUIRE(p1.basicRectangles.size() == 5);
+	REQUIRE(p2.basicRectangles.size() == 3);
+	REQUIRE(p1.basicRectangles[0] == r1);
+	REQUIRE(p1.basicRectangles[1] == r2);
+	REQUIRE(p1.basicRectangles[2] == r3);
+	REQUIRE(p1.basicRectangles[3] == r4);
+	REQUIRE(p1.basicRectangles[4] == r5);
+
+	// Test case two, merge non-existant poly and existant poly
+	IsotheticPolygon p3;
+	IsotheticPolygon p4(r4);
+
+	p3.merge(p4);
+
+	REQUIRE(p3.basicRectangles.size() == 1);
+	REQUIRE(p3.basicRectangles[0] == r4);
+
+	// Test case three, merge existant poly and non-existant poly
+	IsotheticPolygon p5;
+	IsotheticPolygon p6(r2);
+
+	p6.merge(p5);
+
+	REQUIRE(p6.basicRectangles.size() == 1);
+	REQUIRE(p6.basicRectangles[0] == r2);
+}
+
+TEST_CASE("Geometry: testPolygonRemove")
+{
+	Rectangle r1 = Rectangle(70.1, 80.2, 80.2, 90.3);
+	Rectangle r2 = Rectangle(60.0, 60.0, 70.1, 80.2);
+	Rectangle r3 = Rectangle(100.3, 200.4, 105.3, 205.4);
+	Rectangle r4 = Rectangle(1.0, 1.0, 2.0, 2.0);
+	Rectangle r5 = Rectangle(2.0, 1.0, 3.0, 2.0);
+
+	// Test set one, general case
+	IsotheticPolygon p1(r1);
+	p1.basicRectangles.push_back(r2);
+	p1.basicRectangles.push_back(r3);
+	p1.basicRectangles.push_back(r4);
+
+	p1.remove(2);
+
+	REQUIRE(p1.basicRectangles.size() == 3);
+	REQUIRE(p1.basicRectangles[0] == r1);
+	REQUIRE(p1.basicRectangles[1] == r2);
+	REQUIRE(p1.basicRectangles[2] == r4);
+
+	// Test set two, repeated removal
+	IsotheticPolygon p2(r1);
+	p2.basicRectangles.push_back(r2);
+	p2.basicRectangles.push_back(r3);
+	p2.basicRectangles.push_back(r4);
+	p2.basicRectangles.push_back(r5);
+
+	p2.remove(1);
+
+	REQUIRE(p2.basicRectangles.size() == 4);
+	REQUIRE(p2.basicRectangles[0] == r1);
+	REQUIRE(p2.basicRectangles[1] == r5);
+	REQUIRE(p2.basicRectangles[2] == r3);
+	REQUIRE(p2.basicRectangles[3] == r4);
+
+	p2.remove(1);
+
+	REQUIRE(p2.basicRectangles.size() == 3);
+	REQUIRE(p2.basicRectangles[0] == r1);
+	REQUIRE(p2.basicRectangles[1] == r4);
+	REQUIRE(p2.basicRectangles[2] == r3);
+
+	p2.remove(2);
+
+	REQUIRE(p2.basicRectangles.size() == 2);
+	REQUIRE(p2.basicRectangles[0] == r1);
+	REQUIRE(p2.basicRectangles[1] == r4);
+}
+
+TEST_CASE("Geometry: testPolygonShrink")
+{
+	Rectangle r1 = Rectangle(0.0, 1.0, 1.0, 5.0);
+	Rectangle r2 = Rectangle(2.0, 0.0, 3.0, 5.0);
+	Rectangle r3 = Rectangle(3.0, 0.0, 4.0, 3.0);
+	Rectangle r4 = Rectangle(3.0, 2.0, 5.0, 3.0);
+	Rectangle r5 = Rectangle(5.0, 2.0, 6.0, 5.0);
+
+	IsotheticPolygon reference(r1);
+	reference.basicRectangles.push_back(r2);
+	reference.basicRectangles.push_back(r3);
+	reference.basicRectangles.push_back(r4);
+	reference.basicRectangles.push_back(r5);
+	reference.boundingBox = Rectangle(0.0, 0.0, 6.0, 5.0);
+
+	// Test set one, one rectangle shrinks
+	std::vector<Point> pinPoints1;
+	pinPoints1.push_back(Point(1.0, 1.0));
+	pinPoints1.push_back(Point(0.0, 5.0));
+	pinPoints1.push_back(Point(2.3, 1.7));
+	pinPoints1.push_back(Point(3.0, 0.0));
+	pinPoints1.push_back(Point(3.0, 4.0));
+	pinPoints1.push_back(Point(4.0, 0.0));
+	pinPoints1.push_back(Point(3.0, 3.0));
+	pinPoints1.push_back(Point(5.0, 2.0));
+	pinPoints1.push_back(Point(6.0, 5.0));
+
+	IsotheticPolygon ip1(reference);
+	ip1.shrink(pinPoints1);
+
+	REQUIRE(ip1.basicRectangles.size() == 5);
+	REQUIRE(ip1.basicRectangles[0] == r1);
+	REQUIRE(ip1.basicRectangles[1] == Rectangle(2.3, 0.0, 3.0, 4.0));
+	REQUIRE(ip1.basicRectangles[2] == r3);
+	REQUIRE(ip1.basicRectangles[3] == r4);
+	REQUIRE(ip1.basicRectangles[4] == r5);
+
+	// Test set two, no shrinkage
+	std::vector<Point> pinPoints2;
+	pinPoints2.push_back(Point(0.0, 1.0));
+	pinPoints2.push_back(Point(1.0, 5.0));
+	pinPoints2.push_back(Point(2.0, 0.0));
+	pinPoints2.push_back(Point(3.0, 5.0));
+	pinPoints2.push_back(Point(3.0, 0.0));
+	pinPoints2.push_back(Point(4.0, 3.0));
+	pinPoints2.push_back(Point(3.0, 2.0));
+	pinPoints2.push_back(Point(5.0, 3.0));
+	pinPoints2.push_back(Point(5.0, 2.0));
+	pinPoints2.push_back(Point(6.0, 5.0));
+
+	IsotheticPolygon ip2(reference);
+	ip2.shrink(pinPoints2);
+
+	REQUIRE(ip2.basicRectangles.size() == 5);
+	REQUIRE(ip2.basicRectangles[0] == r1);
+	REQUIRE(ip2.basicRectangles[1] == r2);
+	REQUIRE(ip2.basicRectangles[2] == r3);
+	REQUIRE(ip2.basicRectangles[3] == r4);
+	REQUIRE(ip2.basicRectangles[4] == r5);
+
+	// Test set three, all rectangles shrink
+	std::vector<Point> pinPoints3;
+	pinPoints3.push_back(Point(0.0, 2.5));
+	pinPoints3.push_back(Point(1.0, 4.0));
+	pinPoints3.push_back(Point(2.5, 1.0));
+	pinPoints3.push_back(Point(2.75, 2.75));
+	pinPoints3.push_back(Point(3.5, 2.5));
+	pinPoints3.push_back(Point(3.75, 1.0));
+	pinPoints3.push_back(Point(5.0, 3.0));
+	pinPoints3.push_back(Point(5.75, 4.0));
+
+	IsotheticPolygon ip3(reference);
+	ip3.shrink(pinPoints3);
+
+	REQUIRE(ip3.basicRectangles.size() == 5);
+	REQUIRE(ip3.basicRectangles[0] == Rectangle(0.0, 2.5, 1.0, 4.0));
+	REQUIRE(ip3.basicRectangles[1] == Rectangle(2.5, 1.0, 2.75, 2.75));
+	REQUIRE(ip3.basicRectangles[2] == Rectangle(3.5, 1.0, 3.75, 2.5));
+	REQUIRE(ip3.basicRectangles[3] == Rectangle(3.5, 2.5, 5.0, 3.0));
+	REQUIRE(ip3.basicRectangles[4] == Rectangle(5.0, 3.0, 5.75, 4.0));
+
+	// Test set four, some rectangles are eliminated
+	std::vector<Point> pinPoints4;
+	pinPoints4.push_back(Point(0.0, 2.5));
+	pinPoints4.push_back(Point(1.0, 4.0));
+	pinPoints4.push_back(Point(3.5, 2.5));
+	pinPoints4.push_back(Point(3.75, 1.0));
+	pinPoints4.push_back(Point(5.0, 3.0));
+	pinPoints4.push_back(Point(5.75, 4.0));
+
+	IsotheticPolygon ip4(reference);
+	ip4.shrink(pinPoints4);
+
+	REQUIRE(ip4.basicRectangles.size() == 4);
+	REQUIRE(ip4.basicRectangles[0] == Rectangle(0.0, 2.5, 1.0, 4.0));
+	REQUIRE(ip4.basicRectangles[1] == Rectangle(3.5, 1.0, 3.75, 2.5));
+	REQUIRE(ip4.basicRectangles[2] == Rectangle(3.5, 2.5, 5.0, 3.0));
+	REQUIRE(ip4.basicRectangles[3] == Rectangle(5.0, 3.0, 5.75, 4.0));
+}
+
 TEST_CASE("Geometry: testPolygonRefine")
 {
 	// Test set one, general case

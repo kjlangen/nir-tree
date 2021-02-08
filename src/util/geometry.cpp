@@ -704,65 +704,10 @@ void IsotheticPolygon::expand(const Point &givenPoint)
 	boundingBox.expand(givenPoint);
 }
 
-void IsotheticPolygon::expand(const Point &givenPoint, IsotheticPolygon::OptimalExpansion &expansion)
+void IsotheticPolygon::expand(const Point &givenPoint, const IsotheticPolygon::OptimalExpansion &expansion)
 {
 	basicRectangles[expansion.index].expand(givenPoint);
 	boundingBox.expand(givenPoint);
-}
-
-void IsotheticPolygon::expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon)
-{
-	// Expand as if without restraint
-	unsigned minIndex = 0;
-	double minArea = basicRectangles[0].computeExpansionArea(givenPoint);
-	double evalArea;
-
-	for (unsigned i = 1; i < basicRectangles.size(); ++i)
-	{
-		if (basicRectangles[i].containsPoint(givenPoint))
-		{
-			minIndex = i;
-			break;
-		}
-		else if ((evalArea = basicRectangles[i].computeExpansionArea(givenPoint)) < minArea)
-		{
-			minArea = evalArea;
-			minIndex = i;
-		}
-	}
-
-	basicRectangles[minIndex].expand(givenPoint);
-	boundingBox.expand(givenPoint);
-
-	// Introduce the constraint
-	std::vector<Rectangle> intersectionPieces = constraintPolygon.intersection(basicRectangles[minIndex]);
-
-	unsigned basicsSize = basicRectangles.size();
-
-	// Replace the original expansion with the constrained expansion
-	basicRectangles[minIndex] = basicRectangles[basicsSize - 1];
-	basicRectangles.pop_back();
-	basicRectangles.reserve(basicsSize + intersectionPieces.size());
-	basicRectangles.insert(basicRectangles.end(), intersectionPieces.begin(), intersectionPieces.end());
-
-}
-
-void IsotheticPolygon::expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon, IsotheticPolygon::OptimalExpansion &expansion)
-{
-	// Expand as if without restraint
-	basicRectangles[expansion.index].expand(givenPoint);
-	boundingBox.expand(givenPoint);
-
-	// Introduce the constraint
-	std::vector<Rectangle> intersectionPieces = constraintPolygon.intersection(basicRectangles[expansion.index]);
-
-	unsigned basicsSize = basicRectangles.size();
-
-	// Replace the original expansion with the constrained expansion
-	basicRectangles[expansion.index] = basicRectangles[basicsSize - 1];
-	basicRectangles.pop_back();
-	basicRectangles.reserve(basicsSize + intersectionPieces.size());
-	basicRectangles.insert(basicRectangles.end(), intersectionPieces.begin(), intersectionPieces.end());
 }
 
 bool IsotheticPolygon::intersectsRectangle(const Rectangle &givenRectangle) const
@@ -849,15 +794,16 @@ bool IsotheticPolygon::containsPoint(const Point &givenPoint) const
 
 bool IsotheticPolygon::disjoint(const IsotheticPolygon &givenPolygon) const
 {
-	bool rectanglesStrictIntersect, nonZeroArea;
+	bool rectanglesIntersect, opposingAlignment, nonZeroArea;
 	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		for (const Rectangle &givenBasicRectangle : givenPolygon.basicRectangles)
 		{
-			rectanglesStrictIntersect = basicRectangle.strictIntersectsRectangle(givenBasicRectangle);
+			rectanglesIntersect = basicRectangle.intersectsRectangle(givenBasicRectangle);
+			opposingAlignment = basicRectangle.alignedOpposingBorders(givenBasicRectangle);
 			nonZeroArea = basicRectangle.intersection(givenBasicRectangle).area() != 0.0;
 
-			if (rectanglesStrictIntersect && nonZeroArea)
+			if (rectanglesIntersect && !opposingAlignment && nonZeroArea)
 			{
 				return false;
 			}
@@ -1157,18 +1103,6 @@ void IsotheticPolygon::shrink(const std::vector<Point> &pinPoints)
 	assert(rectangleSetShrunk.size() > 0);
 
 	basicRectangles.swap(rectangleSetShrunk);
-}
-
-void IsotheticPolygon::sort(bool min, unsigned d)
-{
-	if (min)
-	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.lowerLeft[d] < b.lowerLeft[d];});
-	}
-	else
-	{
-		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.upperRight[d] < b.upperRight[d];});
-	}
 }
 
 bool IsotheticPolygon::exists() const
