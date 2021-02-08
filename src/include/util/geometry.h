@@ -124,9 +124,7 @@ class IsotheticPolygon
 		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;
 		OptimalExpansion computeExpansionArea(const Rectangle &givenRectangle) const;
 		void expand(const Point &givenPoint);
-		void expand(const Point &givenPoint, OptimalExpansion &expansion);
-		void expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon);
-		void expand(const Point &givenPoint, const IsotheticPolygon &constraintPolygon, OptimalExpansion &expansion);
+		void expand(const Point &givenPoint, const OptimalExpansion &expansion);
 		bool intersectsRectangle(const Rectangle &givenRectangle) const;
 		bool intersectsPolygon(const IsotheticPolygon &givenPolygon) const;
 		bool borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const;
@@ -143,7 +141,6 @@ class IsotheticPolygon
 		void deduplicate();
 		void refine();
 		void shrink(const std::vector<Point> &pinPoints);
-		void sort(bool min, unsigned d=0);
 
 		bool exists() const;
 		bool valid() const;
