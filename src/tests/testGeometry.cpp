@@ -1183,7 +1183,7 @@ TEST_CASE("Geometry: testPolygonIncreaseResolution")
 	IsotheticPolygon ip2(Rectangle(0.0, 0.0, 1.0, 1.5));
 	ip2.basicRectangles.push_back(Rectangle(1.0, 1.5, 2.5, 3.0));
 
-	ip1.increaseResolution(ip2);
+	ip1.increaseResolution(Point::atInfinity, ip2);
 
 	REQUIRE(ip1.basicRectangles.size() == 7);
 	REQUIRE(ip1.basicRectangles[0] == Rectangle(0.0, 1.5, 1.0, 5.0));
@@ -1199,7 +1199,7 @@ TEST_CASE("Geometry: testPolygonIncreaseResolution")
 	IsotheticPolygon ip4(Rectangle(4.25, 0.5, 5.0, 2.5));
 	ip4.basicRectangles.push_back(Rectangle(3.25, 0.5, 3.75, 1.5));
 
-	ip3.increaseResolution(ip4);
+	ip3.increaseResolution(Point::atInfinity, ip4);
 
 	REQUIRE(ip3.basicRectangles.size() == 9);
 	REQUIRE(ip3.basicRectangles[0] == r1);

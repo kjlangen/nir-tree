@@ -401,8 +401,8 @@ bool Rectangle::alignedForMerging(const Rectangle &givenRectangle) const
 		{
 			++alignedDimensions;
 		}
-		else if ((lowerLeft[d] <= givenRectangle.lowerLeft[d] && givenRectangle.lowerLeft[d] <= upperRight[d]) ||
-				(givenRectangle.lowerLeft[d] <= lowerLeft[d] && lowerLeft[d] <= givenRectangle.upperRight[d]))
+		else if ((lowerLeft[d] < givenRectangle.lowerLeft[d] && givenRectangle.lowerLeft[d] < upperRight[d]) ||
+				(givenRectangle.lowerLeft[d] < lowerLeft[d] && lowerLeft[d] < givenRectangle.upperRight[d]))
 		{
 			++intersectingDimensions;
 			if (intersectingDimensions > 1)
@@ -544,7 +544,7 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(const Rectangle &clippingRec
 		Rectangle floor(lowerLeft, upperRight);
 
 		// Make the original into a 'ceiling' in this d dimension
-		if (clippingRectangle.upperRight[d] < upperRight[d])
+		if (clippingRectangle.upperRight[d] <= upperRight[d])
 		{
 			// New ceiling
 			ceiling.lowerLeft[d] = clippingRectangle.upperRight[d];
@@ -556,7 +556,7 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(const Rectangle &clippingRec
 		}
 
 		// Make the original into a 'floor' in this d dimension
-		if (clippingRectangle.lowerLeft[d] > lowerLeft[d])
+		if (clippingRectangle.lowerLeft[d] >= lowerLeft[d])
 		{
 			// New floor
 			floor.upperRight[d] = clippingRectangle.lowerLeft[d];
@@ -640,7 +640,7 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const 
 		return {0, -1.0};
 	}
 
-	// Take the minimum expansion area
+	// Take the minimum expansion area, defaulting to the first rectangle in the worst case
 	OptimalExpansion expansion = {0, std::numeric_limits<double>::infinity()};
 	double evalArea;
 
@@ -794,16 +794,15 @@ bool IsotheticPolygon::containsPoint(const Point &givenPoint) const
 
 bool IsotheticPolygon::disjoint(const IsotheticPolygon &givenPolygon) const
 {
-	bool rectanglesIntersect, opposingAlignment, nonZeroArea;
+	bool rectanglesIntersect, opposingAlignment;
 	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		for (const Rectangle &givenBasicRectangle : givenPolygon.basicRectangles)
 		{
 			rectanglesIntersect = basicRectangle.intersectsRectangle(givenBasicRectangle);
 			opposingAlignment = basicRectangle.alignedOpposingBorders(givenBasicRectangle);
-			nonZeroArea = basicRectangle.intersection(givenBasicRectangle).area() != 0.0;
 
-			if (rectanglesIntersect && !opposingAlignment && nonZeroArea)
+			if (rectanglesIntersect && !opposingAlignment)
 			{
 				return false;
 			}
@@ -849,7 +848,7 @@ void IsotheticPolygon::intersection(const IsotheticPolygon &constraintPolygon)
 	basicRectangles.swap(v);
 }
 
-void IsotheticPolygon::increaseResolution(const Rectangle &clippingRectangle)
+void IsotheticPolygon::increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle)
 {
 	// Fragment each of our constiuent rectangles based on the clippingRectangle. This may result in
 	// no splitting of the constiuent rectangles and that's okay.
@@ -866,7 +865,20 @@ void IsotheticPolygon::increaseResolution(const Rectangle &clippingRectangle)
 			// Break the rectangle and add the fragments to extras
 			for (const Rectangle &fragment : basicRectangle.fragmentRectangle(clippingRectangle))
 			{
-				extraRectangles.push_back(fragment);
+				// If fragmentation results in a line anywhere then reject it unless it was part of
+				// the original or contains the point we are interested in
+				if (fragment.area() == 0.0  && !fragment.containsPoint(givenPoint))
+				{
+					Rectangle originalLine = fragment.intersection(basicRectangle);
+					if (originalLine != Rectangle::atInfinity)
+					{
+						extraRectangles.push_back(originalLine);
+					}
+				}
+				else
+				{
+					extraRectangles.push_back(fragment);
+				}
 			}
 		}
 	}
@@ -876,7 +888,7 @@ void IsotheticPolygon::increaseResolution(const Rectangle &clippingRectangle)
 	basicRectangles.swap(extraRectangles);
 }
 
-void IsotheticPolygon::increaseResolution(const IsotheticPolygon &clippingPolygon)
+void IsotheticPolygon::increaseResolution(const Point &givenPoint, const IsotheticPolygon &clippingPolygon)
 {
 	// Quick exit
 	if (!boundingBox.intersectsRectangle(clippingPolygon.boundingBox))
@@ -886,7 +898,7 @@ void IsotheticPolygon::increaseResolution(const IsotheticPolygon &clippingPolygo
 
 	for (const Rectangle &basicClippingRectangle : clippingPolygon.basicRectangles)
 	{
-		increaseResolution(basicClippingRectangle);
+		increaseResolution(givenPoint, basicClippingRectangle);
 	}
 }
 

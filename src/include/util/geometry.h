@@ -132,8 +132,8 @@ class IsotheticPolygon
 		bool disjoint(const IsotheticPolygon &givenPolygon) const;
 		std::vector<Rectangle> intersection(const Rectangle &givenRectangle) const;
 		void intersection(const IsotheticPolygon &constraintPolygon);
-		void increaseResolution(const Rectangle &clippingRectangle);
-		void increaseResolution(const IsotheticPolygon &clippingPolygon);
+		void increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
+		void increaseResolution(const Point &givenPoint, const IsotheticPolygon &clippingPolygon);
 		void maxLimit(double limit, unsigned d=0);
 		void minLimit(double limit, unsigned d=0);
 		void merge(const IsotheticPolygon &mergePolygon);
