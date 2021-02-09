@@ -582,16 +582,16 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	// Validate checksum
 	if (spatialIndex->checksum() != directSum)
 	{
+		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
 
+#ifndef NDEBUG
 	// Validate tree
-	if (!spatialIndex->validate())
-	{
-		exit(1);
-	}
+	assert(spatialIndex->validate());
 	std::cout << "Validation OK." << std::endl;
+#endif
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search for " << configU["size"] << " points..." << std::endl;
@@ -614,6 +614,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	// Validate checksum
 	if (spatialIndex->checksum() != directSum)
 	{
+		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
@@ -649,6 +650,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	// Validate checksum
 	if (spatialIndex->checksum() != directSum)
 	{
+		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
@@ -671,6 +673,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	// Validate checksum
 	if (spatialIndex->checksum() != 0)
 	{
+		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;

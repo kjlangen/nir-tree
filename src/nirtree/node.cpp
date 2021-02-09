@@ -284,7 +284,7 @@ namespace nirtree
 					{
 						if (i != smallestExpansionBranchIndex)
 						{
-							subsetPolygon.increaseResolution(context->branches[i].boundingPoly);
+							subsetPolygon.increaseResolution(givenPoint, context->branches[i].boundingPoly);
 						}
 					}
 
@@ -754,6 +754,7 @@ namespace nirtree
 					std::cout << "Branch " << i << " is not disjoint from sibling Branch " << j << std::endl;
 					std::cout << "branches[" << i << "].boundingPoly = " << branches[i].boundingPoly << std::endl;
 					std::cout << "branches[" << j << "].boundingPoly = " << branches[j].boundingPoly << std::endl;
+					assert(branches[i].boundingPoly.disjoint(branches[j].boundingPoly));
 				}
 			}
 		}
