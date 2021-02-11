@@ -178,32 +178,40 @@ namespace rstartree
 
 	void Node::searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const
 	{
-		// Am I a leaf?
-		bool isLeaf = isLeafNode();
-		if (isLeaf)
-		{
-			STATEXEC(++leavesSearched);
-			STATEXEC(++nodesSearched);
-			for (const auto &entry : entries)
-			{
-				const Point &p = std::get<Point>(entry);
 
-				if (p == requestedPoint)
+		std::stack<const Node *> context;
+		context.push(this);
+		while (!context.empty())
+		{
+			const Node *curNode = context.top();
+			context.pop();
+			// Am I a leaf?
+			bool isLeaf = curNode->isLeafNode();
+			if (isLeaf)
+			{
+				STATEXEC(++leavesSearched);
+				STATEXEC(++nodesSearched);
+				for (const auto &entry : curNode->entries)
 				{
-					accumulator.push_back(p);
+					const Point &p = std::get<Point>(entry);
+
+					if (p == requestedPoint)
+					{
+						accumulator.push_back(p);
+					}
 				}
 			}
-		}
-		else
-		{
-			STATEXEC(++nodesSearched);
-			for (const auto &entry : entries)
+			else
 			{
-				const Branch &b = std::get<Branch>(entry);
-
-				if (b.boundingBox.containsPoint(requestedPoint))
+				STATEXEC(++nodesSearched);
+				for (const auto &entry : curNode->entries)
 				{
-					b.child->searchSub(requestedPoint, accumulator);
+					const Branch &b = std::get<Branch>(entry);
+
+					if (b.boundingBox.containsPoint(requestedPoint))
+					{
+						context.push(b.child);
+					}
 				}
 			}
 		}
@@ -211,32 +219,39 @@ namespace rstartree
 
 	void Node::searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const
 	{
-		// Am I a leaf?
-		bool isLeaf = isLeafNode();
-		if (isLeaf)
+		std::stack<const Node *> context;
+		context.push(this);
+		while (!context.empty())
 		{
-			STATEXEC(++leavesSearched);
-			STATEXEC(++nodesSearched);
-			for (const auto &entry : entries)
-			{
-				const Point &p = std::get<Point>(entry);
+			const Node *curNode = context.top();
+			context.pop();
 
-				if (rectangle.containsPoint(p))
+			bool isLeaf = curNode->isLeafNode();
+			if (isLeaf)
+			{
+				STATEXEC(++leavesSearched);
+				STATEXEC(++nodesSearched);
+				for (const auto &entry : curNode->entries)
 				{
-					accumulator.push_back(p);
+					const Point &p = std::get<Point>(entry);
+
+					if (rectangle.containsPoint(p))
+					{
+						accumulator.push_back(p);
+					}
 				}
 			}
-		}
-		else
-		{
-			STATEXEC(++nodesSearched);
-			for (const auto &entry : entries)
+			else
 			{
-				const Branch &b = std::get<Branch>(entry);
-
-				if (b.boundingBox.intersectsRectangle(rectangle))
+				STATEXEC(++nodesSearched);
+				for (const auto &entry : curNode->entries)
 				{
-					b.child->searchSub(rectangle, accumulator);
+					const Branch &b = std::get<Branch>(entry);
+
+					if (b.boundingBox.intersectsRectangle(rectangle))
+					{
+						context.push(b.child);
+					}
 				}
 			}
 		}
@@ -344,6 +359,7 @@ namespace rstartree
 						node = node->parent;
 						assert(node->level == i - 1);
 					}
+					assert( node->level == b.child->level-1 );
 				}
 
 				return node;
@@ -850,12 +866,39 @@ namespace rstartree
 		// may end up here again. If we do, we should still be using the same hasReinsertedOnLevel
 		// vector because it corresponds to the activities we have performed during a single
 		// point/rectangle insertion (the top level one)
-		for (const auto &entry : entriesToReinsert)
-		{
-			assert(root->parent == nullptr);
-			root = root->insert(entry, hasReinsertedOnLevel);
-		}
 
+		// If we are a leaf node, we are just finding points. We'll always walk down to the leaves and insert.
+		if (isLeafNode())
+		{
+			for (const auto &entry : entriesToReinsert)
+			{
+				assert(root->parent == nullptr);
+				root = root->insert(entry, hasReinsertedOnLevel);
+			}
+		}
+		// Otherwise, things are more complicated. Since the things are we are reinserting
+		// are actually nodes, they need to go to the proper depth of the tree to ensure that the
+		// leaves are always at the same level. But reinserting may split the tree, and increase the
+		// depth of the tree. Then we would need to put any nodes we are reinserting one level deeper.
+		// Account for this and adjust the depths accordingly.
+		else
+		{
+			unsigned depthCorrection = 0;
+			for (const auto &entry : entriesToReinsert)
+			{
+				assert( root->parent == nullptr and root->level == 0 );
+				const Branch &b = std::get<Branch>(entry);
+				if( depthCorrection > 0 ) {
+					adjustNodeLevels(b.child, [depthCorrection](int level){return level + depthCorrection;});
+				}
+				Node *newRoot = root->insert(entry, hasReinsertedOnLevel);
+				if (newRoot != root)
+				{
+					depthCorrection++;
+					root = newRoot;
+				}
+			}
+		}
 		return nullptr;
 	}
 
@@ -913,6 +956,7 @@ namespace rstartree
 		if (siblingNode != nullptr)
 		{
 			assert(level == 0);
+			assert(this->parent == nullptr);
 
 			Node *newRoot = new Node(treeRef);
 			parent = newRoot;
@@ -1014,16 +1058,51 @@ namespace rstartree
 		}
 
 		// CT6 [Re-insert oprhaned entries]
+		// Think very carefully about this, because the current implementation may be wrong.
+		// Suppose we remove the last node at level X because it is underfull. Then its orphaned children at level X+1
+		// won't find anywhere appropriate to be reinserted, because no nodes at level X exist for which they can be children.
+		// But how can we determine this efficiently?
+
+		// We approach this another way --- We know how many children we have, so that determines which layer we should show up
+		// in.
+
+		// Getting the height of the tree requires a full tree walk --- so only do this if we need to.
+		bool needHeight = std::any_of(Q.cbegin(), Q.cend(), [](const NodeEntry &e) { return std::holds_alternative<Branch>(e); } );
+		unsigned origTreeDepth = std::numeric_limits<unsigned>::max();
+		if (needHeight)
+		{
+			assert(node->parent == nullptr);
+			origTreeDepth = height();
+		}
+		unsigned insertDepthCorrection = 0;
 		for (const auto &entry : Q)
 		{
-#ifndef NDEBUG
+			assert(node->parent == nullptr);
 			if (std::holds_alternative<Branch>(entry))
 			{
-				assert(std::get<Branch>(entry).child->level - 1 == node->level);
+				const Branch &b = std::get<Branch>(entry);
+				unsigned childDepth = b.child->level - b.child->height(); // 0 implies child is a leaf, 1 implies 1 layer before leaf, ...
+				// We obtained the height
+				if (needHeight)
+				{
+					// Suppose new tree depth is 3, and b->child points to a leaf node. Then b.child should be inserted into
+					// a node at level 2. If b->child pointers to a node 1 layer before leaf nodes, then it should go into layer 1.
+					// 3 - 0 - 1 = 2, 3 - 1 -1 = 1. Math checks out!
+					unsigned insertionLevel = origTreeDepth - childDepth - 1;
+
+					// Still need to account for inserts adding another level to the tree. Handle this with insertDepthCorrection.
+					adjustNodeLevels(b.child, [insertionLevel, insertDepthCorrection](int level){return insertionLevel + insertDepthCorrection;});
+				}
 			}
-#endif
-			assert(node->parent == nullptr);
-			node = node->insert(entry, hasReinsertedOnLevel);
+
+			// If we are inserting branches and the root changes, then we have a new layer. Anything that
+			// would previously have gone at level X now go at level X+1.
+			Node *newRoot = node->insert(entry, hasReinsertedOnLevel);
+			if (newRoot != node)
+			{
+				insertDepthCorrection++;
+				node = newRoot;
+			}
 		}
 
 		return node;
@@ -1050,7 +1129,7 @@ namespace rstartree
 		Node *root = leaf->condenseTree(hasReinsertedOnLevel);
 
 		// D4 [Shorten tree]
-		if (root->entries.size() == 1 and !isLeafNode())
+		if (root->entries.size() == 1 and !root->isLeafNode())
 		{
 			// Slice the hasReinsertedOnLevel
 			hasReinsertedOnLevel.erase(hasReinsertedOnLevel.begin());
