@@ -68,16 +68,12 @@ namespace rstartree
 		child = nullptr;
 	}
 
-	Node::Node(const RStarTree &treeRef, Node *parent) : treeRef(treeRef), parent(parent)
+	Node::Node(const RStarTree &treeRef, Node *parent, unsigned level) : 
+		treeRef(treeRef),
+		parent(parent),
+		level(level)
 	{
-		if (parent == nullptr)
-		{
-			level = 0;
-		}
-		else
-		{
-			level = parent->level + 1;
-		}
+		entries.reserve(treeRef.maxBranchFactor);
 	}
 
 	void Node::deleteSubtrees()
@@ -335,35 +331,22 @@ namespace rstartree
 		// Always called on root, this = root
 		assert(parent == nullptr);
 
+		unsigned stoppingLevel = 0;
 		bool entryIsBranch = std::holds_alternative<Branch>(givenNodeEntry);
+		if( entryIsBranch ) {
+			const Branch &b = std::get<Branch>(givenNodeEntry);
+			stoppingLevel = b.child->level + 1;
+		}
 		Rectangle givenEntryBoundingBox = boxFromNodeEntry(givenNodeEntry);
 
 		for (;;)
 		{
-			// CL2 [Leaf check]
-			bool isLeaf = node->isLeafNode();
-			if (isLeaf)
-			{
-				if (node->parent != nullptr)
-				{
-					assert(node->level > 0);
-				}
 
-				// If this branch's node is at level 3, I need to get to level 2 to do an insert. 
-				if (entryIsBranch)
-				{
-					const Branch &b = std::get<Branch>(givenNodeEntry);
-					for (unsigned i = node->level; i > b.child->level - 1; --i)
-					{
-						assert(node->level == i);
-						node = node->parent;
-						assert(node->level == i - 1);
-					}
-					assert( node->level == b.child->level-1 );
-				}
-
+			if( node->level == stoppingLevel ) {
 				return node;
 			}
+
+			assert( !node->isLeafNode() );
 
 			// Our children point to leaves
 #ifndef NDEBUG
@@ -707,11 +690,10 @@ namespace rstartree
 		// Call ChooseSplitIndex to create optimal splitting of data array
 		unsigned splitIndex = chooseSplitIndex(chooseSplitAxis());
 
-		Node *newSibling = new Node(treeRef, parent);
+		Node *newSibling = new Node(treeRef, parent, level);
 		newSibling->entries.reserve(entries.size()-splitIndex);
 
-		assert((parent == nullptr && level == 0) || (level - 1 == parent->level));
-		assert(newSibling->level == level);
+		assert((parent == nullptr) || (level + 1 == parent->level));
 
 		// Copy everything to the right of the splitPoint (inclusive) to the new sibling
 		std::copy(entries.begin() + splitIndex, entries.end(), std::back_inserter(newSibling->entries));
@@ -724,8 +706,8 @@ namespace rstartree
 				const Branch &b = std::get<Branch>(entry);
 				b.child->parent = newSibling;
 
-				assert(level == b.child->level - 1);
-				assert(newSibling->level == b.child->level - 1);
+				assert(level == b.child->level + 1);
+				assert(newSibling->level == b.child->level + 1);
 			}
 		}
 
@@ -739,7 +721,7 @@ namespace rstartree
 			{
 				// Update parents
 				const Branch &b = std::get<Branch>(entry);
-				assert(level == b.child->level - 1);
+				assert(level == b.child->level + 1);
 			}
 		}
 #endif
@@ -753,6 +735,7 @@ namespace rstartree
 
 	Node *Node::adjustTree(Node *sibling, std::vector<bool> &hasReinsertedOnLevel)
 	{
+		//FIXME: Stop when we don't need to adjust bounding box anymore.
 		// AT1 [Initialize]
 		Node *node = this;
 		Node *siblingNode = sibling;
@@ -774,8 +757,8 @@ namespace rstartree
 				// If we have a split then deal with it otherwise move up the tree
 				if (siblingNode != nullptr)
 				{
-					assert(node->level - 1 == node->parent->level);
-					assert(siblingNode->level - 1 == node->parent->level);
+					assert(node->level + 1 == node->parent->level);
+					assert(siblingNode->level + 1 == node->parent->level);
 
 					// AT4 [Propogate the node split upwards]
 					Branch b(siblingNode->boundingBox(), siblingNode);
@@ -784,7 +767,7 @@ namespace rstartree
 					for (const auto &entry : node->parent->entries)
 					{
 						assert(std::holds_alternative<Branch>(entry));
-						assert(std::get<Branch>(entry).child->level - 1 == node->parent->level);
+						assert(std::get<Branch>(entry).child->level + 1 == node->parent->level);
 					}
 #endif
 					if (node->parent->entries.size() > node->parent->treeRef.maxBranchFactor)
@@ -867,42 +850,15 @@ namespace rstartree
 		// vector because it corresponds to the activities we have performed during a single
 		// point/rectangle insertion (the top level one)
 
-		// If we are a leaf node, we are just finding points. We'll always walk down to the leaves and insert.
-		if (isLeafNode())
+		for (const auto &entry : entriesToReinsert)
 		{
-			for (const auto &entry : entriesToReinsert)
-			{
-				assert(root->parent == nullptr);
-				root = root->insert(entry, hasReinsertedOnLevel);
-			}
-		}
-		// Otherwise, things are more complicated. Since the things are we are reinserting
-		// are actually nodes, they need to go to the proper depth of the tree to ensure that the
-		// leaves are always at the same level. But reinserting may split the tree, and increase the
-		// depth of the tree. Then we would need to put any nodes we are reinserting one level deeper.
-		// Account for this and adjust the depths accordingly.
-		else
-		{
-			unsigned depthCorrection = 0;
-			for (const auto &entry : entriesToReinsert)
-			{
-				assert( root->parent == nullptr and root->level == 0 );
-				const Branch &b = std::get<Branch>(entry);
-				if( depthCorrection > 0 ) {
-					adjustNodeLevels(b.child, [depthCorrection](int level){return level + depthCorrection;});
-				}
-				Node *newRoot = root->insert(entry, hasReinsertedOnLevel);
-				if (newRoot != root)
-				{
-					depthCorrection++;
-					root = newRoot;
-				}
-			}
+			assert(root->parent == nullptr);
+			root = root->insert(entry, hasReinsertedOnLevel);
 		}
 		return nullptr;
 	}
 
-	// Overflow treatement for dealing with a leaf node that is too big (overflow)
+	// Overflow treatement for dealing with a node that is too big (overflow)
 	Node *Node::overflowTreatment(std::vector<bool> &hasReinsertedOnLevel)
 	{
 		assert(hasReinsertedOnLevel.size() > level);
@@ -921,7 +877,7 @@ namespace rstartree
 	Node *Node::insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel)
 	{
 		// Always called on root, this = root
-		assert(level == 0);
+		assert(parent == nullptr);
 
 		// I1 [Find position for new record]
 		Node *insertionPoint = chooseSubtree(nodeEntry);
@@ -937,7 +893,7 @@ namespace rstartree
 		if (!givenIsLeaf)
 		{
 			const Branch &b = std::get<Branch>(nodeEntry);
-			assert(insertionPoint->level == b.child->level - 1);
+			assert(insertionPoint->level == b.child->level + 1);
 			b.child->parent = insertionPoint;
 		}
 
@@ -955,11 +911,10 @@ namespace rstartree
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
-			assert(level == 0);
 			assert(this->parent == nullptr);
 
-			Node *newRoot = new Node(treeRef);
-			parent = newRoot;
+			Node *newRoot = new Node(treeRef, nullptr, this->level+1);
+			this->parent = newRoot;
 
 			// Make the existing root a child of newRoot
 			Branch b1(boundingBox(), this);
@@ -972,18 +927,10 @@ namespace rstartree
 
 			// Ensure newRoot has both children
 			assert(newRoot->entries.size() == 2);
+			assert(siblingNode->level+1 == newRoot->level);
 
 			// Fix the reinserted length
-			hasReinsertedOnLevel.insert(hasReinsertedOnLevel.begin(), false);
-
-			// Adjust levels
-			newRoot->level = level;
-			adjustNodeLevels(siblingNode, [](int level){return level + 1;});
-			adjustNodeLevels(this, [](int level){return level + 1;});
-
-			assert(newRoot->level == 0);
-			assert(siblingNode->level == 1);
-			assert(level == 1);
+			hasReinsertedOnLevel.push_back(false);
 
 			return newRoot;
 		}
@@ -1000,11 +947,10 @@ namespace rstartree
 			{
 				root = root->parent;
 #ifndef NDEBUG
-				assert(root->level == currentLevel - 1);
+				assert(root->level == currentLevel + 1);
 				currentLevel = root->level;
 #endif
 			}
-			assert(root->level == 0);
 
 			return root;
 		}
@@ -1058,25 +1004,10 @@ namespace rstartree
 		}
 
 		// CT6 [Re-insert oprhaned entries]
-		unsigned insertDepthCorrection = 0;
 		for (const auto &entry : Q)
 		{
 			assert(node->parent == nullptr);
-			if (std::holds_alternative<Branch>(entry))
-			{
-				const Branch &b = std::get<Branch>(entry);
-				// Still need to account for inserts adding another level to the tree. Handle this with insertDepthCorrection.
-				adjustNodeLevels(b.child, [insertDepthCorrection](int level){return level + insertDepthCorrection;});
-			}
-
-			// If we are inserting branches and the root changes, then we have a new layer. Anything that
-			// would previously have gone at level X now go at level X+1.
-			Node *newRoot = node->insert(entry, hasReinsertedOnLevel);
-			if (newRoot != node)
-			{
-				insertDepthCorrection++;
-				node = newRoot;
-			}
+			node = node->insert(entry, hasReinsertedOnLevel);
 		}
 
 		return node;
@@ -1085,7 +1016,6 @@ namespace rstartree
 	// Always called on root, this = root
 	Node *Node::remove(Point &givenPoint, std::vector<bool> hasReinsertedOnLevel)
 	{
-		assert(level == 0);
 		assert(parent == nullptr);
 
 		// D1 [Find node containing record]
@@ -1106,12 +1036,10 @@ namespace rstartree
 		if (root->entries.size() == 1 and !root->isLeafNode())
 		{
 			// Slice the hasReinsertedOnLevel
-			hasReinsertedOnLevel.erase(hasReinsertedOnLevel.begin());
+			hasReinsertedOnLevel.pop_back();
 
 			// We are removing the root to shorten the tree so we then decide to remove the root
 			Branch &b = std::get<Branch>(root->entries[0]);
-			b.child->parent = nullptr;
-			adjustNodeLevels(b.child, [](int level){return level - 1;});
 
 			// Get rid of the old root
 			Node *child = b.child;
@@ -1127,6 +1055,8 @@ namespace rstartree
 
 	void Node::print() const
 	{
+		// FIXME: level should be based on difference between this and root->height
+
 		std::string indentation(level * 4, ' ');
 		std::cout << indentation << "Node " << (void *)this << std::endl;
 		std::cout << indentation << "{" << std::endl;
@@ -1204,29 +1134,8 @@ namespace rstartree
 
 	unsigned Node::height() const
 	{
-		struct HeightFunctor
-		{
-			unsigned maxDepth;
-
-			HeightFunctor()
-			{
-				maxDepth = 0;
-			}
-
-			void operator()(Node * const node)
-			{
-				if (node->level > maxDepth)
-				{
-					maxDepth = node->level;
-				}
-			}
-		   
-		};
-
-		HeightFunctor hf;
-		treeWalker(const_cast<Node * const>(this), hf);
-
-		return hf.maxDepth + 1;
+		assert( parent == nullptr );
+		return level+1;
 	}
 
 
@@ -1342,3 +1251,5 @@ namespace rstartree
 		return Rectangle(p, p);
 	}
 }
+
+/* vim: set noexpandtab: */

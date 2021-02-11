@@ -55,20 +55,25 @@ TEST_CASE("R*Tree: testUpdateBoundingBox")
 {
 	rstartree::RStarTree tree(3, 5);
 	rstartree::Node *parentNode = tree.root;
+	parentNode->level = 1;
 
 	rstartree::Node *child0 = new rstartree::Node(tree);
 	child0->parent = parentNode;
+	child0->level = 0;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(8.0, -6.0, 10.0, -4.0), child0));
 
 	rstartree::Node *child1 = new rstartree::Node(tree);
+	child1->level = 0;
 	child1->parent = parentNode;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(12.0, -4.0, 16.0, -2.0), child1));
 
 	rstartree::Node *child2 = new rstartree::Node(tree);
+	child2->level = 0;
 	child2->parent = parentNode;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(10.0, 12.0, 12.0, 14.0), child2));
 
 	rstartree::Node *child3 = new rstartree::Node(tree);
+	child3->level = 0;
 	child3->parent = parentNode;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(12.0, 12.0, 14.0, 14.0), child3));
 
@@ -76,6 +81,11 @@ TEST_CASE("R*Tree: testUpdateBoundingBox")
 	parentNode->updateBoundingBox(child3, Rectangle(3.0, 3.0, 5.0, 5.0));
 	const rstartree::Node::Branch &b = std::get<rstartree::Node::Branch>(parentNode->entries[3]);
 	REQUIRE(b.boundingBox == Rectangle(3.0, 3.0, 5.0, 5.0));
+    REQUIRE(parentNode->level == 1);
+    REQUIRE(child0->level == 0);
+    REQUIRE(child1->level == 0);
+    REQUIRE(child2->level == 0);
+    REQUIRE(child3->level == 0);
 }
 
 TEST_CASE("R*Tree: testRemoveChild")
@@ -83,20 +93,25 @@ TEST_CASE("R*Tree: testRemoveChild")
 	// Setup a rtree::Node with some children
 	rstartree::RStarTree tree(3, 5);
 	rstartree::Node *parentNode = tree.root;
+	parentNode->level = 1;
 
 	rstartree::Node *child0 = new rstartree::Node(tree);
+	child0->level = 0;
 	child0->parent = parentNode;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(8.0, -6.0, 10.0, -4.0), child0));
 
 	rstartree::Node *child1 = new rstartree::Node(tree);
+	child1->level = 0;
 	child1->parent = parentNode;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(12.0, -4.0, 16.0, -2.0), child1));
 
 	rstartree::Node *child2 = new rstartree::Node(tree);
+	child2->level = 0;
 	child2->parent = parentNode;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(10.0, 12.0, 12.0, 14.0), child2));
 
 	rstartree::Node *child3 = new rstartree::Node(tree);
+	child3->level = 0;
 	child3->parent = parentNode;
 	parentNode->entries.push_back(createBranchEntry(Rectangle(12.0, 12.0, 14.0, 14.0), child3));
 
@@ -105,7 +120,6 @@ TEST_CASE("R*Tree: testRemoveChild")
 	REQUIRE(parentNode->entries.size() == 3);
 
 	delete child3;
-
 }
 
 TEST_CASE("R*Tree: testRemoveData")
@@ -113,6 +127,7 @@ TEST_CASE("R*Tree: testRemoveData")
 	// Setup a rtree::Node with some data
 	rstartree::RStarTree tree(3, 5);
 	rstartree::Node *parentNode = tree.root;
+	parentNode->level = 0;
 
 	parentNode->entries.push_back(Point(9.0, -5.0));
 	parentNode->entries.push_back(Point(14.0, -3.0));
@@ -143,27 +158,27 @@ TEST_CASE("R*Tree: testChooseLeaf")
 	// Setup rtree::Nodes
 	// NB: All of these bounding rectangles are wrong, but that's fine for the purposes of this test.
 	leftChild0->parent = left;
-	leftChild0->level = 2;
+	leftChild0->level = 0;
 	left->entries.push_back(createBranchEntry(Rectangle(8.0, 12.0, 10.0, 14.0), leftChild0));
 
 	leftChild1->parent = left;
-	leftChild1->level = 2;
+	leftChild1->level = 0;
 	left->entries.push_back(createBranchEntry(Rectangle(10.0, 12.0, 12.0, 14.0), leftChild1));
 
 	leftChild2->parent = left;
-	leftChild2->level = 2;
+	leftChild2->level = 0;
 	left->entries.push_back(createBranchEntry(Rectangle(12.0, 12.0, 14.0, 14.0), leftChild2));
 
 	rightChild0->parent = right;
-	rightChild0->level = 2;
+	rightChild0->level = 0;
 	right->entries.push_back(createBranchEntry(Rectangle(8.0, 1.0, 12.0, 5.0), rightChild0));
 
 	rightChild1->parent = right;
-	rightChild1->level = 2;
+	rightChild1->level = 0;
 	right->entries.push_back(createBranchEntry(Rectangle(12.0, -4.0, 16.0, -2.0), rightChild1));
 
 	rightChild2->parent = right;
-	rightChild2->level = 2;
+	rightChild2->level = 0;
 	right->entries.push_back(createBranchEntry(Rectangle(8.0, -6.0, 10.0, -4.0), rightChild2));
 
 	left->parent = root;
@@ -173,6 +188,8 @@ TEST_CASE("R*Tree: testChooseLeaf")
 	right->parent = root;
 	right->level = 1;
 	root->entries.push_back(createBranchEntry(Rectangle(8.0, -6.0, 16.0, 5.0), right));
+
+    root->level = 2;
 
 	REQUIRE(!root->entries.empty());
 	REQUIRE(!left->entries.empty());
@@ -208,17 +225,20 @@ TEST_CASE("R*Tree: testFindLeaf")
 	cluster4a->entries.push_back(Point(-12.0, -3.0));
 	cluster4a->entries.push_back(Point(-11.0, -3.0));
 	cluster4a->entries.push_back(Point(-10.0, -3.0));
+	cluster4a->level = 0;
 
 	rstartree::Node *cluster4b = new rstartree::Node(tree);
 	cluster4b->entries.push_back(Point(-9.0, -3.0));
 	cluster4b->entries.push_back(Point(-7.0, -3.0));
 	cluster4b->entries.push_back(Point(-10.0, -5.0));
+	cluster4b->level = 0;
 
 	rstartree::Node *cluster4 = new rstartree::Node(tree);
 	cluster4a->parent = cluster4;
 	cluster4->entries.push_back(createBranchEntry(cluster4a->boundingBox(), cluster4a));
 	cluster4b->parent = cluster4;
 	cluster4->entries.push_back(createBranchEntry(cluster4b->boundingBox(), cluster4b));
+	cluster4->level = 1;
 
 	// Cluster 5, n = 16
 	// (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
@@ -230,27 +250,31 @@ TEST_CASE("R*Tree: testFindLeaf")
 	cluster5a->entries.push_back(Point(-14.0, -13.0));
 	cluster5a->entries.push_back(Point(-13.5, -13.5));
 	cluster5a->entries.push_back(Point(-15.0, -14.0));
+	cluster5a->level = 0;
 
 	rstartree::Node *cluster5b = new rstartree::Node(tree);
 	cluster5b->entries.push_back(Point(-14.0, -14.0));
 	cluster5b->entries.push_back(Point(-13.0, -14.0));
 	cluster5b->entries.push_back(Point(-12.0, -14.0));
 	cluster5b->entries.push_back(Point(-13.5, -16.0));
+	cluster5b->level = 0;
 
 	rstartree::Node *cluster5c = new rstartree::Node(tree);
 	cluster5c->entries.push_back(Point(-15.0, -14.5));
 	cluster5c->entries.push_back(Point(-14.0, -14.5));
 	cluster5c->entries.push_back(Point(-12.5, -14.5));
 	cluster5c->entries.push_back(Point(-13.5, -15.5));
+	cluster5c->level = 0;
 
 	rstartree::Node *cluster5d = new rstartree::Node(tree);
 	cluster5d->entries.push_back(Point(-15.0, -15.0));
 	cluster5d->entries.push_back(Point(-14.0, -15.0));
 	cluster5d->entries.push_back(Point(-13.0, -15.0));
 	cluster5d->entries.push_back(Point(-12.0, -15.0));
+	cluster5d->entries.push_back(Point(-15.0, -15.0));
+	cluster5d->level = 0;
 
 	rstartree::Node *cluster5 = new rstartree::Node(tree);
-	cluster5d->entries.push_back(Point(-15.0, -15.0));
 	cluster5a->parent = cluster5;
 	cluster5->entries.push_back(createBranchEntry(cluster5a->boundingBox(),cluster5a));
 	cluster5b->parent = cluster5;
@@ -259,12 +283,14 @@ TEST_CASE("R*Tree: testFindLeaf")
 	cluster5->entries.push_back(createBranchEntry(cluster5c->boundingBox(), cluster5c));
 	cluster5d->parent = cluster5;
 	cluster5->entries.push_back(createBranchEntry(cluster5d->boundingBox(), cluster5d));
+	cluster5->level = 1;
 
 	// Root
 	cluster4->parent = root;
 	root->entries.push_back(createBranchEntry(cluster4->boundingBox(), cluster4));
 	cluster5->parent = root;
 	root->entries.push_back(createBranchEntry(cluster5->boundingBox(), cluster5));
+	root->level = 2;
 
 	// Test finding leaves
 	REQUIRE(root->findLeaf(Point(-11.0, -3.0)) == cluster4a);
@@ -289,6 +315,7 @@ TEST_CASE("R*Tree: testSimpleSplitAxis")
 	cluster6X->entries.push_back(Point(3.0, -11.0));
 	cluster6X->entries.push_back(Point(1.0, -9.0));
 	cluster6X->entries.push_back(Point(-3.0, -10.0));
+	cluster6X->level = 0;
 
 	// Split the rstartree::Node in two
 	unsigned int axis = cluster6X->chooseSplitAxis();
@@ -310,6 +337,7 @@ TEST_CASE("R*Tree: testSimpleSplitAxis")
 	cluster6Y->entries.push_back(Point(-11.0, 3.0));
 	cluster6Y->entries.push_back(Point(-9.0, 1.0));
 	cluster6Y->entries.push_back(Point(-10.0, -3.0));
+	cluster6Y->level = 0;
 
 	axis = cluster6Y->chooseSplitAxis();
 
@@ -334,6 +362,7 @@ TEST_CASE("R*Tree: testComplexComputeMargin")
 	cluster->entries.push_back(Point(-3.0, -10.0));
 	cluster->entries.push_back(Point(3.0, -11.0));
 	cluster->entries.push_back(Point(3.0, -9.0));
+	cluster->level = 0;
 
 	// Check that produce the right margin under X order
 	cluster->entrySort(0);
@@ -360,6 +389,7 @@ TEST_CASE("R*Tree: testComplexSplitAxis")
 	cluster->entries.push_back(Point(-3.0, -10.0));
 	cluster->entries.push_back(Point(3.0, -11.0));
 	cluster->entries.push_back(Point(3.0, -9.0));
+	cluster->level = 0;
 
 	// See above test for margin scores for X and Y.
 	// whichever one is lower (here X) is the split axis
@@ -379,6 +409,7 @@ TEST_CASE("R*Tree: testComplexSplitAxis")
 	cluster->entries.push_back(Point(-10.0, -3.0));
 	cluster->entries.push_back(Point(-11.0, 3.0));
 	cluster->entries.push_back(Point(-9.0, 3.0));
+	cluster->level = 0;
 
 	axis = cluster->chooseSplitAxis();
 	REQUIRE(axis == 1);
@@ -398,6 +429,7 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster6->entries.push_back(Point(1.0, -7.0));
 	cluster6->entries.push_back(Point(3.0, -8.0));
 	cluster6->entries.push_back(Point(-2.0, -9.0));
+	cluster6->level = 0;
 
 	// Split the rstartree::Node in two
 	cluster6->entries.push_back(Point(-3.0, -11.0));
@@ -413,6 +445,7 @@ TEST_CASE("R*Tree: testSplitNode")
 	REQUIRE(std::get<Point>(cluster6p->entries[1]) == Point(1.0, -7.0));
 	REQUIRE(std::get<Point>(cluster6p->entries[2]) == Point(2.0, -6.0));
 	REQUIRE(std::get<Point>(cluster6p->entries[3]) == Point(3.0, -8.0));
+	REQUIRE(cluster6p->level == cluster6->level);
 
 	// Test set two
 	// Cluster 2, n = 8
@@ -427,6 +460,7 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster2->entries.push_back(Point(-9.0, 7.0));
 	cluster2->entries.push_back(Point(-8.0, 8.0));
 	cluster2->entries.push_back(Point(-8.0, 9.0));
+	cluster2->level = 0;
 
 	// Split the rstartree::Node in two
 	rstartree::Node *cluster2p = cluster2->splitNode();
@@ -442,6 +476,7 @@ TEST_CASE("R*Tree: testSplitNode")
 	REQUIRE(std::get<Point>(cluster2p->entries[2]) == Point(-8.0, 9.0));
 	REQUIRE(std::get<Point>(cluster2p->entries[3]) == Point(-9.0, 10.0));
 	REQUIRE(std::get<Point>(cluster2p->entries[4]) == Point(-8.0, 10.0));
+	REQUIRE(cluster2->level == cluster2p->level);
 
 	// Test set three
 	// Cluster 3, n = 9
@@ -450,18 +485,25 @@ TEST_CASE("R*Tree: testSplitNode")
 	// {(-6, 2), 1, 1}
 	rstartree::RStarTree tree3(3,5);
 	rstartree::Node *cluster3 = tree3.root;
+	cluster3->level = 1;
 	rstartree::Node *dummys[6] = {new rstartree::Node(tree3), new rstartree::Node(tree3), new rstartree::Node(tree3), new rstartree::Node(tree3), new rstartree::Node(tree3), new rstartree::Node(tree3)};
 	dummys[0]->parent = cluster3;
+	dummys[0]->level = 0;
 	cluster3->entries.push_back(createBranchEntry(Rectangle(-6.0, 3.0, -4.0, 5.0), dummys[0]));
 	dummys[1]->parent = cluster3;
+	dummys[1]->level = 0;
 	cluster3->entries.push_back(createBranchEntry(Rectangle(-3.0, 3.0, -1.0, 5.0), dummys[1]));
 	dummys[2]->parent = cluster3;
+	dummys[2]->level = 0;
 	cluster3->entries.push_back(createBranchEntry(Rectangle(-2.0, 2.0, 0.0, 4.0), dummys[2]));
 	dummys[3]->parent = cluster3;
+	dummys[3]->level = 0;
 	cluster3->entries.push_back(createBranchEntry(Rectangle(-2.0, 0.0, 0.0, 2.0), dummys[3]));
 	dummys[4]->parent = cluster3;
+	dummys[4]->level = 0;
 	cluster3->entries.push_back(createBranchEntry(Rectangle(-4.0, -1.0, -2.0, 1.0), dummys[4]));
 	dummys[5]->parent = cluster3;
+	dummys[5]->level = 0;
 	cluster3->entries.push_back(createBranchEntry(Rectangle(-7.0, 1.0, -5.0, 3.0), dummys[5]));
 
 
@@ -471,15 +513,13 @@ TEST_CASE("R*Tree: testSplitNode")
 	cluster3extra->entries.push_back(Point(2.0, 2.0));
 
 	// Set proper tree levels on everything
-	for (unsigned i = 0; i < 6; ++i)
-	{
-		dummys[i]->level = 1;
-	}
-	cluster3extra->level = 1;
+	cluster3extra->level = 0;
 
 	// Test the split
 	cluster3->entries.push_back(createBranchEntry(cluster3extra->boundingBox(), cluster3extra ) );
 	rstartree::Node *cluster3p = cluster3->splitNode();
+	REQUIRE(cluster3p->level == cluster3->level);
+	REQUIRE(cluster3->level == 1);
 
 	REQUIRE(cluster3->entries.size() == 4);
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3->entries[0]).boundingBox == Rectangle(-7.0, 1.0, -5.0, 3.0));
@@ -514,10 +554,10 @@ TEST_CASE("R*Tree: testInsertOverflowReInsertAndSplit")
 	cluster4aAugment->entries.push_back(Point(-10.0, -10.0));
 	cluster4aAugment->entries.push_back(Point(10.0, 10.0));
 	cluster4aAugment->entries.push_back(Point(0.0, 0.0));
-	cluster4aAugment->level = 1;
+	cluster4aAugment->level = 0;
 
 	// Root rstartree::Node
-	root->level = 0;
+	root->level = 1;
 	root->entries.push_back(createBranchEntry(cluster4aAugment->boundingBox(), cluster4aAugment));
 	cluster4aAugment->parent = root;
 
@@ -533,11 +573,12 @@ TEST_CASE("R*Tree: testInsertOverflowReInsertAndSplit")
 	root->insert(point, reInsertedAtLevel);
 
 	// We tried to reinsert, but it won't work.
-	REQUIRE(reInsertedAtLevel[0] == false);
-	REQUIRE(reInsertedAtLevel[1] == true);
+	REQUIRE(reInsertedAtLevel[0] == true);
+	REQUIRE(reInsertedAtLevel[1] == false);
 
 	// Should force split
 	REQUIRE(root->entries.size() == 2);
+	REQUIRE(root->level == 1);
 
 	// We will have split along the x axis (y axis isomorphic so we prefer x).
 	// Overlap is always zero between any cut along X. Cumulative area is minimized at 3,5 or 5,3 split.
@@ -556,6 +597,8 @@ TEST_CASE("R*Tree: testInsertOverflowReInsertAndSplit")
 	REQUIRE(std::get<Point>(bRight.child->entries[2]) == Point(10,10));
 	REQUIRE(std::get<Point>(bRight.child->entries[3]) == Point(20,20));
 	REQUIRE(std::get<Point>(bRight.child->entries[4]) == Point(30,30));
+	REQUIRE(bLeft.child->level == 0);
+	REQUIRE(bRight.child->level == 0);
 }
 
 TEST_CASE("R*Tree: testInsertGrowTreeHeight")
@@ -576,9 +619,10 @@ TEST_CASE("R*Tree: testInsertGrowTreeHeight")
 	rstartree::Node::Branch bRight = std::get<rstartree::Node::Branch>(root->entries[1]);
 
 	REQUIRE(bLeft.child->entries.size() == 3);
-	REQUIRE(bLeft.child->level == 1);
+	REQUIRE(bLeft.child->level == 0);
 	REQUIRE(bRight.child->entries.size() == 5);
-	REQUIRE(bRight.child->level == 1);
+	REQUIRE(bRight.child->level == 0);
+	REQUIRE(root->level == 1);
 }
 
 
@@ -587,12 +631,12 @@ TEST_CASE("R*Tree: testSplitNonLeafNode")
 	unsigned maxBranchFactor = 7;
 	rstartree::RStarTree tree(3, 7);
 	rstartree::Node *root = tree.root;
-	root->level = 0;
+	root->level = 1;
 
 	for (unsigned i = 0; i < maxBranchFactor; ++i)
 	{
 		rstartree::Node *child = createFullLeafNode(tree);
-		child->level = 1;
+		child->level = 0;
 		child->parent = root;
 		rstartree::Node::Branch b(child->boundingBox(), child);
 		root->entries.emplace_back(std::move(b));
@@ -636,7 +680,7 @@ TEST_CASE("R*Tree: testSplitNonLeafNode")
 	REQUIRE(accumulator.size() == maxBranchFactor * maxBranchFactor + 1);
 }
 
-TEST_CASE("R*Tree: RemoveLeafNode", "[broken]")
+TEST_CASE("R*Tree: RemoveLeafNode")
 {
 	unsigned maxBranchFactor = 7;
 	unsigned minBranchFactor = 3;
@@ -715,12 +759,14 @@ TEST_CASE("R*Tree: testSearch")
 	cluster1a->entries.push_back(Point(-3.0, 16.0));
 	cluster1a->entries.push_back(Point(-3.0, 15.0));
 	cluster1a->entries.push_back(Point(-4.0, 13.0));
+	cluster1a->level = 0;
 
 	rstartree::Node *cluster1b = new rstartree::Node(tree);
 	cluster1b->entries.push_back(Point(-5.0, 12.0));
 	cluster1b->entries.push_back(Point(-5.0, 15.0));
 	cluster1b->entries.push_back(Point(-6.0, 14.0));
 	cluster1b->entries.push_back(Point(-8.0, 16.0));
+	cluster1b->level = 0;
 
 	// Cluster 2, n = 8
 	// (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
@@ -730,11 +776,13 @@ TEST_CASE("R*Tree: testSearch")
 	cluster2a->entries.push_back(Point(-8.0, 9.0));
 	cluster2a->entries.push_back(Point(-9.0, 9.0));
 	cluster2a->entries.push_back(Point(-8.0, 8.0));
+	cluster2a->level = 0;
 
 	rstartree::Node *cluster2b = new rstartree::Node(tree);
 	cluster2b->entries.push_back(Point(-14.0, 8.0));
 	cluster2b->entries.push_back(Point(-10.0, 8.0));
 	cluster2b->entries.push_back(Point(-9.0, 7.0));
+	cluster2b->level = 0;
 
 	// Cluster 3, n = 9
 	// (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
@@ -744,12 +792,14 @@ TEST_CASE("R*Tree: testSearch")
 	cluster3a->entries.push_back(Point(-2.0, 4.0));
 	cluster3a->entries.push_back(Point(-1.0, 3.0));
 	cluster3a->entries.push_back(Point(-1.0, 1.0));
+	cluster3a->level = 0;
 
 	rstartree::Node *cluster3b = new rstartree::Node(tree);
 	cluster3b->entries.push_back(Point(-5.0, 4.0));
 	cluster3b->entries.push_back(Point(-4.0, 3.0));
 	cluster3b->entries.push_back(Point(-4.0, 1.0));
 	cluster3b->entries.push_back(Point(-6.0, 2.0));
+	cluster3b->level = 0;
 
 	// High level rstartree::Nodes
 	rstartree::Node *left = new rstartree::Node(tree);
@@ -761,17 +811,20 @@ TEST_CASE("R*Tree: testSearch")
 	left->entries.push_back(createBranchEntry(cluster2a->boundingBox(), cluster2a));
 	cluster2b->parent = left;
 	left->entries.push_back(createBranchEntry(cluster2b->boundingBox(), cluster2b));
+	left->level = 1;
 
 	rstartree::Node *right = new rstartree::Node(tree);
 	cluster3a->parent = right;
 	right->entries.push_back(createBranchEntry(cluster3a->boundingBox(), cluster3a));
 	cluster3b->parent = right;
 	right->entries.push_back(createBranchEntry(cluster3b->boundingBox(), cluster3b));
+	right->level = 1;
 
 	left->parent = root;
 	root->entries.push_back(createBranchEntry(left->boundingBox(), left));
 	right->parent = root;
 	root->entries.push_back(createBranchEntry(right->boundingBox(), right));
+	root->level = 2;
 
 	// Test search
 
@@ -827,11 +880,12 @@ TEST_CASE("R*Tree: reInsertAccountsForNewTreeDepth")
 	for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 2; i++)
 	{
 		rstartree::Node *leaf = createFullLeafNode(tree);
-		leaf->level = 2;
+		leaf->level = 0;
 		leafNodes.push_back(leaf);
 	}
 
 	rstartree::Node *root = tree.root;
+	root->level = 2;
 
 	// Construct intermediate layer
 	std::vector<rstartree::Node *> middleLayer;
@@ -850,22 +904,17 @@ TEST_CASE("R*Tree: reInsertAccountsForNewTreeDepth")
 		middleLayer.push_back(child);
 	}
 
-	for (rstartree::Node *leaf : leafNodes)
-	{
-		REQUIRE(leaf->level == 2);
-	}
-
 	// Emulate a case where we need to reinsert some extra entries in the middle layer,
 	// but a reinsertion forces a split while we still have entries outstanding.
 	// Shove two extra things into middleLayer[0]
 
 	rstartree::Node *leaf = leafNodes.at(maxBranchFactor*maxBranchFactor);
-	leaf->level = 2;
+	leaf->level = 0;
 	leaf->parent = middleLayer.at(0);
 	middleLayer.at(0)->entries.push_back(createBranchEntry(leaf->boundingBox(), leaf));
 
 	leaf = leafNodes.at(maxBranchFactor*maxBranchFactor+1);
-	leaf->level = 2;
+	leaf->level = 0;
 	leaf->parent = middleLayer.at(0);
 	middleLayer.at(0)->entries.push_back(createBranchEntry(leaf->boundingBox(), leaf));
 
@@ -876,6 +925,17 @@ TEST_CASE("R*Tree: reInsertAccountsForNewTreeDepth")
 
 	for (rstartree::Node *leaf : leafNodes)
 	{
-		REQUIRE(leaf->level == 3);
+		REQUIRE(leaf->level == 0);
 	}
+
+	for (rstartree::Node *midNode : middleLayer)
+	{
+		REQUIRE(midNode->level == 1);
+	}
+
+	REQUIRE(root->level == 2 );
+	REQUIRE(root->parent != nullptr);
+	REQUIRE(root->parent->level == 3);
 }
+
+/* vim: set noexpandtab: */

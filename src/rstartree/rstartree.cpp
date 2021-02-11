@@ -6,6 +6,7 @@ namespace rstartree
 	{
 		hasReinsertedOnLevel = {false};
 		root = new Node(*this);
+        root->level = 0;
 	}
 
 	RStarTree::~RStarTree()
