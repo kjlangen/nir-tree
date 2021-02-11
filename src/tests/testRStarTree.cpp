@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include <rstartree/rstartree.h>
 #include <util/geometry.h>
+#include <iostream>
 
 static rstartree::Node::NodeEntry createBranchEntry(const Rectangle &boundingBox, rstartree::Node *child)
 {
@@ -815,4 +816,66 @@ TEST_CASE("R*Tree: testSearch")
 	Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
 	std::vector<Point> v5 = root->search(sr5);
 	REQUIRE(v5.size() == 0);
+}
+
+TEST_CASE("R*Tree: reInsertAccountsForNewTreeDepth")
+{
+	// Need to construct a tree of depth at least 3.
+	unsigned maxBranchFactor = 5;
+	rstartree::RStarTree tree(3,5);
+	std::vector<rstartree::Node *> leafNodes;
+	for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 2; i++)
+	{
+		rstartree::Node *leaf = createFullLeafNode(tree);
+		leaf->level = 2;
+		leafNodes.push_back(leaf);
+	}
+
+	rstartree::Node *root = tree.root;
+
+	// Construct intermediate layer
+	std::vector<rstartree::Node *> middleLayer;
+	for (unsigned i = 0; i < 5; i++)
+	{
+		rstartree::Node *child = new rstartree::Node(tree);
+		child->level = 1;
+		child->parent = root;
+		for (unsigned j = 0; j < 5; j++)
+		{
+			rstartree::Node *leaf = leafNodes.at(5*i + j);
+			child->entries.push_back(createBranchEntry(leaf->boundingBox(), leaf));
+			leaf->parent = child;
+		}
+		root->entries.push_back(createBranchEntry(child->boundingBox(), child));
+		middleLayer.push_back(child);
+	}
+
+	for (rstartree::Node *leaf : leafNodes)
+	{
+		REQUIRE(leaf->level == 2);
+	}
+
+	// Emulate a case where we need to reinsert some extra entries in the middle layer,
+	// but a reinsertion forces a split while we still have entries outstanding.
+	// Shove two extra things into middleLayer[0]
+
+	rstartree::Node *leaf = leafNodes.at(maxBranchFactor*maxBranchFactor);
+	leaf->level = 2;
+	leaf->parent = middleLayer.at(0);
+	middleLayer.at(0)->entries.push_back(createBranchEntry(leaf->boundingBox(), leaf));
+
+	leaf = leafNodes.at(maxBranchFactor*maxBranchFactor+1);
+	leaf->level = 2;
+	leaf->parent = middleLayer.at(0);
+	middleLayer.at(0)->entries.push_back(createBranchEntry(leaf->boundingBox(), leaf));
+
+	std::vector<bool> hasReinsertedOnLevel = {false, true, false};
+
+	REQUIRE(middleLayer.at(0)->entries.size() > maxBranchFactor );
+	middleLayer.at(0)->reInsert(hasReinsertedOnLevel);
+
+	for (rstartree::Node *leaf : leafNodes)
+	{
+		REQUIRE(leaf->level == 3);
+	}
 }
