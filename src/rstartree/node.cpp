@@ -1058,22 +1058,6 @@ namespace rstartree
 		}
 
 		// CT6 [Re-insert oprhaned entries]
-		// Think very carefully about this, because the current implementation may be wrong.
-		// Suppose we remove the last node at level X because it is underfull. Then its orphaned children at level X+1
-		// won't find anywhere appropriate to be reinserted, because no nodes at level X exist for which they can be children.
-		// But how can we determine this efficiently?
-
-		// We approach this another way --- We know how many children we have, so that determines which layer we should show up
-		// in.
-
-		// Getting the height of the tree requires a full tree walk --- so only do this if we need to.
-		bool needHeight = std::any_of(Q.cbegin(), Q.cend(), [](const NodeEntry &e) { return std::holds_alternative<Branch>(e); } );
-		unsigned origTreeDepth = std::numeric_limits<unsigned>::max();
-		if (needHeight)
-		{
-			assert(node->parent == nullptr);
-			origTreeDepth = height();
-		}
 		unsigned insertDepthCorrection = 0;
 		for (const auto &entry : Q)
 		{
@@ -1081,18 +1065,8 @@ namespace rstartree
 			if (std::holds_alternative<Branch>(entry))
 			{
 				const Branch &b = std::get<Branch>(entry);
-				unsigned childDepth = b.child->level - b.child->height(); // 0 implies child is a leaf, 1 implies 1 layer before leaf, ...
-				// We obtained the height
-				if (needHeight)
-				{
-					// Suppose new tree depth is 3, and b->child points to a leaf node. Then b.child should be inserted into
-					// a node at level 2. If b->child pointers to a node 1 layer before leaf nodes, then it should go into layer 1.
-					// 3 - 0 - 1 = 2, 3 - 1 -1 = 1. Math checks out!
-					unsigned insertionLevel = origTreeDepth - childDepth - 1;
-
-					// Still need to account for inserts adding another level to the tree. Handle this with insertDepthCorrection.
-					adjustNodeLevels(b.child, [insertionLevel, insertDepthCorrection](int level){return insertionLevel + insertDepthCorrection;});
-				}
+				// Still need to account for inserts adding another level to the tree. Handle this with insertDepthCorrection.
+				adjustNodeLevels(b.child, [insertDepthCorrection](int level){return level + insertDepthCorrection;});
 			}
 
 			// If we are inserting branches and the root changes, then we have a new layer. Anything that

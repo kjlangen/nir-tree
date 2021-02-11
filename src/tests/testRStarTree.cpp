@@ -818,7 +818,7 @@ TEST_CASE("R*Tree: testSearch")
 	REQUIRE(v5.size() == 0);
 }
 
-TEST_CASE("R*Tree: reInsertAccountsForNewTreeDepth", "[busted]")
+TEST_CASE("R*Tree: reInsertAccountsForNewTreeDepth")
 {
 	// Need to construct a tree of depth at least 3.
 	unsigned maxBranchFactor = 5;
