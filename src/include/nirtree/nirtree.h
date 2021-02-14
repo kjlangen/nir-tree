@@ -20,7 +20,7 @@ namespace nirtree
 	{
 		public:
 			Node *root;
-            Statistics stats;
+			Statistics stats;
 
 			// Constructors and destructors
 			NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor);

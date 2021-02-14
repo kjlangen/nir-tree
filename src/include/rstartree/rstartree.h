@@ -17,7 +17,7 @@ namespace rstartree
 			static constexpr float p = 0.3; // For reinsertion entries. 0.3 by default
 
 			Node *root;
-            Statistics stats;
+			Statistics stats;
 			const unsigned minBranchFactor;
 			const unsigned maxBranchFactor;
 

@@ -168,30 +168,21 @@ namespace rstartree
 	void Node::searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) CONST_IF_NOT_STAT
 	{
 
-		//std::cout << "Searching from root:" << this << std::endl;
 		std::stack<const Node *> context;
 		context.push(this);
 		while (!context.empty())
 		{
 			const Node *curNode = context.top();
-			//std::cout << "Processing from node: " << curNode << std::endl;
 			context.pop();
 			// Am I a leaf?
 			bool isLeaf = curNode->isLeafNode();
 			if (isLeaf)
 			{
-				//std::cout << "Determined " << curNode << " is a leaf node. Checking entries." << std::endl;
-				//std::cout << "My bounding box is: " << curNode->boundingBox() << std::endl;
 #if defined(STAT)
 				treeRef.stats.markLeafSearched();
 #endif
 				for (const auto &entry : curNode->entries)
 				{
-					if (entry.valueless_by_exception())
-					{
-						std::cout << "Disaster, my point was valueless by exception!" << std::endl;
-					}
-					assert( std::holds_alternative<Point>( entry ) or std::holds_alternative<Branch>( entry ) );
 					const Point &p = std::get<Point>(entry);
 
 					if (p == requestedPoint)
@@ -207,17 +198,11 @@ namespace rstartree
 #endif
 				for (const auto &entry : curNode->entries)
 				{
-					if (entry.valueless_by_exception())
-					{
-						std::cout << "Disaster, my branch was valueless by exception!" << std::endl;
-					}
 
 					const Branch &b = std::get<Branch>(entry);
 
-
 					if (b.boundingBox.containsPoint(requestedPoint))
 					{
-						//std::cout << "Pushing child on stack: " << b.child << std::endl;
 						context.push(b.child);
 					}
 				}
@@ -342,7 +327,8 @@ namespace rstartree
 
 		unsigned stoppingLevel = 0;
 		bool entryIsBranch = std::holds_alternative<Branch>(givenNodeEntry);
-		if( entryIsBranch ) {
+		if (entryIsBranch)
+		{
 			const Branch &b = std::get<Branch>(givenNodeEntry);
 			stoppingLevel = b.child->level + 1;
 		}
@@ -351,11 +337,12 @@ namespace rstartree
 		for (;;)
 		{
 
-			if( node->level == stoppingLevel ) {
+			if (node->level == stoppingLevel)
+			{
 				return node;
 			}
 
-			assert( !node->isLeafNode() );
+			assert(!node->isLeafNode());
 
 			// Our children point to leaves
 #ifndef NDEBUG
@@ -743,7 +730,6 @@ namespace rstartree
 
 	Node *Node::adjustTree(Node *sibling, std::vector<bool> &hasReinsertedOnLevel)
 	{
-		//FIXME: Stop when we don't need to adjust bounding box anymore.
 		// AT1 [Initialize]
 		Node *node = this;
 		Node *siblingNode = sibling;
@@ -770,7 +756,7 @@ namespace rstartree
 
 					// AT4 [Propogate the node split upwards]
 					Branch b(siblingNode->boundingBox(), siblingNode);
-					node->parent->entries.push_back(b);
+					node->parent->entries.emplace_back(std::move(b));
 #ifndef NDEBUG
 					for (const auto &entry : node->parent->entries)
 					{
@@ -906,10 +892,6 @@ namespace rstartree
 		bool firstIsPoint = entries.empty() || std::holds_alternative<Point>(insertionPoint->entries[0]);
 		assert((givenIsLeaf && firstIsPoint) || (!givenIsLeaf && !firstIsPoint));
 #endif
-		if( !std::holds_alternative<Branch>( nodeEntry ) and !std::holds_alternative<Point>( nodeEntry ) ) {
-			throw std::bad_variant_access();
-		}
-
 		insertionPoint->entries.push_back(nodeEntry);
 		if (!givenIsLeaf)
 		{
@@ -939,14 +921,12 @@ namespace rstartree
 
 			// Make the existing root a child of newRoot
 			Branch b1(boundingBox(), this);
-			//newRoot->entries.emplace_back(std::move(b1));
-			newRoot->entries.push_back(b1);
+			newRoot->entries.emplace_back(std::move(b1));
 
 			// Make the new sibling node a child of newRoot
 			siblingNode->parent = newRoot;
 			Branch b2(siblingNode->boundingBox(), siblingNode);
-			//newRoot->entries.emplace_back(std::move(b2));
-			newRoot->entries.push_back(b2);
+			newRoot->entries.emplace_back(std::move(b2));
 
 			// Ensure newRoot has both children
 			assert(newRoot->entries.size() == 2);

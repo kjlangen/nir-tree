@@ -37,7 +37,7 @@ namespace rstartree
 					Rectangle boundingBox;
 					Node *child;
 
-					Branch(Rectangle boundingBox2, Node *child2) : boundingBox(boundingBox2), child(child2) {}
+					Branch(Rectangle boundingBox, Node *child) : boundingBox(boundingBox), child(child) {}
 					Branch(const Branch &other) : boundingBox(other.boundingBox), child(other.child) {}
 
 					bool operator==(const Branch &o) const;

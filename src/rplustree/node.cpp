@@ -144,7 +144,7 @@ namespace rplustree
 				}
 
 #if defined(STAT)
-                treeRef.stats.markLeafSearched();
+				treeRef.stats.markLeafSearched();
 #endif
 			}
 			else
@@ -160,13 +160,13 @@ namespace rplustree
 				}
 
 #if defined(STAT)
-                treeRef.stats.markNonLeafNodeSearched();
+				treeRef.stats.markNonLeafNodeSearched();
 #endif
 			}
 		}
 
 #if defined(STAT)
-        treeRef.stats.resetSearchTracker<false>();
+		treeRef.stats.resetSearchTracker<false>();
 #endif
 
 		return matchingPoints;

@@ -6,7 +6,7 @@ namespace rstartree
 	{
 		hasReinsertedOnLevel = {false};
 		root = new Node(*this);
-        root->level = 0;
+		root->level = 0;
 	}
 
 	RStarTree::~RStarTree()
@@ -40,13 +40,6 @@ namespace rstartree
 		assert(root->parent == nullptr);
 
 		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
-#ifndef NDEBUG
-		for (const auto &b : hasReinsertedOnLevel)
-		{
-			assert(!b);
-		}
-#endif
-
 		root = root->insert(givenPoint, hasReinsertedOnLevel);
 	}
 
@@ -54,7 +47,7 @@ namespace rstartree
 	{
 		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
 		root = root->remove(givenPoint, hasReinsertedOnLevel);
-        assert( root->parent == nullptr );
+        assert(root->parent == nullptr);
 	}
 
 	unsigned RStarTree::checksum()
