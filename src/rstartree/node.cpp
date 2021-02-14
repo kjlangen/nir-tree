@@ -1060,9 +1060,9 @@ namespace rstartree
 
 	void Node::print() const
 	{
-		// FIXME: level should be based on difference between this and root->height
+		unsigned max_level = treeRef.root->level;
 
-		std::string indentation(level * 4, ' ');
+		std::string indentation((max_level - level) * 4, ' ');
 		std::cout << indentation << "Node " << (void *)this << std::endl;
 		std::cout << indentation << "{" << std::endl;
 		std::cout << indentation << "    BoundingBox: " << boundingBox() << std::endl;
