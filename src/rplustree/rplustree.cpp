@@ -26,12 +26,12 @@ namespace rplustree
 		return v;
 	}
 
-	std::vector<Point> RPlusTree::search(Point requestedPoint)
+	std::vector<Point> RPlusTree::search(Point requestedPoint) CONST_IF_NOT_STAT
 	{
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> RPlusTree::search(Rectangle requestedRectangle)
+	std::vector<Point> RPlusTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
 	{
 		return root->search(requestedRectangle);
 	}

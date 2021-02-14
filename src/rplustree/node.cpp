@@ -143,7 +143,9 @@ namespace rplustree
 					}
 				}
 
+#if defined(STAT)
                 treeRef.stats.markLeafSearched();
+#endif
 			}
 			else
 			{
@@ -157,11 +159,15 @@ namespace rplustree
 					}
 				}
 
+#if defined(STAT)
                 treeRef.stats.markNonLeafNodeSearched();
+#endif
 			}
 		}
 
+#if defined(STAT)
         treeRef.stats.resetSearchTracker<false>();
+#endif
 
 		return matchingPoints;
 	}
@@ -191,7 +197,9 @@ namespace rplustree
 					}
 				}
 
+#if defined(STAT)
 				treeRef.stats.markLeafSearched();
+#endif
 			}
 			else
 			{
@@ -204,11 +212,15 @@ namespace rplustree
 						context.push(currentContext->branches[i].child);
 					}
 				}
+#if defined(STAT)
 				treeRef.stats.markNonLeafNodeSearched();
+#endif
 			}
 		}
 
+#if defined(STAT)
 		treeRef.stats.resetSearchTracker<true>();
+#endif
 
 		return matchingPoints;
 	}
@@ -703,6 +715,7 @@ namespace rplustree
 
 	void Node::stat()
 	{
+#if defined(STAT)
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
@@ -725,9 +738,9 @@ namespace rplustree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
-			if (fanout > histogramFanout.size() - 1)
+			if (unlikely(fanout >= histogramFanout.size()))
 			{
-				histogramFanout.resize(fanout, 0);
+				histogramFanout.resize(2*fanout, 0);
 			}
 			++histogramFanout[fanout];
 
@@ -768,5 +781,8 @@ namespace rplustree
 			}
 		}
 		std::cout << treeRef.stats;
+#else
+		(void) 0;
+#endif
 	}
 }

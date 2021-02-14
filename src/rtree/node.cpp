@@ -888,6 +888,7 @@ namespace rtree
 
 	void Node::stat()
 	{
+#if defined(STAT)
 		unsigned long childrenSize;
 		unsigned long dataSize;
 		size_t memoryFootprint = 0;
@@ -912,7 +913,11 @@ namespace rtree
 			childrenSize = currentContext->children.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = childrenSize == 0 ? dataSize : childrenSize;
-			++histogramFanout[fanout];
+			if (unlikely(fanout >= histogramFanout.size()))
+			{
+				histogramFanout.resize(2*fanout,0);
+			}
+				++histogramFanout[fanout];
 
 			if (childrenSize == 0 && dataSize > 0)
 			{
@@ -951,5 +956,9 @@ namespace rtree
 				STATHIST(i, histogramFanout[i]);
 			}
 		}
+#else
+		(void) 0;
+#endif
+
 	}
 }

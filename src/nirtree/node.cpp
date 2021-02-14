@@ -160,7 +160,9 @@ namespace nirtree
 						accumulator.push_back(dataPoint);
 					}
 				}
+#if defined(STAT)
 				treeRef.stats.markLeafSearched();
+#endif
 			}
 			else
 			{
@@ -173,11 +175,15 @@ namespace nirtree
 						context.push(branch.child);
 					}
 				}
+#if defined(STAT)
 				treeRef.stats.markNonLeafNodeSearched();
+#endif
 			}
 		}
 
+#if defined(STAT)
 		treeRef.stats.resetSearchTracker<false>();
+#endif
 
 		return accumulator;
 	}
@@ -207,7 +213,9 @@ namespace nirtree
 					}
 				}
 
+#if defined(STAT)
 				treeRef.stats.markLeafSearched();
+#endif
 			}
 			else
 			{
@@ -220,10 +228,14 @@ namespace nirtree
 						context.push(branch.child);
 					}
 				}
+#if defined(STAT)
 				treeRef.stats.markNonLeafNodeSearched();
+#endif
 			}
 		}
+#if defined(STAT)
 		treeRef.stats.resetSearchTracker<true>();
+#endif
 
 		return accumulator;
 	}
@@ -814,6 +826,7 @@ namespace nirtree
 
 	void Node::stat()
 	{
+#if defined(STAT)
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
@@ -841,9 +854,9 @@ namespace nirtree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
-			if (fanout > histogramFanout.size() - 1)
+			if (unlikely(fanout >= histogramFanout.size()))
 			{
-				histogramFanout.resize(fanout, 0);
+				histogramFanout.resize(2*fanout, 0);
 			}
 			++histogramFanout[fanout];
 
@@ -909,5 +922,8 @@ namespace nirtree
 		std::cout << treeRef.stats;
 
 		STATEXEC(std::cout << "### ### ### ###" << std::endl);
+#else
+    (void) 0;
+#endif
 	}
 }
