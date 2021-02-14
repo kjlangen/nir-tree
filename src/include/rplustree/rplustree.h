@@ -12,6 +12,7 @@
 #include <rplustree/node.h>
 #include <index/index.h>
 #include <util/bmpPrinter.h>
+#include <util/statistics.h>
 
 namespace rplustree
 {
@@ -19,6 +20,9 @@ namespace rplustree
 	{
 		public:
 			Node *root;
+#if defined(STAT)
+			Statistics stats;
+#endif
 
 			// Constructors and destructors
 			RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);

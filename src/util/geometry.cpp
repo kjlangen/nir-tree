@@ -28,6 +28,14 @@ Point::Point(double value)
 	}
 }
 
+Point::Point(const Point &o)
+{
+	for (unsigned d = 0; d < dimensions; ++d)
+	{
+		values[d] = o.values[d];
+	}
+}
+
 bool Point::orderedCompare(const Point &rhs, unsigned startingDimension) const
 {
 	unsigned currentDimension = startingDimension;
@@ -305,6 +313,13 @@ Rectangle::Rectangle(Point lowerLeft, Point upperRight)
 	this->lowerLeft = lowerLeft;
 	this->upperRight = upperRight;
 }
+
+Rectangle::Rectangle(const Rectangle &o)
+{
+	this->lowerLeft = o.lowerLeft;
+	this->upperRight = o.upperRight;
+}
+
 
 double Rectangle::area() const
 {

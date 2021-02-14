@@ -4,7 +4,7 @@ namespace nirtree
 {
 	NIRTree::NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor)
 	{
-		root = new Node(minBranchFactor, maxBranchFactor);
+		root = new Node(*this, minBranchFactor, maxBranchFactor);
 	}
 
 	NIRTree::NIRTree(Node *root)

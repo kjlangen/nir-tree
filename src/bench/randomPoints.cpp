@@ -43,7 +43,7 @@ Point *generateBits()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02" : "/home/kjlangen/nir-tree/data/bit03";
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/bit02" : "/hdd1/nir-tree/data/bit03";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -80,7 +80,7 @@ Point *generateHaze()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02" : "/home/kjlangen/nir-tree/data/pha03";
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/pha02" : "/hdd1/nir-tree/data/pha03";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -117,7 +117,7 @@ Point *generateCalifornia()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea02";
+	std::string dataPath = "/hdd1/nir-tree/data/rea02";
 	file.open(dataPath);
 	fileGoodOrDie(file, dataPath);
 
@@ -153,12 +153,16 @@ Point *generateCalifornia()
 Point *generateBiological()
 {
 	// Dataset is pre-generated and requires 3 dimensions
-	assert(dimensions == 3);
+	if (dimensions != 3)
+    {
+        std::cout << "Incorrect dimensions for biol: " << dimensions << std::endl;
+        exit(1);
+    }
 
 	// Setup file reader and double buffer
 	std::fstream file;
     
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03";
+	std::string dataPath = "/hdd1/nir-tree/data/rea03";
 	file.open(dataPath);
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -195,7 +199,7 @@ Point *generateForest()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath ="/home/kjlangen/nir-tree/data/rea05";
+	std::string dataPath ="/hdd1/nir-tree/data/rea05";
 	file.open(dataPath);
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -258,7 +262,7 @@ Rectangle *generateBitRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/bit02.2" : "/home/kjlangen/nir-tree/bit03.2";
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/bit02.2" : "/hdd1/nir-tree/data/bit03.2";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -296,7 +300,7 @@ Rectangle *generateHazeRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/pha02.2" : "/home/kjlangen/nir-tree/pha03.2";
+	std::string dataPath = dimensions == 2 ? "/hdd1/nir-tree/data/pha02.2" : "/hdd1/nir-tree/data/pha03.2";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -334,7 +338,7 @@ Rectangle *generateCaliRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea02.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea02.2";
 	file.open(dataPath);
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -372,7 +376,7 @@ Rectangle *generateBioRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea03.2";
 	file.open(dataPath);
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -410,7 +414,7 @@ Rectangle *generateForestRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea05.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea05.2";
 	file.open(dataPath);
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -580,12 +584,14 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 
 	// Validate checksum
+    /*
 	if (spatialIndex->checksum() != directSum)
 	{
 		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
+    */
 
 #ifndef NDEBUG
 	// Validate tree
@@ -644,8 +650,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Range search OK." << std::endl;
 
 	// Gather statistics
-	STATEXEC(spatialIndex->stat());
-	STATEXEC(std::cout << "Statistics OK." << std::endl);
+#if defined(STAT)
+	spatialIndex->stat();
+	std::cout << "Statistics OK." << std::endl;
+#endif
 
 	// Validate checksum
 	if (spatialIndex->checksum() != directSum)

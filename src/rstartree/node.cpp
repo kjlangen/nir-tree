@@ -3,13 +3,6 @@
 
 namespace rstartree
 {
-	std::vector<unsigned> Node::histogramSearch = std::vector<unsigned>(1000, 0);
-	std::vector<unsigned> Node::histogramLeaves = std::vector<unsigned>(1000000, 0);
-	std::vector<unsigned> Node::histogramRangeSearch = std::vector<unsigned>(1000000, 0);
-	std::vector<unsigned> Node::histogramRangeLeaves = std::vector<unsigned>(1000000, 0);
-	unsigned Node::leavesSearched = 0;
-	unsigned Node::nodesSearched = 0;
-
 	template <typename N, typename functor>
 	void treeWalker(N root, functor &f)
 	{
@@ -28,7 +21,7 @@ namespace rstartree
 			f(currentContext);
 
 			// Recurse through the rest of the tree
-			bool isLeaf = currentContext->entries.empty() || !std::holds_alternative<Node::Branch>(currentContext->entries[0]);
+			bool isLeaf = currentContext->isLeafNode();
 			if (!isLeaf)
 			{
 				for (const auto &entry : currentContext->entries)
@@ -63,12 +56,7 @@ namespace rstartree
 		return child == o.child && boundingBox == o.boundingBox;
 	}
 
-	Node::Branch::~Branch()
-	{
-		child = nullptr;
-	}
-
-	Node::Node(const RStarTree &treeRef, Node *parent, unsigned level) : 
+	Node::Node(RStarTree &treeRef, Node *parent, unsigned level) : 
 		treeRef(treeRef),
 		parent(parent),
 		level(level)
@@ -105,15 +93,19 @@ namespace rstartree
 		return boundingBox;
 	}
 
-	void Node::updateBoundingBox(Node *child, Rectangle updatedBoundingBox)
+	bool Node::updateBoundingBox(Node *child, Rectangle updatedBoundingBox)
 	{
 		for (auto &entry : entries)
 		{
 			Branch &b = std::get<Branch>(entry);
 			if (b.child == child)
 			{
-				b.boundingBox = updatedBoundingBox;
-				return;
+				if (b.boundingBox != updatedBoundingBox)
+				{
+					b.boundingBox = updatedBoundingBox;
+					return true;
+				}
+				return false;
 			}
 		}
 
@@ -121,6 +113,7 @@ namespace rstartree
 		print();
 		assert(false);
 #endif
+		return false;
 	}
 
 	void Node::removeChild(Node *child)
@@ -172,23 +165,33 @@ namespace rstartree
 		}
 	}
 
-	void Node::searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const
+	void Node::searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) CONST_IF_NOT_STAT
 	{
 
+		//std::cout << "Searching from root:" << this << std::endl;
 		std::stack<const Node *> context;
 		context.push(this);
 		while (!context.empty())
 		{
 			const Node *curNode = context.top();
+			//std::cout << "Processing from node: " << curNode << std::endl;
 			context.pop();
 			// Am I a leaf?
 			bool isLeaf = curNode->isLeafNode();
 			if (isLeaf)
 			{
-				STATEXEC(++leavesSearched);
-				STATEXEC(++nodesSearched);
+				//std::cout << "Determined " << curNode << " is a leaf node. Checking entries." << std::endl;
+				//std::cout << "My bounding box is: " << curNode->boundingBox() << std::endl;
+#if defined(STAT)
+				treeRef.stats.markLeafSearched();
+#endif
 				for (const auto &entry : curNode->entries)
 				{
+					if (entry.valueless_by_exception())
+					{
+						std::cout << "Disaster, my point was valueless by exception!" << std::endl;
+					}
+					assert( std::holds_alternative<Point>( entry ) or std::holds_alternative<Branch>( entry ) );
 					const Point &p = std::get<Point>(entry);
 
 					if (p == requestedPoint)
@@ -199,13 +202,22 @@ namespace rstartree
 			}
 			else
 			{
-				STATEXEC(++nodesSearched);
+#if defined(STAT)
+				treeRef.stats.markNonLeafNodeSearched();
+#endif
 				for (const auto &entry : curNode->entries)
 				{
+					if (entry.valueless_by_exception())
+					{
+						std::cout << "Disaster, my branch was valueless by exception!" << std::endl;
+					}
+
 					const Branch &b = std::get<Branch>(entry);
+
 
 					if (b.boundingBox.containsPoint(requestedPoint))
 					{
+						//std::cout << "Pushing child on stack: " << b.child << std::endl;
 						context.push(b.child);
 					}
 				}
@@ -213,7 +225,7 @@ namespace rstartree
 		}
 	}
 
-	void Node::searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const
+	void Node::searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) CONST_IF_NOT_STAT
 	{
 		std::stack<const Node *> context;
 		context.push(this);
@@ -225,8 +237,9 @@ namespace rstartree
 			bool isLeaf = curNode->isLeafNode();
 			if (isLeaf)
 			{
-				STATEXEC(++leavesSearched);
-				STATEXEC(++nodesSearched);
+#if defined(STAT)
+				treeRef.stats.markLeafSearched();
+#endif
 				for (const auto &entry : curNode->entries)
 				{
 					const Point &p = std::get<Point>(entry);
@@ -239,7 +252,9 @@ namespace rstartree
 			}
 			else
 			{
-				STATEXEC(++nodesSearched);
+#if defined(STAT)
+				treeRef.stats.markNonLeafNodeSearched();
+#endif
 				for (const auto &entry : curNode->entries)
 				{
 					const Branch &b = std::get<Branch>(entry);
@@ -254,33 +269,27 @@ namespace rstartree
 	}
 
 
-	std::vector<Point> Node::search(const Point &requestedPoint) const
+	std::vector<Point> Node::search(const Point &requestedPoint) CONST_IF_NOT_STAT
 	{
 		std::vector<Point> accumulator;
 
-		STATEXEC(leavesSearched = 0);
-		STATEXEC(nodesSearched = 0);
-
 		searchSub(requestedPoint, accumulator);
 
-		STATEXEC(++histogramLeaves[leavesSearched]);
-		STATEXEC(++histogramSearch[nodesSearched]);
-
+#if defined(STAT)
+		treeRef.stats.resetSearchTracker<false>();
+#endif
 		return accumulator;
 	}
 
-	std::vector<Point> Node::search(const Rectangle &requestedRectangle) const
+	std::vector<Point> Node::search(const Rectangle &requestedRectangle) CONST_IF_NOT_STAT
 	{
 		std::vector<Point> matchingPoints;
 
-		STATEXEC(leavesSearched = 0);
-		STATEXEC(nodesSearched = 0);
-
 		searchSub(requestedRectangle, matchingPoints);
 
-		STATEXEC(++histogramRangeLeaves[leavesSearched]);
-		STATEXEC(++histogramRangeSearch[nodesSearched]);
-
+#if defined(STAT)
+		treeRef.stats.resetSearchTracker<true>();
+#endif
 		return matchingPoints;
 	}
 
@@ -691,7 +700,6 @@ namespace rstartree
 		unsigned splitIndex = chooseSplitIndex(chooseSplitAxis());
 
 		Node *newSibling = new Node(treeRef, parent, level);
-		newSibling->entries.reserve(entries.size()-splitIndex);
 
 		assert((parent == nullptr) || (level + 1 == parent->level));
 
@@ -752,7 +760,7 @@ namespace rstartree
 			else
 			{
 				// AT3 [Adjust covering rectangle in parent entry]
-				node->parent->updateBoundingBox(node, node->boundingBox());
+				bool didUpdateBoundingBox =node->parent->updateBoundingBox(node, node->boundingBox());
 
 				// If we have a split then deal with it otherwise move up the tree
 				if (siblingNode != nullptr)
@@ -762,7 +770,7 @@ namespace rstartree
 
 					// AT4 [Propogate the node split upwards]
 					Branch b(siblingNode->boundingBox(), siblingNode);
-					node->parent->entries.emplace_back(std::move(b));
+					node->parent->entries.push_back(b);
 #ifndef NDEBUG
 					for (const auto &entry : node->parent->entries)
 					{
@@ -796,7 +804,15 @@ namespace rstartree
 				else
 				{
 					// AT5 [Move up to next level]
-					node = node->parent;
+					if (didUpdateBoundingBox)
+					{
+						node = node->parent;
+					} else {
+
+						// If we didn't update our bounding box and there was no split, no reason to keep
+						// going.
+						return nullptr;
+					}
 				}
 			}
 		}
@@ -815,7 +831,7 @@ namespace rstartree
 		assert(hasReinsertedOnLevel.at(level));
 
 		std::sort(entries.begin(), entries.end(),
-			[&globalCenterPoint](NodeEntry a, NodeEntry b)
+			[&globalCenterPoint](NodeEntry &a, NodeEntry &b)
 			{
 				Rectangle rectA = boxFromNodeEntry(a);
 				Rectangle rectB = boxFromNodeEntry(b);
@@ -850,9 +866,10 @@ namespace rstartree
 		// vector because it corresponds to the activities we have performed during a single
 		// point/rectangle insertion (the top level one)
 
-		for (const auto &entry : entriesToReinsert)
+		for (const NodeEntry entry : entriesToReinsert)
 		{
 			assert(root->parent == nullptr);
+			// TODO: Will this actually do a copy or assume we know what we are doing?
 			root = root->insert(entry, hasReinsertedOnLevel);
 		}
 		return nullptr;
@@ -889,6 +906,10 @@ namespace rstartree
 		bool firstIsPoint = entries.empty() || std::holds_alternative<Point>(insertionPoint->entries[0]);
 		assert((givenIsLeaf && firstIsPoint) || (!givenIsLeaf && !firstIsPoint));
 #endif
+		if( !std::holds_alternative<Branch>( nodeEntry ) and !std::holds_alternative<Point>( nodeEntry ) ) {
+			throw std::bad_variant_access();
+		}
+
 		insertionPoint->entries.push_back(nodeEntry);
 		if (!givenIsLeaf)
 		{
@@ -918,12 +939,14 @@ namespace rstartree
 
 			// Make the existing root a child of newRoot
 			Branch b1(boundingBox(), this);
-			newRoot->entries.emplace_back(std::move(b1));
+			//newRoot->entries.emplace_back(std::move(b1));
+			newRoot->entries.push_back(b1);
 
 			// Make the new sibling node a child of newRoot
 			siblingNode->parent = newRoot;
 			Branch b2(siblingNode->boundingBox(), siblingNode);
-			newRoot->entries.emplace_back(std::move(b2));
+			//newRoot->entries.emplace_back(std::move(b2));
+			newRoot->entries.push_back(b2);
 
 			// Ensure newRoot has both children
 			assert(newRoot->entries.size() == 2);
@@ -1045,6 +1068,8 @@ namespace rstartree
 			Node *child = b.child;
 			delete root;
 
+			// I'm the root now!
+			child->parent = nullptr;
 			return child;
 		}
 		else
@@ -1141,6 +1166,7 @@ namespace rstartree
 
 	void Node::stat() const
 	{
+#if defined(STAT)
 		struct StatWalker
 		{
 			size_t memoryFootprint;
@@ -1169,9 +1195,10 @@ namespace rstartree
 
 				++totalNodes;
 
-				if (entriesSize > histogramFanout.size() - 1)
+				if (unlikely(entriesSize >= histogramFanout.size()))
 				{
-					histogramFanout.resize(entriesSize, 0);
+					//Avoid reallocing
+					histogramFanout.resize(2*entriesSize, 0);
 				}
 				++histogramFanout[entriesSize];
 
@@ -1206,38 +1233,10 @@ namespace rstartree
 				STATHIST(i, sw.histogramFanout[i]);
 			}
 		}
-		STATSEARCHHIST();
-		for (unsigned i = 0; i < histogramSearch.size(); ++i)
-		{
-			if (histogramSearch[i] > 0)
-			{
-				STATHIST(i, histogramSearch[i]);
-			}
-		}
-		STATLEAVESHIST();
-		for (unsigned i = 0; i < histogramLeaves.size(); ++i)
-		{
-			if (histogramLeaves[i] > 0)
-			{
-				STATHIST(i, histogramLeaves[i]);
-			}
-		}
-		STATRANGESEARCHHIST();
-		for (unsigned i = 0; i < histogramRangeSearch.size(); ++i)
-		{
-			if (histogramRangeSearch[i] > 0)
-			{
-				STATHIST(i, histogramRangeSearch[i]);
-			}
-		}
-		STATRANGELEAVESHIST();
-		for (unsigned i = 0; i < histogramRangeLeaves.size(); ++i)
-		{
-			if (histogramRangeLeaves[i] > 0)
-			{
-				STATHIST(i, histogramRangeLeaves[i]);
-			}
-		}
+		std::cout << treeRef.stats;
+#else
+		(void) 0;
+#endif
 	}
 
 	Rectangle boxFromNodeEntry(const Node::NodeEntry &entry)

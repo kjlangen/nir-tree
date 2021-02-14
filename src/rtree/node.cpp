@@ -1,8 +1,10 @@
 #include <rtree/node.h>
+#include <rtree/rtree.h>
 
 namespace rtree
 {
-	Node::Node()
+	Node::Node(RTree &treeRef) :
+		treeRef(treeRef)
 	{
 		minBranchFactor = 3;
 		maxBranchFactor = 5;
@@ -12,7 +14,8 @@ namespace rtree
 		data.resize(0);
 	}
 
-	Node::Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p)
+	Node::Node(RTree &treeRef, unsigned minBranchFactor, unsigned maxBranchFactor, Node *p) :
+		treeRef(treeRef)
 	{
 		this->minBranchFactor = minBranchFactor;
 		this->maxBranchFactor = maxBranchFactor;
@@ -406,7 +409,7 @@ namespace rtree
 		}
 
 		// Create the new node and fill it with groupB entries by doing complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		Node *newSibling = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
 		unsigned groupASize = groupA.size();
 		unsigned groupALastIndex = groupASize - 1;
 		unsigned iGroupB;
@@ -530,7 +533,7 @@ namespace rtree
 		}
 
 		// Create the new node and fill it with groupB entries by doing really complicated stuff
-		Node *newSibling = new Node(minBranchFactor, maxBranchFactor, parent);
+		Node *newSibling = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
 		unsigned groupALastIndex = groupA.size() - 1;
 		unsigned iGroupB;
 		for (unsigned i = 0; i < groupB.size(); ++i)
@@ -630,7 +633,7 @@ namespace rtree
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
-			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
+			Node *newRoot = new Node(treeRef, minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
 			newRoot->boundingBoxes.push_back(this->boundingBox());
@@ -679,7 +682,7 @@ namespace rtree
 		// I4 [Grow tree taller]
 		if (siblingNode != nullptr)
 		{
-			Node *newRoot = new Node(minBranchFactor, maxBranchFactor);
+			Node *newRoot = new Node(treeRef, minBranchFactor, maxBranchFactor);
 
 			this->parent = newRoot;
 			newRoot->boundingBoxes.push_back(this->boundingBox());

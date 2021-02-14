@@ -4,7 +4,7 @@ namespace rtree
 {
 	RTree::RTree(unsigned minBranchFactor, unsigned maxBranchFactor)
 	{
-		root = new Node(minBranchFactor, maxBranchFactor);
+		root = new Node(*this, minBranchFactor, maxBranchFactor);
 	}
 
 	RTree::RTree(Node *root)

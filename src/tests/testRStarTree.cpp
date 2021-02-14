@@ -9,7 +9,7 @@ static rstartree::Node::NodeEntry createBranchEntry(const Rectangle &boundingBox
 	return b;
 }
 
-static rstartree::Node *createFullLeafNode(const rstartree::RStarTree &treeRef, Point p=Point::atOrigin)
+static rstartree::Node *createFullLeafNode(rstartree::RStarTree &treeRef, Point p=Point::atOrigin)
 {
 	rstartree::Node *node = new rstartree::Node(treeRef);
 	std::vector<bool> reInsertedAtLevel = {false};

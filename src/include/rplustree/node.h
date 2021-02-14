@@ -21,6 +21,10 @@
 
 namespace rplustree
 {
+
+	// Forward ref
+	class RPlusTree;
+
 	class Node
 	{
 		private:
@@ -32,6 +36,7 @@ namespace rplustree
 				unsigned level;
 			};
 
+			RPlusTree &treeRef;
 			unsigned minBranchFactor;
 			unsigned maxBranchFactor;
 
@@ -64,8 +69,8 @@ namespace rplustree
 			std::vector<Point> data;
 
 			// Constructors and destructors
-			Node();
-			Node(unsigned minBranch, unsigned maxBranch, Node *p=nullptr);
+			Node(RPlusTree &treeRef);
+			Node(RPlusTree &treeRef, unsigned minBranch, unsigned maxBranch, Node *p=nullptr);
 			void deleteSubtrees();
 
 			// Helper functions

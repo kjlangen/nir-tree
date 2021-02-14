@@ -1,20 +1,18 @@
 #include <nirtree/node.h>
+#include <nirtree/nirtree.h>
 
 namespace nirtree
 {
-	std::vector<unsigned> Node::histogramSearch = std::vector<unsigned>(1000, 0);
-	std::vector<unsigned> Node::histogramLeaves = std::vector<unsigned>(1000000, 0);
-	std::vector<unsigned> Node::histogramRangeSearch = std::vector<unsigned>(1000000, 0);
-	std::vector<unsigned> Node::histogramRangeLeaves = std::vector<unsigned>(1000000, 0);
-
-	Node::Node()
+	Node::Node(NIRTree &treeRef) :
+		treeRef(treeRef)
 	{
 		minBranchFactor = 0;
 		maxBranchFactor = 0;
 		parent = nullptr;
 	}
 
-	Node::Node(unsigned minBranch, unsigned maxBranch, Node *p)
+	Node::Node(NIRTree &treeRef, unsigned minBranch, unsigned maxBranch, Node *p) :
+		treeRef(treeRef)
 	{
 		minBranchFactor = minBranch;
 		maxBranchFactor = maxBranch;
@@ -146,15 +144,11 @@ namespace nirtree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		STATEXEC(unsigned nodesSearched = 0);
-		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
-
-			STATEXEC(++nodesSearched);
 
 			if (currentContext->branches.size() == 0)
 			{
@@ -166,8 +160,7 @@ namespace nirtree
 						accumulator.push_back(dataPoint);
 					}
 				}
-
-				STATEXEC(++leavesSearched);
+				treeRef.stats.markLeafSearched();
 			}
 			else
 			{
@@ -180,11 +173,11 @@ namespace nirtree
 						context.push(branch.child);
 					}
 				}
+				treeRef.stats.markNonLeafNodeSearched();
 			}
 		}
 
-		STATEXEC(++histogramSearch[nodesSearched]);
-		STATEXEC(++histogramLeaves[leavesSearched]);
+		treeRef.stats.resetSearchTracker<false>();
 
 		return accumulator;
 	}
@@ -197,15 +190,11 @@ namespace nirtree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		STATEXEC(unsigned nodesSearched = 0);
-		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
-
-			STATEXEC(++nodesSearched);
 
 			if (currentContext->branches.size() == 0)
 			{
@@ -218,7 +207,7 @@ namespace nirtree
 					}
 				}
 
-				STATEXEC(++leavesSearched);
+				treeRef.stats.markLeafSearched();
 			}
 			else
 			{
@@ -231,11 +220,10 @@ namespace nirtree
 						context.push(branch.child);
 					}
 				}
+				treeRef.stats.markNonLeafNodeSearched();
 			}
 		}
-
-		STATEXEC(++histogramRangeSearch[nodesSearched]);
-		STATEXEC(++histogramRangeLeaves[leavesSearched]);
+		treeRef.stats.resetSearchTracker<true>();
 
 		return accumulator;
 	}
@@ -456,7 +444,7 @@ namespace nirtree
 			referencePoly = IsotheticPolygon(boundingBox());
 		}
 
-		SplitResult split = {{new Node(minBranchFactor, maxBranchFactor, parent), referencePoly}, {new Node(minBranchFactor, maxBranchFactor, parent), referencePoly}};
+		SplitResult split = {{new Node(treeRef, minBranchFactor, maxBranchFactor, parent), referencePoly}, {new Node(treeRef, minBranchFactor, maxBranchFactor, parent), referencePoly}};
 		unsigned branchesSize = branches.size();
 		unsigned dataSize = data.size();
 
@@ -601,7 +589,7 @@ namespace nirtree
 
 		for (; pacerChild->branches.size() > 0; pacerChild = pacerChild->branches.front().child)
 		{
-			pushChild->branches.push_back({new Node(minBranchFactor, maxBranchFactor, pushChild), IsotheticPolygon(Rectangle(givenPoint, givenPoint))});
+			pushChild->branches.push_back({new Node(treeRef, minBranchFactor, maxBranchFactor, pushChild), IsotheticPolygon(Rectangle(givenPoint, givenPoint))});
 			pushChild = pushChild->branches.front().child;
 		}
 
@@ -629,7 +617,7 @@ namespace nirtree
 		// Grow the tree taller if we need to
 		if (finalSplit.leftBranch.child != nullptr && finalSplit.rightBranch.child != nullptr)
 		{
-			Node *newRoot = new Node(backupMinBranchFactor, backupMaxBranchFactor, nullptr);
+			Node *newRoot = new Node(treeRef, backupMinBranchFactor, backupMaxBranchFactor, nullptr);
 
 			finalSplit.leftBranch.child->parent = newRoot;
 			newRoot->branches.push_back(finalSplit.leftBranch);
@@ -918,38 +906,8 @@ namespace nirtree
 				STATHIST(i, histogramPolygon[i]);
 			}
 		}
-		STATSEARCHHIST();
-		for (unsigned i = 0; i < histogramSearch.size(); ++i)
-		{
-			if (histogramSearch[i] > 0)
-			{
-				STATHIST(i, histogramSearch[i]);
-			}
-		}
-		STATLEAVESHIST();
-		for (unsigned i = 0; i < histogramLeaves.size(); ++i)
-		{
-			if (histogramLeaves[i] > 0)
-			{
-				STATHIST(i, histogramLeaves[i]);
-			}
-		}
-		STATRANGESEARCHHIST();
-		for (unsigned i = 0; i < histogramRangeSearch.size(); ++i)
-		{
-			if (histogramRangeSearch[i] > 0)
-			{
-				STATHIST(i, histogramRangeSearch[i]);
-			}
-		}
-		STATRANGELEAVESHIST();
-		for (unsigned i = 0; i < histogramRangeLeaves.size(); ++i)
-		{
-			if (histogramRangeLeaves[i] > 0)
-			{
-				STATHIST(i, histogramRangeLeaves[i]);
-			}
-		}
+		std::cout << treeRef.stats;
+
 		STATEXEC(std::cout << "### ### ### ###" << std::endl);
 	}
 }

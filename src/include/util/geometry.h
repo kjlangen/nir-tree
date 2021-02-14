@@ -17,9 +17,10 @@
 
 class Point
 {
-	double values[dimensions];
 
 	public:
+
+		double values[dimensions];
 		static Point atInfinity;
 		static Point atNegInfinity;
 		static Point atOrigin;
@@ -28,6 +29,7 @@ class Point
 
 		Point(double x, double y);
 		Point(double value);
+		Point(const Point &o);
 
 		bool orderedCompare(const Point &rhs, unsigned startingDimension) const;
 		double distance(const Point &p) const;
@@ -77,6 +79,7 @@ class Rectangle
 		Rectangle();
 		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
+		Rectangle(const Rectangle &o);
 		double area() const;
 		double margin() const;
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;

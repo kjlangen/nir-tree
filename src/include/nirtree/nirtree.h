@@ -12,6 +12,7 @@
 #include <nirtree/node.h>
 #include <index/index.h>
 #include <util/bmpPrinter.h>
+#include <util/statistics.h>
 
 namespace nirtree
 {
@@ -19,6 +20,7 @@ namespace nirtree
 	{
 		public:
 			Node *root;
+            Statistics stats;
 
 			// Constructors and destructors
 			NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor);
