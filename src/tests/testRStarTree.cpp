@@ -938,4 +938,3 @@ TEST_CASE("R*Tree: reInsertAccountsForNewTreeDepth")
 	REQUIRE(root->parent->level == 3);
 }
 
-/* vim: set noexpandtab: */

@@ -3,7 +3,7 @@
 
 #define unlikely(x) __builtin_expect((x),0)
 
-#if !defined(STAT)
+#ifndef STAT
 	#define CONST_IF_NOT_STAT const
 #else
 	#define CONST_IF_NOT_STAT 

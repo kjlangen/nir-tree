@@ -648,7 +648,7 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Range search OK." << std::endl;
 
 	// Gather statistics
-#if defined(STAT)
+#ifdef STAT
 	spatialIndex->stat();
 	std::cout << "Statistics OK." << std::endl;
 #endif

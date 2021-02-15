@@ -178,7 +178,7 @@ namespace rstartree
 			bool isLeaf = curNode->isLeafNode();
 			if (isLeaf)
 			{
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markLeafSearched();
 #endif
 				for (const auto &entry : curNode->entries)
@@ -193,7 +193,7 @@ namespace rstartree
 			}
 			else
 			{
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markNonLeafNodeSearched();
 #endif
 				for (const auto &entry : curNode->entries)
@@ -222,7 +222,7 @@ namespace rstartree
 			bool isLeaf = curNode->isLeafNode();
 			if (isLeaf)
 			{
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markLeafSearched();
 #endif
 				for (const auto &entry : curNode->entries)
@@ -237,7 +237,7 @@ namespace rstartree
 			}
 			else
 			{
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markNonLeafNodeSearched();
 #endif
 				for (const auto &entry : curNode->entries)
@@ -260,7 +260,7 @@ namespace rstartree
 
 		searchSub(requestedPoint, accumulator);
 
-#if defined(STAT)
+#ifdef STAT
 		treeRef.stats.resetSearchTracker<false>();
 #endif
 		return accumulator;
@@ -272,7 +272,7 @@ namespace rstartree
 
 		searchSub(requestedRectangle, matchingPoints);
 
-#if defined(STAT)
+#ifdef STAT
 		treeRef.stats.resetSearchTracker<true>();
 #endif
 		return matchingPoints;
@@ -1146,7 +1146,7 @@ namespace rstartree
 
 	void Node::stat() const
 	{
-#if defined(STAT)
+#ifdef STAT
 		struct StatWalker
 		{
 			size_t memoryFootprint;
@@ -1230,5 +1230,3 @@ namespace rstartree
 		return Rectangle(p, p);
 	}
 }
-
-/* vim: set noexpandtab: */

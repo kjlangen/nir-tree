@@ -160,7 +160,7 @@ namespace nirtree
 						accumulator.push_back(dataPoint);
 					}
 				}
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markLeafSearched();
 #endif
 			}
@@ -175,13 +175,13 @@ namespace nirtree
 						context.push(branch.child);
 					}
 				}
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markNonLeafNodeSearched();
 #endif
 			}
 		}
 
-#if defined(STAT)
+#ifdef STAT
 		treeRef.stats.resetSearchTracker<false>();
 #endif
 
@@ -213,7 +213,7 @@ namespace nirtree
 					}
 				}
 
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markLeafSearched();
 #endif
 			}
@@ -228,12 +228,12 @@ namespace nirtree
 						context.push(branch.child);
 					}
 				}
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markNonLeafNodeSearched();
 #endif
 			}
 		}
-#if defined(STAT)
+#ifdef STAT
 		treeRef.stats.resetSearchTracker<true>();
 #endif
 
@@ -826,7 +826,7 @@ namespace nirtree
 
 	void Node::stat()
 	{
-#if defined(STAT)
+#ifdef STAT
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);

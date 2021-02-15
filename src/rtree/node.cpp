@@ -888,7 +888,7 @@ namespace rtree
 
 	void Node::stat()
 	{
-#if defined(STAT)
+#ifdef STAT
 		unsigned long childrenSize;
 		unsigned long dataSize;
 		size_t memoryFootprint = 0;

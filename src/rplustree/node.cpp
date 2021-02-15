@@ -143,7 +143,7 @@ namespace rplustree
 					}
 				}
 
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markLeafSearched();
 #endif
 			}
@@ -159,13 +159,13 @@ namespace rplustree
 					}
 				}
 
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markNonLeafNodeSearched();
 #endif
 			}
 		}
 
-#if defined(STAT)
+#ifdef STAT
 		treeRef.stats.resetSearchTracker<false>();
 #endif
 
@@ -197,7 +197,7 @@ namespace rplustree
 					}
 				}
 
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markLeafSearched();
 #endif
 			}
@@ -212,13 +212,13 @@ namespace rplustree
 						context.push(currentContext->branches[i].child);
 					}
 				}
-#if defined(STAT)
+#ifdef STAT
 				treeRef.stats.markNonLeafNodeSearched();
 #endif
 			}
 		}
 
-#if defined(STAT)
+#ifdef STAT
 		treeRef.stats.resetSearchTracker<true>();
 #endif
 
@@ -715,7 +715,7 @@ namespace rplustree
 
 	void Node::stat()
 	{
-#if defined(STAT)
+#ifdef STAT
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);

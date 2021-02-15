@@ -20,7 +20,7 @@ namespace rplustree
 	{
 		public:
 			Node *root;
-#if defined(STAT)
+#ifdef STAT
 			Statistics stats;
 #endif
 
