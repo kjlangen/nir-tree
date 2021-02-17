@@ -4,7 +4,7 @@ namespace nirtree
 {
 	NIRTree::NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor)
 	{
-		root = new Node(minBranchFactor, maxBranchFactor);
+		root = new Node(*this, minBranchFactor, maxBranchFactor);
 	}
 
 	NIRTree::NIRTree(Node *root)
@@ -26,12 +26,12 @@ namespace nirtree
 		return v;
 	}
 
-	std::vector<Point> NIRTree::search(Point requestedPoint)
+	std::vector<Point> NIRTree::search(Point requestedPoint) CONST_IF_NOT_STAT
 	{
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> NIRTree::search(Rectangle requestedRectangle)
+	std::vector<Point> NIRTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
 	{
 		return root->search(requestedRectangle);
 	}

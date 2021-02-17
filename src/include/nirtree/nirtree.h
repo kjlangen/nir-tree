@@ -12,6 +12,7 @@
 #include <nirtree/node.h>
 #include <index/index.h>
 #include <util/bmpPrinter.h>
+#include <util/statistics.h>
 
 namespace nirtree
 {
@@ -19,6 +20,7 @@ namespace nirtree
 	{
 		public:
 			Node *root;
+			Statistics stats;
 
 			// Constructors and destructors
 			NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor);
@@ -27,8 +29,8 @@ namespace nirtree
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);
-			std::vector<Point> search(Point requestedPoint);
-			std::vector<Point> search(Rectangle requestedRectangle);
+			std::vector<Point> search(Point requestedPoint) CONST_IF_NOT_STAT;
+			std::vector<Point> search(Rectangle requestedRectangle) CONST_IF_NOT_STAT;
 			void insert(Point givenPoint);
 			void remove(Point givenPoint);
 

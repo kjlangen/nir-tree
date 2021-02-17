@@ -24,17 +24,11 @@ namespace rstartree
 	class Node
 	{
 		private:
-			static std::vector<unsigned> histogramSearch;
-			static std::vector<unsigned> histogramLeaves;
-			static std::vector<unsigned> histogramRangeSearch;
-			static std::vector<unsigned> histogramRangeLeaves;
-			static unsigned leavesSearched;
-			static unsigned nodesSearched;
 
-			const RStarTree &treeRef;
+			RStarTree &treeRef;
 
-			void searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) const;
-			void searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) const;
+			void searchSub(const Point &requestedPoint, std::vector<Point> &accumulator) CONST_IF_NOT_STAT;
+			void searchSub(const Rectangle &rectangle, std::vector<Point> &accumulator) CONST_IF_NOT_STAT;
 
 		public:
 			class Branch
@@ -45,7 +39,6 @@ namespace rstartree
 
 					Branch(Rectangle boundingBox, Node *child) : boundingBox(boundingBox), child(child) {}
 					Branch(const Branch &other) : boundingBox(other.boundingBox), child(other.child) {}
-					~Branch();
 
 					bool operator==(const Branch &o) const;
 			};
@@ -53,22 +46,25 @@ namespace rstartree
 
 			Node *parent;
 			std::vector<NodeEntry> entries;
-			unsigned level = 0;
+			unsigned level;
 
 			// Constructors and destructors
-			Node(const RStarTree &treeRef, Node *p=nullptr);
+			Node(RStarTree &treeRef, Node *p=nullptr, unsigned level=0);
 			void deleteSubtrees();
 
 			// Helper functions
 			Rectangle boundingBox() const;
-			void updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
+			bool updateBoundingBox(Node *child, Rectangle updatedBoundingBox);
 			void removeChild(Node *child);
 			void removeData(const Point &givenPoint);
 			Node *chooseSubtree(const NodeEntry &nodeEntry);
 			Node *findLeaf(const Point &givenPoint);
-			inline bool isLeafNode() const { return entries.empty() or std::holds_alternative<Point>( entries[0] ); }
+			inline bool isLeafNode() const { return level == 0; }
 			double computeTotalMarginSum();
+			double computeTotalMarginSum(std::vector<NodeEntry *> ptrs);
 			void entrySort(unsigned startingDimension);
+			unsigned chooseSplitLeafAxis();
+			unsigned chooseSplitNonLeafAxis();
 			unsigned chooseSplitAxis();
 			unsigned chooseSplitIndex(unsigned axis);
 			Node *splitNode();
@@ -79,8 +75,9 @@ namespace rstartree
 
 			// Datastructure interface functions
 			void exhaustiveSearch(const Point &requestedPoint, std::vector<Point> &accumulator) const;
-			std::vector<Point> search(const Point &requestedPoint) const;
-			std::vector<Point> search(const Rectangle &requestedRectangle) const;
+
+			std::vector<Point> search(const Point &requestedPoint) CONST_IF_NOT_STAT;
+			std::vector<Point> search(const Rectangle &requestedRectangle) CONST_IF_NOT_STAT;
 
 			// These return the root of the tree.
 			Node *insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel);

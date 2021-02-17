@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <util/geometry.h>
+#include <util/statistics.h>
 
 class Index
 {
@@ -10,8 +11,8 @@ class Index
 		virtual ~Index() {};
 
 		virtual std::vector<Point> exhaustiveSearch(Point requestedPoint) = 0;
-		virtual std::vector<Point> search(Point requestedPoint) = 0;
-		virtual std::vector<Point> search(Rectangle requestedRectangle) = 0;
+		virtual std::vector<Point> search(Point requestedPoint) CONST_IF_NOT_STAT = 0;
+		virtual std::vector<Point> search(Rectangle requestedRectangle) CONST_IF_NOT_STAT = 0;
 		virtual void insert(Point givenPoint) = 0;
 		virtual void remove(Point givenPoint) = 0;
 		virtual unsigned checksum() = 0;

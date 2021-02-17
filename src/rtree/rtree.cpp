@@ -4,7 +4,7 @@ namespace rtree
 {
 	RTree::RTree(unsigned minBranchFactor, unsigned maxBranchFactor)
 	{
-		root = new Node(minBranchFactor, maxBranchFactor);
+		root = new Node(*this, minBranchFactor, maxBranchFactor);
 	}
 
 	RTree::RTree(Node *root)
@@ -26,12 +26,12 @@ namespace rtree
 		return v;
 	}
 
-	std::vector<Point> RTree::search(Point requestedPoint)
+	std::vector<Point> RTree::search(Point requestedPoint) CONST_IF_NOT_STAT
 	{
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> RTree::search(Rectangle requestedRectangle)
+	std::vector<Point> RTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
 	{
 		return root->search(requestedRectangle);
 	}

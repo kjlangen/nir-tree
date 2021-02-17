@@ -1,20 +1,18 @@
 #include <rplustree/node.h>
+#include <rplustree/rplustree.h>
 
 namespace rplustree
 {
-	std::vector<unsigned> Node::histogramSearch = std::vector<unsigned>(1000, 0);
-	std::vector<unsigned> Node::histogramLeaves = std::vector<unsigned>(1000000, 0);
-	std::vector<unsigned> Node::histogramRangeSearch = std::vector<unsigned>(1000000, 0);
-	std::vector<unsigned> Node::histogramRangeLeaves = std::vector<unsigned>(1000000, 0);
-
-	Node::Node()
+	Node::Node(RPlusTree &treeRef) :
+		treeRef(treeRef)
 	{
 		minBranchFactor = 0;
 		maxBranchFactor = 0;
 		parent = nullptr;
 	}
 
-	Node::Node(unsigned minBranch, unsigned maxBranch, Node *p)
+	Node::Node(RPlusTree &treeRef, unsigned minBranch, unsigned maxBranch, Node *p) :
+		treeRef(treeRef)
 	{
 		minBranchFactor = minBranch;
 		maxBranchFactor = maxBranch;
@@ -128,15 +126,11 @@ namespace rplustree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		STATEXEC(unsigned nodesSearched = 0);
-		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
-
-			STATEXEC(++nodesSearched);
 
 			if (currentContext->branches.size() == 0)
 			{
@@ -149,7 +143,9 @@ namespace rplustree
 					}
 				}
 
-				STATEXEC(++leavesSearched);
+#ifdef STAT
+				treeRef.stats.markLeafSearched();
+#endif
 			}
 			else
 			{
@@ -162,11 +158,16 @@ namespace rplustree
 						context.push(currentContext->branches[i].child);
 					}
 				}
+
+#ifdef STAT
+				treeRef.stats.markNonLeafNodeSearched();
+#endif
 			}
 		}
 
-		STATEXEC(++histogramSearch[nodesSearched]);
-		STATEXEC(++histogramLeaves[leavesSearched]);
+#ifdef STAT
+		treeRef.stats.resetSearchTracker<false>();
+#endif
 
 		return matchingPoints;
 	}
@@ -179,15 +180,11 @@ namespace rplustree
 		std::stack<Node *> context;
 		context.push(this);
 		Node *currentContext;
-		STATEXEC(unsigned nodesSearched = 0);
-		STATEXEC(unsigned leavesSearched = 0);
 
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
 			context.pop();
-
-			STATEXEC(++nodesSearched);
 
 			if (currentContext->branches.size() == 0)
 			{
@@ -200,7 +197,9 @@ namespace rplustree
 					}
 				}
 
-				STATEXEC(++leavesSearched);
+#ifdef STAT
+				treeRef.stats.markLeafSearched();
+#endif
 			}
 			else
 			{
@@ -213,11 +212,15 @@ namespace rplustree
 						context.push(currentContext->branches[i].child);
 					}
 				}
+#ifdef STAT
+				treeRef.stats.markNonLeafNodeSearched();
+#endif
 			}
 		}
 
-		STATEXEC(++histogramRangeSearch[nodesSearched]);
-		STATEXEC(++histogramRangeLeaves[leavesSearched]);
+#ifdef STAT
+		treeRef.stats.resetSearchTracker<true>();
+#endif
 
 		return matchingPoints;
 	}
@@ -388,8 +391,8 @@ namespace rplustree
 	// Splitting a node will remove it from its parent node and its memory will be freed
 	Node::SplitResult Node::splitNode(Partition p)
 	{
-		Node *left = new Node(minBranchFactor, maxBranchFactor, parent);
-		Node *right = new Node(minBranchFactor, maxBranchFactor, parent);
+		Node *left = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
+		Node *right = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
 		unsigned dataSize = data.size();
 		unsigned branchesSize = branches.size();
 
@@ -524,7 +527,7 @@ namespace rplustree
 		// Grow the tree taller if we need to
 		if (finalSplit.leftBranch.child != nullptr && finalSplit.rightBranch.child != nullptr)
 		{
-			Node *newRoot = new Node(backupMinBranchFactor, backupMaxBranchFactor, nullptr);
+			Node *newRoot = new Node(treeRef, backupMinBranchFactor, backupMaxBranchFactor, nullptr);
 
 			finalSplit.leftBranch.child->parent = newRoot;
 			newRoot->branches.push_back(finalSplit.leftBranch);
@@ -712,6 +715,7 @@ namespace rplustree
 
 	void Node::stat()
 	{
+#ifdef STAT
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
@@ -734,9 +738,9 @@ namespace rplustree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 			unsigned fanout = branchesSize == 0 ? dataSize : branchesSize;
-			if (fanout > histogramFanout.size() - 1)
+			if (unlikely(fanout >= histogramFanout.size()))
 			{
-				histogramFanout.resize(fanout, 0);
+				histogramFanout.resize(2*fanout, 0);
 			}
 			++histogramFanout[fanout];
 
@@ -776,37 +780,9 @@ namespace rplustree
 				STATHIST(i, histogramFanout[i]);
 			}
 		}
-		STATSEARCHHIST();
-		for (unsigned i = 0; i < histogramSearch.size(); ++i)
-		{
-			if (histogramSearch[i] > 0)
-			{
-				STATHIST(i, histogramSearch[i]);
-			}
-		}
-		STATLEAVESHIST();
-		for (unsigned i = 0; i < histogramLeaves.size(); ++i)
-		{
-			if (histogramLeaves[i] > 0)
-			{
-				STATHIST(i, histogramLeaves[i]);
-			}
-		}
-		STATRANGESEARCHHIST();
-		for (unsigned i = 0; i < histogramRangeSearch.size(); ++i)
-		{
-			if (histogramRangeSearch[i] > 0)
-			{
-				STATHIST(i, histogramRangeSearch[i]);
-			}
-		}
-		STATRANGELEAVESHIST();
-		for (unsigned i = 0; i < histogramRangeLeaves.size(); ++i)
-		{
-			if (histogramRangeLeaves[i] > 0)
-			{
-				STATHIST(i, histogramRangeLeaves[i]);
-			}
-		}
+		std::cout << treeRef.stats;
+#else
+		(void) 0;
+#endif
 	}
 }

@@ -13,6 +13,9 @@
 
 namespace rtree
 {
+
+    class RTree;
+
 	class Node
 	{
 		class ReinsertionEntry
@@ -24,6 +27,7 @@ namespace rtree
 				unsigned level;
 		};
 
+		RTree &treeRef;
 		unsigned minBranchFactor;
 		unsigned maxBranchFactor;
 
@@ -34,8 +38,8 @@ namespace rtree
 			std::vector<Point> data;
 
 			// Constructors and destructors
-			Node();
-			Node(unsigned minBranchFactor, unsigned maxBranchFactor, Node *p=nullptr);
+			Node(RTree &treeRef);
+			Node(RTree &treeRef, unsigned minBranchFactor, unsigned maxBranchFactor, Node *p=nullptr);
 			void deleteSubtrees();
 
 			// Helper functions

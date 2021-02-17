@@ -200,74 +200,56 @@ Point operator*(const Point &lhs, const Point &rhs)
 
 bool operator<(const Point &lhs, const Point &rhs)
 {
-	bool result = true;
-
-	for (unsigned d = 0; d < dimensions && result; ++d)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		result = result && lhs[d] < rhs[d];
+		if (lhs[d] >= rhs[d]) return false;
 	}
 
-	return result;
+	return true;
 }
 
 bool operator>(const Point &lhs, const Point &rhs)
 {
-	bool result = true;
-
-	for (unsigned d = 0; d < dimensions && result; ++d)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		result = result && lhs[d] > rhs[d];
+		if (lhs[d] <= rhs[d]) return false;
 	}
 
-	return result;
+	return true;
 }
 
 bool operator<=(const Point &lhs, const Point &rhs)
 {
-	bool result = true;
-
-	for (unsigned d = 0; d < dimensions && result; ++d)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		result = result && lhs[d] <= rhs[d];
+		if (lhs[d] > rhs[d]) return false;
 	}
-
-	return result;
+	return true;
 }
 
 bool operator>=(const Point &lhs, const Point &rhs)
 {
-	bool result = true;
-
-	for (unsigned d = 0; d < dimensions && result; ++d)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		result = result && lhs[d] >= rhs[d];
+		if (lhs[d] < rhs[d]) return false;
 	}
 
-	return result;
+	return true;
 }
 
 bool operator==(const Point &lhs, const Point &rhs)
 {
-	bool result = true;
-
-	for (unsigned d = 0; d < dimensions && result; ++d)
+	for (unsigned d = 0; d < dimensions; ++d)
 	{
-		result = result && lhs[d] == rhs[d];
+		if (lhs[d] != rhs[d]) return false;
 	}
 
-	return result;
+	return true;
 }
 
 bool operator!=(const Point &lhs, const Point &rhs)
 {
-	bool result = false;
-
-	for (unsigned d = 0; d < dimensions && !result; ++d)
-	{
-		result = result || lhs[d] != rhs[d];
-	}
-
-	return result;
+	return !(lhs==rhs);
 }
 
 std::ostream& operator<<(std::ostream &os, const Point &p)

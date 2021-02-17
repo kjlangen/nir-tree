@@ -153,7 +153,11 @@ Point *generateCalifornia()
 Point *generateBiological()
 {
 	// Dataset is pre-generated and requires 3 dimensions
-	assert(dimensions == 3);
+	if (dimensions != 3)
+    {
+        std::cout << "Incorrect dimensions for biol: " << dimensions << std::endl;
+        exit(1);
+    }
 
 	// Setup file reader and double buffer
 	std::fstream file;
@@ -258,7 +262,7 @@ Rectangle *generateBitRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/bit02.2" : "/home/kjlangen/nir-tree/bit03.2";
+	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02.2" : "/home/kjlangen/nir-tree/data/bit03.2";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -296,7 +300,7 @@ Rectangle *generateHazeRectangles()
 
 	// Setup file reader and double buffef
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/pha02.2" : "/home/kjlangen/nir-tree/pha03.2";
+	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02.2" : "/home/kjlangen/nir-tree/data/pha03.2";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file, dataPath);
 	char *buffer = new char[sizeof(double)];
@@ -644,8 +648,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Range search OK." << std::endl;
 
 	// Gather statistics
-	STATEXEC(spatialIndex->stat());
-	STATEXEC(std::cout << "Statistics OK." << std::endl);
+#ifdef STAT
+	spatialIndex->stat();
+	std::cout << "Statistics OK." << std::endl;
+#endif
 
 	// Validate checksum
 	if (spatialIndex->checksum() != directSum)

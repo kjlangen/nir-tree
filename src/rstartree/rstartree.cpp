@@ -6,6 +6,7 @@ namespace rstartree
 	{
 		hasReinsertedOnLevel = {false};
 		root = new Node(*this);
+		root->level = 0;
 	}
 
 	RStarTree::~RStarTree()
@@ -22,14 +23,14 @@ namespace rstartree
 		return v;
 	}
 
-	std::vector<Point> RStarTree::search(Point requestedPoint)
+	std::vector<Point> RStarTree::search(Point requestedPoint) CONST_IF_NOT_STAT
 	{
 		assert(root->parent == nullptr);
 
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> RStarTree::search(Rectangle requestedRectangle)
+	std::vector<Point> RStarTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
 	{
 		return root->search(requestedRectangle);
 	}
@@ -39,13 +40,6 @@ namespace rstartree
 		assert(root->parent == nullptr);
 
 		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
-#ifndef NDEBUG
-		for (const auto &b : hasReinsertedOnLevel)
-		{
-			assert(!b);
-		}
-#endif
-
 		root = root->insert(givenPoint, hasReinsertedOnLevel);
 	}
 
@@ -53,6 +47,7 @@ namespace rstartree
 	{
 		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
 		root = root->remove(givenPoint, hasReinsertedOnLevel);
+        assert(root->parent == nullptr);
 	}
 
 	unsigned RStarTree::checksum()

@@ -23,6 +23,9 @@
 
 namespace nirtree
 {
+
+    class NIRTree;
+
 	class Node
 	{
 		private:
@@ -34,13 +37,10 @@ namespace nirtree
 				unsigned level;
 			};
 
+			NIRTree &treeRef;
 			unsigned minBranchFactor;
 			unsigned maxBranchFactor;
 
-			static std::vector<unsigned> histogramSearch;
-			static std::vector<unsigned> histogramLeaves;
-			static std::vector<unsigned> histogramRangeSearch;
-			static std::vector<unsigned> histogramRangeLeaves;
 
 		public:
 			struct Branch
@@ -66,8 +66,8 @@ namespace nirtree
 			std::vector<Point> data;
 
 			// Constructors and destructors
-			Node();
-			Node(unsigned minBranch, unsigned maxBranch, Node *p=nullptr);
+			Node(NIRTree &treeRef);
+			Node(NIRTree &treeRef, unsigned minBranch, unsigned maxBranch, Node *p=nullptr);
 			void deleteSubtrees();
 
 			// Helper functions

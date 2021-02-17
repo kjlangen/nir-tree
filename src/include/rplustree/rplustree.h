@@ -12,6 +12,7 @@
 #include <rplustree/node.h>
 #include <index/index.h>
 #include <util/bmpPrinter.h>
+#include <util/statistics.h>
 
 namespace rplustree
 {
@@ -19,6 +20,9 @@ namespace rplustree
 	{
 		public:
 			Node *root;
+#ifdef STAT
+			Statistics stats;
+#endif
 
 			// Constructors and destructors
 			RPlusTree(unsigned minBranchFactor, unsigned maxBranchFactor);
@@ -27,8 +31,8 @@ namespace rplustree
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);
-			std::vector<Point> search(Point requestedPoint);
-			std::vector<Point> search(Rectangle requestedRectangle);
+			std::vector<Point> search(Point requestedPoint) CONST_IF_NOT_STAT;
+			std::vector<Point> search(Rectangle requestedRectangle) CONST_IF_NOT_STAT;
 			void insert(Point givenPoint);
 			void remove(Point givenPoint);
 
