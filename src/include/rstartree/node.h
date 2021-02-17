@@ -59,9 +59,12 @@ namespace rstartree
 			void removeData(const Point &givenPoint);
 			Node *chooseSubtree(const NodeEntry &nodeEntry);
 			Node *findLeaf(const Point &givenPoint);
-			inline bool isLeafNode() const { return entries.empty() or std::holds_alternative<Point>( entries[0] ); }
+			inline bool isLeafNode() const { return level == 0; }
 			double computeTotalMarginSum();
+			double computeTotalMarginSum(std::vector<NodeEntry *> ptrs);
 			void entrySort(unsigned startingDimension);
+			unsigned chooseSplitLeafAxis();
+			unsigned chooseSplitNonLeafAxis();
 			unsigned chooseSplitAxis();
 			unsigned chooseSplitIndex(unsigned axis);
 			Node *splitNode();

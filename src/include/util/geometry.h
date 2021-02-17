@@ -18,9 +18,10 @@
 class Point
 {
 
-	double values[dimensions];
 
 	public:
+
+        double values[dimensions];
 
 		static Point atInfinity;
 		static Point atNegInfinity;
