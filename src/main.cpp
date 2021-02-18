@@ -19,6 +19,7 @@ void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, 
 	std::cout << "  benchmark = " << benchTypes[configU["distribution"]] << std::endl;
 	std::cout << "  min/max branches = " << configU["minfanout"] << "/" << configU["maxfanout"] << std::endl;
 	std::cout << "  n = " << configU["size"] << std::endl;
+	std::cout << "  dimensions = " << dimensions << std::endl;
 	std::cout << "  seed = " << configU["seed"] << std::endl;
 	std::cout << "  search rectangles = " << configU["rectanglescount"] << std::endl;
 	std::cout << "  visualization = " << (configU["visualization"] ? "on" : "off") << std::endl;
