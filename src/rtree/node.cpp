@@ -369,7 +369,7 @@ namespace rtree
 
 		// Compute the first entry in each group based on PS1 & PS2
 		Rectangle temp;
-		double maxWasted = std::numeric_limits<double>::infinity();
+		double maxWasted = 0;
 		Rectangle iBox, jBox;
 		for (unsigned i = 0; i < boundingBoxesSize; ++i)
 		{
@@ -552,7 +552,7 @@ namespace rtree
 
 		// This rectangle drank too much and represents how wasted iData and jData are
 		Rectangle temp;
-		double maxWasted = std::numeric_limits<double>::infinity();
+		double maxWasted = 0.0;
 
 		// QS1 [Pick entry for each group]
 		Point iData, jData;
