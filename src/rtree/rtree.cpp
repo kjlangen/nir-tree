@@ -53,7 +53,7 @@ namespace rtree
 
 	bool RTree::validate()
 	{
-		return true;
+		return root->validate(nullptr, 0);
 	}
 
 	void RTree::stat()

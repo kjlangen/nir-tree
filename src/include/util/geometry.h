@@ -17,8 +17,6 @@
 
 class Point
 {
-
-
 	public:
 
         double values[dimensions];
@@ -122,8 +120,9 @@ class IsotheticPolygon
 		std::vector<Rectangle> basicRectangles;
 
 		IsotheticPolygon();
-		IsotheticPolygon(const Rectangle &baseRectangle);
+		explicit IsotheticPolygon(const Rectangle &baseRectangle);
 		IsotheticPolygon(const IsotheticPolygon &basePolygon);
+
 		double area() const;
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;
 		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;

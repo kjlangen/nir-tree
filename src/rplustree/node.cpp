@@ -730,6 +730,9 @@ namespace rplustree
 		std::vector<unsigned long> histogramFanout;
 		histogramFanout.resize(maxBranchFactor, 0);
 
+		double coverage = 0.0;
+		double overlap = 0.0;
+
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
@@ -743,6 +746,20 @@ namespace rplustree
 				histogramFanout.resize(2*fanout, 0);
 			}
 			++histogramFanout[fanout];
+
+			// Compute the overlap and coverage of our children
+			for (unsigned i = 0; i < currentContext->branches.size(); ++i)
+			{
+				coverage += currentContext->branches[i].boundingBox.area();
+
+				for (unsigned j = 0; j < currentContext->branches.size(); ++j)
+				{
+					if (i != j)
+					{
+						overlap += currentContext->branches[i].boundingBox.computeIntersectionArea(currentContext->branches[j].boundingBox);
+					}
+				}
+			}
 
 			if (branchesSize == 0 && dataSize > 0)
 			{
@@ -772,6 +789,10 @@ namespace rplustree
 		STATSINGULAR(singularBranches);
 		STATLEAF(totalLeaves);
 		STATBRANCH(totalNodes - 1);
+		STATCOVER(coverage);
+		STATOVERLAP(overlap);
+		STATAVGCOVER(coverage / totalNodes);
+		STATAVGOVERLAP(overlap /totalNodes);
 		STATFANHIST();
 		for (unsigned i = 0; i < histogramFanout.size(); ++i)
 		{

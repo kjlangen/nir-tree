@@ -1196,6 +1196,8 @@ namespace rstartree
 			unsigned long totalNodes;
 			unsigned long singularBranches;
 			unsigned long totalLeaves;
+			double coverage;
+			double overlap;
 			std::vector<unsigned long> histogramFanout;
 
 			StatWalker(unsigned long maxBranchFactor)
@@ -1204,6 +1206,8 @@ namespace rstartree
 				totalNodes = 0;
 				singularBranches = 0;
 				totalLeaves = 0;
+				coverage = 0.0;
+				overlap = 0.0;
 				histogramFanout.resize(maxBranchFactor, 0);
 			}
 
@@ -1233,6 +1237,20 @@ namespace rstartree
 				}
 				else
 				{
+					// Compute the overlap and coverage of our children
+					for (unsigned i = 0; i < node->entries.size(); ++i)
+					{
+						coverage += boxFromNodeEntry(node->entries[i]).area();
+
+						for (unsigned j = 0; j < node->entries.size(); ++j)
+						{
+							if (i != j)
+							{
+								overlap += boxFromNodeEntry(node->entries[i]).computeIntersectionArea(boxFromNodeEntry(node->entries[j]));
+							}
+						}
+					}
+
 					memoryFootprint += sizeof(Node) + entriesSize * sizeof(Node *) + entriesSize * sizeof(Rectangle);
 				}
 			}
@@ -1248,6 +1266,10 @@ namespace rstartree
 		STATSINGULAR(sw.singularBranches);
 		STATLEAF(sw.totalLeaves);
 		STATBRANCH(sw.totalNodes - 1);
+		STATCOVER(sw.coverage);
+		STATOVERLAP(sw.overlap);
+		STATAVGCOVER(sw.coverage / sw.totalNodes);
+		STATAVGOVERLAP(sw.overlap / sw.totalNodes);
 		STATFANHIST();
 		for (unsigned i = 0; i < sw.histogramFanout.size(); ++i)
 		{
@@ -1257,6 +1279,8 @@ namespace rstartree
 			}
 		}
 		std::cout << treeRef.stats;
+
+		STATEXEC(std::cout << "### ### ### ###" << std::endl);
 #else
 		(void) 0;
 #endif

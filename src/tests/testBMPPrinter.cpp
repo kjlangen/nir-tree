@@ -24,8 +24,8 @@ TEST_CASE("BMPPrinter: testPrintTree")
 	nirtree::Node *branchA = new nirtree::Node(tree, 25, 50, root);
 	nirtree::Node *branchB = new nirtree::Node(tree, 25, 50, root);
 
-	root->branches.push_back({branchA, Rectangle(0.1, 0.1, 0.4, 0.4)});
-	root->branches.push_back({branchB, Rectangle(0.5, 0.5, 0.6, 0.6)});
+	root->branches.push_back({branchA, IsotheticPolygon(Rectangle(0.1, 0.1, 0.4, 0.4))});
+	root->branches.push_back({branchB, IsotheticPolygon(Rectangle(0.5, 0.5, 0.6, 0.6))});
 
 	BMPPrinter p(1920, 1080);
 

@@ -671,7 +671,7 @@ TEST_CASE("Geometry: testRectangleAlignment")
 {
 	// Test set one, general case
 	Rectangle r1 = Rectangle(-1.578, -3.452, 7878.0, 9889.0);
-	Rectangle r2 = Rectangle(7878.0, -3.452, 898989.89, 9889.0);
+	Rectangle r2 = Rectangle(7877.0, -3.452, 898989.89, 9889.0);
 	REQUIRE(r1.alignedForMerging(r2));
 
 	// Test set two, general case
@@ -1185,14 +1185,16 @@ TEST_CASE("Geometry: testPolygonIncreaseResolution")
 
 	ip1.increaseResolution(Point::atInfinity, ip2);
 
-	REQUIRE(ip1.basicRectangles.size() == 7);
-	REQUIRE(ip1.basicRectangles[0] == Rectangle(0.0, 1.5, 1.0, 5.0));
-	REQUIRE(ip1.basicRectangles[1] == Rectangle(2.5, 0.0, 3.0, 5.0));
-	REQUIRE(ip1.basicRectangles[2] == Rectangle(2.0, 3.0, 2.5, 5.0));
-	REQUIRE(ip1.basicRectangles[3] == Rectangle(2.0, 0.0, 2.5, 1.5));
-	REQUIRE(ip1.basicRectangles[4] == r3);
-	REQUIRE(ip1.basicRectangles[5] == r4);
-	REQUIRE(ip1.basicRectangles[6] == r5);
+	REQUIRE(ip1.basicRectangles.size() == 9);
+	REQUIRE(ip1.basicRectangles[0] == Rectangle(1.0, 1.0, 1.0, 5.0));
+	REQUIRE(ip1.basicRectangles[1] == Rectangle(0.0, 1.0, 0.0, 5.0));
+	REQUIRE(ip1.basicRectangles[2] == Rectangle(0.0, 1.5, 1.0, 5.0));
+	REQUIRE(ip1.basicRectangles[3] == Rectangle(2.5, 0.0, 3.0, 5.0));
+	REQUIRE(ip1.basicRectangles[4] == Rectangle(2.0, 3.0, 2.5, 5.0));
+	REQUIRE(ip1.basicRectangles[5] == Rectangle(2.0, 0.0, 2.5, 1.5));
+	REQUIRE(ip1.basicRectangles[6] == r3);
+	REQUIRE(ip1.basicRectangles[7] == r4);
+	REQUIRE(ip1.basicRectangles[8] == r5);
 
 	// Test set two, limited and maximum intersection of the reference
 	IsotheticPolygon ip3(reference);
@@ -1201,16 +1203,17 @@ TEST_CASE("Geometry: testPolygonIncreaseResolution")
 
 	ip3.increaseResolution(Point::atInfinity, ip4);
 
-	REQUIRE(ip3.basicRectangles.size() == 9);
+	REQUIRE(ip3.basicRectangles.size() == 10);
 	REQUIRE(ip3.basicRectangles[0] == r1);
 	REQUIRE(ip3.basicRectangles[1] == r2);
 	REQUIRE(ip3.basicRectangles[2] == Rectangle(3.75, 0.0, 4.0, 3.0));
 	REQUIRE(ip3.basicRectangles[3] == Rectangle(3.0, 0.0, 3.25, 3.0));
 	REQUIRE(ip3.basicRectangles[4] == Rectangle(3.25, 1.5, 3.75, 3.0));
 	REQUIRE(ip3.basicRectangles[5] == Rectangle(3.25, 0.0, 3.75, 0.5));
-	REQUIRE(ip3.basicRectangles[6] == Rectangle(3.0, 2.0, 4.25, 3.0));
-	REQUIRE(ip3.basicRectangles[7] == Rectangle(4.25, 2.5, 5.0, 3.0));
-	REQUIRE(ip3.basicRectangles[8] == r5);
+	REQUIRE(ip3.basicRectangles[6] == Rectangle(5.0, 2.0, 5.0, 3.0));
+	REQUIRE(ip3.basicRectangles[7] == Rectangle(3.0, 2.0, 4.25, 3.0));
+	REQUIRE(ip3.basicRectangles[8] == Rectangle(4.25, 2.5, 5.0, 3.0));
+	REQUIRE(ip3.basicRectangles[9] == r5);
 }
 
 TEST_CASE("Geometry: testPolygonMinMaxLimit")
@@ -1522,8 +1525,8 @@ TEST_CASE("Geometry: testPolygonRefine")
 	REQUIRE(p1.basicRectangles[1] == Rectangle(7.0, 0.0, 9.0, 7.0));
 
 	// Test set two, ducks in a row
-	r1 = Rectangle(-4.0, -1.0, 0.0, 3.0);
-	r2 = Rectangle(0.0, -1.0, 4.0, 3.0);
+	r1 = Rectangle(-4.0, -1.0, 0.1, 3.0);
+	r2 = Rectangle(0.0, -1.0, 4.1, 3.0);
 	r3 = Rectangle(4.0, -1.0, 8.0, 3.0);
 
 	p1.basicRectangles.clear();
@@ -1622,10 +1625,10 @@ TEST_CASE("Geometry: testPolygonRefine")
 	REQUIRE(p1.basicRectangles[2] == r1);
 
 	// Test set nine, combinanble in X then in Y
-	r1 = Rectangle(0.0, 2.0, 3.0, 4.0);
+	r1 = Rectangle(0.0, 1.9, 3.0, 4.0);
 	r2 = Rectangle(0.0, 1.0, 6.0, 2.0);
-	r3 = Rectangle(3.0, 2.0, 6.0, 4.0);
-	r4 = Rectangle(0.0, 0.0, 6.0, 1.0);
+	r3 = Rectangle(2.9, 1.9, 6.0, 4.0);
+	r4 = Rectangle(0.0, 0.0, 6.0, 1.1);
 
 	p1.basicRectangles.clear();
 	p1.basicRectangles.push_back(r1);

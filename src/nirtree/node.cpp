@@ -574,7 +574,7 @@ namespace nirtree
 			// Early exit if this node does not overflow
 			if (dataSize <= currentContext->maxBranchFactor && branchesSize <= currentContext->maxBranchFactor)
 			{
-				propagationSplit = {{nullptr, Rectangle()}, {nullptr, Rectangle()}};
+				propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
 				break;
 			}
 
@@ -846,6 +846,8 @@ namespace nirtree
 		std::vector<unsigned long> histogramFanout;
 		histogramFanout.resize(maxBranchFactor, 0);
 
+		double coverage = 0.0;
+
 		for (;!context.empty();)
 		{
 			currentContext = context.top();
@@ -859,6 +861,12 @@ namespace nirtree
 				histogramFanout.resize(2*fanout, 0);
 			}
 			++histogramFanout[fanout];
+
+			// Compute the overlap and coverage of our children
+			for (unsigned i = 0; i < branchesSize; ++i)
+			{
+				coverage += currentContext->branches[i].boundingPoly.area();
+			}
 
 			if (branchesSize == 0 && dataSize > 0)
 			{
@@ -901,6 +909,7 @@ namespace nirtree
 		STATSINGULAR(singularBranches);
 		STATLEAF(totalLeaves);
 		STATBRANCH(totalNodes - 1);
+		STATCOVER(coverage);
 		STATFANHIST();
 		for (unsigned i = 0; i < histogramFanout.size(); ++i)
 		{

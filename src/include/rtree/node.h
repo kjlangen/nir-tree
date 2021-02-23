@@ -50,6 +50,8 @@ namespace rtree
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
+			void moveData(unsigned fromIndex, std::vector<Point> &toData);
+			void moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<Node *> &toChildren);
 			Node *splitNode(Node *newChild);
 			Node *splitNode(Point newData);
 			Node *adjustTree(Node *siblingLeaf);
@@ -65,6 +67,7 @@ namespace rtree
 
 			// Miscellaneous
 			unsigned checksum();
+			bool validate(Node *expectedParent, unsigned index);
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 			unsigned height();

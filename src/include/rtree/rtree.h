@@ -16,6 +16,7 @@ namespace rtree
 	{
 		public:
 			Node *root;
+			Statistics stats;
 
 			// Constructors and destructors
 			RTree(unsigned minBranchFactor, unsigned maxBranchFactor);

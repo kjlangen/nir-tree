@@ -128,6 +128,10 @@ class Statistics {
 	#define STATSINGULAR(n) std::cout << "Tree Nodes w/fanout=1: " << n << std::endl
 	#define STATLEAF(n) std::cout << "Tree Leaves: " << n << std::endl
 	#define STATBRANCH(branches) std::cout << "Tree Branches: " << branches << std::endl
+	#define STATCOVER(c) std::cout << "Total Coverage: " << c << std::endl;
+	#define STATOVERLAP(o) std::cout << "Total Overlap: " << o << std::endl;
+	#define STATAVGCOVER(c) std::cout << "Avg Coverage Per Node: " << c << std::endl;
+	#define STATAVGOVERLAP(o) std::cout << "Avg Overlap Per Node: " << o << std::endl;
 	#define STATFANHIST() std::cout << "Histogram of Fanout Follows: " << std::endl
 	#define STATLINES(n) std::cout << "Bounding Lines: " << n << std::endl
 	#define STATTOTALPOLYSIZE(n) std::cout << "Total Polygon Size: " << n << std::endl
@@ -149,6 +153,10 @@ class Statistics {
 	#define STATLINES(n)
 	#define STATTOTALPOLYSIZE(n)
 	#define STATPOLYHIST()
+	#define STATCOVER(c)
+	#define STATOVERLAP(o)
+	#define STATAVGCOVER(c)
+	#define STATAVGOVERLAP(o)
 	#define STATSEARCHHIST()
 	#define STATLEAVESHIST()
 	#define STATRANGESEARCHHIST()
