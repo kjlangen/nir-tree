@@ -315,9 +315,6 @@ namespace rtree
 
 	Node *Node::findLeaf(Point givenPoint)
 	{
-		assert(this->parent == nullptr);
-		assert(this->children.size() > 0 || this->data.size() > 0);
-
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
@@ -361,15 +358,18 @@ namespace rtree
 	void Node::moveData(unsigned fromIndex, std::vector<Point> &toData)
 	{
 		toData.push_back(data[fromIndex]);
-		data.erase(data.begin() + fromIndex);
+		data[fromIndex] = data.back();
+		data.pop_back();
 	}
 
 	void Node::moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<Node *> &toChildren)
 	{
 		toRectangles.push_back(boundingBoxes[fromIndex]);
 		toChildren.push_back(children[fromIndex]);
-		boundingBoxes.erase(boundingBoxes.begin() + fromIndex);
-		children.erase(children.begin() + fromIndex);
+		boundingBoxes[fromIndex] = boundingBoxes.back();
+		boundingBoxes.pop_back();
+		children[fromIndex] = children.back();
+		children.pop_back();
 	}
 
 	Node *Node::splitNode(Node *newChild)
@@ -377,6 +377,7 @@ namespace rtree
 		// Consider newChild when splitting
 		boundingBoxes.push_back(newChild->boundingBox());
 		children.push_back(newChild);
+		newChild->parent = this;
 		unsigned boundingBoxesSize = boundingBoxes.size();
 
 		// Setup the two groups which will be the entries in the two new nodes
@@ -504,23 +505,13 @@ namespace rtree
 		// opposite group
 		if (groupABoundingBoxes.size() + boundingBoxes.size() == minBranchFactor)
 		{
-			unsigned lastIndex = groupABoundingBoxes.size();
-			groupABoundingBoxes.resize(minBranchFactor);
-			groupAChildren.resize(minBranchFactor);
-			std::move(boundingBoxes.begin(), boundingBoxes.end(), groupABoundingBoxes.begin() + lastIndex);
-			std::move(children.begin(), children.end(), groupAChildren.begin() + lastIndex);
-			// groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-			// groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
+			groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+			groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
 		}
 		else if (groupBBoundingBoxes.size() + boundingBoxes.size() == minBranchFactor)
 		{
-			unsigned lastIndex = groupBBoundingBoxes.size();
-			groupBBoundingBoxes.resize(minBranchFactor);
-			groupBChildren.resize(minBranchFactor);
-			std::move(boundingBoxes.begin(), boundingBoxes.end(), groupBBoundingBoxes.begin() + lastIndex);
-			std::move(children.begin(), children.end(), groupBChildren.begin() + lastIndex);
-			// groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-			// groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
+			groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+			groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
 		}
 		else
 		{
@@ -532,8 +523,8 @@ namespace rtree
 		Node *newSibling = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
 
 		// Fill us with groupA and the new node with groupB
-		boundingBoxes = groupABoundingBoxes;
-		children = groupAChildren;
+		boundingBoxes = std::move(groupABoundingBoxes);
+		children = std::move(groupAChildren);
 #ifndef NDEBUG
 		for (Node *child : children)
 		{
@@ -541,8 +532,8 @@ namespace rtree
 		}
 #endif
 
-		newSibling->boundingBoxes = groupBBoundingBoxes;
-		newSibling->children = groupBChildren;
+		newSibling->boundingBoxes = std::move(groupBBoundingBoxes);
+		newSibling->children = std::move(groupBChildren);
 		for (Node *child : newSibling->children)
 		{
 			child->parent = newSibling;
@@ -616,7 +607,7 @@ namespace rtree
 		// Go through the remaining entries and add them to groupA or groupB
 		double groupAAffinity, groupBAffinity;
 		// QS2 [Check if done]
-		for (;!data.empty() && (groupAData.size() + data.size() != minBranchFactor) && (groupBData.size() + data.size() != minBranchFactor);)
+		for (;!data.empty() && (groupAData.size() + data.size() > minBranchFactor) && (groupBData.size() + data.size() > minBranchFactor);)
 		{
 			// PN1 [Determine the cost of putting each entry in each group]
 			unsigned groupAIndex = 0;
@@ -676,17 +667,11 @@ namespace rtree
 		// opposite group
 		if (groupAData.size() + data.size() == minBranchFactor)
 		{
-			unsigned lastIndex = groupAData.size();
-			groupAData.resize(minBranchFactor);
-			std::move(data.begin(), data.end(), groupAData.begin() + lastIndex);
-			// groupAData.insert(groupAData.end(), data.begin(), data.end());
+			groupAData.insert(groupAData.end(), data.begin(), data.end());
 		}
 		else if (groupBData.size() + data.size() == minBranchFactor)
 		{
-			unsigned lastIndex = groupBData.size();
-			groupBData.resize(minBranchFactor);
-			std::move(data.begin(), data.end(), groupBData.begin() + lastIndex);
-			// groupBData.insert(groupBData.end(), data.begin(), data.end());
+			groupBData.insert(groupBData.end(), data.begin(), data.end());
 		}
 		else
 		{
@@ -698,8 +683,8 @@ namespace rtree
 		Node *newSibling = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
 
 		// Fill us with groupA and the new node with groupB
-		data = groupAData;
-		newSibling->data = groupBData;
+		data = std::move(groupAData);
+		newSibling->data = std::move(groupBData);
 
 		// Return our newly minted sibling
 		return newSibling;
@@ -942,6 +927,41 @@ namespace rtree
 		{
 			return root;
 		}
+	}
+
+	bool Node::validate(Node *expectedParent, unsigned index)
+	{
+		if (parent != expectedParent || boundingBoxes.size() > maxBranchFactor || data.size() > maxBranchFactor || boundingBoxes.size() != children.size())
+		{
+			std::cout << "node = " << (void *)this << std::endl;
+			std::cout << "parent = " << (void *)parent << " expectedParent = " << (void *)expectedParent << std::endl;
+			std::cout << "maxBranchFactor = " << maxBranchFactor << std::endl;
+			std::cout << "boundingBoxes.size() = " << boundingBoxes.size() << std::endl;
+			std::cout << "children.size() = " << children.size() << std::endl;
+			std::cout << "data.size() = " << data.size() << std::endl;
+			assert(parent == expectedParent);
+			assert(boundingBoxes.size() == children.size());
+		}
+
+		if (expectedParent != nullptr)
+		{
+			for (Point &dataPoint : data)
+			{
+				if (!parent->boundingBoxes[index].containsPoint(dataPoint))
+				{
+					std::cout << parent->boundingBoxes[index] << " fails to contain " << dataPoint << std::endl;
+					assert(parent->boundingBoxes[index].containsPoint(dataPoint));
+				}
+			}
+		}
+
+		bool valid = true;
+		for (unsigned i = 0; i < children.size(); ++i)
+		{
+			valid = valid && children[i]->validate(this, i);
+		}
+
+		return valid;
 	}
 
 	void Node::print(unsigned n)
