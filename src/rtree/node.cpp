@@ -313,9 +313,11 @@ namespace rtree
 		}
 	}
 
-	// TODO: Optimize
 	Node *Node::findLeaf(Point givenPoint)
 	{
+		assert(this->parent == nullptr);
+		assert(this->children.size() > 0 || this->data.size() > 0);
+
 		// Initialize our context stack
 		std::stack<Node *> context;
 		context.push(this);
@@ -356,6 +358,20 @@ namespace rtree
 		return nullptr;
 	}
 
+	void Node::moveData(unsigned fromIndex, std::vector<Point> &toData)
+	{
+		toData.push_back(data[fromIndex]);
+		data.erase(data.begin() + fromIndex);
+	}
+
+	void Node::moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<Node *> &toChildren)
+	{
+		toRectangles.push_back(boundingBoxes[fromIndex]);
+		toChildren.push_back(children[fromIndex]);
+		boundingBoxes.erase(boundingBoxes.begin() + fromIndex);
+		children.erase(children.begin() + fromIndex);
+	}
+
 	Node *Node::splitNode(Node *newChild)
 	{
 		// Consider newChild when splitting
@@ -368,7 +384,6 @@ namespace rtree
 		unsigned seedB = boundingBoxesSize - 1;
 
 		// Compute the first entry in each group based on PS1 & PS2
-		Rectangle temp;
 		double maxWasted = 0;
 		Rectangle iBox, jBox;
 		for (unsigned i = 0; i < boundingBoxesSize; ++i)
@@ -379,7 +394,7 @@ namespace rtree
 				jBox = boundingBoxes[j];
 
 				// Calculate the wasted space
-				temp = iBox;
+				Rectangle temp = iBox;
 				temp.expand(jBox);
 
 				double wasted = temp.area() - iBox.area() - jBox.area() + iBox.computeIntersectionArea(jBox);
@@ -429,11 +444,11 @@ namespace rtree
 		// Go through the remaining entries and add them to groupA or groupB
 		double groupAAffinity, groupBAffinity;
 		// QS2 [Check if done]
-		for (;!boundingBoxes.empty() && (groupABoundingBoxes.size() + boundingBoxes.size() != minBranchFactor) && (groupBBoundingBoxes.size() + boundingBoxes.size() != minBranchFactor);)
+		for (;!boundingBoxes.empty() && (groupABoundingBoxes.size() + boundingBoxes.size() > minBranchFactor) && (groupBBoundingBoxes.size() + boundingBoxes.size() > minBranchFactor);)
 		{
 			// PN1 [Determine the cost of putting each entry in each group]
-			double groupAMin = std::numeric_limits<double>::infinity();
 			unsigned groupAIndex = 0;
+			double groupAMin = std::numeric_limits<double>::infinity();
 			unsigned groupBIndex = 0;
 			double groupBMin = std::numeric_limits<double>::infinity();
 
@@ -461,39 +476,27 @@ namespace rtree
 				// Tie so use smaller area
 				if (boundingBoxA.area() < boundingBoxB.area())
 				{
-					groupABoundingBoxes.push_back(boundingBoxes[groupAIndex]);
-					groupAChildren.push_back(children[groupAIndex]);
 					boundingBoxA.expand(boundingBoxes[groupAIndex]);
-					boundingBoxes.erase(boundingBoxes.begin() + groupAIndex);
-					children.erase(children.begin() + groupAIndex);
+					moveChild(groupAIndex, groupABoundingBoxes, groupAChildren);
 				}
 				else
 				{
 					// Better area or in the worst case an arbitrary choice
-					groupBBoundingBoxes.push_back(boundingBoxes[groupBIndex]);
-					groupBChildren.push_back(children[groupBIndex]);
 					boundingBoxB.expand(boundingBoxes[groupBIndex]);
-					boundingBoxes.erase(boundingBoxes.begin() + groupBIndex);
-					children.erase(children.begin() + groupBIndex);
+					moveChild(groupBIndex, groupBBoundingBoxes, groupBChildren);
 				}
 			}
 			else if (groupAMin < groupBMin)
 			{
 				// Higher affinity for groupA
-				groupABoundingBoxes.push_back(boundingBoxes[groupAIndex]);
-				groupAChildren.push_back(children[groupAIndex]);
 				boundingBoxA.expand(boundingBoxes[groupAIndex]);
-				boundingBoxes.erase(boundingBoxes.begin() + groupAIndex);
-				children.erase(children.begin() + groupAIndex);
+				moveChild(groupAIndex, groupABoundingBoxes, groupAChildren);
 			}
 			else
 			{
 				// Higher affinity for groupB
-				groupBBoundingBoxes.push_back(boundingBoxes[groupBIndex]);
-				groupBChildren.push_back(children[groupBIndex]);
 				boundingBoxB.expand(boundingBoxes[groupBIndex]);
-				boundingBoxes.erase(boundingBoxes.begin() + groupBIndex);
-				children.erase(children.begin() + groupBIndex);
+				moveChild(groupBIndex, groupBBoundingBoxes, groupBChildren);
 			}
 		}
 
@@ -501,13 +504,23 @@ namespace rtree
 		// opposite group
 		if (groupABoundingBoxes.size() + boundingBoxes.size() == minBranchFactor)
 		{
-			groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-			groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
+			unsigned lastIndex = groupABoundingBoxes.size();
+			groupABoundingBoxes.resize(minBranchFactor);
+			groupAChildren.resize(minBranchFactor);
+			std::move(boundingBoxes.begin(), boundingBoxes.end(), groupABoundingBoxes.begin() + lastIndex);
+			std::move(children.begin(), children.end(), groupAChildren.begin() + lastIndex);
+			// groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+			// groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
 		}
 		else if (groupBBoundingBoxes.size() + boundingBoxes.size() == minBranchFactor)
 		{
-			groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-			groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
+			unsigned lastIndex = groupBBoundingBoxes.size();
+			groupBBoundingBoxes.resize(minBranchFactor);
+			groupBChildren.resize(minBranchFactor);
+			std::move(boundingBoxes.begin(), boundingBoxes.end(), groupBBoundingBoxes.begin() + lastIndex);
+			std::move(children.begin(), children.end(), groupBChildren.begin() + lastIndex);
+			// groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+			// groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
 		}
 		else
 		{
@@ -518,22 +531,21 @@ namespace rtree
 		// Create the new node and fill it
 		Node *newSibling = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
 
-		// Get rid of our stuff in prep for groupA
-		boundingBoxes.clear();
-		children.clear();
-
 		// Fill us with groupA and the new node with groupB
 		boundingBoxes = groupABoundingBoxes;
 		children = groupAChildren;
-		for (Node *childA : groupAChildren)
+#ifndef NDEBUG
+		for (Node *child : children)
 		{
-			childA->parent = this;
+			assert(child->parent == this);
 		}
+#endif
+
 		newSibling->boundingBoxes = groupBBoundingBoxes;
 		newSibling->children = groupBChildren;
-		for (Node *childB : groupBChildren)
+		for (Node *child : newSibling->children)
 		{
-			childB->parent = newSibling;
+			child->parent = newSibling;
 		}
 
 		// Return our newly minted sibling
@@ -551,7 +563,6 @@ namespace rtree
 		unsigned seedB = dataSize - 1;
 
 		// This rectangle drank too much and represents how wasted iData and jData are
-		Rectangle temp;
 		double maxWasted = 0.0;
 
 		// QS1 [Pick entry for each group]
@@ -563,7 +574,7 @@ namespace rtree
 			{
 				jData = data[j];
 
-				temp = Rectangle(iData, iData);
+				Rectangle temp = Rectangle(iData, iData);
 				temp.expand(jData);
 
 				double wasted = temp.area();
@@ -608,8 +619,8 @@ namespace rtree
 		for (;!data.empty() && (groupAData.size() + data.size() != minBranchFactor) && (groupBData.size() + data.size() != minBranchFactor);)
 		{
 			// PN1 [Determine the cost of putting each entry in each group]
-			double groupAMin = std::numeric_limits<double>::infinity();
 			unsigned groupAIndex = 0;
+			double groupAMin = std::numeric_limits<double>::infinity();
 			unsigned groupBIndex = 0;
 			double groupBMin = std::numeric_limits<double>::infinity();
 
@@ -637,31 +648,27 @@ namespace rtree
 				// Tie so use smaller area
 				if (boundingBoxA.area() < boundingBoxB.area())
 				{
-					groupAData.push_back(data[groupAIndex]);
 					boundingBoxA.expand(data[groupAIndex]);
-					data.erase(data.begin() + groupAIndex);
+					moveData(groupAIndex, groupAData);
 				}
 				else
 				{
 					// Better area or in the worst case an arbitrary choice
-					groupBData.push_back(data[groupBIndex]);
 					boundingBoxB.expand(data[groupBIndex]);
-					data.erase(data.begin() + groupBIndex);
+					moveData(groupBIndex, groupBData);
 				}
 			}
 			else if (groupAMin < groupBMin)
 			{
 				// Higher affinity for groupA
-				groupAData.push_back(data[groupAIndex]);
 				boundingBoxA.expand(data[groupAIndex]);
-				data.erase(data.begin() + groupAIndex);
+				moveData(groupAIndex, groupAData);
 			}
 			else
 			{
 				// Higher affinity for groupB
-				groupBData.push_back(data[groupBIndex]);
 				boundingBoxB.expand(data[groupBIndex]);
-				data.erase(data.begin() + groupBIndex);
+				moveData(groupBIndex, groupBData);
 			}
 		}
 
@@ -669,11 +676,17 @@ namespace rtree
 		// opposite group
 		if (groupAData.size() + data.size() == minBranchFactor)
 		{
-			groupAData.insert(groupAData.end(), data.begin(), data.end());
+			unsigned lastIndex = groupAData.size();
+			groupAData.resize(minBranchFactor);
+			std::move(data.begin(), data.end(), groupAData.begin() + lastIndex);
+			// groupAData.insert(groupAData.end(), data.begin(), data.end());
 		}
 		else if (groupBData.size() + data.size() == minBranchFactor)
 		{
-			groupBData.insert(groupBData.end(), data.begin(), data.end());
+			unsigned lastIndex = groupBData.size();
+			groupBData.resize(minBranchFactor);
+			std::move(data.begin(), data.end(), groupBData.begin() + lastIndex);
+			// groupBData.insert(groupBData.end(), data.begin(), data.end());
 		}
 		else
 		{
@@ -683,9 +696,6 @@ namespace rtree
 
 		// Create the new node and fill it
 		Node *newSibling = new Node(treeRef, minBranchFactor, maxBranchFactor, parent);
-
-		// Get rid of our stuff in prep for groupA
-		data.clear();
 
 		// Fill us with groupA and the new node with groupB
 		data = groupAData;
@@ -716,7 +726,7 @@ namespace rtree
 				// If we have a split then deal with it otherwise move up the tree
 				if (siblingNode != nullptr)
 				{
-					// AT4 [Propogate the node split upwards]
+					// AT4 [Propagate the node split upwards]
 					if (node->parent->children.size() < node->parent->maxBranchFactor)
 					{
 						node->parent->boundingBoxes.push_back(siblingNode->boundingBox());
@@ -853,7 +863,6 @@ namespace rtree
 			// CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
 			if (nodeBoundingBoxesSize >= node->minBranchFactor || nodeDataSize >= node->minBranchFactor)
 			{
-
 				node->parent->updateBoundingBox(node, node->boundingBox());
 
 				// CT5 [Move up one level in the tree]
@@ -863,7 +872,6 @@ namespace rtree
 			}
 			else
 			{
-
 				// Remove ourselves from our parent
 				node->parent->removeChild(node);
 

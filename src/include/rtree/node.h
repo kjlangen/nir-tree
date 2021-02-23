@@ -50,6 +50,8 @@ namespace rtree
 			Node *chooseLeaf(Point givenPoint);
 			Node *chooseNode(ReinsertionEntry e);
 			Node *findLeaf(Point givenPoint);
+			void moveData(unsigned fromIndex, std::vector<Point> &toData);
+			void moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<Node *> &toChildren);
 			Node *splitNode(Node *newChild);
 			Node *splitNode(Point newData);
 			Node *adjustTree(Node *siblingLeaf);
