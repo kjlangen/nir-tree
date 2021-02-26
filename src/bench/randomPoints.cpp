@@ -6,7 +6,7 @@ Point *generateUniform(unsigned benchmarkSize, unsigned seed)
 	// Setup random generators
 	std::default_random_engine generator(seed);
 	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-	std::cout << "Uniformly distributing points between positions (0.0, 0.0) and (1.0, 1.0)." << std::endl;
+	std::cout << "Uniformly distributing points in the unit hyper-cube." << std::endl;
 
 	// Initialize points
 	Point *points = new Point[benchmarkSize];
@@ -238,14 +238,17 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 	Point ll;
 	Point ur;
 	Rectangle *rectangles = new Rectangle[rectanglesSize];
-	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles..." << std::endl;
+	// Compute the dimensions-th root of a percentage that will give rectangles that in expectation return 1000 points
+	double requiredPercentage = 1500.0 / (double) benchmarkSize;
+	double root = std::pow(requiredPercentage, 1.0 / (double) dimensions);
+	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles with " << requiredPercentage << "% and " << root << "..." << std::endl;
 	for (unsigned i = 0; i < rectanglesSize; ++i)
 	{
 		// Generate a new point and then create a square from it that covers 5% of the total area
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			ll[d] = pointDist(generator);
-			ur[d] = ll[d] + 0.05;
+			ur[d] = ll[d] + root;
 		}
 
 		rectangles[i] = Rectangle(ll, ur);
