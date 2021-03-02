@@ -84,11 +84,14 @@ void BMPPrinter::registerPoint(Point &point, Colour colour)
 
 	DPRINT4("scaling x and y by ", xScale, " and ", yScale);
 
-	unsigned xp = (unsigned) round(point[0] * xScale);
+	double xTransform = point[0];
+	double yTransform = point[1];
+
+	unsigned xp = (unsigned) round(xTransform * xScale);
 	// Rounding may cause the pixel to be outside the array so cap xp at the maximum array index
 	xp = std::min(xp, xDimension - 1);
 
-	unsigned yp = (unsigned) round(point[1] * yScale);
+	unsigned yp = (unsigned) round(yTransform * yScale);
 	// Rounding may cause the pixel to be outside the array so cap yp at the maximum array index
 	yp = std::min(yp, yDimension - 1);
 
@@ -112,13 +115,19 @@ void BMPPrinter::registerRectangle(Rectangle &boundingBox, Colour colour)
 
 	DPRINT4("scaling x and y by ", xScale, " and ", yScale);
 
-	unsigned xLower = (unsigned) round(boundingBox.lowerLeft[0] * xScale);
-	unsigned xUpper = (unsigned) round(boundingBox.upperRight[0] * xScale);
+	double xTransform = boundingBox.lowerLeft[0];
+	double yTransform = boundingBox.lowerLeft[1];
+
+	unsigned xLower = (unsigned) round(xTransform * xScale);
+	unsigned yLower = (unsigned) round(yTransform * yScale);
+
+	xTransform = boundingBox.upperRight[0];
+	yTransform = boundingBox.upperRight[1];
+
+	unsigned xUpper = (unsigned) round(xTransform * xScale);
 	// Rounding may cause the pixel to be outside the array so cap xUpper at the maximum array index
 	xUpper = std::min(xUpper, xDimension - 1);
-
-	unsigned yLower = (unsigned) round(boundingBox.lowerLeft[1] * yScale);
-	unsigned yUpper = (unsigned) round(boundingBox.upperRight[1] * yScale);
+	unsigned yUpper = (unsigned) round(yTransform * yScale);
 	// Rounding may cause the pixel to be outside the array so cap yUpper at the maximum array index
 	yUpper = std::min(yUpper, yDimension - 1);
 
@@ -182,6 +191,63 @@ void BMPPrinter::finalize(std::string &printId, unsigned level)
 	DPRINT1("finalize finished");
 }
 
+void BMPPrinter::printToBMP(rtree::Node *root)
+{
+	DPRINT1("printToBMP");
+
+	// Print directory
+	std::string id = bmpIdGenerator();
+	DPRINT2("id = ", id);
+
+	// BFS variables
+	unsigned currentLevel = 0;
+	std::pair<rtree::Node *, unsigned> currentContext;
+	std::queue<std::pair<rtree::Node *, unsigned>> explorationQ;
+	DPRINT1("BFS variables initialized");
+
+	// Prime the Q
+	explorationQ.push(std::pair<rtree::Node *, unsigned>(root, 0));
+	DPRINT1("explorationQ primed");
+
+	// Print the tree one level-page at a time
+	for (;!explorationQ.empty();)
+	{
+		DPRINT1("retreiving front of explorationQ");
+		currentContext = explorationQ.front();
+		explorationQ.pop();
+
+		if (currentContext.second != currentLevel)
+		{
+			DPRINT2("moved to new level ", currentContext.second);
+			// Finalize the previous layer and reset colourBytes
+			finalize(id, currentLevel);
+			DPRINT1("resetting colour bytes");
+			memset(colourBytes, 255, xDimension * yDimension * 3);
+
+			currentLevel++;
+		}
+
+		DPRINT3("cycling through ", currentContext.first->boundingBoxes.size(), " branches");
+		// Add all of our children's bounding boxes to this level's image
+		for (unsigned i = 0; i < currentContext.first->boundingBoxes.size(); ++i)
+		{
+			registerRectangle(currentContext.first->boundingBoxes[i], bmpColourGenerator());
+			explorationQ.push(std::pair<rtree::Node *, unsigned>(currentContext.first->children[i], currentLevel + 1));
+		}
+
+		DPRINT3("cycling through ", currentContext.first->data.size(), " data points");
+		for (unsigned i = 0; i < currentContext.first->data.size(); ++i)
+		{
+			registerPoint(currentContext.first->data[i], {0, 0, 0});
+		}
+	}
+
+	// Finalize the last level
+	finalize(id, currentLevel);
+
+	DPRINT1("printToBMP finished");
+}
+
 void BMPPrinter::printToBMP(rplustree::Node *root)
 {
 	DPRINT1("printToBMP");
@@ -230,6 +296,64 @@ void BMPPrinter::printToBMP(rplustree::Node *root)
 		for (unsigned i = 0; i < currentContext.first->data.size(); ++i)
 		{
 			registerPoint(currentContext.first->data[i], {0, 0, 0});
+		}
+	}
+
+	// Finalize the last level
+	finalize(id, currentLevel);
+
+	DPRINT1("printToBMP finished");
+}
+
+void BMPPrinter::printToBMP(rstartree::Node *root)
+{
+	DPRINT1("printToBMP");
+
+	// Print directory
+	std::string id = bmpIdGenerator();
+	DPRINT2("id = ", id);
+
+	// BFS variables
+	unsigned currentLevel = 0;
+	std::pair<rstartree::Node *, unsigned> currentContext;
+	std::queue<std::pair<rstartree::Node *, unsigned>> explorationQ;
+	DPRINT1("BFS variables initialized");
+
+	// Prime the Q
+	explorationQ.push(std::pair<rstartree::Node *, unsigned>(root, 0));
+	DPRINT1("explorationQ primed");
+
+	// Print the tree one level-page at a time
+	for (;!explorationQ.empty();)
+	{
+		DPRINT1("retreiving front of explorationQ");
+		currentContext = explorationQ.front();
+		explorationQ.pop();
+
+		if (currentContext.second != currentLevel)
+		{
+			DPRINT2("moved to new level ", currentContext.second);
+			// Finalize the previous layer and reset colourBytes
+			finalize(id, currentLevel);
+			DPRINT1("resetting colour bytes");
+			memset(colourBytes, 255, xDimension * yDimension * 3);
+
+			currentLevel++;
+		}
+
+		DPRINT3("cycling through ", currentContext.first->entries.size(), " branches");
+		// Add all of our children's bounding boxes to this level's image
+		for (unsigned i = 0; i < currentContext.first->entries.size(); ++i)
+		{
+			if (std::holds_alternative<rstartree::Node::Branch>(currentContext.first->entries[i]))
+			{
+				registerRectangle(std::get<rstartree::Node::Branch>(currentContext.first->entries[i]).boundingBox, bmpColourGenerator());
+				explorationQ.push(std::pair<rstartree::Node *, unsigned>(std::get<rstartree::Node::Branch>(currentContext.first->entries[i]).child, currentLevel + 1));
+			}
+			else if (std::holds_alternative<Point>(currentContext.first->entries[i]))
+			{
+				registerPoint(std::get<Point>(currentContext.first->entries[i]), {0, 0, 0});
+			}
 		}
 	}
 

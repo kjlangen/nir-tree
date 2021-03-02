@@ -13,6 +13,8 @@
 #include <util/geometry.h>
 #include <nirtree/node.h>
 #include <rplustree/node.h>
+#include <rtree/node.h>
+#include <rstartree/node.h>
 
 class BMPPrinter
 {
@@ -43,7 +45,9 @@ class BMPPrinter
 
 		void finalize(std::string &printId, unsigned level=0);
 
+		void printToBMP(rtree::Node *root);
 		void printToBMP(rplustree::Node *root);
+		void printToBMP(rstartree::Node *root);
 		void printToBMP(nirtree::Node *root);
 };
 

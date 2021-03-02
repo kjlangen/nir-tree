@@ -9,6 +9,7 @@
 #include <util/geometry.h>
 #include <rtree/node.h>
 #include <index/index.h>
+#include <util/bmpPrinter.h>
 
 namespace rtree
 {

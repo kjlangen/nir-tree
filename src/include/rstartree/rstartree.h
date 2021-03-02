@@ -8,6 +8,7 @@
 #include <index/index.h>
 #include <util/geometry.h>
 #include <rstartree/node.h>
+#include <util/bmpPrinter.h>
 
 namespace rstartree
 {
