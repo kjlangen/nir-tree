@@ -305,7 +305,7 @@ double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 	// Quick exit
 	if (!intersectsRectangle(givenRectangle))
 	{
-		return 0;
+		return 0.0;
 	}
 
 	double intersectionArea = fabs(fmin(upperRight[0], givenRectangle.upperRight[0]) - fmax(lowerLeft[0], givenRectangle.lowerLeft[0]));
@@ -466,7 +466,7 @@ double Rectangle::margin() const
 	double margin = 0.0;
 	for(unsigned d = 0; d < dimensions; d++)
 	{
-		margin += abs(upperRight[d] - lowerLeft[d]) * 2.0;
+		margin += fabs(upperRight[d] - lowerLeft[d]) * 2.0;
 	}
 
 	return margin;
