@@ -353,14 +353,14 @@ namespace rstartree
 			assert(!firstBranch.child->entries.empty());
 
 			unsigned descentIndex = 0;
-			double smallestOverlapExpansion = std::numeric_limits<double>::max();
-			double smallestExpansionArea = std::numeric_limits<double>::max();
-			double smallestArea = std::numeric_limits<double>::max();
-			double testOverlapExpansionArea, testExpansionArea, testArea;
 			
 			bool childrenAreLeaves = !std::holds_alternative<Branch>(std::get<Branch>(node->entries[0]).child->entries[0]);
 			if (childrenAreLeaves)
 			{
+				double smallestOverlapExpansion = std::numeric_limits<double>::infinity();
+				double smallestExpansionArea = std::numeric_limits<double>::infinity();
+				double smallestArea = std::numeric_limits<double>::infinity();
+
 				// Choose the entry in N whose rectangle needs least overlap enlargement
 				for (unsigned i = 0; i < node->entries.size(); ++i)
 				{
@@ -368,7 +368,7 @@ namespace rstartree
 					const Branch &b = std::get<Branch>(entry);
 
 					// Compute overlap
-					testOverlapExpansionArea = computeOverlapGrowth(i, node->entries, givenEntryBoundingBox);
+					double testOverlapExpansionArea = computeOverlapGrowth(i, node->entries, givenEntryBoundingBox);
 
 					// Take largest overlap
 					if (smallestOverlapExpansion > testOverlapExpansionArea)
@@ -376,12 +376,12 @@ namespace rstartree
 						descentIndex = i;
 						smallestOverlapExpansion = testOverlapExpansionArea;
 						smallestExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
-						testArea = b.boundingBox.area();
+						smallestArea = b.boundingBox.area();
 					} 
 					else if (smallestOverlapExpansion == testOverlapExpansionArea)
 					{
 						// Use expansion area to break tie
-						testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
+						double testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
 						if (smallestExpansionArea > testExpansionArea)
 						{
 							descentIndex = i;
@@ -392,7 +392,7 @@ namespace rstartree
 						else if (smallestExpansionArea == testExpansionArea)
 						{
 							// Use area to break tie
-							testArea = b.boundingBox.area();
+							double testArea = b.boundingBox.area();
 							if (smallestArea > testArea)
 							{
 								descentIndex = i;
@@ -406,6 +406,9 @@ namespace rstartree
 			}
 			else
 			{
+				double smallestExpansionArea = std::numeric_limits<double>::infinity();
+				double smallestArea = std::numeric_limits<double>::infinity();
+
 				// CL2 [Choose subtree]
 				// Find the bounding box with least required expansion/overlap
 				for (unsigned i = 0; i < node->entries.size(); ++i)
@@ -413,17 +416,17 @@ namespace rstartree
 					const NodeEntry &entry = node->entries[i];
 					const Branch &b = std::get<Branch>(entry);
 
-					testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
+					double testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
 					if (smallestExpansionArea > testExpansionArea)
 					{
 						descentIndex = i;
 						smallestExpansionArea = testExpansionArea;
-						testArea = b.boundingBox.area();
+						smallestArea = b.boundingBox.area();
 					}
 					else if (smallestExpansionArea == testExpansionArea)
 					{
 						// Use area to break tie
-						testArea = b.boundingBox.area();
+						double testArea = b.boundingBox.area();
 						if (smallestArea > testArea)
 						{
 							descentIndex = i;
@@ -509,55 +512,70 @@ namespace rstartree
 		return sumOfAllMarginValues;
 	}
 
-	void Node::entrySort(unsigned startingDimension)
-	{
-		assert(entries.size() > 0);
-		bool isLeaf = isLeafNode();
-		if (isLeaf)
-		{
-			std::sort(entries.begin(), entries.end(),
-				[startingDimension](NodeEntry &a, NodeEntry &b)
-				{
-					return std::get<Point>(a).orderedCompare(std::get<Point>(b), startingDimension);
-				});
-		}
-		else
-		{
-			std::sort(entries.begin(), entries.end(),
-				[startingDimension](NodeEntry &a, NodeEntry &b)
-				{
-					Rectangle A = boxFromNodeEntry(std::get<Branch>(a));
-					Rectangle B = boxFromNodeEntry(std::get<Branch>(b));
-					return A.lowerLeft.orderedCompare(B.lowerLeft, startingDimension) && A.upperRight.orderedCompare(B.upperRight, startingDimension);
-				});
-		}
-	}
-
 	unsigned Node::chooseSplitLeafAxis()
 	{
 		unsigned optimalAxis = 0;
 		double optimalMargin = std::numeric_limits<double>::infinity();
-		std::vector<NodeEntry *> ptrs;
-		ptrs.reserve(entries.size());
-		std::transform(entries.begin(), entries.end(), std::back_inserter(ptrs),
-			[](NodeEntry &e) -> NodeEntry * { return &e; });
 
+		// Make the entries easier to work with
+		std::vector<NodeEntry *> entriesCopy;
+		entriesCopy.reserve(entries.size());
+		for (NodeEntry &entry : entries)
+		{
+			entriesCopy.push_back(&entry);
+		}
+
+		// Consider all M-2m+2 distributions in each dimension
 		for (unsigned d = 0; d < dimensions; d++)
 		{
-			std::sort(ptrs.begin(), ptrs.end(),
-					[d](NodeEntry *a, NodeEntry *b) {
-					return std::get<Point>(*a).orderedCompare(std::get<Point>(*b), d); });
-			double margin = computeTotalMarginSum(ptrs);
-			if (margin < optimalMargin)
+			// First sort in the current dimension
+			std::sort(entriesCopy.begin(), entriesCopy.end(), [d](NodeEntry *a, NodeEntry *b)
 			{
-				optimalMargin = margin;
+				return std::get<Point>(*a)[d] < std::get<Point>(*b)[d];
+			});
+
+			// Setup groups
+			std::vector<NodeEntry *> groupA(entriesCopy.begin(), entriesCopy.begin() + treeRef.minBranchFactor);
+			std::vector<NodeEntry *> groupB(entriesCopy.begin() + treeRef.minBranchFactor, entriesCopy.end());
+
+			// Cycle through all M-2m+2 distributions
+			double totalMargin = 0.0;
+			for (;groupA.size() <= treeRef.maxBranchFactor && groupB.size() >= treeRef.minBranchFactor;)
+			{
+				// Compute the margin of groupA and groupB
+				Rectangle boundingBoxA = boxFromNodeEntry(*groupA[0]);
+				for (unsigned i = 1; i < groupA.size(); ++i)
+				{
+					boundingBoxA.expand(std::get<Point>(*groupA[i]));
+				}
+
+				Rectangle boundingBoxB = boxFromNodeEntry(*groupB[0]);
+				for (unsigned i = 1; i < groupB.size(); ++i)
+				{
+					boundingBoxB.expand(std::get<Point>(*groupB[i]));
+				}
+
+				// Add to the total margin sum
+				totalMargin += boundingBoxA.margin() + boundingBoxB.margin();
+
+				// Add one new value to groupA and remove one from groupB to obtain next distribution
+				NodeEntry *transferPoint = groupB.front();
+				groupB.erase(groupB.begin());
+				groupA.push_back(transferPoint);
+			}
+
+			if (totalMargin < optimalMargin)
+			{
+				optimalMargin = totalMargin;
 				optimalAxis = d;
 			}
 		}
 
-		std::sort(entries.begin(), entries.end(),
-			[optimalAxis](NodeEntry &a, NodeEntry &b){
-				return std::get<Point>(a).orderedCompare(std::get<Point>(b),optimalAxis); });
+		// Sort along our best axis
+		std::sort(entries.begin(), entries.end(), [optimalAxis](NodeEntry &a, NodeEntry &b)
+		{
+			return std::get<Point>(a)[optimalAxis] < std::get<Point>(b)[optimalAxis];
+		});
 
 		return optimalAxis;
 	}
@@ -573,68 +591,111 @@ namespace rstartree
 
 	unsigned Node::chooseSplitNonLeafAxis()
 	{
-		unsigned optimalLowerAxis = 0;
-		unsigned optimalUpperAxis = 0;
-		double optimalLowerMargin = std::numeric_limits<double>::infinity();
-		double optimalUpperMargin = std::numeric_limits<double>::infinity();
-		std::vector<NodeEntry *> lowerPtrs;
-		std::vector<NodeEntry *> upperPtrs;
-		lowerPtrs.reserve(entries.size());
-		upperPtrs.reserve(entries.size());
+		unsigned optimalAxisLower = 0;
+		unsigned optimalAxisUpper = 0;
+		double optimalMarginLower = std::numeric_limits<double>::infinity();
+		double optimalMarginUpper = std::numeric_limits<double>::infinity();
 
-		for (auto &entry : entries)
+		// Make entries easier to work with
+		std::vector<NodeEntry *> lowerEntries;
+		lowerEntries.reserve(entries.size());
+		std::vector<NodeEntry *> upperEntries;
+		upperEntries.reserve(entries.size());
+		for (NodeEntry &entry : entries)
 		{
-			lowerPtrs.push_back(&entry);
-			upperPtrs.push_back(&entry);
+			lowerEntries.push_back(&entry);
+			upperEntries.push_back(&entry);
 		}
 
+		// Consider all M-2m+2 distributions in each dimension
 		for (unsigned d = 0; d < dimensions; d++)
 		{
-			std::sort(lowerPtrs.begin(), lowerPtrs.end(),
-					[d](NodeEntry *a, NodeEntry *b)
-					{
-					return std::get<Branch>(*a).boundingBox.lowerLeft.orderedCompare(
-							std::get<Branch>(*b).boundingBox.lowerLeft, d);
-					});
+			// First sort in the current dimension sorting both the lower and upper arrays
+			std::sort(lowerEntries.begin(), lowerEntries.end(), [d](NodeEntry *a, NodeEntry *b)
+			{
+				return std::get<Branch>(*a).boundingBox.lowerLeft[d] < std::get<Branch>(*b).boundingBox.lowerLeft[d];
+			});
+			std::sort(upperEntries.begin(), upperEntries.end(), [d](NodeEntry *a, NodeEntry *b)
+			{
+				return std::get<Branch>(*a).boundingBox.upperRight[d] < std::get<Branch>(*b).boundingBox.upperRight[d];
+			});
 
-			std::sort(upperPtrs.begin(), upperPtrs.end(),
-					[d](NodeEntry *a, NodeEntry *b)
-					{
-					return std::get<Branch>(*a).boundingBox.upperRight.orderedCompare(
-							std::get<Branch>(*b).boundingBox.upperRight, d);
-					});
-			double lowerMargin = computeTotalMarginSum(lowerPtrs);
-			if (lowerMargin < optimalLowerMargin)
+			// Setup groups
+			std::vector<NodeEntry *> groupALower(lowerEntries.begin(), lowerEntries.begin() + treeRef.minBranchFactor);
+			std::vector<NodeEntry *> groupAUpper(upperEntries.begin(), upperEntries.begin() + treeRef.minBranchFactor);
+
+			std::vector<NodeEntry *> groupBLower(lowerEntries.begin() + treeRef.minBranchFactor, lowerEntries.end());
+			std::vector<NodeEntry *> groupBUpper(upperEntries.begin() + treeRef.minBranchFactor, upperEntries.end());
+
+			// Cycle through all M-2m+2 distributions
+			double totalMarginLower = 0.0;
+			double totalMarginUpper = 0.0;
+			for (;groupALower.size() <= treeRef.maxBranchFactor && groupBLower.size() >= treeRef.minBranchFactor;)
 			{
-				optimalLowerMargin = lowerMargin;
-				optimalLowerAxis = d;
+				// Compute the margin of groupA and groupB
+				Rectangle boundingBoxALower = boxFromNodeEntry(*groupALower[0]);
+				Rectangle boundingBoxAUpper = boxFromNodeEntry(*groupAUpper[0]);
+				for (unsigned i = 1; i < groupALower.size(); ++i)
+				{
+					boundingBoxALower.expand(boxFromNodeEntry(*groupALower[i]));
+					boundingBoxAUpper.expand(boxFromNodeEntry(*groupAUpper[i]));
+				}
+
+				Rectangle boundingBoxBLower = boxFromNodeEntry(*groupBLower[0]);
+				Rectangle boundingBoxBUpper = boxFromNodeEntry(*groupBUpper[0]);
+				for (unsigned i = 1; i < groupBLower.size(); ++i)
+				{
+					boundingBoxBLower.expand(boxFromNodeEntry(*groupBLower[i]));
+					boundingBoxBUpper.expand(boxFromNodeEntry(*groupBUpper[i]));
+				}
+
+				// Add to the total margin sum
+				totalMarginLower += boundingBoxALower.margin() + boundingBoxBLower.margin();
+				totalMarginUpper += boundingBoxAUpper.margin() + boundingBoxBUpper.margin();
+
+				// Add one new value to groupA and remove one from groupB to obtain next distribution
+				NodeEntry *transferPointLower = groupBLower.front();
+				NodeEntry *transferPointUpper = groupBUpper.front();
+				groupBLower.erase(groupBLower.begin());
+				groupBUpper.erase(groupBUpper.begin());
+				groupALower.push_back(transferPointLower);
+				groupAUpper.push_back(transferPointUpper);
 			}
-			double upperMargin = computeTotalMarginSum(upperPtrs);
-			if (upperMargin < optimalUpperMargin)
+
+			if (totalMarginLower < optimalMarginLower)
 			{
-				optimalUpperMargin = upperMargin;
-				optimalUpperAxis = d;
+				optimalMarginLower = totalMarginLower;
+				optimalAxisLower = d;
+			}
+
+			if (totalMarginUpper < optimalMarginUpper)
+			{
+				optimalMarginUpper = totalMarginUpper;
+				optimalAxisUpper = d;
 			}
 		}
 
-		bool sortLower = optimalUpperMargin > optimalLowerMargin ? true : false;
-		unsigned optimalAxis = sortLower ? optimalLowerAxis : optimalUpperAxis;
+		bool sortLower = optimalMarginUpper > optimalMarginLower ? true : false;
+		unsigned optimalAxis = sortLower ? optimalAxisLower : optimalAxisUpper;
 
 		// Sort to match the optimal axis
 		if (sortLower)
 		{
-			std::sort(entries.begin(), entries.end(),
-					[optimalAxis](NodeEntry &a, NodeEntry &b){
-					return std::get<Branch>(a).boundingBox.lowerLeft.orderedCompare(
-							std::get<Branch>(b).boundingBox.lowerLeft, optimalAxis); });
+			std::sort(entries.begin(), entries.end(), [optimalAxis](NodeEntry &a, NodeEntry &b)
+			{
+				return std::get<Branch>(a).boundingBox.lowerLeft[optimalAxis] < 
+						std::get<Branch>(b).boundingBox.lowerLeft[optimalAxis];
+			});
 		}
 		else
 		{
-			std::sort(entries.begin(), entries.end(),
-					[optimalAxis](NodeEntry &a, NodeEntry &b){
-					return std::get<Branch>(a).boundingBox.upperRight.orderedCompare(
-							std::get<Branch>(b).boundingBox.upperRight, optimalAxis); });
+			std::sort(entries.begin(), entries.end(), [optimalAxis](NodeEntry &a, NodeEntry &b)
+			{
+				return std::get<Branch>(a).boundingBox.upperRight[optimalAxis] <
+						std::get<Branch>(b).boundingBox.upperRight[optimalAxis];
+			});
 		}
+
 		return optimalAxis;
 	}
 
@@ -667,8 +728,8 @@ namespace rstartree
 		unsigned splitIndex = entries.size() / 2;
 
 		// Find the best size out of all the distributions
-		unsigned minOverlap = std::numeric_limits<unsigned>::max();
-		unsigned minArea = std::numeric_limits<unsigned>::max();
+		double minOverlap = std::numeric_limits<double>::infinity();
+		double minArea = std::numeric_limits<double>::infinity();
 
 		// Tracking what the current "cut" mark is
 		unsigned currentSplitPoint = treeRef.minBranchFactor;
@@ -690,7 +751,7 @@ namespace rstartree
 			}
 
 			// Compute intersection area to determine best grouping of data points
-			unsigned evalDistOverlap = boundingBoxA.computeIntersectionArea(boundingBoxB);
+			double evalDistOverlap = boundingBoxA.computeIntersectionArea(boundingBoxB);
 
 			if (evalDistOverlap < minOverlap)
 			{
@@ -699,7 +760,7 @@ namespace rstartree
 				splitIndex = currentSplitPoint;
 
 				// Set this if we haven't already
-				if (minArea == std::numeric_limits<unsigned>::max())
+				if (minArea == std::numeric_limits<double>::infinity())
 				{
 					minArea = boundingBoxA.area() + boundingBoxB.area();
 				}
@@ -707,7 +768,7 @@ namespace rstartree
 			else if (evalDistOverlap == minOverlap)
 			{
 				// If overlap is equal, we use the distribution that creates the smallest areas
-				unsigned evalMinArea = boundingBoxA.area() + boundingBoxB.area();
+				double evalMinArea = boundingBoxA.area() + boundingBoxB.area();
 
 				if (evalMinArea < minArea)
 				{

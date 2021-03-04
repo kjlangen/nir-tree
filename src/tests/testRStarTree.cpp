@@ -365,11 +365,9 @@ TEST_CASE("R*Tree: testComplexComputeMargin")
 	cluster->level = 0;
 
 	// Check that produce the right margin under X order
-	cluster->entrySort(0);
 	REQUIRE( cluster->computeTotalMarginSum() == 14 + 18 + 18 );
 
 	// Check that produce the right margin under Y order
-	cluster->entrySort(1);
 	REQUIRE( cluster->computeTotalMarginSum() == 26 + 26 + 24 );
 }
 

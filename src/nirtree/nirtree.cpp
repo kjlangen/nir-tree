@@ -68,7 +68,7 @@ namespace nirtree
 
 	void NIRTree::visualize()
 	{
-		BMPPrinter p(10000, 10000);
+		BMPPrinter p(1000, 1000);
 
 		p.printToBMP(root);
 	}
