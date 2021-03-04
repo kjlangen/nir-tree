@@ -357,12 +357,13 @@ namespace rstartree
 			bool childrenAreLeaves = !std::holds_alternative<Branch>(std::get<Branch>(node->entries[0]).child->entries[0]);
 			if (childrenAreLeaves)
 			{
+				double smallestOverlapExpansion = std::numeric_limits<double>::infinity();
+				double smallestExpansionArea = std::numeric_limits<double>::infinity();
+				double smallestArea = std::numeric_limits<double>::infinity();
+
 				// Choose the entry in N whose rectangle needs least overlap enlargement
 				for (unsigned i = 0; i < node->entries.size(); ++i)
 				{
-					double smallestOverlapExpansion = std::numeric_limits<double>::infinity();
-					double smallestExpansionArea = std::numeric_limits<double>::infinity();
-					double smallestArea = std::numeric_limits<double>::infinity();
 					const NodeEntry &entry = node->entries[i];
 					const Branch &b = std::get<Branch>(entry);
 
@@ -405,15 +406,15 @@ namespace rstartree
 			}
 			else
 			{
+				double smallestExpansionArea = std::numeric_limits<double>::infinity();
+				double smallestArea = std::numeric_limits<double>::infinity();
+
 				// CL2 [Choose subtree]
 				// Find the bounding box with least required expansion/overlap
 				for (unsigned i = 0; i < node->entries.size(); ++i)
 				{
 					const NodeEntry &entry = node->entries[i];
 					const Branch &b = std::get<Branch>(entry);
-
-					double smallestExpansionArea = std::numeric_limits<double>::infinity();
-					double smallestArea = std::numeric_limits<double>::infinity();
 
 					double testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
 					if (smallestExpansionArea > testExpansionArea)
