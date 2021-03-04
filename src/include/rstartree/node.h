@@ -62,7 +62,6 @@ namespace rstartree
 			inline bool isLeafNode() const { return level == 0; }
 			double computeTotalMarginSum();
 			double computeTotalMarginSum(std::vector<NodeEntry *> ptrs);
-			void entrySort(unsigned startingDimension);
 			unsigned chooseSplitLeafAxis();
 			unsigned chooseSplitNonLeafAxis();
 			unsigned chooseSplitAxis();
