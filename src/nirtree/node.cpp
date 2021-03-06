@@ -3,20 +3,9 @@
 
 namespace nirtree
 {
-	Node::Node(NIRTree &treeRef) :
-		treeRef(treeRef)
+	Node::Node(NIRTree &treeRef, Node *p, unsigned level) :
+		treeRef(treeRef), parent(p), level(level)
 	{
-		minBranchFactor = 0;
-		maxBranchFactor = 0;
-		parent = nullptr;
-	}
-
-	Node::Node(NIRTree &treeRef, unsigned minBranch, unsigned maxBranch, Node *p) :
-		treeRef(treeRef)
-	{
-		minBranchFactor = minBranch;
-		maxBranchFactor = maxBranch;
-		parent = p;
 	}
 
 	void Node::deleteSubtrees()
@@ -93,8 +82,8 @@ namespace nirtree
 		unsigned childIndex;
 		for (childIndex = 0; branches[childIndex].child != child && childIndex < branchesSize; ++childIndex) {}
 
-		// Delete the child by deleting it and overwriting its branch
-		delete child;
+		// Mark the child for deletion and remove it from our branches by overwriting
+		treeRef.garbage.push_back(child);
 		branches[childIndex] = branches.back();
 		branches.pop_back();
 	}
@@ -136,7 +125,7 @@ namespace nirtree
 		}
 	}
 
-	std::vector<Point> Node::search(Point &requestedPoint)
+	std::vector<Point> Node::search(const Point &requestedPoint)
 	{
 		std::vector<Point> accumulator;
 
@@ -188,7 +177,7 @@ namespace nirtree
 		return accumulator;
 	}
 
-	std::vector<Point> Node::search(Rectangle &requestedRectangle)
+	std::vector<Point> Node::search(const Rectangle &requestedRectangle)
 	{
 		std::vector<Point> accumulator;
 
@@ -245,6 +234,7 @@ namespace nirtree
 	// choosing a particular leaf
 	Node *Node::chooseNode(Point givenPoint)
 	{
+		std::cout << "chooseNode" << std::endl;
 		// CL1 [Initialize]
 		Node *context = this;
 		unsigned enclosingPolyIndex = 0;
@@ -303,6 +293,69 @@ namespace nirtree
 						context->branches[smallestExpansionBranchIndex].child->data.pop_back();
 					}
 
+					context->branches[smallestExpansionBranchIndex].boundingPoly.refine();
+				}
+
+				// Descend
+				context = context->branches[smallestExpansionBranchIndex].child;
+				enclosingPolyIndex = smallestExpansionBranchIndex;
+			}
+		}
+	}
+
+	Node *Node::chooseNode(Branch orphanedBranch)
+	{
+		// CL1 [Initialize]
+		Node *context = this;
+		unsigned enclosingPolyIndex = 0;
+		unsigned branchesSize = 0;
+
+		for (;;)
+		{
+			branchesSize = context->branches.size();
+
+			// CL2 [Level check]
+			if (context->level == orphanedBranch.child->level + 1)
+			{
+				return context;
+			}
+			else
+			{
+				assert(context->level > orphanedBranch.child->level);
+				// Compute the smallest expansion
+				unsigned smallestExpansionBranchIndex = 0;
+				IsotheticPolygon::OptimalExpansion smallestExpansion = context->branches[0].boundingPoly.computeExpansionArea(orphanedBranch.boundingPoly.boundingBox);
+				IsotheticPolygon::OptimalExpansion evalExpansion;
+				for (unsigned i = 1; i < branchesSize && smallestExpansion.area != -1.0; ++i)
+				{
+					evalExpansion = context->branches[i].boundingPoly.computeExpansionArea(orphanedBranch.boundingPoly.boundingBox);
+					if (evalExpansion.area < smallestExpansion.area && evalExpansion.area != 0.0)
+					{
+						smallestExpansionBranchIndex = i;
+						smallestExpansion = evalExpansion;
+					}
+				}
+
+				if (smallestExpansion.area != -1.0)
+				{
+					IsotheticPolygon subsetPolygon(context->branches[smallestExpansionBranchIndex].boundingPoly.basicRectangles[smallestExpansion.index]);
+					subsetPolygon.basicRectangles[0].expand(orphanedBranch.boundingPoly.boundingBox);
+
+					for (unsigned i = 0; i < branchesSize; ++i)
+					{
+						if (i != smallestExpansionBranchIndex)
+						{
+							subsetPolygon.increaseResolution(orphanedBranch.boundingPoly, context->branches[i].boundingPoly);
+						}
+					}
+
+					if (context->parent != nullptr)
+					{
+						subsetPolygon.intersection(context->parent->branches[enclosingPolyIndex].boundingPoly);
+					}
+
+					context->branches[smallestExpansionBranchIndex].boundingPoly.remove(smallestExpansion.index);
+					context->branches[smallestExpansionBranchIndex].boundingPoly.merge(subsetPolygon);
 					context->branches[smallestExpansionBranchIndex].boundingPoly.refine();
 				}
 
@@ -446,6 +499,7 @@ namespace nirtree
 	// Splitting a node will remove it from its parent node and its memory will be freed
 	Node::SplitResult Node::splitNode(Partition p)
 	{
+		assert(treeRef.root->parent == nullptr);
 		IsotheticPolygon referencePoly;
 		if (parent != nullptr)
 		{
@@ -456,7 +510,7 @@ namespace nirtree
 			referencePoly = IsotheticPolygon(boundingBox());
 		}
 
-		SplitResult split = {{new Node(treeRef, minBranchFactor, maxBranchFactor, parent), referencePoly}, {new Node(treeRef, minBranchFactor, maxBranchFactor, parent), referencePoly}};
+		SplitResult split = {{new Node(treeRef, parent, level), referencePoly}, {new Node(treeRef, parent, level), referencePoly}};
 		unsigned branchesSize = branches.size();
 		unsigned dataSize = data.size();
 
@@ -532,20 +586,141 @@ namespace nirtree
 			branches.clear();
 		}
 
+		assert(level == split.leftBranch.child->level);
+		assert(level == split.rightBranch.child->level);
+		assert(treeRef.root->parent == nullptr);
+		assert(split.leftBranch.child->treeRef.root->parent == nullptr);
+		assert(split.rightBranch.child->treeRef.root->parent == nullptr);
+
 		return split;
 	}
 
 	// Splitting a node will remove it from its parent node and its memory will be freed
 	Node::SplitResult Node::splitNode()
 	{
+		assert(treeRef.root->parent == nullptr);
 		Node::SplitResult returnSplit = splitNode(partitionNode());
+
+		assert(level == returnSplit.leftBranch.child->level);
+		assert(level == returnSplit.rightBranch.child->level);
+		assert(treeRef.root->parent == nullptr);
 
 		return returnSplit;
 	}
 
-	// This bottom-to-top sweep is only for splitting bounding boxes as necessary
-	Node::SplitResult Node::adjustTree()
+	void Node::resizeBoundingPoly()
 	{
+		if (parent == nullptr)
+		{
+			return;
+		}
+
+		IsotheticPolygon referencePoly(parent->locateBranch(this).boundingPoly);
+		referencePoly.intersection(IsotheticPolygon(boundingBox()));
+		parent->updateBranch(this, referencePoly);
+	}
+
+	Node::SplitResult Node::reInsert(std::vector<bool> &hasReinsertedOnLevel)
+	{
+		std::cout << "reInsert" << std::endl;
+		assert(hasReinsertedOnLevel.at(level));
+		assert(treeRef.root->parent == nullptr);
+
+		Partition bestDimension = partitionNode();
+		std::vector<Point> orphanedData;
+		std::vector<Branch> orphanedBranches;
+
+		if (branches.size() == 0)
+		{
+			// Sort the entries somehow to determine which percentage gets reinserted
+			std::sort(data.begin(), data.end(), [bestDimension](Point &a, Point &b){ return a[bestDimension.dimension] < b[bestDimension.dimension]; });
+
+			assert(treeRef.root->parent == nullptr);
+
+			// Remove those entries
+			unsigned reinsertionCount = treeRef.p * data.size();
+			orphanedData.reserve(reinsertionCount);
+			std::copy(data.begin(), data.begin() + reinsertionCount, std::back_inserter(orphanedData));
+			data.erase(data.begin(), data.begin() + reinsertionCount);
+			assert(data.size() > 0);
+			assert(treeRef.root->parent == nullptr);
+		}
+		else
+		{
+			// Sort the entries somehow to determine which percentage gets reinserted
+			std::sort(branches.begin(), branches.end(), [bestDimension](Branch &a, Branch &b){ return a.boundingPoly.boundingBox.lowerLeft[bestDimension.dimension] < b.boundingPoly.boundingBox.lowerLeft[bestDimension.dimension]; });
+
+			assert(treeRef.root->parent == nullptr);
+			// Remove those entries
+			unsigned reinsertionCount = treeRef.p * branches.size();
+			orphanedBranches.reserve(reinsertionCount);
+			std::copy(branches.begin(), branches.begin() + reinsertionCount, std::back_inserter(orphanedBranches));
+			branches.erase(branches.begin(), branches.begin() + reinsertionCount);
+			assert(branches.size() < treeRef.maxBranchFactor);
+			assert(treeRef.root->parent == nullptr);
+		}
+
+		// Walk up the tree shrinking bounding polygons
+		Node *context = this;
+		while (context->parent != nullptr)
+		{
+			// TODO: This is the simple way to resize boundingPolygons to be smaller but there is potential to do more
+			context->resizeBoundingPoly();
+			context = context->parent;
+		}
+
+		// Loop over the removed entries and call insert again.
+		for (const Point p : orphanedData)
+		{
+			assert(treeRef.root->parent == nullptr);
+			treeRef.root->insert(p, hasReinsertedOnLevel);
+			assert(treeRef.root->parent == nullptr);
+		}
+		for (const Branch b : orphanedBranches)
+		{
+			assert(treeRef.root->parent == nullptr);
+			treeRef.root->insert(b, hasReinsertedOnLevel);
+			assert(treeRef.root->parent == nullptr);
+		}
+
+		assert(treeRef.root->parent == nullptr);
+
+		return {nullptr, IsotheticPolygon(), nullptr, IsotheticPolygon()};
+	}
+
+	Node::SplitResult Node::overflowTreatment(std::vector<bool> &hasReinsertedOnLevel)
+	{
+		std::cout << "overflowTreatment" << std::endl;
+		assert(hasReinsertedOnLevel.size() > level);
+		assert(treeRef.root->parent == nullptr);
+
+		if (hasReinsertedOnLevel[level] || branches.size() > 0)
+		{
+			std::cout << "bout to do the thing" << std::endl;
+			// If we've already reinserted then split and cleanup
+			auto sr = splitNode();
+			if (parent != nullptr)
+			{
+				parent->removeBranch(this);
+			}
+
+			assert(treeRef.root->parent == nullptr);
+			return sr;
+		}
+		else
+		{
+			hasReinsertedOnLevel[level] = true;
+			auto sr = reInsert(hasReinsertedOnLevel);
+			assert(treeRef.root->parent == nullptr);
+			return sr;
+		}
+	}
+
+	// This bottom-to-top sweep is only for splitting bounding boxes as necessary
+	Node::SplitResult Node::adjustTree(std::vector<bool> &hasReinsertedOnLevel)
+	{
+		assert(treeRef.root->parent == nullptr);
+		std::cout << "adjustTree" << std::endl;
 		Node *currentContext = this;
 		unsigned branchesSize, dataSize;
 		Node::SplitResult propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
@@ -554,6 +729,10 @@ namespace nirtree
 		{
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
+
+			Node *currentContextAtTheTop = currentContext;
+
+			assert(branchesSize < 100 && dataSize < 100);
 
 			// If there was a split we were supposed to propagate then propagate it
 			if (propagationSplit.leftBranch.child != nullptr && propagationSplit.rightBranch.child != nullptr)
@@ -571,77 +750,95 @@ namespace nirtree
 				}
 			}
 
+			assert(currentContext == currentContextAtTheTop);
+			assert(treeRef.root->parent == nullptr);
+
 			// Early exit if this node does not overflow
-			if (dataSize <= currentContext->maxBranchFactor && branchesSize <= currentContext->maxBranchFactor)
+			if (dataSize <= currentContext->treeRef.maxBranchFactor && branchesSize <= currentContext->treeRef.maxBranchFactor)
 			{
 				propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
 				break;
 			}
 
-			// Otherwise, split node
-			propagationSplit = currentContext->splitNode();
+			assert(currentContext == currentContextAtTheTop);
+			assert(treeRef.root->parent == nullptr);
 
-			// Cleanup before ascending
-			if (currentContext->parent != nullptr)
-			{
-				currentContext->parent->removeBranch(currentContext);
-			}
+			// Otherwise, split/reinsert node
+			propagationSplit = currentContext->overflowTreatment(hasReinsertedOnLevel);
+
+			assert(currentContext == currentContextAtTheTop);
+			assert(treeRef.root->parent == nullptr);
 
 			// Ascend, propagating splits
-			currentContext = propagationSplit.leftBranch.child->parent;
+			currentContext = currentContext->parent;
 		}
 
+		assert(treeRef.root->parent == nullptr);
 		return propagationSplit;
 	}
 
-	void Node::pushDown(Point givenPoint)
-	{
-		Node *pacerChild = branches.front().child;
-		Node *pushChild = branches.back().child;
-
-		for (; pacerChild->branches.size() > 0; pacerChild = pacerChild->branches.front().child)
-		{
-			pushChild->branches.push_back({new Node(treeRef, minBranchFactor, maxBranchFactor, pushChild), IsotheticPolygon(Rectangle(givenPoint, givenPoint))});
-			pushChild = pushChild->branches.front().child;
-		}
-
-		pushChild->data.push_back(givenPoint);
-	}
-
 	// Always called on root, this = root
-	Node *Node::insert(Point givenPoint)
+	Node *Node::insert(PointOrOrphan given, std::vector<bool> &hasReinsertedOnLevel)
 	{
-		// Find the appropriate position for the new point
-		Node *adjustContext = chooseNode(givenPoint);
-
-		// Adjust the tree
-		if (adjustContext->branches.size() == 0)
+		std::cout << "insert" << std::endl;
+		// assert(parent == nullptr);
+		Node *adjustContext;
+		assert(treeRef.root->parent == nullptr);
+		if (std::holds_alternative<Point>(given))
 		{
-			// Add just the data
-			adjustContext->data.push_back(givenPoint);
+			// Find the appropriate position for the new point
+			adjustContext = treeRef.root->chooseNode(std::get<Point>(given));
+			assert(adjustContext->branches.size() == 0);
+
+			// Add the data point
+			adjustContext->data.push_back(std::get<Point>(given));
+		}
+		else
+		{
+			// Find the appropriate position for the orphan
+			adjustContext = treeRef.root->chooseNode(std::get<Branch>(given));
+			assert(adjustContext->data.size() == 0);
+
+			// Add the orphan
+			adjustContext->branches.push_back(std::get<Branch>(given));
+			adjustContext->branches.back().child->parent = adjustContext;
 		}
 
-		// There is no guarantee that the root will still exist after adjustment so backup branch factors
-		unsigned backupMinBranchFactor = minBranchFactor;
-		unsigned backupMaxBranchFactor = maxBranchFactor;
-		Node::SplitResult finalSplit = adjustContext->adjustTree();
+		assert(treeRef.root->parent == nullptr);
+
+		// Adjust tree, possibly causing re-inserts
+		Node::SplitResult finalSplit = adjustContext->adjustTree(hasReinsertedOnLevel);
+
+		assert(treeRef.root->parent == nullptr);
 
 		// Grow the tree taller if we need to
 		if (finalSplit.leftBranch.child != nullptr && finalSplit.rightBranch.child != nullptr)
 		{
-			Node *newRoot = new Node(treeRef, backupMinBranchFactor, backupMaxBranchFactor, nullptr);
+			// assert(this->parent == nullptr);
+			assert(finalSplit.leftBranch.child->level == finalSplit.rightBranch.child->level);
+
+			Node *newRoot = new Node(treeRef, nullptr, finalSplit.leftBranch.child->level + 1);
 
 			finalSplit.leftBranch.child->parent = newRoot;
 			newRoot->branches.push_back(finalSplit.leftBranch);
 			finalSplit.rightBranch.child->parent = newRoot;
 			newRoot->branches.push_back(finalSplit.rightBranch);
 
-			delete this;
+			assert(newRoot->level == newRoot->branches[0].child->level + 1);
+			assert(newRoot->level == newRoot->branches[1].child->level + 1);
 
-			return newRoot;
+			// Fix the reinserted length and notify the tree about the new root *before* we invalide
+			// the treeRef
+			hasReinsertedOnLevel.push_back(false);
+			treeRef.root = newRoot;
+			assert(treeRef.root->parent == nullptr);
+			treeRef.garbage.push_back(this);
+			assert(treeRef.root->parent == nullptr);
+
+			return nullptr;
 		}
-
-		return this;
+		
+		return nullptr;
 	}
 
 	// To be called on a leaf
@@ -723,12 +920,10 @@ namespace nirtree
 
 	bool Node::validate(Node *expectedParent, unsigned index)
 	{
-		if (parent != expectedParent || branches.size() > maxBranchFactor || data.size() > maxBranchFactor)
+		if (parent != expectedParent || branches.size() > treeRef.maxBranchFactor || data.size() > treeRef.maxBranchFactor)
 		{
 			std::cout << "node = " << (void *)this << std::endl;
 			std::cout << "parent = " << (void *)parent << " expectedParent = " << (void *)expectedParent << std::endl;
-			std::cout << "maxBranchFactor = " << maxBranchFactor << std::endl;
-			std::cout << "branches.size() = " << branches.size() << std::endl;
 			std::cout << "data.size() = " << data.size() << std::endl;
 			assert(parent == expectedParent);
 		}
@@ -844,7 +1039,7 @@ namespace nirtree
 		std::vector<unsigned long> histogramPolygon;
 		histogramPolygon.resize(10000, 0);
 		std::vector<unsigned long> histogramFanout;
-		histogramFanout.resize(maxBranchFactor, 0);
+		histogramFanout.resize(treeRef.maxBranchFactor, 0);
 
 		double coverage = 0.0;
 

@@ -19,12 +19,18 @@ namespace nirtree
 	class NIRTree: public Index
 	{
 		public:
+			static constexpr float p = 0.3; // For reinsertion entries. 0.3 by default
+
 			Node *root;
 			Statistics stats;
+			const unsigned minBranchFactor;
+			const unsigned maxBranchFactor;
+
+			std::vector<bool> hasReinsertedOnLevel;
+			std::vector<Node *> garbage;
 
 			// Constructors and destructors
 			NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor);
-			NIRTree(Node *root);
 			~NIRTree();
 
 			// Datastructure interface

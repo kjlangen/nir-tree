@@ -2,7 +2,8 @@
 
 namespace rstartree
 {
-	RStarTree::RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor) : minBranchFactor(minBranchFactor), maxBranchFactor(maxBranchFactor)
+	RStarTree::RStarTree(unsigned minBranchFactor, unsigned maxBranchFactor) :
+		minBranchFactor(minBranchFactor), maxBranchFactor(maxBranchFactor)
 	{
 		hasReinsertedOnLevel = {false};
 		root = new Node(*this);

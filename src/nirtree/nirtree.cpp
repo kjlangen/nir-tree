@@ -2,14 +2,11 @@
 
 namespace nirtree
 {
-	NIRTree::NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor)
+	NIRTree::NIRTree(unsigned minBranchFactor, unsigned maxBranchFactor) :
+		minBranchFactor(minBranchFactor), maxBranchFactor(maxBranchFactor)
 	{
-		root = new Node(*this, minBranchFactor, maxBranchFactor);
-	}
-
-	NIRTree::NIRTree(Node *root)
-	{
-		this->root = root;
+		root = new Node(*this, nullptr, 0);
+		hasReinsertedOnLevel = {false};
 	}
 
 	NIRTree::~NIRTree()
@@ -38,12 +35,28 @@ namespace nirtree
 
 	void NIRTree::insert(Point givenPoint)
 	{
-		root = root->insert(givenPoint);
+		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
+		root->insert(givenPoint, hasReinsertedOnLevel);
+
+		// Cleanup
+		for (Node *g : garbage)
+		{
+			delete g;
+		}
+		garbage.clear();
 	}
 
 	void NIRTree::remove(Point givenPoint)
 	{
+		std::fill(hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false);
 		root = root->remove(givenPoint);
+
+		// Cleanup
+		for (Node *g : garbage)
+		{
+			delete g;
+		}
+		garbage.clear();
 	}
 
 	unsigned NIRTree::checksum()

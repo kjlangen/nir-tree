@@ -24,8 +24,10 @@ const unsigned BiologicalDataSize = 11958999;
 const unsigned BiologicalQuerySize = 37844;
 const unsigned ForestDataSize = 581012;
 const unsigned ForestQuerySize = 1838;
+const unsigned CanadaDataSize = 19371405;
+const unsigned CanadaQuerySize = 0;
 
-enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST};
+enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST, CANADA};
 enum TreeType {R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE};
 
 Point *generateUniform(unsigned benchmarkSize, unsigned seed);
@@ -34,6 +36,7 @@ Point *generateHaze();
 Point *generateCalifornia();
 Point *generateBiological();
 Point *generateForest();
+Point *generateCanada();
 
 Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize);
 Rectangle *generateBitRectangles();
@@ -41,6 +44,7 @@ Rectangle *generateHazeRectangles();
 Rectangle *generateCaliRectangles();
 Rectangle *generateBioRectangles();
 Rectangle *generateForestRectangles();
+Rectangle *generateCanadaRectangles();
 
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configF);
 

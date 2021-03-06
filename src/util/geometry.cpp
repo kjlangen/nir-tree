@@ -884,6 +884,60 @@ void IsotheticPolygon::increaseResolution(const Point &givenPoint, const Isothet
 	}
 }
 
+void IsotheticPolygon::increaseResolution(const IsotheticPolygon &givenPolygon, const Rectangle &clippingRectangle)
+{
+	// Fragment each of our constiuent rectangles based on the clippingRectangle. This may result in
+	// no splitting of the constiuent rectangles and that's okay.
+	std::vector<Rectangle> extraRectangles;
+
+	for (const Rectangle &basicRectangle : basicRectangles)
+	{
+		if (!basicRectangle.intersectsRectangle(clippingRectangle))
+		{
+			extraRectangles.push_back(basicRectangle);
+		}
+		else
+		{
+			// Break the rectangle and add the fragments to extras
+			for (const Rectangle &fragment : basicRectangle.fragmentRectangle(clippingRectangle))
+			{
+				// If fragmentation results in a line anywhere then reject it unless it was part of
+				// the original or contains the point we are interested in
+				if (fragment.area() == 0.0  && !givenPolygon.intersectsRectangle(fragment))
+				{
+					Rectangle originalLine = fragment.intersection(basicRectangle);
+					if (originalLine != Rectangle::atInfinity)
+					{
+						extraRectangles.push_back(originalLine);
+					}
+				}
+				else
+				{
+					extraRectangles.push_back(fragment);
+				}
+			}
+		}
+	}
+
+	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
+	basicRectangles.clear();
+	basicRectangles.swap(extraRectangles);
+}
+
+void IsotheticPolygon::increaseResolution(const IsotheticPolygon &givenPolygon, const IsotheticPolygon &clippingPolygon)
+{
+	// Quick exit
+	if (!boundingBox.intersectsRectangle(clippingPolygon.boundingBox))
+	{
+		return;
+	}
+
+	for (const Rectangle &basicClippingRectangle : clippingPolygon.basicRectangles)
+	{
+		increaseResolution(givenPolygon, basicClippingRectangle);
+	}
+}
+
 void IsotheticPolygon::maxLimit(double limit, unsigned d)
 {
 	unsigned startingSize = basicRectangles.size();

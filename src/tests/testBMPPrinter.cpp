@@ -21,11 +21,12 @@ TEST_CASE("BMPPrinter: testPrintTree")
 {
     nirtree::NIRTree tree(25,50);
 	nirtree::Node *root = tree.root;
-	nirtree::Node *branchA = new nirtree::Node(tree, 25, 50, root);
-	nirtree::Node *branchB = new nirtree::Node(tree, 25, 50, root);
+	nirtree::Node *branchA = new nirtree::Node(tree, root, 0);
+	nirtree::Node *branchB = new nirtree::Node(tree, root, 0);
 
 	root->branches.push_back({branchA, IsotheticPolygon(Rectangle(0.1, 0.1, 0.4, 0.4))});
 	root->branches.push_back({branchB, IsotheticPolygon(Rectangle(0.5, 0.5, 0.6, 0.6))});
+	root->level = 1;
 
 	BMPPrinter p(1920, 1080);
 

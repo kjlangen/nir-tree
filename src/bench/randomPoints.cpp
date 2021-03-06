@@ -229,6 +229,44 @@ Point *generateForest()
 	return points;
 }
 
+Point *generateCanada()
+{
+	// Dataset is pregenerated and requires 2 dimensions
+	assert(dimensions == 2);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	std::string dataPath = "/home/kjlangen/nir-tree/data/canadaroads";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
+	double buffer;
+
+	// Initialize points
+	Point *points = new Point[CanadaDataSize];
+	std::cout << "Beginning initialization of " << CanadaDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < CanadaDataSize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			fileGoodOrDie(file, dataPath);
+			file >> buffer;
+			fileGoodOrDie(file, dataPath);
+			points[i][d] = buffer;
+		}
+
+		if (i <= 5)
+		{
+			std::cout << "Canada point " << points[i] << std::endl;
+		}
+	}
+	std::cout << "Initialization OK." << std::endl;
+
+	// Cleanup
+	file.close();
+
+	return points;
+}
+
 Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
 {
 	std::default_random_engine generator(seed + benchmarkSize);
@@ -448,6 +486,41 @@ Rectangle *generateForestRectangles()
 	return rectangles;
 }
 
+Rectangle *generateCandaRectangles()
+{
+	// Query set is pre-generated and requires 5 dimensions
+	assert(dimensions == 5);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	std::string dataPath = "/home/kjlangen/nir-tree/data/canadaroads";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
+	double buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[CanadaQuerySize];
+	std::cout << "Beginning initialization of " << CanadaQuerySize << " maple leaf rectangles..." << std::endl;
+	for (unsigned i = 0; i < CanadaQuerySize; ++i)
+	{
+		for (unsigned d = 0; d < dimensions; ++d)
+		{
+			fileGoodOrDie(file, dataPath);
+			file >> buffer;
+			rectangles[i].lowerLeft[d] = buffer;
+			fileGoodOrDie(file, dataPath);
+			file >> buffer;
+			rectangles[i].upperRight[d] = buffer;
+		}
+	}
+	std::cout << "Initialization OK." << std::endl;
+
+	// Cleanup
+	file.close();
+
+	return rectangles;
+}
+
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
 	// Setup checksums
@@ -517,6 +590,11 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		configU["size"] = ForestDataSize;
 		points = generateForest();
 	}
+	else if (configU["distribution"] == CANADA)
+	{
+		configU["size"] = CanadaDataSize;
+		points = generateCanada();
+	}
 	else
 	{
 		return;
@@ -553,6 +631,11 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		configU["rectanglescount"] = ForestQuerySize;
 		searchRectangles = generateForestRectangles();
 	}
+	else if (configU["distribution"] == CANADA)
+	{
+		configU["rectanglescount"] = CanadaQuerySize;
+		searchRectangles = generateCandaRectangles();
+	}
 	else
 	{
 		return;
@@ -576,6 +659,11 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
 		// std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
+#ifndef NDEBUG
+		// Validate tree
+		assert(spatialIndex->validate());
+		std::cout << "Validation OK." << std::endl;
+#endif
 	}
 	std::cout << "Insertion OK." << std::endl;
 

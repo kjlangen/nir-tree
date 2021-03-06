@@ -138,6 +138,8 @@ class IsotheticPolygon
 		void intersection(const IsotheticPolygon &constraintPolygon);
 		void increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
 		void increaseResolution(const Point &givenPoint, const IsotheticPolygon &clippingPolygon);
+		void increaseResolution(const IsotheticPolygon &givenPolygon, const Rectangle &clippingRectangle);
+		void increaseResolution(const IsotheticPolygon &givenPolygon, const IsotheticPolygon &clippingPolygon);
 		void maxLimit(double limit, unsigned d=0);
 		void minLimit(double limit, unsigned d=0);
 		void merge(const IsotheticPolygon &mergePolygon);

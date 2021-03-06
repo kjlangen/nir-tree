@@ -74,10 +74,8 @@ namespace rstartree
 
 			// Datastructure interface functions
 			void exhaustiveSearch(const Point &requestedPoint, std::vector<Point> &accumulator) const;
-
 			std::vector<Point> search(const Point &requestedPoint) CONST_IF_NOT_STAT;
 			std::vector<Point> search(const Rectangle &requestedRectangle) CONST_IF_NOT_STAT;
-
 			// These return the root of the tree.
 			Node *insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel);
 			Node *remove(Point &givenPoint, std::vector<bool> hasReinsertedOnLevel);
