@@ -234,7 +234,6 @@ namespace nirtree
 	// choosing a particular leaf
 	Node *Node::chooseNode(Point givenPoint)
 	{
-		std::cout << "chooseNode" << std::endl;
 		// CL1 [Initialize]
 		Node *context = this;
 		unsigned enclosingPolyIndex = 0;
@@ -568,18 +567,26 @@ namespace nirtree
 				{
 					Node::SplitResult downwardSplit = branch.child->splitNode(p);
 
-					delete branch.child;
+					treeRef.garbage.push_back(branch.child);
 
 					if (downwardSplit.leftBranch.child->data.size() > 0 || downwardSplit.leftBranch.child->branches.size() > 0)
 					{
 						downwardSplit.leftBranch.child->parent = split.leftBranch.child;
 						split.leftBranch.child->branches.push_back(downwardSplit.leftBranch);
 					}
+					else
+					{
+						treeRef.garbage.push_back(downwardSplit.leftBranch.child);
+					}
 
 					if (downwardSplit.rightBranch.child->data.size() > 0 || downwardSplit.rightBranch.child->branches.size() > 0)
 					{
 						downwardSplit.rightBranch.child->parent = split.rightBranch.child;
 						split.rightBranch.child->branches.push_back(downwardSplit.rightBranch);
+					}
+					else
+					{
+						treeRef.garbage.push_back(downwardSplit.rightBranch.child);
 					}
 				}
 			}
@@ -622,7 +629,6 @@ namespace nirtree
 
 	Node::SplitResult Node::reInsert(std::vector<bool> &hasReinsertedOnLevel)
 	{
-		std::cout << "reInsert" << std::endl;
 		assert(hasReinsertedOnLevel.at(level));
 		assert(treeRef.root->parent == nullptr);
 
@@ -690,13 +696,11 @@ namespace nirtree
 
 	Node::SplitResult Node::overflowTreatment(std::vector<bool> &hasReinsertedOnLevel)
 	{
-		std::cout << "overflowTreatment" << std::endl;
 		assert(hasReinsertedOnLevel.size() > level);
 		assert(treeRef.root->parent == nullptr);
 
 		if (hasReinsertedOnLevel[level] || branches.size() > 0)
 		{
-			std::cout << "bout to do the thing" << std::endl;
 			// If we've already reinserted then split and cleanup
 			auto sr = splitNode();
 			if (parent != nullptr)
@@ -720,7 +724,6 @@ namespace nirtree
 	Node::SplitResult Node::adjustTree(std::vector<bool> &hasReinsertedOnLevel)
 	{
 		assert(treeRef.root->parent == nullptr);
-		std::cout << "adjustTree" << std::endl;
 		Node *currentContext = this;
 		unsigned branchesSize, dataSize;
 		Node::SplitResult propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
@@ -730,7 +733,7 @@ namespace nirtree
 			branchesSize = currentContext->branches.size();
 			dataSize = currentContext->data.size();
 
-			Node *currentContextAtTheTop = currentContext;
+			// Node *currentContextAtTheTop = currentContext;
 
 			assert(branchesSize < 100 && dataSize < 100);
 
@@ -742,11 +745,19 @@ namespace nirtree
 					currentContext->branches.push_back(propagationSplit.leftBranch);
 					++branchesSize;
 				}
+				else
+				{
+					treeRef.garbage.push_back(propagationSplit.leftBranch.child);
+				}
 
 				if (propagationSplit.rightBranch.child->data.size() > 0 || propagationSplit.rightBranch.child->branches.size() > 0)
 				{
 					currentContext->branches.push_back(propagationSplit.rightBranch);
 					++branchesSize;
+				}
+				else
+				{
+					treeRef.garbage.push_back(propagationSplit.rightBranch.child);
 				}
 			}
 
@@ -780,7 +791,6 @@ namespace nirtree
 	// Always called on root, this = root
 	Node *Node::insert(PointOrOrphan given, std::vector<bool> &hasReinsertedOnLevel)
 	{
-		std::cout << "insert" << std::endl;
 		// assert(parent == nullptr);
 		Node *adjustContext;
 		assert(treeRef.root->parent == nullptr);
