@@ -150,6 +150,37 @@ Point *generateCalifornia()
 	return points;
 }
 
+Point *generateCanada() {
+	assert(dimensions == 2);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	std::string dataPath = "/home/kjlangen/nir-tree/data/canada";
+	file.open(dataPath);
+	fileGoodOrDie(file, dataPath);
+
+	double x, y;
+
+	// Initialize points
+	Point *points = new Point[CanadaDataSize];
+	std::cout << "Beginning initialization of " << CanadaDataSize << " points..." << std::endl;
+	for (unsigned i = 0; i < CanadaDataSize; ++i)
+	{
+		fileGoodOrDie(file, dataPath);
+		file >> x;
+		fileGoodOrDie(file, dataPath);
+		file >> y;
+		points[i][0] = x;
+		points[i][1] = y;
+	}
+	std::cout << "Initialization OK." << std::endl;
+
+	// Cleanup
+	file.close();
+
+	return points;
+}
+
 Point *generateBiological()
 {
 	// Dataset is pre-generated and requires 3 dimensions
@@ -517,6 +548,11 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		configU["size"] = ForestDataSize;
 		points = generateForest();
 	}
+	else if (configU["distribution"] == CANADA)
+	{
+		configU["size"] = CanadaDataSize;
+		points = generateCanada();
+	}
 	else
 	{
 		return;
@@ -552,6 +588,11 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	{
 		configU["rectanglescount"] = ForestQuerySize;
 		searchRectangles = generateForestRectangles();
+	}
+	else if (configU["distribution"] == CANADA)
+	{
+		configU["rectanglescount"] = 0; // NO rectangles
+		searchRectangles = new Rectangle[1]; // HACK
 	}
 	else
 	{
