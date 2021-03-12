@@ -47,19 +47,16 @@ namespace xxBenchType {
     class Uniform : public Benchmark {
     public:
         static constexpr unsigned size = 0;
-
-        static std::string getFileName() {
-            throw std::runtime_error( "Uniform distribution not backed by file." );
-        }
+        static constexpr unsigned dimensions = 0; // Variable, can configure
+        static constexpr char fileName[] = "";
     };
 
     class Skew : public Benchmark {
     public:
         static constexpr unsigned size = BitDataSize;
         static constexpr unsigned querySize = BitQuerySize;
-        static std::string getFileName() {
-            return "/hdd1/nir-tree/data/bits02";
-        }
+        static constexpr unsigned dimensions = 2;
+        static constexpr char fileName[] = "/hdd1/nir-tree/data/bits02";
 
     };
 
@@ -67,51 +64,40 @@ namespace xxBenchType {
     public:
         static constexpr unsigned size = CaliforniaDataSize;
         static constexpr unsigned querySize = CaliforniaQuerySize;
-        static std::string getFileName() {
-            return "/hdd1/nir-tree/data/california";
-        }
+        static constexpr unsigned dimensions = 2;
+        static constexpr char fileName[] = "/hdd1/nir-tree/data/california";
     };
-
-
 
     class Biological: public Benchmark {
     public:
         static constexpr unsigned size = BiologicalDataSize;
         static constexpr unsigned querySize = BiologicalQuerySize;
-
-        static std::string getFileName() {
-            return "/hdd1/nir-tree/data/biological";
-        }
+        static constexpr unsigned dimensions = 3;
+        static constexpr char fileName[] = "/hdd1/nir-tree/data/biological";
     };
 
     class Forest : public Benchmark {
     public:
         static constexpr unsigned size = ForestDataSize;
         static constexpr unsigned querySize = ForestQuerySize;
-
-        static std::string getFileName() {
-            return "/hdd1/nir-tree/data/forest";
-        }
+        static constexpr unsigned dimensions = 5;
+        static constexpr char fileName[] = "/hdd1/nir-tree/data/forest";
     };
 
     class Canada : public Benchmark {
     public:
         static constexpr unsigned size = CanadaDataSize;
         static constexpr unsigned querySize = 0;
-
-        static std::string getFileName() {
-            return "/hdd1/nir-tree/data/canada";
-        }
+        static constexpr unsigned dimensions = 2;
+        static constexpr char fileName[] = "/hdd1/nir-tree/data/canada";
     };
 
     class MicrosoftBuildings : public Benchmark {
     public:
         static constexpr unsigned size = MicrosoftBuildingsDataSize;
         static constexpr unsigned querySize = 0;
-
-        static std::string getFileName() {
-            return "/hdd1/nir-tree/data/microsoft";
-        }
+        static constexpr unsigned dimensions = 2;
+        static constexpr char fileName[] = "/hdd1/nir-tree/data/microsoftbuildings";
     };
 };
 
@@ -152,24 +138,18 @@ public:
 
     static_assert( std::is_base_of<BenchTag::DistributionGenerated, BenchDetail::getBenchTag<xxBenchType::Uniform>>::value );
 
-    // You may only create a PointGenerator with a seed if it is distribution-generated
-    // Rebind typename U because T is instantiated at this point, need to get typename back
-    template <typename U = T>
-    PointGenerator( unsigned benchmarkSize, unsigned seed, typename std::enable_if<std::is_base_of<BenchTag::DistributionGenerated, BenchDetail::getBenchTag<U>>::value>::type* = 0 ) :
-        benchmarkSize( T::size ), seed( seed ), offset( 0 )
-    {
-    }
-
-    // You may only create PointGenerator with a backing file if the benchmark is backed by a file
-    template <typename U = T>
-    PointGenerator( unsigned benchmarkSize, std::fstream &&backingFile, typename std::enable_if<std::is_base_of<BenchTag::FileBackedReadAll, BenchDetail::getBenchTag<U>>::value or std::is_base_of<BenchTag::FileBackedReadChunksAtATime, BenchDetail::getBenchTag<U>>::value>::type* = 0 ):
-        benchmarkSize( T::size ), backingFile( std::move( backingFile ) ), offset( 0 )
-    {
+    PointGenerator() : PointGenerator( BenchDetail::getBenchTag<T>{} ) {
+        if( T::dimensions != 0 and T::dimensions != DIM ) {
+            throw std::runtime_error( "Wrong number of dimensions configured." );
+        }
     }
 
     std::optional<Point> nextPoint();
     void reset();
 private:
+    PointGenerator( BenchTag::DistributionGenerated );
+    PointGenerator( BenchTag::FileBackedReadAll );
+    PointGenerator( BenchTag::FileBackedReadChunksAtATime );
 
     void reset( BenchTag::DistributionGenerated );
     void reset( BenchTag::FileBackedReadAll );
