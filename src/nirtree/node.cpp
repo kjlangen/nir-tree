@@ -355,6 +355,112 @@ namespace nirtree
 		return nullptr;
 	}
 
+	// For now try an n^2 lateral merge
+	bool Node::laterallyMerged()
+	{
+		unsigned branchesSize = branches.size();
+
+		// Early exit if we are a leaf and all our children are data
+		if (branchesSize == 0)
+		{
+			return false;
+		}
+
+		// Ideally we want to merge bounding polygons that are already sort-of the same polygon however,
+		// we will take any merge really
+		std::vector<std::pair<unsigned, unsigned>> mergeableTouching;
+		std::vector<std::pair<unsigned, unsigned>> mergeableNotTouching;
+
+		// Test each branch with every other branch
+		for (unsigned i = 0; i < branchesSize; ++i)
+		{
+			for (unsigned j = 0; j < branchesSize; ++j)
+			{
+				bool mergeRespectsBranchFactor =
+					(branches[i].child->branches.size() > 0 && branches[i].child->branches.size() + branches[j].child->branches.size() < minBranchFactor) ||
+					(branches[i].child->data.size() > 0 && branches[i].child->data.size() + branches[j].child->data.size() < minBranchFactor);
+
+				if (i != j && mergeRespectsBranchFactor)
+				{
+					if (branches[i].boundingPoly.intersectsPolygon(branches[j].boundingPoly))
+					{
+						mergeableTouching.push_back(std::pair<unsigned, unsigned>(i, j));
+					}
+					else
+					{
+						mergeableNotTouching.push_back(std::pair<unsigned, unsigned>(i, j));
+					}
+				}
+			}
+		}
+
+		// Compute the best pair to merge based on coverage area
+		std::pair<unsigned, unsigned> optimalPair;
+		double epxansionArea = std::numeric_limits<double>::infinity();
+
+		for (const auto &touchingPair : mergeableTouching)
+		{
+			double testArea = branches[touchingPair.first].boundingPoly.boundingBox.computeExpansionArea(branches[touchingPair.second].boundingPoly.boundingBox);
+			// Rectangle dummyRect = branches[touchingPair.first].boundingPoly.boundingBox;
+			// dummyRect.expand(branches[touchingPair.second].boundingPoly.boundingBox);
+			// double testArea = dummyRect.margin();
+			if (testArea < epxansionArea)
+			{
+				optimalPair = touchingPair;
+				epxansionArea = testArea;
+			}
+		}
+
+		if (epxansionArea == std::numeric_limits<double>::infinity())
+		{
+			for (const auto &notTouchingPair : mergeableNotTouching)
+			{
+				double testArea = branches[notTouchingPair.first].boundingPoly.boundingBox.computeExpansionArea(branches[notTouchingPair.second].boundingPoly.boundingBox);
+				// Rectangle dummyRect = branches[notTouchingPair.first].boundingPoly.boundingBox;
+				// dummyRect.expand(branches[notTouchingPair.second].boundingPoly.boundingBox);
+				// double testArea = dummyRect.margin();
+				if (testArea < epxansionArea)
+				{
+					optimalPair = notTouchingPair;
+					epxansionArea = testArea;
+				}
+			}	
+		}
+
+		// It is possible that no pairs satisfy the branch condition
+		if (epxansionArea == std::numeric_limits<double>::infinity())
+		{
+			return false;
+		}
+
+		// Merge the bounding polygons first
+		branches[optimalPair.first].boundingPoly.merge(branches[optimalPair.second].boundingPoly);
+		branches[optimalPair.first].boundingPoly.refine();
+
+		// Merge the children/data second
+		if (branches[optimalPair.second].child->branches.size() > 0)
+		{
+			// Hookup parent pointers of the branches about to be transfered
+			for (const auto &branch : branches[optimalPair.second].child->branches)
+			{
+				branch.child->parent = branches[optimalPair.first].child;
+			}
+
+			// Transfer
+			branches[optimalPair.first].child->branches.insert(branches[optimalPair.first].child->branches.end(), branches[optimalPair.second].child->branches.begin(), branches[optimalPair.second].child->branches.end());
+		}
+		else
+		{
+			// Transfer
+			branches[optimalPair.first].child->data.insert(branches[optimalPair.first].child->data.end(), branches[optimalPair.second].child->data.begin(), branches[optimalPair.second].child->data.end());
+		}
+
+		// Cleanup the merged branch
+		removeBranch(branches[optimalPair.second].child);
+		
+		return true;
+	}
+
 	Node::Partition Node::partitionNode()
 	{
 		nirtree::Node::Partition defaultPartition;
@@ -572,7 +678,8 @@ namespace nirtree
 			}
 
 			// Early exit if this node does not overflow
-			if (dataSize <= currentContext->maxBranchFactor && branchesSize <= currentContext->maxBranchFactor)
+			Node *parentBefore = currentContext->parent;
+			if ((dataSize <= currentContext->maxBranchFactor && branchesSize <= currentContext->maxBranchFactor) || currentContext->laterallyMerged())
 			{
 				propagationSplit = {{nullptr, IsotheticPolygon()}, {nullptr, IsotheticPolygon()}};
 				break;

@@ -78,6 +78,7 @@ namespace nirtree
 			void removeData(Point givenPoint);
 			Node *chooseNode(Point givenPoint);
 			Node *findLeaf(Point givenPoint);
+			bool laterallyMerged();
 			Partition partitionNode();
 			SplitResult splitNode(Partition p);
 			SplitResult splitNode();
