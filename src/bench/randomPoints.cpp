@@ -11,7 +11,7 @@ static void fileGoodOrDie(std::fstream &file)
 }
 
 template <>
-std::optional<Point> PointGenerator<UNIFORM>::nextPoint( BenchTag::DistributionGenerated )
+std::optional<Point> PointGenerator<xxBenchType::Uniform>::nextPoint( BenchTag::DistributionGenerated )
 {
     // We produce all of the points at once and shove them in the buffer.
     if( pointBuffer.empty() ) {
@@ -33,35 +33,33 @@ std::optional<Point> PointGenerator<UNIFORM>::nextPoint( BenchTag::DistributionG
 }
 
 
-template <BenchType bt>
-void PointGenerator<bt>::reset( BenchTag::DistributionGenerated )
+template <typename T>
+void PointGenerator<T>::reset( BenchTag::DistributionGenerated )
 {
     offset = 0;
 }
 
-template <BenchType bt>
-void PointGenerator<bt>::reset( BenchTag::FileBackedReadAll )
+template <typename T>
+void PointGenerator<T>::reset( BenchTag::FileBackedReadAll )
 {
     offset = 0;
 }
 
-template <BenchType bt>
-void PointGenerator<bt>::reset( BenchTag::FileBackedReadChunksAtATime )
+template <typename T>
+void PointGenerator<T>::reset( BenchTag::FileBackedReadChunksAtATime )
 {
     offset = 0;
     backingFile.seekg(0);
 }
 
-
-
-template <BenchType bt>
-void PointGenerator<bt>::reset()
+template <typename T>
+void PointGenerator<T>::reset()
 {
-    reset( BenchDetail::getBenchTag<bt>{} );
+    reset( BenchDetail::getBenchTag<T>{} );
 }
 
-template <BenchType bt>
-std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadAll )
+template <typename T>
+std::optional<Point> PointGenerator<T>::nextPoint( BenchTag::FileBackedReadAll )
 {
     if( pointBuffer.empty() ) {
         // We produce all of the points at once, shove them into the buffer.
@@ -89,8 +87,8 @@ std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadAll 
     return std::nullopt;
 }
 
-template <BenchType bt>
-std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadChunksAtATime )
+template <typename T>
+std::optional<Point> PointGenerator<T>::nextPoint( BenchTag::FileBackedReadChunksAtATime )
 {
 
     if( offset >= benchmarkSize ) {
@@ -124,150 +122,10 @@ std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadChun
     return pointBuffer[ offset++ % 10000 ];
 }
 
-template <BenchType bt>
-std::optional<Point> PointGenerator<bt>::nextPoint()
+template <typename T>
+std::optional<Point> PointGenerator<T>::nextPoint()
 {
-    return nextPoint( BenchDetail::getBenchTag<bt>{} );
-}
-
-Point *generateUniform(unsigned benchmarkSize, unsigned seed)
-{
-	// Setup random generators
-	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-	std::cout << "Uniformly distributing points in the unit hyper-cube." << std::endl;
-
-	// Initialize points
-	Point *points = new Point[benchmarkSize];
-	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
-	{
-		// Create the point
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			points[i][d] = pointDist(generator);
-		}
-
-		// Print the new point
-		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	return points;
-}
-
-Point *generateBits()
-{
-	// Dataset is pre-generated and requires 2 or 3 dimensions
-	assert(dimensions == 2 || dimensions == 3);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02" : "/home/kjlangen/nir-tree/data/bit03";
-	file.open(dataPath.c_str());
-	fileGoodOrDie(file);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[BitDataSize];
-	std::cout << "Beginning initialization of " << BitDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < BitDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
-}
-
-Point *generateHaze()
-{
-	// Dataset is pre-generated and requires 2 or 3 dimensions
-	assert(dimensions == 2 || dimensions == 3);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02" : "/home/kjlangen/nir-tree/data/pha03";
-	file.open(dataPath.c_str());
-	fileGoodOrDie(file);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[HazeDataSize];
-	std::cout << "Beginning initialization of " << HazeDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < HazeDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
-}
-
-Point *generateCalifornia()
-{
-	// Dataset is pre-generated and requires 2 dimensions
-	assert(dimensions == 2);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea02";
-	file.open(dataPath);
-	fileGoodOrDie(file);
-
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[CaliforniaDataSize];
-	std::cout << "Beginning initialization of " << CaliforniaDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < CaliforniaDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			file.sync();
-			points[i][d] = (points[i][d] + *doubleBuffer) / 2;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
+    return nextPoint( BenchDetail::getBenchTag<T>{} );
 }
 
 static Point *generatePointsFromNonBinaryFile(const std::string dataPath, const unsigned dataSize)
@@ -301,94 +159,16 @@ static Point *generatePointsFromNonBinaryFile(const std::string dataPath, const 
 	return points;
 
 }
-Point *generateCanada() {
+
+static Point *generateCanada() {
 	return generatePointsFromNonBinaryFile( "/hdd1/nir-tree/data/canada", CanadaDataSize );
 }
 
-Point *generateMicrosoftBuildings() {
+static Point *generateMicrosoftBuildings() {
 	return generatePointsFromNonBinaryFile( "/hdd1/nir-tree/data/microsoftbuildings", 100 );
 }
 
-Point *generateBiological()
-{
-	// Dataset is pre-generated and requires 3 dimensions
-	if (dimensions != 3)
-    {
-        std::cout << "Incorrect dimensions for biol: " << dimensions << std::endl;
-        exit(1);
-    }
-
-	// Setup file reader and double buffer
-	std::fstream file;
-    
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03";
-	file.open(dataPath);
-	fileGoodOrDie(file);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[BiologicalDataSize];
-	std::cout << "Beginning initialization of " << BiologicalDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < BiologicalDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
-}
-
-Point *generateForest()
-{
-	// Dataset is pre-generated and requires 5 dimensions
-	assert(dimensions == 5);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath ="/home/kjlangen/nir-tree/data/rea05";
-	file.open(dataPath);
-	fileGoodOrDie(file);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[ForestDataSize];
-	std::cout << "Beginning initialization of " << ForestDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < ForestDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
-}
-
-Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
+static Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
 {
 	std::default_random_engine generator(seed + benchmarkSize);
 	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
@@ -417,7 +197,7 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 	return rectangles;
 }
 
-Rectangle *generateBitRectangles()
+static Rectangle *generateBitRectangles()
 {
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
@@ -455,7 +235,7 @@ Rectangle *generateBitRectangles()
 	return rectangles;
 }
 
-Rectangle *generateHazeRectangles()
+static Rectangle *generateHazeRectangles()
 {
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
@@ -493,7 +273,7 @@ Rectangle *generateHazeRectangles()
 	return rectangles;
 }
 
-Rectangle *generateCaliRectangles()
+static Rectangle *generateCaliRectangles()
 {
 	// Query set is pre-generated and requires 2 dimensions
 	assert(dimensions == 2);
@@ -531,14 +311,14 @@ Rectangle *generateCaliRectangles()
 	return rectangles;
 }
 
-Rectangle *generateBioRectangles()
+static Rectangle *generateBioRectangles()
 {
 	// Query set is pre-generated and requires 3 dimensions
 	assert(dimensions == 3);
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea03.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -569,14 +349,14 @@ Rectangle *generateBioRectangles()
 	return rectangles;
 }
 
-Rectangle *generateForestRectangles()
+static Rectangle *generateForestRectangles()
 {
 	// Query set is pre-generated and requires 5 dimensions
 	assert(dimensions == 5);
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea05.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea05.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -607,7 +387,9 @@ Rectangle *generateForestRectangles()
 	return rectangles;
 }
 
-void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
+
+template <typename T>
+static void runBench( PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
 	// Setup checksums
 	unsigned directSum = 0;
@@ -644,12 +426,6 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	{
 		return;
 	}
-
-	// Initialize PointGenerator 
-    std::fstream file;
-    file.open( "/hdd1/nir-tree/data/california" );
-
-    PointGenerator<CALIFORNIA> pointGen(CaliforniaDataSize, std::move( file ) );
 
 	// Initialize search rectangles
 	Rectangle *searchRectangles;
@@ -716,7 +492,6 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	}
 
     std::cout << "Checksum is " << directSum << std::endl;
-    return;
 	std::cout << "Insertion OK." << std::endl;
 
 	// Visualize the tree
@@ -844,3 +619,49 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	delete spatialIndex;
 	delete [] searchRectangles;
 }
+
+void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
+{
+    switch (configU["distribution"]) {
+        case UNIFORM: {
+            PointGenerator<xxBenchType::Uniform> pointGen( configU["size"], configU["seed"] );
+            runBench( pointGen, configU, configD );
+            break;
+        }
+        case SKEW: {
+            std::fstream file;
+            file.open( xxBenchType::Skew::getFileName() );
+            PointGenerator<xxBenchType::Skew> pointGen( xxBenchType::Skew::size, std::move( file ) );
+            runBench( pointGen, configU, configD );
+        }
+        case CALIFORNIA: {
+            std::fstream file;
+            file.open( xxBenchType::California::getFileName() );
+            PointGenerator<xxBenchType::Skew> pointGen( xxBenchType::California::size, std::move( file ) );
+        }
+        case BIOLOGICAL: {
+            std::fstream file;
+            file.open( xxBenchType::Biological::getFileName() );
+            PointGenerator<xxBenchType::Biological> pointGen( xxBenchType::Biological::size, std::move( file ) );
+        }
+        case FOREST: {
+            std::fstream file;
+            file.open( xxBenchType::Forest::getFileName() );
+            PointGenerator<xxBenchType::Forest> pointGen( xxBenchType::Forest::size, std::move( file ) );
+        }
+        case CANADA: {
+            std::fstream file;
+            file.open( xxBenchType::Canada::getFileName() );
+            PointGenerator<xxBenchType::Canada> pointGen( xxBenchType::Canada::size, std::move( file ) );
+        }
+        case MICROSOFTBUILDINGS: {
+            std::fstream file;
+            file.open( xxBenchType::MicrosoftBuildings::getFileName() );
+            PointGenerator<xxBenchType::MicrosoftBuildings> pointGen( xxBenchType::MicrosoftBuildings::size, std::move( file ) );
+        }
+
+    }
+
+}
+
+

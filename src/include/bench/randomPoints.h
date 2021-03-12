@@ -31,22 +31,6 @@ const unsigned MicrosoftBuildingsDataSize = 752704741;
 enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST, CANADA, MICROSOFTBUILDINGS};
 enum TreeType {R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE};
 
-Point *generateUniform(unsigned benchmarkSize, unsigned seed);
-Point *generateBits();
-Point *generateHaze();
-Point *generateCalifornia();
-Point *generateBiological();
-Point *generateForest();
-Point *generateCanada();
-Point *generateMicrosoftBuildings();
-
-Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize);
-Rectangle *generateBitRectangles();
-Rectangle *generateHazeRectangles();
-Rectangle *generateCaliRectangles();
-Rectangle *generateBioRectangles();
-Rectangle *generateForestRectangles();
-
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configF);
 
 namespace BenchTag {
@@ -56,47 +40,130 @@ namespace BenchTag {
     struct Error{};
 };
 
+namespace xxBenchType {
+
+    class Benchmark {};
+
+    class Uniform : public Benchmark {
+    public:
+        static constexpr unsigned size = 0;
+
+        static std::string getFileName() {
+            throw std::runtime_error( "Uniform distribution not backed by file." );
+        }
+    };
+
+    class Skew : public Benchmark {
+    public:
+        static constexpr unsigned size = BitDataSize;
+        static constexpr unsigned querySize = BitQuerySize;
+        static std::string getFileName() {
+            return "/hdd1/nir-tree/data/bits02";
+        }
+
+    };
+
+    class California : public Benchmark {
+    public:
+        static constexpr unsigned size = CaliforniaDataSize;
+        static constexpr unsigned querySize = CaliforniaQuerySize;
+        static std::string getFileName() {
+            return "/hdd1/nir-tree/data/california";
+        }
+    };
+
+
+
+    class Biological: public Benchmark {
+    public:
+        static constexpr unsigned size = BiologicalDataSize;
+        static constexpr unsigned querySize = BiologicalQuerySize;
+
+        static std::string getFileName() {
+            return "/hdd1/nir-tree/data/biological";
+        }
+    };
+
+    class Forest : public Benchmark {
+    public:
+        static constexpr unsigned size = ForestDataSize;
+        static constexpr unsigned querySize = ForestQuerySize;
+
+        static std::string getFileName() {
+            return "/hdd1/nir-tree/data/forest";
+        }
+    };
+
+    class Canada : public Benchmark {
+    public:
+        static constexpr unsigned size = CanadaDataSize;
+        static constexpr unsigned querySize = 0;
+
+        static std::string getFileName() {
+            return "/hdd1/nir-tree/data/canada";
+        }
+    };
+
+    class MicrosoftBuildings : public Benchmark {
+    public:
+        static constexpr unsigned size = MicrosoftBuildingsDataSize;
+        static constexpr unsigned querySize = 0;
+
+        static std::string getFileName() {
+            return "/hdd1/nir-tree/data/microsoft";
+        }
+    };
+};
+
 
 namespace BenchDetail {
 
-    template <BenchType bt>
+    template <typename T>
     struct getBenchTag : BenchTag::Error{};
 
     template <>
-    struct getBenchTag<UNIFORM> : BenchTag::DistributionGenerated{};
-
-    // Sort of, but it also reads crap from a file
-    template <>
-    struct getBenchTag<SKEW> : BenchTag::DistributionGenerated{};
+    struct getBenchTag<xxBenchType::Uniform> : BenchTag::DistributionGenerated{};
 
     template <>
-    struct getBenchTag<CALIFORNIA> : BenchTag::FileBackedReadChunksAtATime{};
+    struct getBenchTag<xxBenchType::Skew> : BenchTag::FileBackedReadAll{};
 
     template <>
-    struct getBenchTag<BIOLOGICAL> : BenchTag::FileBackedReadAll{};
+    struct getBenchTag<xxBenchType::California> : BenchTag::FileBackedReadAll{};
 
     template <>
-    struct getBenchTag<FOREST> : BenchTag::FileBackedReadAll{};
+    struct getBenchTag<xxBenchType::Biological> : BenchTag::FileBackedReadAll{};
 
     template <>
-    struct getBenchTag<CANADA> : BenchTag::FileBackedReadAll{};
+    struct getBenchTag<xxBenchType::Forest> : BenchTag::FileBackedReadAll{};
 
     template <>
-    struct getBenchTag<MICROSOFTBUILDINGS> : BenchTag::FileBackedReadAll{};
+    struct getBenchTag<xxBenchType::Canada> : BenchTag::FileBackedReadChunksAtATime{};
+
+    template <>
+    struct getBenchTag<xxBenchType::MicrosoftBuildings> : BenchTag::FileBackedReadChunksAtATime{};
 
 }
 
-template <BenchType bt>
+template <typename T>
 class PointGenerator {
 public:
 
-    PointGenerator( unsigned benchmarkSize, unsigned seed ) :
-        benchmarkSize( benchmarkSize ), seed( seed ), offset( 0 )
+    static_assert( std::is_base_of<xxBenchType::Benchmark, T>::value and not std::is_same<T,xxBenchType::Benchmark>::value, "PointGenerator must take a Benchmark subclass" );
+
+    static_assert( std::is_base_of<BenchTag::DistributionGenerated, BenchDetail::getBenchTag<xxBenchType::Uniform>>::value );
+
+    // You may only create a PointGenerator with a seed if it is distribution-generated
+    // Rebind typename U because T is instantiated at this point, need to get typename back
+    template <typename U = T>
+    PointGenerator( unsigned benchmarkSize, unsigned seed, typename std::enable_if<std::is_base_of<BenchTag::DistributionGenerated, BenchDetail::getBenchTag<U>>::value>::type* = 0 ) :
+        benchmarkSize( T::size ), seed( seed ), offset( 0 )
     {
     }
 
-    PointGenerator( unsigned benchmarkSize, std::fstream &&backingFile ):
-        benchmarkSize( benchmarkSize ), backingFile( std::move( backingFile ) ), offset( 0 )
+    // You may only create PointGenerator with a backing file if the benchmark is backed by a file
+    template <typename U = T>
+    PointGenerator( unsigned benchmarkSize, std::fstream &&backingFile, typename std::enable_if<std::is_base_of<BenchTag::FileBackedReadAll, BenchDetail::getBenchTag<U>>::value or std::is_base_of<BenchTag::FileBackedReadChunksAtATime, BenchDetail::getBenchTag<U>>::value>::type* = 0 ):
+        benchmarkSize( T::size ), backingFile( std::move( backingFile ) ), offset( 0 )
     {
     }
 
