@@ -159,13 +159,12 @@ Point *generateCanada() {
 	file.open(dataPath);
 	fileGoodOrDie(file, dataPath);
 
-	double x, y;
-
 	// Initialize points
 	Point *points = new Point[CanadaDataSize];
 	std::cout << "Beginning initialization of " << CanadaDataSize << " points..." << std::endl;
 	for (unsigned i = 0; i < CanadaDataSize; ++i)
 	{
+		double x, y;
 		fileGoodOrDie(file, dataPath);
 		file >> x;
 		fileGoodOrDie(file, dataPath);
