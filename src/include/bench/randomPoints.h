@@ -70,7 +70,7 @@ namespace BenchDetail {
     struct getBenchTag<SKEW> : BenchTag::DistributionGenerated{};
 
     template <>
-    struct getBenchTag<CALIFORNIA> : BenchTag::FileBackedReadAll{};
+    struct getBenchTag<CALIFORNIA> : BenchTag::FileBackedReadChunksAtATime{};
 
     template <>
     struct getBenchTag<BIOLOGICAL> : BenchTag::FileBackedReadAll{};
@@ -106,6 +106,7 @@ private:
 
     void reset( BenchTag::DistributionGenerated );
     void reset( BenchTag::FileBackedReadAll );
+    void reset( BenchTag::FileBackedReadChunksAtATime );
     std::optional<Point> nextPoint( BenchTag::DistributionGenerated );
     std::optional<Point> nextPoint( BenchTag::FileBackedReadAll );
     std::optional<Point> nextPoint( BenchTag::FileBackedReadChunksAtATime );

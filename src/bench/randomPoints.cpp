@@ -46,6 +46,15 @@ void PointGenerator<bt>::reset( BenchTag::FileBackedReadAll )
 }
 
 template <BenchType bt>
+void PointGenerator<bt>::reset( BenchTag::FileBackedReadChunksAtATime )
+{
+    offset = 0;
+    backingFile.seekg(0);
+}
+
+
+
+template <BenchType bt>
 void PointGenerator<bt>::reset()
 {
     reset( BenchDetail::getBenchTag<bt>{} );
@@ -61,7 +70,6 @@ std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadAll 
 
         // Initialize points
         pointBuffer.reserve(benchmarkSize);
-        std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
         for (unsigned i = 0; i < benchmarkSize; ++i)
         {
             Point p;
@@ -74,7 +82,6 @@ std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadAll 
             }
             pointBuffer.push_back( std::move( p ) );
         }
-        std::cout << "Initialization OK." << std::endl;
     }
     if( offset < pointBuffer.size() ) {
         return pointBuffer[ offset++ ];
@@ -85,8 +92,6 @@ std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadAll 
 template <BenchType bt>
 std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadChunksAtATime )
 {
-
-    std::cout << "Got into FileBackedChunks" << std::endl;
 
     if( offset >= benchmarkSize ) {
         return std::nullopt;
@@ -100,10 +105,6 @@ std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadChun
         // Time to read 10k more things
         // Do the fstream song and dance
 
-        char buffer[sizeof(double)];
-        memset(buffer, 0, sizeof(double));
-        double *doubleBuffer = (double *)buffer;
-
         // Initialize points
         for (unsigned i = 0; i < 10000 and offset+i < benchmarkSize; ++i)
         {
@@ -111,16 +112,12 @@ std::optional<Point> PointGenerator<bt>::nextPoint( BenchTag::FileBackedReadChun
             for (unsigned d = 0; d < dimensions; ++d)
             {
                 fileGoodOrDie(backingFile);
-                backingFile.read(buffer, sizeof(double));
-                fileGoodOrDie(backingFile);
-                backingFile.read(buffer, sizeof(double));
-                p[d] = *doubleBuffer;
+                double dbl;
+                backingFile >> dbl;
+                p[d] = dbl;
             }
             pointBuffer[i] = p;
         }
-
-        // Cleanup
-        backingFile.close();
 
     }
     
