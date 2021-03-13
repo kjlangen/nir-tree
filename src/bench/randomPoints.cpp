@@ -1,235 +1,159 @@
 #include <bench/randomPoints.h>
 #include <unistd.h>
 
-Point *generateUniform(unsigned benchmarkSize, unsigned seed)
-{
-	// Setup random generators
-	std::default_random_engine generator(seed);
-	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-	std::cout << "Uniformly distributing points in the unit hyper-cube." << std::endl;
-
-	// Initialize points
-	Point *points = new Point[benchmarkSize];
-	std::cout << "Beginning initialization of " << benchmarkSize << " points..." << std::endl;
-	for (unsigned i = 0; i < benchmarkSize; ++i)
-	{
-		// Create the point
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			points[i][d] = pointDist(generator);
-		}
-
-		// Print the new point
-		// std::cout << "Point[" << i << "] " << points[i] << std::endl;
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	return points;
-}
-
-void fileGoodOrDie(std::fstream &file, std::string &str)
+static void fileGoodOrDie(std::fstream &file)
 {
 	if (!file.good())
 	{
-		std::cout << "Could not read from file: " << str << std::endl;
+		std::cout << "Could not read from file: " << std::endl;
 		exit(1);
 	}
 }
 
-Point *generateBits()
+template <typename T>
+PointGenerator<T>::PointGenerator(BenchTag::DistributionGenerated) :
+	benchmarkSize(T::size), seed(0), offset(0)
 {
-	// Dataset is pre-generated and requires 2 or 3 dimensions
-	assert(dimensions == 2 || dimensions == 3);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02" : "/home/kjlangen/nir-tree/data/bit03";
-	file.open(dataPath.c_str());
-	fileGoodOrDie(file, dataPath);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[BitDataSize];
-	std::cout << "Beginning initialization of " << BitDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < BitDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
 }
 
-Point *generateHaze()
+template <typename T>
+PointGenerator<T>::PointGenerator(BenchTag::FileBackedReadAll) :
+	benchmarkSize(T::size), backingFile(T::fileName), offset(0)
 {
-	// Dataset is pre-generated and requires 2 or 3 dimensions
-	assert(dimensions == 2 || dimensions == 3);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02" : "/home/kjlangen/nir-tree/data/pha03";
-	file.open(dataPath.c_str());
-	fileGoodOrDie(file, dataPath);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[HazeDataSize];
-	std::cout << "Beginning initialization of " << HazeDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < HazeDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
 }
 
-Point *generateCalifornia()
+template <typename T>
+PointGenerator<T>::PointGenerator(BenchTag::FileBackedReadChunksAtATime) :
+    benchmarkSize(T::size), backingFile(T::fileName), offset(0)
 {
-	// Dataset is pre-generated and requires 2 dimensions
-	assert(dimensions == 2);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea02";
-	file.open(dataPath);
-	fileGoodOrDie(file, dataPath);
-
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[CaliforniaDataSize];
-	std::cout << "Beginning initialization of " << CaliforniaDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < CaliforniaDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			file.sync();
-			points[i][d] = (points[i][d] + *doubleBuffer) / 2;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
 }
 
-Point *generateBiological()
+template <>
+std::optional<Point> PointGenerator<BenchTypeClasses::Uniform>::nextPoint(BenchTag::DistributionGenerated)
 {
-	// Dataset is pre-generated and requires 3 dimensions
-	if (dimensions != 3)
-    {
-        std::cout << "Incorrect dimensions for biol: " << dimensions << std::endl;
-        exit(1);
-    }
-
-	// Setup file reader and double buffer
-	std::fstream file;
-    
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03";
-	file.open(dataPath);
-	fileGoodOrDie(file, dataPath);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[BiologicalDataSize];
-	std::cout << "Beginning initialization of " << BiologicalDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < BiologicalDataSize; ++i)
+	// We produce all of the points at once and shove them in the buffer.
+	if (pointBuffer.empty())
 	{
-		for (unsigned d = 0; d < dimensions; ++d)
+		std::default_random_engine generator(seed);
+		std::uniform_real_distribution<double> pointDist(0.0, 1.0);
+		pointBuffer.reserve(benchmarkSize);
+		for (unsigned i = 0; i < benchmarkSize; i++)
 		{
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
+			Point p;
+			for (unsigned d = 0; d < BenchTypeClasses::Uniform::dimensions; d++)
+			{
+				p[d] = pointDist(generator);
+			}
+			pointBuffer.push_back(std::move(p));
 		}
+	} // fall through
+	if (offset < pointBuffer.size())
+	{
+		return pointBuffer[offset++];
 	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
+	return std::nullopt;
 }
 
-Point *generateForest()
+
+template <typename T>
+void PointGenerator<T>::reset(BenchTag::DistributionGenerated)
 {
-	// Dataset is pre-generated and requires 5 dimensions
-	assert(dimensions == 5);
-
-	// Setup file reader and double buffer
-	std::fstream file;
-	std::string dataPath ="/home/kjlangen/nir-tree/data/rea05";
-	file.open(dataPath);
-	fileGoodOrDie(file, dataPath);
-	char *buffer = new char[sizeof(double)];
-	memset(buffer, 0, sizeof(double));
-	double *doubleBuffer = (double *)buffer;
-
-	// Initialize points
-	Point *points = new Point[ForestDataSize];
-	std::cout << "Beginning initialization of " << ForestDataSize << " points..." << std::endl;
-	for (unsigned i = 0; i < ForestDataSize; ++i)
-	{
-		for (unsigned d = 0; d < dimensions; ++d)
-		{
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			fileGoodOrDie(file, dataPath);
-			file.read(buffer, sizeof(double));
-			points[i][d] = *doubleBuffer;
-		}
-	}
-	std::cout << "Initialization OK." << std::endl;
-
-	// Cleanup
-	file.close();
-	delete [] buffer;
-
-	return points;
+	offset = 0;
 }
 
-Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
+template <typename T>
+void PointGenerator<T>::reset(BenchTag::FileBackedReadAll)
+{
+	offset = 0;
+}
+
+template <typename T>
+void PointGenerator<T>::reset(BenchTag::FileBackedReadChunksAtATime)
+{
+	offset = 0;
+	backingFile.seekg(0);
+}
+
+template <typename T>
+void PointGenerator<T>::reset()
+{
+    reset(BenchDetail::getBenchTag<T>{});
+}
+
+template <typename T>
+std::optional<Point> PointGenerator<T>::nextPoint(BenchTag::FileBackedReadAll)
+{
+	if (pointBuffer.empty())
+	{
+		// We produce all of the points at once, shove them into the buffer.
+		fileGoodOrDie(backingFile);
+
+		// Initialize points
+		pointBuffer.reserve(benchmarkSize);
+		for (unsigned i = 0; i < benchmarkSize; ++i)
+		{
+			Point p;
+			for (unsigned d = 0; d < T::dimensions; ++d)
+			{
+				fileGoodOrDie(backingFile);
+				double dbl;
+				backingFile >> dbl;
+				p[d] = dbl;
+			}
+			pointBuffer.push_back(std::move(p));
+		}
+	}
+
+	if (offset < pointBuffer.size())
+	{
+		return pointBuffer[offset++];
+	}
+	return std::nullopt;
+}
+
+template <typename T>
+std::optional<Point> PointGenerator<T>::nextPoint(BenchTag::FileBackedReadChunksAtATime)
+{
+	if (offset >= benchmarkSize)
+	{
+		return std::nullopt;
+	}
+	if (pointBuffer.empty())
+	{
+		// Fill it with 10k entries
+		pointBuffer.resize(10000);
+	}
+	if (offset % 10000 == 0)
+	{
+		// Time to read 10k more things
+		// Do the fstream song and dance
+
+		// Initialize points
+		for (unsigned i = 0; i < 10000 and offset+i < benchmarkSize; ++i)
+		{
+			Point p;
+			for (unsigned d = 0; d < T::dimensions; ++d)
+			{
+				fileGoodOrDie(backingFile);
+				double dbl;
+				backingFile >> dbl;
+				p[d] = dbl;
+			}
+			pointBuffer[i] = p;
+		}
+
+	}
+
+	return pointBuffer[offset++ % 10000];
+}
+
+template <typename T>
+std::optional<Point> PointGenerator<T>::nextPoint()
+{
+	return nextPoint(BenchDetail::getBenchTag<T>{});
+}
+
+static Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
 {
 	std::default_random_engine generator(seed + benchmarkSize);
 	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
@@ -258,7 +182,7 @@ Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned re
 	return rectangles;
 }
 
-Rectangle *generateBitRectangles()
+static Rectangle *generateBitRectangles()
 {
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
@@ -267,7 +191,7 @@ Rectangle *generateBitRectangles()
 	std::fstream file;
 	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02.2" : "/home/kjlangen/nir-tree/data/bit03.2";
 	file.open(dataPath.c_str());
-	fileGoodOrDie(file, dataPath);
+	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -279,10 +203,10 @@ Rectangle *generateBitRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -296,7 +220,7 @@ Rectangle *generateBitRectangles()
 	return rectangles;
 }
 
-Rectangle *generateHazeRectangles()
+static Rectangle *generateHazeRectangles()
 {
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
@@ -305,7 +229,7 @@ Rectangle *generateHazeRectangles()
 	std::fstream file;
 	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02.2" : "/home/kjlangen/nir-tree/data/pha03.2";
 	file.open(dataPath.c_str());
-	fileGoodOrDie(file, dataPath);
+	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -317,10 +241,10 @@ Rectangle *generateHazeRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -334,16 +258,16 @@ Rectangle *generateHazeRectangles()
 	return rectangles;
 }
 
-Rectangle *generateCaliRectangles()
+static Rectangle *generateCaliRectangles()
 {
 	// Query set is pre-generated and requires 2 dimensions
 	assert(dimensions == 2);
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea02.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea02.2";
 	file.open(dataPath);
-	fileGoodOrDie(file, dataPath);
+	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -355,10 +279,10 @@ Rectangle *generateCaliRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -372,16 +296,16 @@ Rectangle *generateCaliRectangles()
 	return rectangles;
 }
 
-Rectangle *generateBioRectangles()
+static Rectangle *generateBioRectangles()
 {
 	// Query set is pre-generated and requires 3 dimensions
 	assert(dimensions == 3);
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea03.2";
 	file.open(dataPath);
-	fileGoodOrDie(file, dataPath);
+	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -393,10 +317,10 @@ Rectangle *generateBioRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -410,16 +334,16 @@ Rectangle *generateBioRectangles()
 	return rectangles;
 }
 
-Rectangle *generateForestRectangles()
+static Rectangle *generateForestRectangles()
 {
 	// Query set is pre-generated and requires 5 dimensions
 	assert(dimensions == 5);
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea05.2";
+	std::string dataPath = "/hdd1/nir-tree/data/rea05.2";
 	file.open(dataPath);
-	fileGoodOrDie(file, dataPath);
+	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
 	memset(buffer, 0, sizeof(double));
 	double *doubleBuffer = (double *)buffer;
@@ -431,10 +355,10 @@ Rectangle *generateForestRectangles()
 	{
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].lowerLeft[d] = *doubleBuffer;
-			fileGoodOrDie(file, dataPath);
+			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
 			rectangles[i].upperRight[d] = *doubleBuffer;
 		}
@@ -448,7 +372,9 @@ Rectangle *generateForestRectangles()
 	return rectangles;
 }
 
-void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
+
+template <typename T>
+static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
 	// Setup checksums
 	unsigned directSum = 0;
@@ -458,10 +384,10 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	double totalTimeSearches = 0.0;
 	double totalTimeRangeSearches = 0.0;
 	double totalTimeDeletes = 0.0;
-	double totalInserts = 0.0;
+	unsigned totalInserts = 0;
 	double totalSearches = 0.0;
 	double totalRangeSearches = 0.0;
-	double totalDeletes = 0.0;
+	unsigned totalDeletes = 0.0;
 
 	// Initialize the index
 	Index *spatialIndex;
@@ -480,42 +406,6 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	else if (configU["tree"] == NIR_TREE)
 	{
 		spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
-	}
-	else
-	{
-		return;
-	}
-
-	// Initialize points
-	Point *points;
-	if (configU["distribution"] == UNIFORM)
-	{
-		points = generateUniform(configU["size"], configU["seed"]);
-	}
-	else if (configU["distribution"] == SKEW)
-	{
-		configU["size"] = BitDataSize;
-		points = generateBits();
-	}
-	else if (configU["distribution"] == CLUSTER)
-	{
-		configU["size"] = HazeDataSize;
-		points = generateHaze();
-	}
-	else if (configU["distribution"] == CALIFORNIA)
-	{
-		configU["size"] = CaliforniaDataSize;
-		points = generateCalifornia();
-	}
-	else if (configU["distribution"] == BIOLOGICAL)
-	{
-		configU["size"] = BiologicalDataSize;
-		points = generateBiological();
-	}
-	else if (configU["distribution"] == FOREST)
-	{
-		configU["size"] = ForestDataSize;
-		points = generateForest();
 	}
 	else
 	{
@@ -553,24 +443,30 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 		configU["rectanglescount"] = ForestQuerySize;
 		searchRectangles = generateForestRectangles();
 	}
+	else if (configU["distribution"] == CANADA)
+	{
+		configU["rectanglescount"] = 0; // NO rectangles
+		searchRectangles = new Rectangle[1]; // HACK
+	}
 	else
 	{
 		return;
 	}
 
 	// Insert points and time their insertion
-	std::cout << "Beginning insertion of " << configU["size"] << " points..." << std::endl;
-	for (unsigned i = 0; i < configU["size"]; ++i)
+	std::cout << "Inserting Points." << std::endl;
+	std::optional<Point> nextPoint;
+	while((nextPoint = pointGen.nextPoint()) /* Intentional = and not == */)
 	{
 		// Compute the checksum directly
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
-			directSum += (unsigned)points[i][d];
+			directSum += (unsigned) nextPoint.value()[d];
 		}
 
 		// Insert
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex->insert(points[i]);
+		spatialIndex->insert(nextPoint.value());
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
@@ -601,12 +497,14 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 #endif
 
 	// Search for points and time their retrieval
-	std::cout << "Beginning search for " << configU["size"] << " points..." << std::endl;
-	for (unsigned i = 0; i < configU["size"]; ++i)
+	std::cout << "Beginning search." << std::endl;
+    pointGen.reset();
+	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Search
+		Point &p = nextPoint.value();
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		if (spatialIndex->search(points[i])[0] != points[i])
+		if (spatialIndex->search(p)[0] != p)
 		{
 			exit(1);
 		}
@@ -665,12 +563,13 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	std::cout << "Checksum OK." << std::endl;
 
 	// Delete points and time their deletion
-	std::cout << "Beginning deletion of " << configU["size"] << " points..." << std::endl;
-	for (unsigned i = 0; i < configU["size"]; ++i)
+	std::cout << "Beginning deletion." << std::endl;
+	pointGen.reset();
+	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Delete
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		spatialIndex->remove(points[i]);
+		spatialIndex->remove(nextPoint.value());
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeDeletes += delta.count();
@@ -689,16 +588,57 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 
 	// Timing Statistics
 	std::cout << "Total time to insert: " << totalTimeInserts << "s" << std::endl;
-	std::cout << "Avg time to insert: " << totalTimeInserts / totalInserts << "s" << std::endl;
+	std::cout << "Avg time to insert: " << totalTimeInserts / (double) totalInserts << "s" << std::endl;
 	std::cout << "Total time to search: " << totalTimeSearches << "s" << std::endl;
 	std::cout << "Avg time to search: " << totalTimeSearches / totalSearches << "s" << std::endl;
 	std::cout << "Total time to range search: " << totalTimeRangeSearches << "s" << std::endl;
 	std::cout << "Avg time to range search: " << totalTimeRangeSearches / totalRangeSearches << "s" << std::endl;
 	std::cout << "Total time to delete: " << totalTimeDeletes << "s" << std::endl;
-	std::cout << "Avg time to delete: " << totalTimeDeletes / totalDeletes << "s" << std::endl;
+	std::cout << "Avg time to delete: " << totalTimeDeletes / (double) totalDeletes << "s" << std::endl;
 
 	// Cleanup
 	delete spatialIndex;
-	delete [] points;
 	delete [] searchRectangles;
+}
+
+void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
+{
+	switch (configU["distribution"])
+	{
+		case UNIFORM: {
+			PointGenerator<BenchTypeClasses::Uniform> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case SKEW: {
+			PointGenerator<BenchTypeClasses::Skew> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case CALIFORNIA: {
+			PointGenerator<BenchTypeClasses::California> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case BIOLOGICAL: {
+			PointGenerator<BenchTypeClasses::Biological> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case FOREST: {
+			PointGenerator<BenchTypeClasses::Forest> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case CANADA: {
+			PointGenerator<BenchTypeClasses::Canada> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case MICROSOFTBUILDINGS: {
+			PointGenerator<BenchTypeClasses::MicrosoftBuildings> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+	}
 }
