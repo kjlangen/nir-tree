@@ -42,7 +42,7 @@ namespace BenchTag {
 };
 
 // Classes for each benchmark with their relevant constants
-namespace xxBenchType {
+namespace BenchTypeClasses {
 
 	class Benchmark {};
 
@@ -111,25 +111,25 @@ namespace BenchDetail {
 	struct getBenchTag : BenchTag::Error{};
 
 	template <>
-	struct getBenchTag<xxBenchType::Uniform> : BenchTag::DistributionGenerated{};
+	struct getBenchTag<BenchTypeClasses::Uniform> : BenchTag::DistributionGenerated{};
 
 	template <>
-	struct getBenchTag<xxBenchType::Skew> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::Skew> : BenchTag::FileBackedReadAll{};
 
 	template <>
-	struct getBenchTag<xxBenchType::California> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::California> : BenchTag::FileBackedReadAll{};
 
 	template <>
-	struct getBenchTag<xxBenchType::Biological> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::Biological> : BenchTag::FileBackedReadAll{};
 
 	template <>
-	struct getBenchTag<xxBenchType::Forest> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::Forest> : BenchTag::FileBackedReadAll{};
 
 	template <>
-	struct getBenchTag<xxBenchType::Canada> : BenchTag::FileBackedReadChunksAtATime{};
+	struct getBenchTag<BenchTypeClasses::Canada> : BenchTag::FileBackedReadChunksAtATime{};
 
 	template <>
-	struct getBenchTag<xxBenchType::MicrosoftBuildings> : BenchTag::FileBackedReadChunksAtATime{};
+	struct getBenchTag<BenchTypeClasses::MicrosoftBuildings> : BenchTag::FileBackedReadChunksAtATime{};
 
 }
 
@@ -137,8 +137,8 @@ template <typename T>
 class PointGenerator {
 public:
 
-	static_assert(std::is_base_of<xxBenchType::Benchmark, T>::value and 
-		not std::is_same<T,xxBenchType::Benchmark>::value, "PointGenerator must take a Benchmark subclass");
+	static_assert(std::is_base_of<BenchTypeClasses::Benchmark, T>::value and 
+		not std::is_same<T,BenchTypeClasses::Benchmark>::value, "PointGenerator must take a Benchmark subclass");
 
 	PointGenerator() : PointGenerator(BenchDetail::getBenchTag<T>{})
 	{

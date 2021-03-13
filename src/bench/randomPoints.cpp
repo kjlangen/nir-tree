@@ -29,7 +29,7 @@ PointGenerator<T>::PointGenerator(BenchTag::FileBackedReadChunksAtATime) :
 }
 
 template <>
-std::optional<Point> PointGenerator<xxBenchType::Uniform>::nextPoint(BenchTag::DistributionGenerated)
+std::optional<Point> PointGenerator<BenchTypeClasses::Uniform>::nextPoint(BenchTag::DistributionGenerated)
 {
 	// We produce all of the points at once and shove them in the buffer.
 	if (pointBuffer.empty())
@@ -40,7 +40,7 @@ std::optional<Point> PointGenerator<xxBenchType::Uniform>::nextPoint(BenchTag::D
 		for (unsigned i = 0; i < benchmarkSize; i++)
 		{
 			Point p;
-			for (unsigned d = 0; d < T::dimensions; d++)
+			for (unsigned d = 0; d < BenchTypeClasses::Uniform::dimensions; d++)
 			{
 				p[d] = pointDist(generator);
 			}
@@ -605,37 +605,37 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	switch (configU["distribution"])
 	{
 		case UNIFORM: {
-			PointGenerator<xxBenchType::Uniform> pointGen;
+			PointGenerator<BenchTypeClasses::Uniform> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
 		case SKEW: {
-			PointGenerator<xxBenchType::Skew> pointGen;
+			PointGenerator<BenchTypeClasses::Skew> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
 		case CALIFORNIA: {
-			PointGenerator<xxBenchType::California> pointGen;
+			PointGenerator<BenchTypeClasses::California> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
 		case BIOLOGICAL: {
-			PointGenerator<xxBenchType::Biological> pointGen;
+			PointGenerator<BenchTypeClasses::Biological> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
 		case FOREST: {
-			PointGenerator<xxBenchType::Forest> pointGen;
+			PointGenerator<BenchTypeClasses::Forest> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
 		case CANADA: {
-			PointGenerator<xxBenchType::Canada> pointGen;
+			PointGenerator<BenchTypeClasses::Canada> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
 		case MICROSOFTBUILDINGS: {
-			PointGenerator<xxBenchType::MicrosoftBuildings> pointGen;
+			PointGenerator<BenchTypeClasses::MicrosoftBuildings> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
