@@ -31,144 +31,152 @@ const unsigned MicrosoftBuildingsDataSize = 752704741;
 enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST, CANADA, MICROSOFTBUILDINGS};
 enum TreeType {R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE};
 
-void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configF);
+void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD);
 
 // Tags defining how the benchmark is generated
-namespace BenchTag {
-	struct DistributionGenerated{};
-	struct FileBackedReadAll{};
-	struct FileBackedReadChunksAtATime{};
-	struct Error{};
+namespace BenchTag
+{
+	struct DistributionGenerated {};
+	struct FileBackedReadAll {};
+	struct FileBackedReadChunksAtATime {};
+	struct Error {};
 };
 
 // Classes for each benchmark with their relevant constants
-namespace BenchTypeClasses {
-
+namespace BenchTypeClasses
+{
 	class Benchmark {};
 
-	class Uniform : public Benchmark {
+	class Uniform : public Benchmark
+	{
 		public:
 			static constexpr unsigned size = 0;
 			static constexpr unsigned dimensions = 0; // Variable, can configure
 			static constexpr char fileName[] = "";
 	};
 
-	class Skew : public Benchmark {
+	class Skew : public Benchmark
+	{
 		public:
 			static constexpr unsigned size = BitDataSize;
 			static constexpr unsigned querySize = BitQuerySize;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/hdd1/nir-tree/data/bits02";
+			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/bits02";
 
 	};
 
-	class California : public Benchmark {
+	class California : public Benchmark
+	{
 		public:
 			static constexpr unsigned size = CaliforniaDataSize;
 			static constexpr unsigned querySize = CaliforniaQuerySize;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/hdd1/nir-tree/data/california";
+			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/california";
 	};
 
-	class Biological: public Benchmark {
+	class Biological: public Benchmark
+	{
 		public:
 			static constexpr unsigned size = BiologicalDataSize;
 			static constexpr unsigned querySize = BiologicalQuerySize;
 			static constexpr unsigned dimensions = 3;
-			static constexpr char fileName[] = "/hdd1/nir-tree/data/biological";
+			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/biological";
 	};
 
-	class Forest : public Benchmark {
+	class Forest : public Benchmark
+	{
 		public:
 			static constexpr unsigned size = ForestDataSize;
 			static constexpr unsigned querySize = ForestQuerySize;
 			static constexpr unsigned dimensions = 5;
-			static constexpr char fileName[] = "/hdd1/nir-tree/data/forest";
+			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/forest";
 	};
 
-	class Canada : public Benchmark {
+	class Canada : public Benchmark
+	{
 		public:
 			static constexpr unsigned size = CanadaDataSize;
 			static constexpr unsigned querySize = 0;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/hdd1/nir-tree/data/canada";
+			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/canada";
 	};
 
-	class MicrosoftBuildings : public Benchmark {
+	class MicrosoftBuildings : public Benchmark
+	{
 		public:
 			static constexpr unsigned size = MicrosoftBuildingsDataSize;
 			static constexpr unsigned querySize = 0;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/hdd1/nir-tree/data/microsoftbuildings";
+			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/microsoftbuildings";
 	};
 };
 
 
 // Mappings from each benchmark type to its tag
-namespace BenchDetail {
-
+namespace BenchDetail
+{
 	template <typename T>
-	struct getBenchTag : BenchTag::Error{};
+	struct getBenchTag : BenchTag::Error {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::Uniform> : BenchTag::DistributionGenerated{};
+	struct getBenchTag<BenchTypeClasses::Uniform> : BenchTag::DistributionGenerated {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::Skew> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::Skew> : BenchTag::FileBackedReadAll {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::California> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::California> : BenchTag::FileBackedReadAll {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::Biological> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::Biological> : BenchTag::FileBackedReadAll {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::Forest> : BenchTag::FileBackedReadAll{};
+	struct getBenchTag<BenchTypeClasses::Forest> : BenchTag::FileBackedReadAll {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::Canada> : BenchTag::FileBackedReadChunksAtATime{};
+	struct getBenchTag<BenchTypeClasses::Canada> : BenchTag::FileBackedReadChunksAtATime {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::MicrosoftBuildings> : BenchTag::FileBackedReadChunksAtATime{};
+	struct getBenchTag<BenchTypeClasses::MicrosoftBuildings> : BenchTag::FileBackedReadChunksAtATime {};
 
 }
 
 template <typename T>
-class PointGenerator {
-public:
+class PointGenerator
+{
+	private:
+		PointGenerator(BenchTag::DistributionGenerated);
+		PointGenerator(BenchTag::FileBackedReadAll);
+		PointGenerator(BenchTag::FileBackedReadChunksAtATime);
 
-	static_assert(std::is_base_of<BenchTypeClasses::Benchmark, T>::value and 
-		not std::is_same<T,BenchTypeClasses::Benchmark>::value, "PointGenerator must take a Benchmark subclass");
+		void reset(BenchTag::DistributionGenerated);
+		void reset(BenchTag::FileBackedReadAll);
+		void reset(BenchTag::FileBackedReadChunksAtATime);
+		std::optional<Point> nextPoint(BenchTag::DistributionGenerated);
+		std::optional<Point> nextPoint(BenchTag::FileBackedReadAll);
+		std::optional<Point> nextPoint(BenchTag::FileBackedReadChunksAtATime);
 
-	PointGenerator() : PointGenerator(BenchDetail::getBenchTag<T>{})
-	{
-		if (T::dimensions != 0 and T::dimensions != DIM)
+		// Class members
+		unsigned benchmarkSize;
+		unsigned seed;
+		std::fstream backingFile;
+		unsigned offset;
+
+		std::vector<Point> pointBuffer;
+
+	public:
+		static_assert(std::is_base_of<BenchTypeClasses::Benchmark, T>::value && 
+			!std::is_same<T,BenchTypeClasses::Benchmark>::value, "PointGenerator must take a Benchmark subclass");
+
+		PointGenerator() : PointGenerator(BenchDetail::getBenchTag<T>{})
 		{
-			throw std::runtime_error( "Wrong number of dimensions configured." );
+			if (T::dimensions != 0 && T::dimensions != DIM)
+			{
+				throw std::runtime_error( "Wrong number of dimensions configured." );
+			}
 		}
-	}
 
-	std::optional<Point> nextPoint();
-	void reset();
-private:
-	PointGenerator(BenchTag::DistributionGenerated);
-	PointGenerator(BenchTag::FileBackedReadAll);
-	PointGenerator(BenchTag::FileBackedReadChunksAtATime);
-
-	void reset(BenchTag::DistributionGenerated);
-	void reset(BenchTag::FileBackedReadAll);
-	void reset(BenchTag::FileBackedReadChunksAtATime);
-	std::optional<Point> nextPoint(BenchTag::DistributionGenerated);
-	std::optional<Point> nextPoint(BenchTag::FileBackedReadAll);
-	std::optional<Point> nextPoint(BenchTag::FileBackedReadChunksAtATime);
-
-	// Class members
-
-	unsigned benchmarkSize;
-	unsigned seed;
-	std::fstream backingFile;
-	unsigned offset;
-
-	std::vector<Point> pointBuffer;
+		std::optional<Point> nextPoint();
+		void reset();
 };
 #endif

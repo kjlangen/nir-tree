@@ -265,7 +265,7 @@ static Rectangle *generateCaliRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/hdd1/nir-tree/data/rea02.2";
+	std::string dataPath = "/home/kjlangen/nir-tree/data/rea02.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -303,7 +303,7 @@ static Rectangle *generateBioRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/hdd1/nir-tree/data/rea03.2";
+	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -341,7 +341,7 @@ static Rectangle *generateForestRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/hdd1/nir-tree/data/rea05.2";
+	std::string dataPath = "/home/kjlangen/nir-tree/data/rea05.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
