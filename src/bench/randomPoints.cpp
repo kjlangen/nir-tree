@@ -11,139 +11,145 @@ static void fileGoodOrDie(std::fstream &file)
 }
 
 template <typename T>
-PointGenerator<T>::PointGenerator( BenchTag::DistributionGenerated ) :
-    benchmarkSize( T::size ), seed( 0 ), offset( 0 )
+PointGenerator<T>::PointGenerator(BenchTag::DistributionGenerated) :
+	benchmarkSize(T::size), seed(0), offset(0)
 {
 }
 
 template <typename T>
-PointGenerator<T>::PointGenerator( BenchTag::FileBackedReadAll ) :
-    benchmarkSize( T::size ), backingFile( T::fileName ), offset( 0 )
+PointGenerator<T>::PointGenerator(BenchTag::FileBackedReadAll) :
+	benchmarkSize(T::size), backingFile(T::fileName), offset(0)
 {
 }
 
 template <typename T>
-PointGenerator<T>::PointGenerator( BenchTag::FileBackedReadChunksAtATime ) :
-    benchmarkSize( T::size ), backingFile( T::fileName ), offset( 0 )
+PointGenerator<T>::PointGenerator(BenchTag::FileBackedReadChunksAtATime) :
+    benchmarkSize(T::size), backingFile(T::fileName), offset(0)
 {
 }
 
 template <>
-std::optional<Point> PointGenerator<xxBenchType::Uniform>::nextPoint( BenchTag::DistributionGenerated )
+std::optional<Point> PointGenerator<xxBenchType::Uniform>::nextPoint(BenchTag::DistributionGenerated)
 {
-    // We produce all of the points at once and shove them in the buffer.
-    if( pointBuffer.empty() ) {
-    	std::default_random_engine generator(seed);
-        std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-        pointBuffer.reserve( benchmarkSize );
-        for( unsigned i = 0; i < benchmarkSize; i++ ) {
-            Point p;
-            for( unsigned d = 0; d < T::dimensions; d++ ) {
-                p[d] = pointDist( generator );
-            }
-            pointBuffer.push_back( std::move( p ) );
-        }
-    } // fall through
-    if( offset < pointBuffer.size() ) {
-        return pointBuffer[ offset++ ];
-    }
-    return std::nullopt;
+	// We produce all of the points at once and shove them in the buffer.
+	if (pointBuffer.empty())
+	{
+		std::default_random_engine generator(seed);
+		std::uniform_real_distribution<double> pointDist(0.0, 1.0);
+		pointBuffer.reserve(benchmarkSize);
+		for (unsigned i = 0; i < benchmarkSize; i++)
+		{
+			Point p;
+			for (unsigned d = 0; d < T::dimensions; d++)
+			{
+				p[d] = pointDist(generator);
+			}
+			pointBuffer.push_back(std::move(p));
+		}
+	} // fall through
+	if (offset < pointBuffer.size())
+	{
+		return pointBuffer[offset++];
+	}
+	return std::nullopt;
 }
 
 
 template <typename T>
-void PointGenerator<T>::reset( BenchTag::DistributionGenerated )
+void PointGenerator<T>::reset(BenchTag::DistributionGenerated)
 {
-    offset = 0;
+	offset = 0;
 }
 
 template <typename T>
-void PointGenerator<T>::reset( BenchTag::FileBackedReadAll )
+void PointGenerator<T>::reset(BenchTag::FileBackedReadAll)
 {
-    offset = 0;
+	offset = 0;
 }
 
 template <typename T>
-void PointGenerator<T>::reset( BenchTag::FileBackedReadChunksAtATime )
+void PointGenerator<T>::reset(BenchTag::FileBackedReadChunksAtATime)
 {
-    offset = 0;
-    backingFile.seekg(0);
+	offset = 0;
+	backingFile.seekg(0);
 }
 
 template <typename T>
 void PointGenerator<T>::reset()
 {
-    reset( BenchDetail::getBenchTag<T>{} );
+    reset(BenchDetail::getBenchTag<T>{});
 }
 
 template <typename T>
-std::optional<Point> PointGenerator<T>::nextPoint( BenchTag::FileBackedReadAll )
+std::optional<Point> PointGenerator<T>::nextPoint(BenchTag::FileBackedReadAll)
 {
-    if( pointBuffer.empty() ) {
-        // We produce all of the points at once, shove them into the buffer.
+	if (pointBuffer.empty())
+	{
+		// We produce all of the points at once, shove them into the buffer.
+		fileGoodOrDie(backingFile);
 
-        fileGoodOrDie(backingFile);
-
-        // Initialize points
-        pointBuffer.reserve(benchmarkSize);
-        for (unsigned i = 0; i < benchmarkSize; ++i)
-        {
-            Point p;
-            for (unsigned d = 0; d < T::dimensions; ++d)
-            {
-                fileGoodOrDie(backingFile);
-                double dbl;
-                backingFile >> dbl;
-                p[d] = dbl;
-            }
-            pointBuffer.push_back( std::move( p ) );
-        }
-    }
-    if( offset < pointBuffer.size() ) {
-        return pointBuffer[ offset++ ];
-    }
-    return std::nullopt;
+		// Initialize points
+		pointBuffer.reserve(benchmarkSize);
+		for (unsigned i = 0; i < benchmarkSize; ++i)
+		{
+			Point p;
+			for (unsigned d = 0; d < T::dimensions; ++d)
+			{
+				fileGoodOrDie(backingFile);
+				double dbl;
+				backingFile >> dbl;
+				p[d] = dbl;
+			}
+			pointBuffer.push_back(std::move(p));
+		}
+	}
+	if (offset < pointBuffer.size())
+	{
+		return pointBuffer[offset++];
+	}
+	return std::nullopt;
 }
 
 template <typename T>
-std::optional<Point> PointGenerator<T>::nextPoint( BenchTag::FileBackedReadChunksAtATime )
+std::optional<Point> PointGenerator<T>::nextPoint(BenchTag::FileBackedReadChunksAtATime)
 {
+	if (offset >= benchmarkSize)
+	{
+		return std::nullopt;
+	}
+	if (pointBuffer.empty())
+	{
+		// Fill it with 10k entries
+		pointBuffer.resize(10000);
+	}
+	if (offset % 10000 == 0)
+	{
+		// Time to read 10k more things
+		// Do the fstream song and dance
 
-    if( offset >= benchmarkSize ) {
-        return std::nullopt;
-    }
-    if( pointBuffer.empty() ) {
+		// Initialize points
+		for (unsigned i = 0; i < 10000 and offset+i < benchmarkSize; ++i)
+		{
+			Point p;
+			for (unsigned d = 0; d < T::dimensions; ++d)
+			{
+				fileGoodOrDie(backingFile);
+				double dbl;
+				backingFile >> dbl;
+				p[d] = dbl;
+			}
+			pointBuffer[i] = p;
+		}
 
-        // Fill it with 10k entries
-        pointBuffer.resize( 10000 );
-    }
-    if( offset % 10000 == 0 ) {
-        // Time to read 10k more things
-        // Do the fstream song and dance
+	}
 
-        // Initialize points
-        for (unsigned i = 0; i < 10000 and offset+i < benchmarkSize; ++i)
-        {
-            Point p;
-            for (unsigned d = 0; d < T::dimensions; ++d)
-            {
-                fileGoodOrDie(backingFile);
-                double dbl;
-                backingFile >> dbl;
-                p[d] = dbl;
-            }
-            pointBuffer[i] = p;
-        }
-
-    }
-    
-    return pointBuffer[ offset++ % 10000 ];
+	return pointBuffer[offset++ % 10000];
 }
 
 template <typename T>
 std::optional<Point> PointGenerator<T>::nextPoint()
 {
-    return nextPoint( BenchDetail::getBenchTag<T>{} );
+	return nextPoint(BenchDetail::getBenchTag<T>{});
 }
 
 static Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
@@ -367,7 +373,7 @@ static Rectangle *generateForestRectangles()
 
 
 template <typename T>
-static void runBench( PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
+static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
 	// Setup checksums
 	unsigned directSum = 0;
@@ -448,8 +454,8 @@ static void runBench( PointGenerator<T> &pointGen, std::map<std::string, unsigne
 
 	// Insert points and time their insertion
 	std::cout << "Inserting Points." << std::endl;
-    std::optional<Point> nextPoint;
-    while( (nextPoint = pointGen.nextPoint()) /* Intentional = and not == */ )
+	std::optional<Point> nextPoint;
+	while( (nextPoint = pointGen.nextPoint()) /* Intentional = and not == */ )
 	{
 		// Compute the checksum directly
 		for (unsigned d = 0; d < dimensions; ++d)
@@ -464,9 +470,6 @@ static void runBench( PointGenerator<T> &pointGen, std::map<std::string, unsigne
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
-        if( totalInserts % 10000 ) {
-            std::cout << "Inserted " << totalInserts << " points so far." << std::endl;
-        }
 		// std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
 	}
 	std::cout << "Insertion OK." << std::endl;
@@ -495,10 +498,10 @@ static void runBench( PointGenerator<T> &pointGen, std::map<std::string, unsigne
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
     pointGen.reset();
-    while( (nextPoint = pointGen.nextPoint()) /* Intentional = not == */ )
-    {
+	while( (nextPoint = pointGen.nextPoint()) /* Intentional = not == */ )
+	{
 		// Search
-        Point &p = nextPoint.value();
+		Point &p = nextPoint.value();
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
 		if (spatialIndex->search(p)[0] != p)
 		{
@@ -560,8 +563,8 @@ static void runBench( PointGenerator<T> &pointGen, std::map<std::string, unsigne
 
 	// Delete points and time their deletion
 	std::cout << "Beginning deletion." << std::endl;
-    pointGen.reset();
-    while( (nextPoint = pointGen.nextPoint()) /* Intentional = not == */ )
+	pointGen.reset();
+	while( (nextPoint = pointGen.nextPoint()) /* Intentional = not == */ )
 	{
 		// Delete
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
@@ -599,41 +602,42 @@ static void runBench( PointGenerator<T> &pointGen, std::map<std::string, unsigne
 
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
-    switch (configU["distribution"]) {
-        case UNIFORM: {
-            PointGenerator<xxBenchType::Uniform> pointGen;
-            runBench( pointGen, configU, configD );
-            break;
-        }
-        case SKEW: {
-            PointGenerator<xxBenchType::Skew> pointGen;
-            runBench( pointGen, configU, configD );
-            break;
-        }
-        case CALIFORNIA: {
-            PointGenerator<xxBenchType::California> pointGen;
-            runBench( pointGen, configU, configD );
-            break;
-        }
-        case BIOLOGICAL: {
-            PointGenerator<xxBenchType::Biological> pointGen;
-            runBench( pointGen, configU, configD );
-            break;
-        }
-        case FOREST: {
-            PointGenerator<xxBenchType::Forest> pointGen;
-            runBench( pointGen, configU, configD );
-            break;
-        }
-        case CANADA: {
-            PointGenerator<xxBenchType::Canada> pointGen;
-            runBench( pointGen, configU, configD );
-            break;
-        }
-        case MICROSOFTBUILDINGS: {
-            PointGenerator<xxBenchType::MicrosoftBuildings> pointGen;
-            runBench( pointGen, configU, configD );
-            break;
-        }
-    }
+	switch (configU["distribution"])
+	{
+		case UNIFORM: {
+			PointGenerator<xxBenchType::Uniform> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case SKEW: {
+			PointGenerator<xxBenchType::Skew> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case CALIFORNIA: {
+			PointGenerator<xxBenchType::California> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case BIOLOGICAL: {
+			PointGenerator<xxBenchType::Biological> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case FOREST: {
+			PointGenerator<xxBenchType::Forest> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case CANADA: {
+			PointGenerator<xxBenchType::Canada> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case MICROSOFTBUILDINGS: {
+			PointGenerator<xxBenchType::MicrosoftBuildings> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+	}
 }
