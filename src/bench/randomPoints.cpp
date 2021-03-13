@@ -386,7 +386,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	unsigned totalInserts = 0;
 	double totalSearches = 0.0;
 	double totalRangeSearches = 0.0;
-	double totalDeletes = 0.0;
+	unsigned totalDeletes = 0.0;
 
 	// Initialize the index
 	Index *spatialIndex;
@@ -455,7 +455,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	// Insert points and time their insertion
 	std::cout << "Inserting Points." << std::endl;
 	std::optional<Point> nextPoint;
-	while( (nextPoint = pointGen.nextPoint()) /* Intentional = and not == */ )
+	while((nextPoint = pointGen.nextPoint()) /* Intentional = and not == */)
 	{
 		// Compute the checksum directly
 		for (unsigned d = 0; d < dimensions; ++d)
@@ -498,7 +498,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
     pointGen.reset();
-	while( (nextPoint = pointGen.nextPoint()) /* Intentional = not == */ )
+	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Search
 		Point &p = nextPoint.value();
@@ -564,7 +564,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	// Delete points and time their deletion
 	std::cout << "Beginning deletion." << std::endl;
 	pointGen.reset();
-	while( (nextPoint = pointGen.nextPoint()) /* Intentional = not == */ )
+	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Delete
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
@@ -587,13 +587,13 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 
 	// Timing Statistics
 	std::cout << "Total time to insert: " << totalTimeInserts << "s" << std::endl;
-	std::cout << "Avg time to insert: " << totalTimeInserts / totalInserts << "s" << std::endl;
+	std::cout << "Avg time to insert: " << totalTimeInserts / (double) totalInserts << "s" << std::endl;
 	std::cout << "Total time to search: " << totalTimeSearches << "s" << std::endl;
 	std::cout << "Avg time to search: " << totalTimeSearches / totalSearches << "s" << std::endl;
 	std::cout << "Total time to range search: " << totalTimeRangeSearches << "s" << std::endl;
 	std::cout << "Avg time to range search: " << totalTimeRangeSearches / totalRangeSearches << "s" << std::endl;
 	std::cout << "Total time to delete: " << totalTimeDeletes << "s" << std::endl;
-	std::cout << "Avg time to delete: " << totalTimeDeletes / totalDeletes << "s" << std::endl;
+	std::cout << "Avg time to delete: " << totalTimeDeletes / (double) totalDeletes << "s" << std::endl;
 
 	// Cleanup
 	delete spatialIndex;
