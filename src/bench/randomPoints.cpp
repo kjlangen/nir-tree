@@ -103,6 +103,7 @@ std::optional<Point> PointGenerator<T>::nextPoint(BenchTag::FileBackedReadAll)
 			pointBuffer.push_back(std::move(p));
 		}
 	}
+
 	if (offset < pointBuffer.size())
 	{
 		return pointBuffer[offset++];
