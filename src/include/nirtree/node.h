@@ -71,6 +71,7 @@ namespace nirtree
 			void deleteSubtrees();
 
 			// Helper functions
+			bool isLeaf();
 			Rectangle boundingBox();
 			Branch locateBranch(Node *child);
 			void updateBranch(Node *child, IsotheticPolygon &boundingPoly);
@@ -82,7 +83,6 @@ namespace nirtree
 			SplitResult splitNode(Partition p);
 			SplitResult splitNode();
 			SplitResult adjustTree();
-			void pushDown(Point givenPoint);
 			void condenseTree();
 
 			// Data structure interface functions

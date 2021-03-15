@@ -35,11 +35,28 @@ namespace nirtree
 		}
 	}
 
+	bool Node::isLeaf()
+	{
+		if (branches.size() == 0 && data.size() >= 0)
+		{
+			return true;
+		}
+		else if (branches.size() > 0 && data.size() == 0)
+		{
+			return false;
+		}
+
+		// Something has gone wrong, panic!
+		assert(false);
+
+		return false;
+	}
+
 	Rectangle Node::boundingBox()
 	{
 		Rectangle bb;
 
-		if (data.size() != 0)
+		if (isLeaf())
 		{
 			bb = Rectangle(data[0], data[0]);
 			for (unsigned i = 1; i < data.size(); ++i)
@@ -47,7 +64,7 @@ namespace nirtree
 				bb.expand(data[i]);
 			}
 		}
-		else if (branches.size() != 0)
+		else
 		{
 			bb = branches[0].boundingPoly.boundingBox;
 			for (unsigned i = 1; i < branches.size(); ++i)
@@ -113,7 +130,7 @@ namespace nirtree
 
 	void Node::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
 	{
-		if (branches.size() == 0)
+		if (isLeaf())
 		{
 			// We are a leaf so add our data points when they are the search point
 			for (Point &dataPoint : data)
@@ -150,7 +167,7 @@ namespace nirtree
 			currentContext = context.top();
 			context.pop();
 
-			if (currentContext->branches.size() == 0)
+			if (currentContext->isLeaf())
 			{
 				// We are a leaf so add our data points when they are the search point
 				for (Point &dataPoint : currentContext->data)
@@ -202,7 +219,7 @@ namespace nirtree
 			currentContext = context.top();
 			context.pop();
 
-			if (currentContext->branches.size() == 0)
+			if (currentContext->isLeaf())
 			{
 				// We are a leaf so add our data points when they are within the search rectangle
 				for (Point &dataPoint : currentContext->data)
@@ -255,7 +272,7 @@ namespace nirtree
 			branchesSize = context->branches.size();
 
 			// CL2 [Leaf check]
-			if (branchesSize == 0)
+			if (context->isLeaf())
 			{
 				return context;
 			}
@@ -325,7 +342,7 @@ namespace nirtree
 			currentContext = context.top();
 			context.pop();
 
-			if (currentContext->branches.size() == 0)
+			if (currentContext->isLeaf())
 			{
 				// FL2 [Search leaf node for record]
 				// Check each entry to see if it matches E
@@ -358,11 +375,10 @@ namespace nirtree
 	Node::Partition Node::partitionNode()
 	{
 		nirtree::Node::Partition defaultPartition;
-		unsigned branchesSize = branches.size();
 		unsigned costMetric = std::numeric_limits<unsigned>::max();
 		double totalMass = 0.0;
 
-		if (branchesSize == 0)
+		if (isLeaf())
 		{
 			// Setup variance values
 			Point variance = Point::atOrigin;
@@ -457,8 +473,6 @@ namespace nirtree
 		}
 
 		SplitResult split = {{new Node(treeRef, minBranchFactor, maxBranchFactor, parent), referencePoly}, {new Node(treeRef, minBranchFactor, maxBranchFactor, parent), referencePoly}};
-		unsigned branchesSize = branches.size();
-		unsigned dataSize = data.size();
 
 		split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
 		split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
@@ -466,7 +480,7 @@ namespace nirtree
 		split.leftBranch.boundingPoly.refine();
 		split.rightBranch.boundingPoly.refine();
 
-		if (branchesSize == 0 && dataSize > 0)
+		if (isLeaf())
 		{
 			bool containedLeft, containedRight;
 			for (Point &dataPoint : data)
@@ -594,20 +608,6 @@ namespace nirtree
 		return propagationSplit;
 	}
 
-	void Node::pushDown(Point givenPoint)
-	{
-		Node *pacerChild = branches.front().child;
-		Node *pushChild = branches.back().child;
-
-		for (; pacerChild->branches.size() > 0; pacerChild = pacerChild->branches.front().child)
-		{
-			pushChild->branches.push_back({new Node(treeRef, minBranchFactor, maxBranchFactor, pushChild), IsotheticPolygon(Rectangle(givenPoint, givenPoint))});
-			pushChild = pushChild->branches.front().child;
-		}
-
-		pushChild->data.push_back(givenPoint);
-	}
-
 	// Always called on root, this = root
 	Node *Node::insert(Point givenPoint)
 	{
@@ -615,7 +615,7 @@ namespace nirtree
 		Node *adjustContext = chooseNode(givenPoint);
 
 		// Adjust the tree
-		if (adjustContext->branches.size() == 0)
+		if (adjustContext->isLeaf())
 		{
 			// Add just the data
 			adjustContext->data.push_back(givenPoint);
@@ -673,7 +673,6 @@ namespace nirtree
 		// Record not in the tree
 		if (leaf == nullptr)
 		{
-			DEXEC(this->printTree());
 			return this;
 		}
 
@@ -699,7 +698,7 @@ namespace nirtree
 	{
 		unsigned sum = 0;
 
-		if (branches.size() == 0)
+		if (isLeaf())
 		{
 			for (Point &dataPoint : data)
 			{
@@ -794,7 +793,7 @@ namespace nirtree
 
 		// Print any of our children with one more level of indentation
 		std::string indendtation(n * 4, ' ');
-		if (branches.size() > 0)
+		if (!isLeaf())
 		{
 			for (Branch &branch : branches)
 			{
@@ -813,7 +812,7 @@ namespace nirtree
 		for (;;)
 		{
 			ret++;
-			if (node->branches.size() == 0)
+			if (node->isLeaf())
 			{
 				return ret;
 			}
@@ -868,7 +867,7 @@ namespace nirtree
 				coverage += currentContext->branches[i].boundingPoly.area();
 			}
 
-			if (branchesSize == 0 && dataSize > 0)
+			if (currentContext->isLeaf())
 			{
 				++totalLeaves;
 				memoryFootprint += sizeof(Node) + currentContext->data.size() * sizeof(Point);

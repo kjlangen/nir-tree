@@ -372,6 +372,42 @@ static Rectangle *generateForestRectangles()
 	return rectangles;
 }
 
+static Rectangle *generateCanadaRectangles()
+{
+	// Query set is pre-generated and requires 2 dimensions
+	assert(dimensions == 2);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	std::string dataPath = "/home/kjlangen/nir-tree/data/canadaQ";
+	file.open(dataPath);
+	fileGoodOrDie(file);
+	double bufferX, bufferY;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[CanadaQuerySize];
+	std::cout << "Beginning initialization of " << CanadaQuerySize << " maple leaf rectangles..." << std::endl;
+	for (unsigned i = 0; i < CanadaQuerySize; ++i)
+	{
+		// Read in lower left
+		file >> bufferX;
+		file >> bufferY;
+		rectangles[i].lowerLeft[0] = bufferX;
+		rectangles[i].lowerLeft[1] = bufferY;
+
+		// Read in upper right
+		file >> bufferX;
+		file >> bufferY;
+		rectangles[i].upperRight[0] = bufferX;
+		rectangles[i].upperRight[1] = bufferY;
+	}
+
+	// Cleanup
+	file.close();
+
+	return rectangles;
+}
+
 
 template <typename T>
 static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
@@ -445,8 +481,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	else if (configU["distribution"] == CANADA)
 	{
-		configU["rectanglescount"] = 0; // NO rectangles
-		searchRectangles = new Rectangle[1]; // HACK
+		configU["rectanglescount"] = CanadaQuerySize;
+		searchRectangles = generateCanadaRectangles();
 	}
 	else
 	{
@@ -536,6 +572,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		totalTimeRangeSearches += delta.count();
 		totalRangeSearches += 1;
 		// std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
+		// std::cout << "searchRectangles[" << i << "] returned " << v.size() << " points" << std::endl;
 
 #ifndef NDEBUG
 		// Validate points returned in the search

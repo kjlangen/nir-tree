@@ -26,6 +26,7 @@ const unsigned BiologicalQuerySize = 37844;
 const unsigned ForestDataSize = 581012;
 const unsigned ForestQuerySize = 1838;
 const unsigned CanadaDataSize = 19371405;
+const unsigned CanadaQuerySize = 5000;
 const unsigned MicrosoftBuildingsDataSize = 752704741;
 
 enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST, CANADA, MICROSOFTBUILDINGS};
