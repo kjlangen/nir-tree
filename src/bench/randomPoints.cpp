@@ -1,6 +1,10 @@
 #include <bench/randomPoints.h>
 #include <unistd.h>
 
+unsigned BenchTypeClasses::Uniform::size = 10000;
+unsigned BenchTypeClasses::Uniform::dimensions = dimensions;
+unsigned BenchTypeClasses::Uniform::seed = 3141;
+
 static void fileGoodOrDie(std::fstream &file)
 {
 	if (!file.good())
@@ -12,7 +16,7 @@ static void fileGoodOrDie(std::fstream &file)
 
 template <typename T>
 PointGenerator<T>::PointGenerator(BenchTag::DistributionGenerated) :
-	benchmarkSize(T::size), seed(0), offset(0)
+	benchmarkSize(T::size), offset(0)
 {
 }
 
@@ -26,32 +30,6 @@ template <typename T>
 PointGenerator<T>::PointGenerator(BenchTag::FileBackedReadChunksAtATime) :
     benchmarkSize(T::size), backingFile(T::fileName), offset(0)
 {
-}
-
-template <>
-std::optional<Point> PointGenerator<BenchTypeClasses::Uniform>::nextPoint(BenchTag::DistributionGenerated)
-{
-	// We produce all of the points at once and shove them in the buffer.
-	if (pointBuffer.empty())
-	{
-		std::default_random_engine generator(seed);
-		std::uniform_real_distribution<double> pointDist(0.0, 1.0);
-		pointBuffer.reserve(benchmarkSize);
-		for (unsigned i = 0; i < benchmarkSize; i++)
-		{
-			Point p;
-			for (unsigned d = 0; d < BenchTypeClasses::Uniform::dimensions; d++)
-			{
-				p[d] = pointDist(generator);
-			}
-			pointBuffer.push_back(std::move(p));
-		}
-	} // fall through
-	if (offset < pointBuffer.size())
-	{
-		return pointBuffer[offset++];
-	}
-	return std::nullopt;
 }
 
 
@@ -78,6 +56,32 @@ template <typename T>
 void PointGenerator<T>::reset()
 {
     reset(BenchDetail::getBenchTag<T>{});
+}
+
+template <>
+std::optional<Point> PointGenerator<BenchTypeClasses::Uniform>::nextPoint(BenchTag::DistributionGenerated)
+{
+	// We produce all of the points at once and shove them in the buffer.
+	if (pointBuffer.empty())
+	{
+		std::default_random_engine generator(BenchTypeClasses::Uniform::seed);
+		std::uniform_real_distribution<double> pointDist(0.0, 1.0);
+		pointBuffer.reserve(benchmarkSize);
+		for (unsigned i = 0; i < benchmarkSize; i++)
+		{
+			Point p;
+			for (unsigned d = 0; d < BenchTypeClasses::Uniform::dimensions; d++)
+			{
+				p[d] = pointDist(generator);
+			}
+			pointBuffer.push_back(std::move(p));
+		}
+	} // fall through
+	if (offset < pointBuffer.size())
+	{
+		return pointBuffer[offset++];
+	}
+	return std::nullopt;
 }
 
 template <typename T>
@@ -643,6 +647,9 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 	switch (configU["distribution"])
 	{
 		case UNIFORM: {
+			BenchTypeClasses::Uniform::size = configU["size"];
+			BenchTypeClasses::Uniform::dimensions = dimensions;
+			BenchTypeClasses::Uniform::seed = configU["seed"];
 			PointGenerator<BenchTypeClasses::Uniform> pointGen;
 			runBench(pointGen, configU, configD);
 			break;

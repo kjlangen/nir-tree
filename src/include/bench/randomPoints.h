@@ -51,8 +51,9 @@ namespace BenchTypeClasses
 	class Uniform : public Benchmark
 	{
 		public:
-			static constexpr unsigned size = 0;
-			static constexpr unsigned dimensions = 0; // Variable, can configure
+			static unsigned size;
+			static unsigned dimensions;
+			static unsigned seed;
 			static constexpr char fileName[] = "";
 	};
 
@@ -97,7 +98,7 @@ namespace BenchTypeClasses
 	{
 		public:
 			static constexpr unsigned size = CanadaDataSize;
-			static constexpr unsigned querySize = 0;
+			static constexpr unsigned querySize = CanadaQuerySize;
 			static constexpr unsigned dimensions = 2;
 			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/canada";
 	};
