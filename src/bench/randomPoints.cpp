@@ -191,7 +191,7 @@ static Rectangle *generateBitRectangles()
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
 
-	// Setup file reader and double buffef
+	// Setup file reader and double buffer
 	std::fstream file;
 	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02.2" : "/home/kjlangen/nir-tree/data/bit03.2";
 	file.open(dataPath.c_str());
@@ -229,7 +229,7 @@ static Rectangle *generateHazeRectangles()
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
 
-	// Setup file reader and double buffef
+	// Setup file reader and double buffer
 	std::fstream file;
 	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02.2" : "/home/kjlangen/nir-tree/data/pha03.2";
 	file.open(dataPath.c_str());
@@ -412,6 +412,46 @@ static Rectangle *generateCanadaRectangles()
 	return rectangles;
 }
 
+static Rectangle *generateGaiaRectangles()
+{
+	// Query set is pre-generated and requires 3 dimensions
+	assert(dimensions == 3);
+
+	// Setup file reader and double buffer
+	std::fstream file;
+	std::string dataPath = "/home/kjlangen/nir-tree/data/gaiaQ";
+	file.open(dataPath);
+	fileGoodOrDie(file);
+	double buffer;
+
+	// Initialize rectangles
+	Rectangle *rectangles = new Rectangle[GaiaQuerySize];
+	std::cout << "Beginning initialization of " << GaiaQuerySize << " starry rectangles..." << std::endl;
+	for (unsigned i = 0; i < GaiaQuerySize; ++i)
+	{
+		// Read in lower left
+		file >> buffer;
+		rectangles[i].lowerLeft[0] = buffer;
+		file >> buffer;
+		rectangles[i].lowerLeft[1] = buffer;
+		file >> buffer;
+		rectangles[i].lowerLeft[2] = buffer;
+
+		// Read in upper right
+		file >> buffer;
+		rectangles[i].upperRight[0] = buffer;
+		file >> buffer;
+		rectangles[i].upperRight[1] = buffer;
+		file >> buffer;
+		rectangles[i].upperRight[2] = buffer;
+	}
+
+	// Cleanup
+	file.close();
+
+	return rectangles;
+}
+
 
 template <typename T>
 static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
@@ -488,6 +528,11 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		configU["rectanglescount"] = CanadaQuerySize;
 		searchRectangles = generateCanadaRectangles();
 	}
+	else if (configU["distribution"] == GAIA)
+	{
+		configU["rectanglescount"] = GaiaQuerySize;
+		searchRectangles = generateGaiaRectangles();
+	}
 	else
 	{
 		return;
@@ -511,7 +556,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
-		// std::cout << "Point[" << i << "] inserted. " << delta.count() << "s" << std::endl;
+		// std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
 	}
 	std::cout << "Insertion OK." << std::endl;
 
@@ -538,7 +583,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
-    pointGen.reset();
+	pointGen.reset();
 	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Search
@@ -646,7 +691,8 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 {
 	switch (configU["distribution"])
 	{
-		case UNIFORM: {
+		case UNIFORM:
+		{
 			BenchTypeClasses::Uniform::size = configU["size"];
 			BenchTypeClasses::Uniform::dimensions = dimensions;
 			BenchTypeClasses::Uniform::seed = configU["seed"];
@@ -654,32 +700,44 @@ void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string
 			runBench(pointGen, configU, configD);
 			break;
 		}
-		case SKEW: {
+		case SKEW:
+		{
 			PointGenerator<BenchTypeClasses::Skew> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
-		case CALIFORNIA: {
+		case CALIFORNIA:
+		{
 			PointGenerator<BenchTypeClasses::California> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
-		case BIOLOGICAL: {
+		case BIOLOGICAL:
+		{
 			PointGenerator<BenchTypeClasses::Biological> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
-		case FOREST: {
+		case FOREST:
+		{
 			PointGenerator<BenchTypeClasses::Forest> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
-		case CANADA: {
+		case CANADA:
+		{
 			PointGenerator<BenchTypeClasses::Canada> pointGen;
 			runBench(pointGen, configU, configD);
 			break;
 		}
-		case MICROSOFTBUILDINGS: {
+		case GAIA:
+		{
+			PointGenerator<BenchTypeClasses::Gaia> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case MICROSOFTBUILDINGS:
+		{
 			PointGenerator<BenchTypeClasses::MicrosoftBuildings> pointGen;
 			runBench(pointGen, configU, configD);
 			break;

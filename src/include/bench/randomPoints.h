@@ -27,9 +27,11 @@ const unsigned ForestDataSize = 581012;
 const unsigned ForestQuerySize = 1838;
 const unsigned CanadaDataSize = 19371405;
 const unsigned CanadaQuerySize = 5000;
+const unsigned GaiaDataSize = 18084053;
+const unsigned GaiaQuerySize = 5000;
 const unsigned MicrosoftBuildingsDataSize = 752704741;
 
-enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST, CANADA, MICROSOFTBUILDINGS};
+enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST, CANADA, GAIA, MICROSOFTBUILDINGS};
 enum TreeType {R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE};
 
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD);
@@ -103,6 +105,15 @@ namespace BenchTypeClasses
 			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/canada";
 	};
 
+	class Gaia : public Benchmark
+	{
+		public:
+			static constexpr unsigned size = GaiaDataSize;
+			static constexpr unsigned querySize = GaiaQuerySize;
+			static constexpr unsigned dimensions = 3;
+			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/gaia";
+	};
+
 	class MicrosoftBuildings : public Benchmark
 	{
 		public:
@@ -136,7 +147,10 @@ namespace BenchDetail
 	struct getBenchTag<BenchTypeClasses::Forest> : BenchTag::FileBackedReadAll {};
 
 	template <>
-	struct getBenchTag<BenchTypeClasses::Canada> : BenchTag::FileBackedReadChunksAtATime {};
+	struct getBenchTag<BenchTypeClasses::Canada> : BenchTag::FileBackedReadAll {};
+
+	template <>
+	struct getBenchTag<BenchTypeClasses::Gaia> : BenchTag::FileBackedReadAll {};
 
 	template <>
 	struct getBenchTag<BenchTypeClasses::MicrosoftBuildings> : BenchTag::FileBackedReadChunksAtATime {};

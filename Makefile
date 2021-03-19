@@ -2,7 +2,7 @@ C++ = g++-9
 DIR = src/include # Include directory
 SXX = -std=c++17 # Standard
 CXXFLAGS = -Wall
-CPPFLAGS = -DDIM=2 -I $(DIR)
+CPPFLAGS = -DDIM=3 -I $(DIR)
 
 ifdef PROD
 CPPFLAGS := -DNDEBUG $(CPPFLAGS)
