@@ -12,8 +12,6 @@ namespace quadtree
 		{
 			quadrants *= 2;
 		}
-
-		assert(quadrants == 8);
 	}
 
 	QuadTree::QuadTree(Node *root)
@@ -48,13 +46,13 @@ namespace quadtree
 	void QuadTree::insert(Point givenPoint)
 	{
 		// Root special case
-		if (root == nullptr)
+		if (root != nullptr)
 		{
-			root = new Node(*this, givenPoint);
+			root->insert(givenPoint);
 		}
 		else
 		{
-			root->insert(givenPoint);
+			root = new Node(*this, givenPoint);
 		}
 	}
 

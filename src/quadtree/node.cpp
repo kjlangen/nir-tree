@@ -52,8 +52,7 @@ namespace quadtree
 			bool placeInQuad = true;
 
 			// In each dimension the bits of each quadrant number tell us whether to use a max or min
-			// comparison. Ex. to test quadrant 1 base 10 = 01 base 2, axis 0 must be a max comparison while axis 1 must
-			// be a min comparison.
+			// comparison. 1 means max comparison, 0 means min comparison.
 			for (unsigned d = 0; d < dimensions; ++d)
 			{
 				unsigned maxComparison = (1 << d) & i;
