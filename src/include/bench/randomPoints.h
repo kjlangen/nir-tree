@@ -13,6 +13,7 @@
 #include <rplustree/rplustree.h>
 #include <rstartree/rstartree.h>
 #include <nirtree/nirtree.h>
+#include <quadtree/quadtree.h>
 #include <optional>
 
 const unsigned BitDataSize = 60000;
@@ -32,7 +33,7 @@ const unsigned GaiaQuerySize = 5000;
 const unsigned MicrosoftBuildingsDataSize = 752704741;
 
 enum BenchType {UNIFORM, SKEW, CLUSTER, CALIFORNIA, BIOLOGICAL, FOREST, CANADA, GAIA, MICROSOFTBUILDINGS};
-enum TreeType {R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE};
+enum TreeType {R_TREE, R_PLUS_TREE, R_STAR_TREE, NIR_TREE, QUAD_TREE};
 
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD);
 

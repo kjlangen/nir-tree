@@ -2,7 +2,7 @@ C++ = g++-9
 DIR = src/include # Include directory
 SXX = -std=c++17 # Standard
 CXXFLAGS = -Wall
-CPPFLAGS = -DDIM=3 -I $(DIR)
+CPPFLAGS = -DDIM=2 -I $(DIR)
 
 ifdef PROD
 CPPFLAGS := -DNDEBUG $(CPPFLAGS)
@@ -30,6 +30,7 @@ bin/main: $(OBJ)
 	cp src/rtree/node.o rtreenode.o
 	cp src/rplustree/node.o rplustreenode.o
 	cp src/rstartree/node.o rtstartreenode.o
+	cp src/quadtree/node.o quadtreenode.o
 	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
 	rm -rf test*.o
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/main -I $(DIR)

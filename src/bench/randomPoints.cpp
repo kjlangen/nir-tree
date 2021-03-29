@@ -456,6 +456,8 @@ static Rectangle *generateGaiaRectangles()
 template <typename T>
 static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
+	std::cout << "Running benchmark." << std::endl;
+
 	// Setup checksums
 	unsigned directSum = 0;
 
@@ -487,8 +489,13 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	{
 		spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
 	}
+	else if (configU["tree"] == QUAD_TREE)
+	{
+		spatialIndex = new quadtree::QuadTree();
+	}
 	else
 	{
+		std::cout << "Unknown tree selected. Exiting." << std::endl;
 		return;
 	}
 
@@ -663,14 +670,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		// std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Deletion OK." << std::endl;
-
-	// Validate checksum
-	if (spatialIndex->checksum() != 0)
-	{
-		std::cout << "Bad Checksum!" << std::endl;
-		exit(1);
-	}
-	std::cout << "Checksum OK." << std::endl;
 
 	// Timing Statistics
 	std::cout << "Total time to insert: " << totalTimeInserts << "s" << std::endl;
