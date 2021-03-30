@@ -3,15 +3,12 @@
 
 #include <cassert>
 #include <vector>
-#include <stack>
-#include <queue>
 #include <string>
 #include <iostream>
 #include <utility>
 #include <util/geometry.h>
 #include <revisedrstartree/node.h>
 #include <index/index.h>
-#include <util/bmpPrinter.h>
 #include <util/statistics.h>
 
 namespace revisedrstartree

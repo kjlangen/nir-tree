@@ -66,33 +66,6 @@ namespace revisedrstartree
 		return bb;
 	}
 
-	Node::Branch Node::locateBranch(Node *child)
-	{
-		for (Branch &branch : branches)
-		{
-			if (branch.child == child)
-			{
-				return branch;
-			}
-		}
-
-		// If we are here, panic
-		assert(false);
-
-		return {nullptr, Rectangle::atInfinity};
-	}
-
-	void Node::updateBranch(Node *child, Rectangle &boundingBox)
-	{
-		// Locate the child
-		unsigned branchesSize = branches.size();
-		unsigned childIndex;
-		for (childIndex = 0; branches[childIndex].child != child && childIndex < branchesSize; ++childIndex) {}
-
-		// Update the child
-		branches[childIndex] = {child, boundingBox};
-	}
-
 	void Node::removeBranch(Node *child)
 	{
 		// Locate the child
@@ -347,13 +320,13 @@ namespace revisedrstartree
 					std::sort(context->branches.begin(), context->branches.end(), [givenPoint](Branch &a, Branch &b){return a.boundingBox.computeExpansionMargin(givenPoint) <= b.boundingBox.computeExpansionMargin(givenPoint);});
 
 					// Look at the first entry's intersection margin with all the others
-					double deltaWithAll = 0;
+					double deltaWithAll = 0.0;
 					for (Branch &branch : context->branches)
 					{
 						deltaWithAll += branch.boundingBox.marginDelta(givenPoint, context->branches[0].boundingBox);
 					}
 
-					if (deltaWithAll == 0)
+					if (deltaWithAll == 0.0)
 					{
 						optimalBranchIndex = 0;
 					}
@@ -517,10 +490,9 @@ namespace revisedrstartree
 			if (isLeaf())
 			{
 				std::sort(data.begin(), data.end(), [d](Point &a, Point &b){return a[d] < b[d];});
-				// Compute margin on one side of the split
 				for (unsigned i = treeRef.minBranchFactor; i < 1 + treeRef.maxBranchFactor - treeRef.minBranchFactor; ++i)
 				{
-					// Compute margin on one side of the split
+					// Compute margin on either side of the split
 					double evalMargin = evaluateSplit(i, [](Rectangle &a, Rectangle &b){return a.margin() + b.margin();});
 					if (evalMargin < minMargin)
 					{

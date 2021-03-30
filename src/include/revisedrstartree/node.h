@@ -20,19 +20,11 @@
 
 namespace revisedrstartree
 {
-    class RevisedRStarTree;
+	class RevisedRStarTree;
 
 	class Node
 	{
 		private:
-			struct ReinsertionEntry
-			{
-				Rectangle boundingBox;
-				Point data;
-				Node *child;
-				unsigned level;
-			};
-
 			RevisedRStarTree &treeRef;
 			Point originalCentre;
 
@@ -60,8 +52,6 @@ namespace revisedrstartree
 			// Helper functions
 			bool isLeaf();
 			Rectangle boundingBox();
-			Branch locateBranch(Node *child);
-			void updateBranch(Node *child, Rectangle &boundingBox);
 			void removeBranch(Node *child);
 			void removeData(Point givenPoint);
 			void chooseNodeHelper(unsigned limitIndex, Point &givenPoint, unsigned &chosenIndex, bool &success, std::vector<bool> &candidates, std::vector<double> &deltas, unsigned startIndex, bool useMarginDelta);
