@@ -300,6 +300,17 @@ double Rectangle::area() const
 	return a;
 }
 
+double Rectangle::margin() const
+{
+	double margin = 0.0;
+	for(unsigned d = 0; d < dimensions; d++)
+	{
+		margin += fabs(upperRight[d] - lowerLeft[d]);
+	}
+
+	return margin;
+}
+
 double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 {
 	// Quick exit
@@ -340,6 +351,28 @@ double Rectangle::computeExpansionArea(const Point &givenPoint) const
 	return expandedArea - existingArea;
 }
 
+double Rectangle::computeExpansionMargin(const Point &givenPoint) const
+{
+	// Early exit
+	if (containsPoint(givenPoint))
+	{
+		return -1.0;
+	}
+
+	// Expanded rectangle area computed directly
+	double expandedMargin = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
+	double existingMargin = fabs(lowerLeft[0] - upperRight[0]);
+
+	for (unsigned d = 1; d < dimensions; ++d)
+	{
+		expandedMargin += fabs(fmin(lowerLeft[d], givenPoint[d]) - fmax(upperRight[d], givenPoint[d]));
+		existingMargin += fabs(lowerLeft[d] - upperRight[d]);
+	}
+
+	// Compute the difference
+	return expandedMargin - existingMargin;
+}
+
 double Rectangle::computeExpansionArea(const Rectangle &givenRectangle) const
 {
 	// Early exit
@@ -358,6 +391,20 @@ double Rectangle::computeExpansionArea(const Rectangle &givenRectangle) const
 
 	// Compute the difference
 	return expandedArea - area();
+}
+
+double Rectangle::marginDelta(const Point &givenPoint, const Rectangle &givenRectangle) const
+{
+	double currentIntersectionMargin = intersection(givenRectangle).margin();
+	double expandedIntersectionMargin = copyExpand(givenPoint).intersection(givenRectangle).margin();
+	return expandedIntersectionMargin - currentIntersectionMargin;
+}
+
+double Rectangle::areaDelta(const Point &givenPoint, const Rectangle &givenRectangle) const
+{
+	double currentIntersectionArea = computeIntersectionArea(givenRectangle);
+	double expandedIntersectionArea = copyExpand(givenPoint).computeIntersectionArea(givenRectangle);
+	return expandedIntersectionArea - currentIntersectionArea;
 }
 
 void Rectangle::expand(const Point &givenPoint)
@@ -461,20 +508,16 @@ bool Rectangle::containsRectangle(const Rectangle &givenRectangle) const
 	return containsPoint(givenRectangle.lowerLeft) && containsPoint(givenRectangle.upperRight);
 }
 
-double Rectangle::margin() const
-{
-	double margin = 0.0;
-	for(unsigned d = 0; d < dimensions; d++)
-	{
-		margin += fabs(upperRight[d] - lowerLeft[d]) * 2.0;
-	}
-
-	return margin;
-}
-
 Point Rectangle::centrePoint() const
 {
 	return (lowerLeft + upperRight) / 2.0;
+}
+
+Rectangle Rectangle::copyExpand(const Point &givenPoint) const
+{
+	Rectangle r(*this);
+	r.expand(givenPoint);
+	return r;
 }
 
 Rectangle Rectangle::intersection(const Rectangle &clippingRectangle) const

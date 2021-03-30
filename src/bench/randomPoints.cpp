@@ -493,6 +493,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	{
 		spatialIndex = new quadtree::QuadTree();
 	}
+	else if (configU["tree"] == REVISED_R_STAR_TREE)
+	{
+		spatialIndex = new revisedrstartree::RevisedRStarTree(configU["minfanout"], configU["maxfanout"]);
+	}
 	else
 	{
 		std::cout << "Unknown tree selected. Exiting." << std::endl;
@@ -617,6 +621,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Checksum OK." << std::endl;
 
 	// Search for rectangles
+	unsigned rangeSearchChecksum = 0;
 	std::cout << "Beginning search for " << configU["rectanglescount"] << " rectangles..." << std::endl;
 	for (unsigned i = 0; i < configU["rectanglescount"]; ++i)
 	{
@@ -627,6 +632,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();
 		totalRangeSearches += 1;
+		rangeSearchChecksum += v.size();
 		// std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
 		// std::cout << "searchRectangles[" << i << "] returned " << v.size() << " points" << std::endl;
 
@@ -639,7 +645,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		// std::cout << v.size() << " points verified." << std::endl;
 #endif
 	}
-	std::cout << "Range search OK." << std::endl;
+	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
 	// Gather statistics
 #ifdef STAT
