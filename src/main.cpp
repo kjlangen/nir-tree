@@ -11,7 +11,7 @@
 
 void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, double> configD)
 {
-	std::string treeTypes[] = {"R_TREE", "R_PLUS_TREE", "R_STAR_TREE", "NIR_TREE", "QUAD_TREE"};
+	std::string treeTypes[] = {"R_TREE", "R_PLUS_TREE", "R_STAR_TREE", "NIR_TREE", "QUAD_TREE", "REVISED_R_STAR_TREE"};
 	std::string benchTypes[] = {"UNIFORM", "SKEW", "CLUSTER", "CALIFORNIA", "BIOLOGICAL", "FOREST", "CANADA", "GAIA", "MICROSOFTBUILDINGS"};
 
 	std::cout << "### BENCHMARK PARAMETERS ###" << std::endl;
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 			default:
 			{
 				std::cout << "Bad option. Usage:" << std::endl;
-				std::cout << "    -t  Specifies tree type {0 = R-Tree, 1 = R+-Tree, 2 = R*-Tree, 3 = NIR-Tree}" << std::endl;
+				std::cout << "    -t  Specifies tree type {0 = R-Tree, 1 = R+-Tree, 2 = R*-Tree, 3 = NIR-Tree, 4 = Quad-Tree, 5 = RR*-Tree}" << std::endl;
 				std::cout << "    -m  Specifies benchmark type {0 = Uniform, 1 = Skew, 2 = Clustered, 3 = California, 4 = Biological, 5 = Forest, 6 = Canada, 7 = Gaia, 8 = MSBuildings}" << std::endl;
 				std::cout << "    -a  Minimum fanout for nodes in the selected tree" << std::endl;
 				std::cout << "    -b  Maximum fanout for nodes in the selected tree" << std::endl;

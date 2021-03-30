@@ -84,7 +84,10 @@ class Rectangle
 		double margin() const;
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;
 		double computeExpansionArea(const Point &givenPoint) const;
+		double computeExpansionMargin(const Point &givenPoint) const;
 		double computeExpansionArea(const Rectangle &givenRectangle) const;
+		double marginDelta(const Point &givenPoint, const Rectangle &givenRectangle) const;
+		double areaDelta(const Point &givenPoint, const Rectangle &givenRectangle) const;
 		void expand(const Point &givenPoint);
 		void expand(const Rectangle &givenRectangle);
 		bool alignedForMerging(const Rectangle &givenRectangle) const;
@@ -96,6 +99,7 @@ class Rectangle
 		bool strictContainsPoint(const Point &givenPoint) const;
 		bool containsRectangle(const Rectangle &givenRectangle) const;
 		Point centrePoint() const;
+		Rectangle copyExpand(const Point &givenPoint) const;
 		Rectangle intersection(const Rectangle &clippingRectangle) const;
 		std::vector<Rectangle> fragmentRectangle(const Rectangle &clippingRectangle) const;
 
