@@ -327,7 +327,7 @@ namespace quadtree
 		unsigned long totalLeaves = 0;
 
 		std::vector<unsigned long> histogramFanout;
-		histogramFanout.resize(dimensions + 3, 0);
+		histogramFanout.resize(treeRef.quadrants * 2, 0);
 
 		for (;!context.empty();)
 		{
