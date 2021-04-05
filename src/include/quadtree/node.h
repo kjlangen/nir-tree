@@ -25,12 +25,12 @@ namespace quadtree
 	class Node
 	{
 		private:
-			Point data;
 			QuadTree &treeRef;
 
 		public:
 			Node *parent;
 			std::vector<Node *> branches;
+			Point data;
 
 			// Constructors and destructors
 			Node(QuadTree &treeRef, Point &givenPoint, Node *p=nullptr);

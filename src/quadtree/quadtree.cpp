@@ -83,5 +83,8 @@ namespace quadtree
 
 	void QuadTree::visualize()
 	{
+		BMPPrinter p(1000, 1000);
+
+		p.printToBMP(root);
 	}
 }

@@ -10,6 +10,7 @@
 #include <util/geometry.h>
 #include <quadtree/node.h>
 #include <index/index.h>
+#include <util/bmpPrinter.h>
 #include <util/statistics.h>
 
 namespace quadtree
