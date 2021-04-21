@@ -15,6 +15,8 @@
 #include <rplustree/node.h>
 #include <rtree/node.h>
 #include <rstartree/node.h>
+#include <revisedrstartree/node.h>
+#include <quadtree/node.h>
 
 class BMPPrinter
 {
@@ -38,17 +40,23 @@ class BMPPrinter
 		Colour bmpColourGenerator();
 		std::string bmpIdGenerator();
 
+		bool whitePixel(const unsigned x, const unsigned y);
 		void registerPoint(Point &point, Colour colour);
+		void registerQuadrants(Point &point, Rectangle limits, Colour colour);
 		void registerRectangle(Rectangle &boundingBox, Colour colour);
 		void registerRectangleArray(std::vector<Rectangle> &boundingBoxes);
 		void registerPolygon(IsotheticPolygon &polygon, Colour colour);
 
 		void finalize(std::string &printId, unsigned level=0);
 
+		void quadtreeHelper(quadtree::Node *node, Rectangle limits);
+
 		void printToBMP(rtree::Node *root);
 		void printToBMP(rplustree::Node *root);
 		void printToBMP(rstartree::Node *root);
+		void printToBMP(revisedrstartree::Node *root);
 		void printToBMP(nirtree::Node *root);
+		void printToBMP(quadtree::Node *root);
 };
 
 #endif

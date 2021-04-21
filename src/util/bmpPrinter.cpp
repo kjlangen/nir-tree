@@ -75,6 +75,14 @@ std::string BMPPrinter::bmpIdGenerator()
 	return id;
 }
 
+bool BMPPrinter::whitePixel(const unsigned x, const unsigned y)
+{
+	const char white = 255;
+	const unsigned index = 3 * x + 3 * y * xDimension;
+
+	return (colourBytes[index + 0] == white) &&	(colourBytes[index + 1] == white) && (colourBytes[index + 2] == white);
+}
+
 void BMPPrinter::registerPoint(Point &point, Colour colour)
 {
 	DPRINT1("registerPoint");
@@ -104,6 +112,64 @@ void BMPPrinter::registerPoint(Point &point, Colour colour)
 	colourBytes[3 * xp + 3 * yp * xDimension + 2] = colour.b;
 
 	DPRINT1("registerPoint finished");
+}
+
+void BMPPrinter::registerQuadrants(Point &point, Rectangle limits, Colour colour)
+{
+	DPRINT1("registerQuadtrants");
+
+	double xScale = (double) xDimension;
+	double yScale = (double) yDimension;
+
+	// Transform the point
+	DPRINT4("scaling x and y by ", xScale, " and ", yScale);
+
+	double xTransform = point[0];
+	double yTransform = point[1];
+
+	unsigned xp = (unsigned) round(xTransform * xScale);
+	// Rounding may cause the pixel to be outside the array so cap xp at the maximum array index
+	xp = std::min(xp, xDimension - 1);
+
+	unsigned yp = (unsigned) round(yTransform * yScale);
+	// Rounding may cause the pixel to be outside the array so cap yp at the maximum array index
+	yp = std::min(yp, yDimension - 1);
+
+	DPRINT2("uncast point = ", point);
+	DPRINT4("cast point = ", xp, ", ", yp);
+
+	// Transform the rectangle
+	unsigned limitsLowerX = (unsigned) round(limits.lowerLeft[0] * xScale);
+	limitsLowerX = std::min(limitsLowerX, xDimension - 1);
+	
+	unsigned limitsLowerY = (unsigned) round(limits.lowerLeft[1] * yScale);
+	limitsLowerY = std::min(limitsLowerY, yDimension - 1);
+	
+	unsigned limitsUpperX = (unsigned) round(limits.upperRight[0] * xScale);
+	limitsUpperX = std::min(limitsUpperX, xDimension - 1);
+	
+	unsigned limitsUpperY = (unsigned) round(limits.upperRight[1] * yScale);
+	limitsUpperY = std::min(limitsUpperY, yDimension - 1);
+
+	DPRINT1("filling in pixels");
+
+	// Up/Down
+	for (unsigned i = limitsLowerY; i <= limitsUpperY; ++i)
+	{
+		colourBytes[3 * xp + 3 * i * xDimension + 0] = colour.r;
+		colourBytes[3 * xp + 3 * i * xDimension + 1] = colour.g;
+		colourBytes[3 * xp + 3 * i * xDimension + 2] = colour.b;
+	}
+
+	// Left/Right
+	for (unsigned i = limitsLowerX; i <= limitsUpperX; ++i)
+	{
+		colourBytes[3 * i + 3 * yp * xDimension + 0] = colour.r;
+		colourBytes[3 * i + 3 * yp * xDimension + 1] = colour.g;
+		colourBytes[3 * i + 3 * yp * xDimension + 2] = colour.b;
+	}
+
+	DPRINT1("registerQuadtrants finished");
 }
 
 void BMPPrinter::registerRectangle(Rectangle &boundingBox, Colour colour)
@@ -418,4 +484,120 @@ void BMPPrinter::printToBMP(nirtree::Node *root)
 	finalize(id, currentLevel);
 
 	DPRINT1("printToBMP finished");
+}
+
+void BMPPrinter::printToBMP(revisedrstartree::Node *root)
+{
+	DPRINT1("printToBMP");
+
+	// Print directory
+	std::string id = bmpIdGenerator();
+	DPRINT2("id = ", id);
+
+	// BFS variables
+	unsigned currentLevel = 0;
+	std::pair<revisedrstartree::Node *, unsigned> currentContext;
+	std::queue<std::pair<revisedrstartree::Node *, unsigned>> explorationQ;
+	DPRINT1("BFS variables initialized");
+
+	// Prime the Q
+	explorationQ.push(std::pair<revisedrstartree::Node *, unsigned>(root, 0));
+	DPRINT1("explorationQ primed");
+
+	// Print the tree one level-page at a time
+	for (;!explorationQ.empty();)
+	{
+		DPRINT1("retreiving front of explorationQ");
+		currentContext = explorationQ.front();
+		explorationQ.pop();
+
+		if (currentContext.second != currentLevel)
+		{
+			DPRINT2("moved to new level ", currentContext.second);
+			// Finalize the previous layer and reset colourBytes
+			finalize(id, currentLevel);
+			DPRINT1("resetting colour bytes");
+			memset(colourBytes, 255, xDimension * yDimension * 3);
+
+			currentLevel++;
+		}
+
+		DPRINT3("cycling through ", currentContext.first->branches.size(), " branches");
+		// Add all of our children's bounding boxes to this level's image
+		for (unsigned i = 0; i < currentContext.first->branches.size(); ++i)
+		{
+			registerRectangle(currentContext.first->branches[i].boundingBox, bmpColourGenerator());
+			explorationQ.push(std::pair<revisedrstartree::Node *, unsigned>(currentContext.first->branches[i].child, currentLevel + 1));
+		}
+
+		DPRINT3("cycling through ", currentContext.first->data.size(), " data points");
+		for (unsigned i = 0; i < currentContext.first->data.size(); ++i)
+		{
+			registerPoint(currentContext.first->data[i], {0, 0, 0});
+		}
+	}
+
+	// Finalize the last level
+	finalize(id, currentLevel);
+
+	DPRINT1("printToBMP finished");
+}
+
+void BMPPrinter::quadtreeHelper(quadtree::Node *node, Rectangle limits)
+{
+	registerQuadrants(node->data, limits, bmpColourGenerator());
+
+	// Lower Left
+	if (node->branches[0] != nullptr)
+	{
+		Rectangle subLimits = limits;
+		subLimits.upperRight = node->data;
+		quadtreeHelper(node->branches[0], subLimits);
+	}
+
+	// Upper Left
+	if (node->branches[2] != nullptr)
+	{
+		Rectangle subLimits = limits;
+		subLimits.upperRight[0] = node->data[0];
+		subLimits.lowerLeft[1] = node->data[1];
+		quadtreeHelper(node->branches[2], subLimits);
+	}
+
+	// Upper Right
+	if (node->branches[3] != nullptr)
+	{
+		Rectangle subLimits = limits;
+		subLimits.lowerLeft = node->data;
+		quadtreeHelper(node->branches[3], subLimits);
+	}
+
+	// Lower Right
+	if (node->branches[1] != nullptr)
+	{
+		Rectangle subLimits = limits;
+		subLimits.upperRight[1] = node->data[1];
+		subLimits.lowerLeft[0] = node->data[0];
+		quadtreeHelper(node->branches[1], subLimits);
+	}
+}
+
+void BMPPrinter::printToBMP(quadtree::Node *root)
+{
+	DPRINT1("printToBMP");
+
+	// Print directory
+	std::string id = bmpIdGenerator();
+	DPRINT2("id = ", id);
+
+	Rectangle limits;
+	limits.lowerLeft[0] = 0;
+	limits.lowerLeft[1] = 0;
+	limits.upperRight[0] = xDimension - 1;
+	limits.upperRight[1] = yDimension - 1;
+
+	quadtreeHelper(root, limits);
+
+	// Finalize the image
+	finalize(id, 0);
 }

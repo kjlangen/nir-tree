@@ -63,6 +63,8 @@ namespace revisedrstartree
 
 	void RevisedRStarTree::visualize()
 	{
-		// BMP printer doesn't support RR*-Tree
+		BMPPrinter p(1000, 1000);
+
+		p.printToBMP(root);
 	}
 }
