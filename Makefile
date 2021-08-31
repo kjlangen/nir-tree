@@ -1,4 +1,4 @@
-C++ = g++-9
+C++ = g++
 DIR = src/include # Include directory
 SXX = -std=c++17 # Standard
 CXXFLAGS = -Wall
