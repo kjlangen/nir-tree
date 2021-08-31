@@ -60,8 +60,6 @@ namespace rstartree
 			Node *chooseSubtree(const NodeEntry &nodeEntry);
 			Node *findLeaf(const Point &givenPoint);
 			inline bool isLeafNode() const { return level == 0; }
-			double computeTotalMarginSum();
-			double computeTotalMarginSum(std::vector<NodeEntry *> ptrs);
 			unsigned chooseSplitLeafAxis();
 			unsigned chooseSplitNonLeafAxis();
 			unsigned chooseSplitAxis();

@@ -350,27 +350,6 @@ TEST_CASE("R*Tree: testSimpleSplitAxis")
 	REQUIRE(std::get<Point>(cluster6Y->entries[5]) == Point(-11.0, 3.0));
 }
 
-TEST_CASE("R*Tree: testComplexComputeMargin")
-{
-	rstartree::RStarTree tree(3,7);
-	rstartree::Node *cluster = tree.root;
-	cluster->entries.push_back(Point(-3.0, -11.0));
-	cluster->entries.push_back(Point(-2.0, -9.0));
-	cluster->entries.push_back(Point(2.0, -10.0));
-	cluster->entries.push_back(Point(3.0, -11.0));
-	cluster->entries.push_back(Point(1.0, -9.0));
-	cluster->entries.push_back(Point(-3.0, -10.0));
-	cluster->entries.push_back(Point(3.0, -11.0));
-	cluster->entries.push_back(Point(3.0, -9.0));
-	cluster->level = 0;
-
-	// Check that produce the right margin under X order
-	REQUIRE( cluster->computeTotalMarginSum() == 14 + 18 + 18 );
-
-	// Check that produce the right margin under Y order
-	REQUIRE( cluster->computeTotalMarginSum() == 26 + 26 + 24 );
-}
-
 TEST_CASE("R*Tree: testComplexSplitAxis")
 {
 	// Now m=3, M = 7.
@@ -436,8 +415,8 @@ TEST_CASE("R*Tree: testSplitNode")
 	// Test the split
 	REQUIRE(cluster6->entries.size() == 3);
 	REQUIRE(std::get<Point>(cluster6->entries[0]) == Point(-3.0, -11.0));
-	REQUIRE(std::get<Point>(cluster6->entries[1]) == Point(-2.0, -9.0));
-	REQUIRE(std::get<Point>(cluster6->entries[2]) == Point(-2.0, -6.0));
+	REQUIRE(std::get<Point>(cluster6->entries[1]) == Point(-2.0, -6.0));
+	REQUIRE(std::get<Point>(cluster6->entries[2]) == Point(-2.0, -9.0));
 	REQUIRE(cluster6p->entries.size() == 4);
 	REQUIRE(std::get<Point>(cluster6p->entries[0]) == Point(-1.0, -7.0));
 	REQUIRE(std::get<Point>(cluster6p->entries[1]) == Point(1.0, -7.0));
@@ -526,8 +505,8 @@ TEST_CASE("R*Tree: testSplitNode")
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3->entries[3]).boundingBox == Rectangle(-3.0, 3.0, -1.0, 5.0));
 
 	REQUIRE(cluster3p->entries.size() == 3);
-	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[0]).boundingBox == Rectangle(-2.0, 0.0, 0.0, 2.0));
-	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[1]).boundingBox == Rectangle(-2.0, 2.0, 0.0, 4.0));
+	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[0]).boundingBox == Rectangle(-2.0, 2.0, 0.0, 4.0));
+	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[1]).boundingBox == Rectangle(-2.0, 0.0, 0.0, 2.0));
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[2]).boundingBox == Rectangle(1.0, 1.0, 2.0, 2.0));
 	REQUIRE(std::get<rstartree::Node::Branch>(cluster3p->entries[2]).child == cluster3extra);
 	
@@ -728,21 +707,6 @@ TEST_CASE("R*Tree: RemoveLeafNode")
 	
 }
 
-TEST_CASE("R*Tree: computeTotalMarginSum")
-{
-	// Leaf rtree::Node and new sibling leaf
-	// Cluster 4, n = 5
-	rstartree::RStarTree tree(3, 5);
-	rstartree::Node *cluster4aAugment = tree.root;
-	cluster4aAugment->entries.push_back(Point(-20.0, -20.0));
-	cluster4aAugment->entries.push_back(Point(-10.0, -10.0));
-	cluster4aAugment->entries.push_back(Point(0.0, 0.0));
-	cluster4aAugment->entries.push_back(Point(0.0, 0.0));
-	cluster4aAugment->entries.push_back(Point(10.0, 10.0));
-	cluster4aAugment->entries.push_back(Point(20.0, 20.0));
-
-	REQUIRE( cluster4aAugment->computeTotalMarginSum() == 160.0 );
-}
 
 TEST_CASE("R*Tree: testSearch")
 {

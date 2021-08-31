@@ -479,39 +479,6 @@ namespace rstartree
 		return nullptr;
 	}
 
-	double Node::computeTotalMarginSum(std::vector<NodeEntry *> ptrs)
-	{
-		std::vector<NodeEntry *> groupA(ptrs.begin(), ptrs.begin() + treeRef.minBranchFactor);
-		std::vector<NodeEntry *> groupB(ptrs.begin()+treeRef.minBranchFactor, ptrs.end());
-
-		double sumOfAllMarginValues = 0;
-
-		while (groupA.size() <= treeRef.maxBranchFactor && groupB.size() >= treeRef.minBranchFactor)
-		{
-			Rectangle boundingBoxA = boxFromNodeEntry(*groupA[0]);
-			for (unsigned i = 1; i < groupA.size(); ++i)
-			{
-				boundingBoxA.expand(boxFromNodeEntry(*groupA[i]));
-			}
-
-			Rectangle boundingBoxB = boxFromNodeEntry(*groupB[0]);
-			for (unsigned i = 1; i < groupB.size(); ++i)
-			{
-				boundingBoxB.expand(boxFromNodeEntry(*groupB[i]));
-			}
-
-			// Calculate new margin sum
-			sumOfAllMarginValues += boundingBoxA.margin() + boundingBoxB.margin();
-			
-			// Add one new value to groupA and remove one from groupB. Repeat.
-			NodeEntry *transfer = groupB.front();
-			groupB.erase(groupB.begin());
-			groupA.push_back(transfer);
-		}
-
-		return sumOfAllMarginValues;
-	}
-
 	unsigned Node::chooseSplitLeafAxis()
 	{
 		unsigned optimalAxis = 0;
@@ -578,15 +545,6 @@ namespace rstartree
 		});
 
 		return optimalAxis;
-	}
-
-	double Node::computeTotalMarginSum()
-	{
-		std::vector<NodeEntry *> ptrs;
-		ptrs.reserve(entries.size());
-		std::transform(entries.begin(), entries.end(), std::back_inserter(ptrs),
-			[](NodeEntry &e) -> NodeEntry * { return &e; });
-		return computeTotalMarginSum(ptrs);
 	}
 
 	unsigned Node::chooseSplitNonLeafAxis()
