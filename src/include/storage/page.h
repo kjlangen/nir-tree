@@ -13,9 +13,12 @@ typedef struct page_header {
     bool clock_active_;
 } page_header;
 
+constexpr size_t PAGE_DATA_SIZE = PAGE_SIZE - sizeof(page_header);
+
 typedef struct page {
     page_header header_;
-    char data_[PAGE_SIZE - sizeof(header_)]; //page size
+    char data_[PAGE_DATA_SIZE];
 } page;
+
 
 static_assert( sizeof(page) == PAGE_SIZE, "Page is not correctly sized" );
