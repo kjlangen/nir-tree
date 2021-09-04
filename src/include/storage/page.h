@@ -10,6 +10,7 @@ typedef struct page_header {
     // This offset should probably act as the page identifier as well
     // Should probably put the clock counter here
     size_t page_id_;
+    size_t pin_count_;
     bool clock_active_;
 } page_header;
 

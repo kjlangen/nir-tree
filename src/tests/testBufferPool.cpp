@@ -179,7 +179,6 @@ TEST_CASE( "Storage: More pages than memory (through new_page)" ) {
 
 TEST_CASE( "Storage: Test Clock Page Replacement Strategy" ) {
 
-    std::cout << "START LOOKING HERE." << std::endl;
     // Make 10 pages
     size_t num_pages = 10;
 
@@ -224,4 +223,46 @@ TEST_CASE( "Storage: Test Clock Page Replacement Strategy" ) {
     REQUIRE( not bp.is_page_in_memory( 1 ) );
     REQUIRE( bp.is_page_in_memory( 13 ) );
 
+}
+
+TEST_CASE( "Storage: Buffer Pool Pinning" ) {
+
+    // 3 pages in memory
+    size_t num_pages = 3;
+    buffer_pool bp( PAGE_SIZE * num_pages );
+    unlink( bp.get_backing_file_name().c_str() );
+    bp.initialize();
+
+    for( size_t i = 0; i < num_pages; i++ ) {
+        bp.get_page(i); // Materialize the pages
+    }
+
+    page *p0 = bp.get_page(0);
+    bp.pin_page( p0 );
+
+    bp.create_new_page(); // create page 3
+
+    REQUIRE( bp.is_page_in_memory( 0 ) );
+    REQUIRE( not bp.is_page_in_memory( 1 ) );
+    REQUIRE( bp.is_page_in_memory( 2 ) );
+    REQUIRE( bp.is_page_in_memory( 3 ) );
+}
+
+TEST_CASE( "Storage: Buffer Pool All Pages Pinned" ) {
+    // 3 pages in memory
+    size_t num_pages = 3;
+    buffer_pool bp( PAGE_SIZE * num_pages );
+    unlink( bp.get_backing_file_name().c_str() );
+    bp.initialize();
+
+    for( size_t i = 0; i < num_pages; i++ ) {
+        page *p = bp.get_page(i); // Materialize the pages
+        bp.pin_page( p ); // pin it
+    }
+
+    REQUIRE( not bp.create_new_page() );
+
+    REQUIRE( bp.is_page_in_memory( 0 ) );
+    REQUIRE( bp.is_page_in_memory( 1 ) );
+    REQUIRE( bp.is_page_in_memory( 2 ) );
 }

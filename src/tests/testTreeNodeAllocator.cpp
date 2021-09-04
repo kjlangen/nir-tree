@@ -5,19 +5,18 @@
 #include <storage/page.h>
 #include <unistd.h>
 
-
 TEST_CASE( "Tree Node Allocator: Single RStarTree Node" ) {
 
     tree_node_allocator allocator( 10 * PAGE_SIZE );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
-    std::pair<rstartree::Node *, tree_node_ptr> alloc_data =
+    std::pair<pinned_node_ptr<rstartree::Node>, tree_node_handle> alloc_data =
         allocator.create_new_tree_node<rstartree::Node>();
 
     REQUIRE( alloc_data.first != nullptr );
-    REQUIRE( alloc_data.second.page_id_ == 0 );
-    REQUIRE( alloc_data.second.offset_ == sizeof(page_header) + 0 );
+    REQUIRE( alloc_data.second.get_page_id() == 0 );
+    REQUIRE( alloc_data.second.get_offset() == 0 );
 }
 
 
@@ -27,19 +26,68 @@ TEST_CASE( "Tree Node Allocator: Overflow one Page" ) {
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
-    size_t start_offset = sizeof(page_header);
-
     for( size_t i = 0; i < PAGE_DATA_SIZE / node_size; i++ ) {
-        std::pair<rstartree::Node *, tree_node_ptr> alloc_data =
+        std::pair<pinned_node_ptr<rstartree::Node>, tree_node_handle> alloc_data =
             allocator.create_new_tree_node<rstartree::Node>();
         REQUIRE( alloc_data.first != nullptr );
-        REQUIRE( alloc_data.second.page_id_ == 0 );
-        REQUIRE( alloc_data.second.offset_== start_offset + i *
-                node_size );
+        REQUIRE( alloc_data.second.get_page_id() == 0 );
+        REQUIRE( alloc_data.second.get_offset() ==  i * node_size );
     }
-    std::pair<rstartree::Node *, tree_node_ptr> alloc_data =
+    std::pair<pinned_node_ptr<rstartree::Node>, tree_node_handle> alloc_data =
             allocator.create_new_tree_node<rstartree::Node>();
     REQUIRE( alloc_data.first != nullptr );
-    REQUIRE( alloc_data.second.page_id_ == 1 );
-    REQUIRE( alloc_data.second.offset_== start_offset );
+    REQUIRE( alloc_data.second.get_page_id() == 1 );
+    REQUIRE( alloc_data.second.get_offset() == 0 );
+}
+
+TEST_CASE( "Tree Node Allocator: Convert TreeNodePtr to Raw Ptr" ) {
+    tree_node_allocator allocator( 10 * PAGE_SIZE );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    std::pair<pinned_node_ptr<rstartree::Node>, tree_node_handle> alloc_data =
+        allocator.create_new_tree_node<rstartree::Node>();
+    pinned_node_ptr<rstartree::Node> output_ptr = alloc_data.first;
+    REQUIRE( output_ptr != nullptr );
+    REQUIRE( alloc_data.second.get_page_id() == 0 );
+    REQUIRE( alloc_data.second.get_offset() == 0 );
+    pinned_node_ptr<rstartree::Node> converted_ptr =
+        allocator.get_tree_node<rstartree::Node>(
+            alloc_data.second );
+    REQUIRE( output_ptr == converted_ptr );
+
+}
+
+TEST_CASE( "Tree Node Allocator: Can Handle Paged Out data" ) {
+
+    // Create a single page allocator
+    tree_node_allocator allocator( PAGE_SIZE );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    // Size_t's to make it easier to understand, but it doesn't matter
+    size_t node_size = sizeof( size_t );
+    std::vector<tree_node_handle> allocated_ptrs;
+    for( size_t i = 0; i < PAGE_DATA_SIZE / node_size; i++ ) {
+        std::pair<pinned_node_ptr<size_t>, tree_node_handle> alloc_data =
+            allocator.create_new_tree_node<size_t>();
+        pinned_node_ptr<size_t> sz_ptr = alloc_data.first;
+        REQUIRE( sz_ptr != nullptr );
+        REQUIRE( alloc_data.second.get_page_id() == 0 );
+        REQUIRE( alloc_data.second.get_offset() == i *
+                sizeof(size_t));
+        *sz_ptr = i;
+        allocated_ptrs.push_back( alloc_data.second );
+    }
+
+    // This will go on the next page, forcing a page out of the first
+    allocator.create_new_tree_node<size_t>();
+
+    // Walk over all the pointers in the first page, make sure the data
+    // is preserved
+    for( size_t i = 0; i < allocated_ptrs.size(); i++ ) {
+        pinned_node_ptr<size_t> sz_ptr = allocator.get_tree_node<size_t>(
+                allocated_ptrs[i] );
+        REQUIRE( *sz_ptr == i );
+    }
 }

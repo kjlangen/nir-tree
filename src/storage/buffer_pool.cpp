@@ -71,6 +71,8 @@ void buffer_pool::initialize() {
     for( size_t i = existing_page_count; i < max_mem_pages_; i++ ) { 
         std::unique_ptr<page> page_ptr = std::make_unique<page>();
         page_ptr->header_.page_id_ = OFFSET_TO_PAGE_ID( file_offset );
+        page_ptr->header_.pin_count_ = 0;
+        page_ptr->header_.clock_active_ = false;
         memset( page_ptr->data_, '\0', sizeof( page_ptr->data_ ) );
         writeback_page( page_ptr.get() );
 
@@ -109,6 +111,11 @@ page *buffer_pool::get_page( size_t page_id ) {
     // Will evict an old page if necessary
     page *page_ptr = obtain_clean_page();
 
+    // No free pages available.
+    if( page_ptr == nullptr ) {
+        return nullptr;
+    }
+
     // Step 3: Read in the contents of the page
     std::cout << "Seeking to offset: " << PAGE_ID_TO_OFFSET( page_id )
         << std::endl;
@@ -127,11 +134,29 @@ page *buffer_pool::get_page( size_t page_id ) {
     return page_ptr;
 }
 
+void buffer_pool::pin_page( page *page_ptr ) {
+    page_ptr->header_.pin_count_++;
+}
+
+void buffer_pool::unpin_page( page *page_ptr ) {
+    page_ptr->header_.pin_count_--;
+}
+
+
 page *buffer_pool::create_new_page() {
     page *page_ptr = obtain_clean_page();
+    if( page_ptr == nullptr ) {
+        return nullptr;
+    }
+
     memset( page_ptr->data_, '\0', sizeof(page_ptr->data_) );
     highest_allocated_page_id_++;
+
+    // Set the header
     page_ptr->header_.page_id_ = highest_allocated_page_id_;
+    page_ptr->header_.pin_count_ = 0;
+    page_ptr->header_.clock_active_ = false;
+
     writeback_page( page_ptr );
     page_index_.insert( { highest_allocated_page_id_, page_ptr } );
     return page_ptr;
@@ -170,22 +195,39 @@ page *buffer_pool::obtain_clean_page() {
         return raw_page_ptr;
     }
 
+    size_t orig_clock_hand_pos_ = clock_hand_pos_;
+    bool looped_over_everything_once = false;
+
     // Use clock
-    for( ;; ) {
+    do {
         std::unique_ptr<page> &page = allocated_pages_[ clock_hand_pos_ ];
         // Move hand past
         clock_hand_pos_ = ( clock_hand_pos_ + 1 ) %
             allocated_pages_.size();
 
-        if( not page->header_.clock_active_ ) { 
+        if( not page->header_.clock_active_ and not
+                (page->header_.pin_count_
+                    > 0) ) { 
             // Evict the page
-            evict( page );
             page->header_.clock_active_ = true;
+            evict( page );
             return page.get();
         }
         // Unset
         page->header_.clock_active_ = false;
-    }
+        if( orig_clock_hand_pos_ == clock_hand_pos_ ) {
+            // We should have unset all the in_use bits and found
+            // something, every page is pinned
+            if( looped_over_everything_once ) {
+                break;
+            }
+            looped_over_everything_once = true;
+        }
+    } while( true );
+
+    // No free pages
+    std::cout << "No Free pages, its all pinned!" << std::endl;
+    return nullptr;
 }
 
 void buffer_pool::evict( std::unique_ptr<page> &page ) {

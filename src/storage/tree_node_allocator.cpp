@@ -3,6 +3,7 @@
 #include <storage/page.h>
 #include <limits>
 #include <cassert>
+#include <iostream>
 
 tree_node_allocator::tree_node_allocator( size_t memory_budget ) :
     buffer_pool_( memory_budget ),
@@ -22,5 +23,14 @@ page *tree_node_allocator::get_page_to_alloc_on( size_t object_size ) {
     }
     cur_page_++;
     space_left_in_cur_page_ = PAGE_DATA_SIZE;
-    return buffer_pool_.get_page( cur_page_ );
+
+    // We may have pre-allocated a whole bunch of pages.
+    std::cout << "Getting new page!" << std::endl;
+    page *page_ptr = buffer_pool_.get_page( cur_page_ );
+    if( page_ptr != nullptr ) {
+        return page_ptr;
+    }
+
+    std::cout << "Creating new page!" << std::endl;
+    return buffer_pool_.create_new_page();
 }
