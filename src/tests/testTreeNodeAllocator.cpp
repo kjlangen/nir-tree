@@ -91,3 +91,42 @@ TEST_CASE( "Tree Node Allocator: Can Handle Paged Out data" ) {
         REQUIRE( *sz_ptr == i );
     }
 }
+
+class allocator_tester : public tree_node_allocator {
+public:
+
+    allocator_tester( size_t memory_budget ) :
+        tree_node_allocator( memory_budget ) {}
+
+    buffer_pool &get_buffer_pool() {
+        return buffer_pool_;
+    }
+};
+
+TEST_CASE( "Tree Node Allocator: Test pinned_node_ptr scope" ) {
+    // Create a single page allocator
+    allocator_tester allocator( PAGE_SIZE );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    buffer_pool &bp = allocator.get_buffer_pool();
+    {
+        std::pair<pinned_node_ptr<size_t>, tree_node_handle> alloc_data
+            = allocator.create_new_tree_node<size_t>();
+
+        
+        // There's only one page, so we know the ptr is on it.
+        page *p = bp.get_page( 0 );
+        REQUIRE( p->header_.pin_count_ == 1 );
+
+        std::pair<pinned_node_ptr<size_t>, tree_node_handle> alloc_data2
+            = allocator.create_new_tree_node<size_t>();
+
+        REQUIRE( p->header_.pin_count_ == 2 );
+    }
+
+    page *p = bp.get_page( 0 );
+    REQUIRE( p->header_.pin_count_ == 0 );
+
+
+}

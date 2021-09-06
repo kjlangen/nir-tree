@@ -9,8 +9,7 @@ template <typename T>
 class pinned_node_ptr {
 public:
     pinned_node_ptr( buffer_pool &pool, T *obj_ptr, page *page_ptr ) :
-        pool_( pool ), obj_ptr_( obj_ptr ), page_ptr_( page_ptr ) {
-            if( page_ptr != nullptr ) {
+        pool_( pool ), obj_ptr_( obj_ptr ), page_ptr_( page_ptr ) { if( page_ptr != nullptr ) {
                 pool_.pin_page( page_ptr_ );
             }
     }
