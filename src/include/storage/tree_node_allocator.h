@@ -4,12 +4,15 @@
 #include <storage/page.h>
 #include <cassert>
 #include <optional>
+#include <iostream>
 
 template <typename T>
 class pinned_node_ptr {
 public:
+
     pinned_node_ptr( buffer_pool &pool, T *obj_ptr, page *page_ptr ) :
-        pool_( pool ), obj_ptr_( obj_ptr ), page_ptr_( page_ptr ) { if( page_ptr != nullptr ) {
+        pool_( pool ), obj_ptr_( obj_ptr ), page_ptr_( page_ptr ) {
+            if( page_ptr != nullptr ) {
                 pool_.pin_page( page_ptr_ );
             }
     }
@@ -27,6 +30,19 @@ public:
         }
     }
 
+    pinned_node_ptr &operator=( pinned_node_ptr other ) {
+        // Unpin old
+        if( page_ptr_ != nullptr ) {
+            pool_.unpin_page( page_ptr_ );
+        }
+        // Set new
+        obj_ptr_ = other.obj_ptr_;
+        page_ptr_ = other.page_ptr_;
+        // Pin new
+        pool_.pin_page( page_ptr_ );
+        return *this;
+    }
+
     bool operator==( std::nullptr_t ptr ) const {
         return obj_ptr_ == ptr; 
     }
@@ -39,6 +55,11 @@ public:
     bool operator==( const pinned_node_ptr &other ) const {
         return obj_ptr_ == other.obj_ptr_;
     }
+
+    bool operator!=( const pinned_node_ptr &other ) const {
+        return !(obj_ptr_ == other.obj_ptr_);
+    }
+
 
     T& operator*() {
         return *obj_ptr_;
@@ -63,6 +84,7 @@ public:
     tree_node_handle() {
         page_location_= std::nullopt;
     }
+
     operator bool() const {
         return page_location_.has_value();
     }
@@ -70,6 +92,11 @@ public:
     bool operator==( const tree_node_handle &other ) const {
         return page_location_ == other.page_location_;
     }
+
+    bool operator==( const std::nullptr_t &arg ) const {
+        return page_location_.has_value();
+    }
+
 
     struct page_location {
         page_location( size_t page_id, size_t offset ) :
@@ -89,6 +116,17 @@ public:
 
     inline size_t get_offset() {
         return page_location_.value().offset_;
+    }
+
+    friend std::ostream& operator<<(std::ostream &os, const
+            tree_node_handle &handle ) {
+        if( handle.page_location_.has_value() ) {
+            os << "{ PageID: " << handle.page_location_.value().page_id_
+                << ", Offset: " << handle.page_location_.value().offset_ << "}" << std::endl;
+        } else {
+            os << "{ nullptr }" << std::endl;
+        }
+        return os;
     }
 
 private:

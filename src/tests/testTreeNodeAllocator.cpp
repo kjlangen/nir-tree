@@ -104,15 +104,18 @@ public:
 };
 
 TEST_CASE( "Tree Node Allocator: Test pinned_node_ptr scope" ) {
-    // Create a single page allocator
-    allocator_tester allocator( PAGE_SIZE );
+    // 2 page allocator
+    allocator_tester allocator( PAGE_SIZE *2 );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
     buffer_pool &bp = allocator.get_buffer_pool();
+    tree_node_handle first_obj_handle;
+
     {
         std::pair<pinned_node_ptr<size_t>, tree_node_handle> alloc_data
             = allocator.create_new_tree_node<size_t>();
+        first_obj_handle = alloc_data.second;
 
         
         // There's only one page, so we know the ptr is on it.
@@ -128,5 +131,47 @@ TEST_CASE( "Tree Node Allocator: Test pinned_node_ptr scope" ) {
     page *p = bp.get_page( 0 );
     REQUIRE( p->header_.pin_count_ == 0 );
 
+    // Fill up one whole page
+    for( size_t i = 0; i < ( PAGE_DATA_SIZE / sizeof( size_t ) ) - 2;
+            i++ ) {
+        std::pair<pinned_node_ptr<size_t>, tree_node_handle> alloc_data
+            = allocator.create_new_tree_node<size_t>();
+    }
 
+    // Should be nothing pinned!
+    page *p1 = bp.get_page( 0 );
+    REQUIRE( p1->header_.pin_count_ == 0 );
+    std::cout << "I am going to get teh second page!" << std::endl;
+
+    // NOthing will be allocated on this yet, but because it is in the
+    // freelist we can get it (since we prealloc'd 2 pages)
+    page *p2 = bp.get_page( 1 );
+
+    // Get first object
+    pinned_node_ptr<size_t> first_obj_ptr = allocator.get_tree_node<size_t>(
+            first_obj_handle );
+    REQUIRE( p1->header_.pin_count_ == 1 );
+
+    {
+        std::pair<pinned_node_ptr<size_t>, tree_node_handle> alloc_data
+            = allocator.create_new_tree_node<size_t>();
+        p2 = bp.get_page( 1 );
+        REQUIRE( p2 != nullptr );
+
+        // Both pinned
+        REQUIRE( p1->header_.pin_count_ == 1 );
+        REQUIRE( p2->header_.pin_count_ == 1 );
+
+        // Overwrite ptr
+        first_obj_ptr = alloc_data.first;
+
+        // P1 unpinned
+        REQUIRE( p1->header_.pin_count_ == 0 );
+        REQUIRE( p2->header_.pin_count_ == 2 );
+        
+        // Second ref falls out of scope
+    }
+
+    REQUIRE( p1->header_.pin_count_ == 0 );
+    REQUIRE( p2->header_.pin_count_ == 1 );
 }
