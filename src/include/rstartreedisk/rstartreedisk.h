@@ -42,4 +42,5 @@ namespace rstartreedisk
 			void stat();
 			void visualize();
 	};
+
 }

@@ -15,22 +15,25 @@ namespace rstartreedisk
 
 		hasReinsertedOnLevel = {false};
 
-        std::pair<pinned_node_ptr<Node>, tree_node_handle> alloc = node_allocator_.create_new_tree_node<Node>();
+        std::pair<pinned_node_ptr<Node<3,7>>, tree_node_handle> alloc =
+            node_allocator_.create_new_tree_node<Node<3,7>>();
         root = alloc.second;
-        new (&(*(alloc.first))) Node( this, tree_node_handle() /*nullptr*/, 0
+        new (&(*(alloc.first))) Node<3,7>( this, root, tree_node_handle() /*nullptr*/, 0
                 );
 	}
 
 	RStarTreeDisk::~RStarTreeDisk()
 	{
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		root_ptr->deleteSubtrees();
 	}
 
 	std::vector<Point> RStarTreeDisk::exhaustiveSearch( Point requestedPoint )
 	{
 		std::vector<Point> v;
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		root_ptr->exhaustiveSearch( requestedPoint, v );
 
 		return v;
@@ -38,7 +41,8 @@ namespace rstartreedisk
 
 	std::vector<Point> RStarTreeDisk::search( Point requestedPoint )
 	{
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		assert( !root_ptr->parent );
 
 		return root_ptr->search( requestedPoint );
@@ -46,14 +50,16 @@ namespace rstartreedisk
 
 	std::vector<Point> RStarTreeDisk::search( Rectangle requestedRectangle )
 	{
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		assert( !root_ptr->parent );
 		return root_ptr->search( requestedRectangle );
 	}
 
 	void RStarTreeDisk::insert( Point givenPoint )
 	{
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		assert( !root_ptr->parent );
 
 		std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
@@ -63,24 +69,27 @@ namespace rstartreedisk
 	void RStarTreeDisk::remove( Point givenPoint )
 	{
 		std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 
 		root = root_ptr->remove( givenPoint, hasReinsertedOnLevel );
 
         // Get new root
-        root_ptr = node_allocator_.get_tree_node<Node>( root );
+        root_ptr = node_allocator_.get_tree_node<Node<3,7>>( root );
         assert( !root_ptr->parent );
 	}
 
 	unsigned RStarTreeDisk::checksum()
 	{
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		return root_ptr->checksum();
 	}
 
 	void RStarTreeDisk::print()
 	{
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		root_ptr->printTree();
 	}
 
@@ -91,14 +100,16 @@ namespace rstartreedisk
 
 	void RStarTreeDisk::stat()
 	{
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		root_ptr->stat();
 	}
 
 	void RStarTreeDisk::visualize()
 	{
 		BMPPrinter p(1000, 1000);
-        pinned_node_ptr<Node> root_ptr = node_allocator_.get_tree_node<Node>( root );
+        pinned_node_ptr<Node<3,7>> root_ptr =
+            node_allocator_.get_tree_node<Node<3,7>>( root );
 		//p.printToBMP( root_ptr );
 	}
 }
