@@ -5,6 +5,7 @@
 #include <cassert>
 #include <optional>
 #include <iostream>
+#include <string>
 
 template <typename T>
 class pinned_node_ptr {
@@ -14,8 +15,7 @@ public:
         pool_( pool ), obj_ptr_( obj_ptr ), page_ptr_( page_ptr ) {
             if( page_ptr != nullptr ) {
                 pool_.pin_page( page_ptr_ );
-            }
-    }
+            } }
 
     pinned_node_ptr( const pinned_node_ptr &other ) :
         pool_( other.pool_ ), obj_ptr_( other.obj_ptr_ ),
@@ -136,7 +136,8 @@ private:
 
 class tree_node_allocator {
 public:
-    tree_node_allocator( size_t memory_budget );
+    tree_node_allocator( size_t memory_budget,
+            std::string backing_file );
 
     inline void initialize() {
         buffer_pool_.initialize();

@@ -58,8 +58,8 @@ namespace rstartreedisk
 			tree_node_handle parent;
             tree_node_handle self_handle_;
 
-            typename std::array<NodeEntry, max_branch_factor> entries;
-            typename std::array<NodeEntry, max_branch_factor>::iterator entries_insertion_point;
+            typename std::array<NodeEntry, max_branch_factor+1> entries;
+            typename std::array<NodeEntry, max_branch_factor+1>::iterator entries_insertion_point;
 			unsigned level;
 
 			// Constructors and destructors
@@ -116,9 +116,6 @@ namespace rstartreedisk
 	};
 
     template <int min_branch_factor, int max_branch_factor>
-        using MyNodeType = Node<min_branch_factor,max_branch_factor>;
-
-    template <int min_branch_factor, int max_branch_factor>
 	Rectangle boxFromNodeEntry(const typename Node<min_branch_factor,
             max_branch_factor>::NodeEntry &entry) {
         using NodeType = Node<min_branch_factor,max_branch_factor>;
@@ -135,7 +132,7 @@ namespace rstartreedisk
 
     template <class NE, class B, int N>
 	double computeOverlapGrowth(unsigned index, const
-            std::array<NE, N> &entries,
+            std::array<NE, N+1> &entries,
             unsigned els_to_consider,
             const Rectangle &givenBox) {
         // We cannot be a leaf

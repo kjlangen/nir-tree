@@ -10,16 +10,16 @@ TEST_CASE("Storage: Allocation Counts") {
 
     {
         size_t num_pages = 10;
-        buffer_pool bp( PAGE_SIZE * num_pages );
+        buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
         REQUIRE( bp.get_in_memory_page_count() == num_pages );
     }
     {
         size_t num_pages = 23;
-        buffer_pool bp( PAGE_SIZE * num_pages );
+        buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
         REQUIRE( bp.get_in_memory_page_count() == num_pages );
     }
     {
-        buffer_pool bp( 1000000 /* 1 MB */ );
+        buffer_pool bp( 1000000 /* 1 MB */, "file_backing.db"  );
         REQUIRE( bp.get_in_memory_page_count() == 245 /* pages */ );
     }
 
@@ -28,7 +28,7 @@ TEST_CASE("Storage: Allocation Counts") {
 TEST_CASE("Storage: Create 10 pages") {
 
     size_t num_pages = 10;
-    buffer_pool bp( PAGE_SIZE * num_pages );
+    buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db"  );
 
     // Destroy existing data, if any
     unlink( bp.get_backing_file_name().c_str() );
@@ -52,7 +52,7 @@ TEST_CASE("Storage: Read 10 existing pages") {
 
     //Set up 10 pages with specific data on them
     {
-        buffer_pool bp( PAGE_SIZE * num_pages );
+        buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
         // Destroy existing data, if any
         unlink( bp.get_backing_file_name().c_str() );
         bp.initialize();
@@ -71,7 +71,7 @@ TEST_CASE("Storage: Read 10 existing pages") {
 
     // Now read those pages, confirm we got the special data
     {
-        buffer_pool bp( PAGE_SIZE * num_pages );
+        buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
         bp.initialize();
         for( size_t i = 0; i < num_pages; i++ ) {
             page *page_ptr = bp.get_page(i);
@@ -90,7 +90,7 @@ TEST_CASE( "Storage: More pages than memory" ) {
 
     //Set up 15 pages with specific data on them
     {
-        buffer_pool bp( PAGE_SIZE * (num_pages+5) );
+        buffer_pool bp( PAGE_SIZE * (num_pages+5), "file_backing.db" );
         // Destroy existing data, if any
         unlink( bp.get_backing_file_name().c_str() );
         bp.initialize();
@@ -110,7 +110,7 @@ TEST_CASE( "Storage: More pages than memory" ) {
     // Now set up a pool with only 10 pages, But check we can access all
     // 15 pages and that they have the right content
     {
-        buffer_pool bp( PAGE_SIZE * (num_pages) );
+        buffer_pool bp( PAGE_SIZE * (num_pages), "file_backing.db" );
         bp.initialize();
         for( size_t i = 0; i < num_pages+5; i++ ) {
             page *page_ptr = bp.get_page(i);
@@ -129,7 +129,7 @@ TEST_CASE( "Storage: More pages than memory (through new_page)" ) {
 
     // Set up 10 pages
     {
-        buffer_pool bp( PAGE_SIZE * num_pages );
+        buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
         // Destroy existing data, if any
         unlink( bp.get_backing_file_name().c_str() );
         bp.initialize();
@@ -162,7 +162,7 @@ TEST_CASE( "Storage: More pages than memory (through new_page)" ) {
     // Now set up a pool with only 10 pages, But check we can access all
     // 15 pages and that they have the right content
     {
-        buffer_pool bp( PAGE_SIZE * (num_pages) );
+        buffer_pool bp( PAGE_SIZE * (num_pages), "file_backing.db" );
         bp.initialize();
         for( size_t i = 0; i < 2*num_pages; i++ ) {
             page *page_ptr = bp.get_page(i);
@@ -182,7 +182,7 @@ TEST_CASE( "Storage: Test Clock Page Replacement Strategy" ) {
     // Make 10 pages
     size_t num_pages = 10;
 
-    buffer_pool bp( PAGE_SIZE * num_pages );
+    buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
     unlink( bp.get_backing_file_name().c_str() );
     bp.initialize();
 
@@ -229,7 +229,7 @@ TEST_CASE( "Storage: Buffer Pool Pinning" ) {
 
     // 3 pages in memory
     size_t num_pages = 3;
-    buffer_pool bp( PAGE_SIZE * num_pages );
+    buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
     unlink( bp.get_backing_file_name().c_str() );
     bp.initialize();
 
@@ -251,7 +251,7 @@ TEST_CASE( "Storage: Buffer Pool Pinning" ) {
 TEST_CASE( "Storage: Buffer Pool All Pages Pinned" ) {
     // 3 pages in memory
     size_t num_pages = 3;
-    buffer_pool bp( PAGE_SIZE * num_pages );
+    buffer_pool bp( PAGE_SIZE * num_pages, "file_backing.db" );
     unlink( bp.get_backing_file_name().c_str() );
     bp.initialize();
 

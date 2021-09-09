@@ -128,10 +128,10 @@ void Node<min_branch_factor, max_branch_factor>::removeChild(tree_node_handle ch
 
     entries_insertion_point = std::remove_if( entries.begin(),
             entries_insertion_point, [&child]( NodeEntry &entry ) {
-            return std::get<BranchType>( entry).child == child; });
+            return std::get<BranchType>( entry ).child == child; });
     unsigned sz_after = (entries_insertion_point - entries.begin()
             );
-    assert( sz_after == sz_before + 1 );
+    assert( sz_after == sz_before - 1 );
 
 }
 
@@ -146,7 +146,7 @@ void Node<min_branch_factor, max_branch_factor>::removeData(const Point &givenPo
             );
     unsigned sz_after = (entries_insertion_point - entries.begin()
             );
-    assert( sz_after == sz_before + 1 );
+    assert( sz_after == sz_before - 1 );
 
 }
 
@@ -354,7 +354,6 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
 
     for (;;)
     {
-
         pinned_node_ptr<NodeType> node =
             get_node_allocator( treeRef )->get_tree_node<NodeType>(
                 node_handle );

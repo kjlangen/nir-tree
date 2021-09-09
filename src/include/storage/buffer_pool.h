@@ -9,7 +9,7 @@
 
 class buffer_pool {
 public:
-    buffer_pool( size_t pool_size_bytes );
+    buffer_pool( size_t pool_size_bytes, std::string backing_file_name );
     void initialize();
 
     page *get_page( size_t page_id );

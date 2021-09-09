@@ -10,14 +10,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-buffer_pool::buffer_pool( size_t pool_size_bytes ) {
+buffer_pool::buffer_pool( size_t pool_size_bytes, std::string
+        backing_file_name ) {
 
     max_mem_pages_ = pool_size_bytes / PAGE_SIZE;
     if( pool_size_bytes % PAGE_SIZE != 0 ) {
         max_mem_pages_++;
     }
 
-    backing_file_name_ = "backing_tree_file.db";
+    backing_file_name_ = backing_file_name;
     clock_hand_pos_ = 0;
     highest_allocated_page_id_ = 0;
 }

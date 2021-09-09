@@ -21,12 +21,12 @@ namespace revisedrstartree
 		return v;
 	}
 
-	std::vector<Point> RevisedRStarTree::search(Point requestedPoint) CONST_IF_NOT_STAT
+	std::vector<Point> RevisedRStarTree::search(Point requestedPoint)
 	{
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> RevisedRStarTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
+	std::vector<Point> RevisedRStarTree::search(Rectangle requestedRectangle)
 	{
 		return root->search(requestedRectangle);
 	}

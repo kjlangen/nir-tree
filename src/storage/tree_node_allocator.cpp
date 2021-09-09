@@ -5,8 +5,9 @@
 #include <cassert>
 #include <iostream>
 
-tree_node_allocator::tree_node_allocator( size_t memory_budget ) :
-    buffer_pool_( memory_budget ),
+tree_node_allocator::tree_node_allocator( size_t memory_budget,
+        std::string backing_file ) :
+    buffer_pool_( memory_budget, backing_file ),
     space_left_in_cur_page_( PAGE_DATA_SIZE ),
     cur_page_( std::numeric_limits<size_t>::max() ) {
 }

@@ -23,14 +23,14 @@ namespace rstartree
 		return v;
 	}
 
-	std::vector<Point> RStarTree::search(Point requestedPoint) CONST_IF_NOT_STAT
+	std::vector<Point> RStarTree::search(Point requestedPoint)
 	{
 		assert(root->parent == nullptr);
 
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> RStarTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
+	std::vector<Point> RStarTree::search(Rectangle requestedRectangle)
 	{
 		return root->search(requestedRectangle);
 	}

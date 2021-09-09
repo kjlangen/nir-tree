@@ -40,12 +40,12 @@ namespace nirtree
 		return v;
 	}
 
-	std::vector<Point> NIRTree::search(Point requestedPoint) CONST_IF_NOT_STAT
+	std::vector<Point> NIRTree::search(Point requestedPoint)
 	{
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> NIRTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
+	std::vector<Point> NIRTree::search(Rectangle requestedRectangle)
 	{
 		return root->search(requestedRectangle);
 	}

@@ -25,7 +25,9 @@ namespace rstartreedisk
 			std::vector<bool> hasReinsertedOnLevel;
 
 			// Constructors and destructors
-			RStarTreeDisk( size_t memory_budget, unsigned minBranchFactor, unsigned maxBranchFactor);
+            RStarTreeDisk(size_t memory_budget, unsigned
+                    minBranchFactor, unsigned maxBranchFactor,
+                    std::string backing_file );
 			~RStarTreeDisk();
 
 			// Datastructure interface

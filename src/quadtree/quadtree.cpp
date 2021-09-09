@@ -33,12 +33,12 @@ namespace quadtree
 		return v;
 	}
 
-	std::vector<Point> QuadTree::search(Point requestedPoint) CONST_IF_NOT_STAT
+	std::vector<Point> QuadTree::search(Point requestedPoint)
 	{
 		return root->search(requestedPoint);
 	}
 
-	std::vector<Point> QuadTree::search(Rectangle requestedRectangle) CONST_IF_NOT_STAT
+	std::vector<Point> QuadTree::search(Rectangle requestedRectangle)
 	{
 		return root->search(requestedRectangle);
 	}

@@ -7,7 +7,7 @@
 
 TEST_CASE( "Tree Node Allocator: Single RStarTree Node" ) {
 
-    tree_node_allocator allocator( 10 * PAGE_SIZE );
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
@@ -22,7 +22,7 @@ TEST_CASE( "Tree Node Allocator: Single RStarTree Node" ) {
 
 TEST_CASE( "Tree Node Allocator: Overflow one Page" ) {
     size_t node_size = sizeof( rstartree::Node );
-    tree_node_allocator allocator( 10 * PAGE_SIZE );
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
@@ -41,7 +41,7 @@ TEST_CASE( "Tree Node Allocator: Overflow one Page" ) {
 }
 
 TEST_CASE( "Tree Node Allocator: Convert TreeNodePtr to Raw Ptr" ) {
-    tree_node_allocator allocator( 10 * PAGE_SIZE );
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
@@ -61,7 +61,7 @@ TEST_CASE( "Tree Node Allocator: Convert TreeNodePtr to Raw Ptr" ) {
 TEST_CASE( "Tree Node Allocator: Can Handle Paged Out data" ) {
 
     // Create a single page allocator
-    tree_node_allocator allocator( PAGE_SIZE );
+    tree_node_allocator allocator( PAGE_SIZE, "file_backing.db" );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
@@ -95,8 +95,9 @@ TEST_CASE( "Tree Node Allocator: Can Handle Paged Out data" ) {
 class allocator_tester : public tree_node_allocator {
 public:
 
-    allocator_tester( size_t memory_budget ) :
-        tree_node_allocator( memory_budget ) {}
+    allocator_tester( size_t memory_budget, std::string
+            backing_file_name ) :
+        tree_node_allocator( memory_budget, backing_file_name ) {}
 
     buffer_pool &get_buffer_pool() {
         return buffer_pool_;
@@ -105,7 +106,7 @@ public:
 
 TEST_CASE( "Tree Node Allocator: Test pinned_node_ptr scope" ) {
     // 2 page allocator
-    allocator_tester allocator( PAGE_SIZE *2 );
+    allocator_tester allocator( PAGE_SIZE *2, "file_backing.db" );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 

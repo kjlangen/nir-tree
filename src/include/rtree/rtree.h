@@ -26,8 +26,8 @@ namespace rtree
 
 			// Datastructure interface
 			std::vector<Point> exhaustiveSearch(Point requestedPoint);
-			std::vector<Point> search(Point requestedPoint) CONST_IF_NOT_STAT;
-			std::vector<Point> search(Rectangle requestedRectangle) CONST_IF_NOT_STAT;
+			std::vector<Point> search(Point requestedPoint);
+			std::vector<Point> search(Rectangle requestedRectangle);
 			void insert(Point givenPoint);
 			void remove(Point givenPoint);
 

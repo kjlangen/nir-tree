@@ -5,8 +5,9 @@ namespace rstartreedisk
     RStarTreeDisk::RStarTreeDisk(
         size_t memory_budget,
         unsigned minBranchFactor,
-        unsigned maxBranchFactor )
-    : node_allocator_( memory_budget ),
+        unsigned maxBranchFactor,
+        std::string backing_file_name )
+    : node_allocator_( memory_budget, backing_file_name ),
     minBranchFactor( minBranchFactor ),
     maxBranchFactor( maxBranchFactor )
 	{
@@ -48,7 +49,8 @@ namespace rstartreedisk
 		return root_ptr->search( requestedPoint );
 	}
 
-	std::vector<Point> RStarTreeDisk::search( Rectangle requestedRectangle )
+	std::vector<Point> RStarTreeDisk::search( Rectangle
+            requestedRectangle )
 	{
         pinned_node_ptr<Node<3,7>> root_ptr =
             node_allocator_.get_tree_node<Node<3,7>>( root );
