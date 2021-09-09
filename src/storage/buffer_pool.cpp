@@ -23,6 +23,14 @@ buffer_pool::buffer_pool( size_t pool_size_bytes, std::string
     highest_allocated_page_id_ = 0;
 }
 
+
+buffer_pool::~buffer_pool() {
+    // Teardown, write back everypage
+    for( auto &page_ptr : allocated_pages_ ) {
+        evict( page_ptr );
+    }
+}
+
 void buffer_pool::initialize() {
     
     backing_file_fd_ = open( backing_file_name_.c_str(), O_CREAT | O_RDWR,
@@ -88,6 +96,7 @@ void buffer_pool::initialize() {
     assert( fstat_ret == 0 );
     assert( stat_buffer.st_size % PAGE_SIZE == 0 );
     highest_allocated_page_id_ = (stat_buffer.st_size / PAGE_SIZE ) - 1;
+    existing_page_count_ = existing_page_count;
     std::cout << "Created " << max_mem_pages_ << " pages." << std::endl;
 }
 

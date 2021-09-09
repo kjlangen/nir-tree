@@ -59,7 +59,7 @@ namespace rstartreedisk
             tree_node_handle self_handle_;
 
             typename std::array<NodeEntry, max_branch_factor+1> entries;
-            typename std::array<NodeEntry, max_branch_factor+1>::iterator entries_insertion_point;
+            unsigned cur_offset_;
 			unsigned level;
 
 			// Constructors and destructors
@@ -70,8 +70,13 @@ namespace rstartreedisk
                 self_handle_(self_handle),
                 level(level)
                 {
-                    entries_insertion_point = entries.begin();
+                    cur_offset_ = 0;
                 }
+
+            void addEntryToNode( const NodeEntry &entry ) {
+                entries.at( cur_offset_ ) = entry;
+                cur_offset_++;
+            }
 
 			void deleteSubtrees();
 

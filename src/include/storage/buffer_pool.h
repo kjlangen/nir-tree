@@ -10,6 +10,7 @@
 class buffer_pool {
 public:
     buffer_pool( size_t pool_size_bytes, std::string backing_file_name );
+    ~buffer_pool();
     void initialize();
 
     page *get_page( size_t page_id );
@@ -29,12 +30,17 @@ public:
         return page_index_.find( page_id ) != page_index_.end();
     }
 
+    inline size_t get_preexisting_page_count() {
+        return existing_page_count_;
+    }
+
 protected:
     page *obtain_clean_page();
     void evict( std::unique_ptr<page> &page );
     void writeback_page( page *page_ptr );
 
     size_t max_mem_pages_;
+    size_t existing_page_count_;
     std::list<std::unique_ptr<page>> freelist_;
     std::vector<std::unique_ptr<page>> allocated_pages_;
     std::string backing_file_name_;

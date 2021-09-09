@@ -16,6 +16,12 @@ namespace rstartreedisk
 
 		hasReinsertedOnLevel = {false};
 
+        /* We need to figure out if there was already data, and read
+         * that into memory if we have it. */
+
+        std::cout << "Pre-existing page count: " <<
+            node_allocator_.buffer_pool_.get_preexisting_page_count() <<
+            std::endl;
         std::pair<pinned_node_ptr<Node<3,7>>, tree_node_handle> alloc =
             node_allocator_.create_new_tree_node<Node<3,7>>();
         root = alloc.second;

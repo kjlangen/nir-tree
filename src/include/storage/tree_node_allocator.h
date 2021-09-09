@@ -175,10 +175,11 @@ public:
         return pinned_node_ptr( buffer_pool_, obj_ptr, page_ptr );
     }
 
+    buffer_pool buffer_pool_;
+
 protected:
     page *get_page_to_alloc_on( size_t object_size );
 
-    buffer_pool buffer_pool_;
     size_t space_left_in_cur_page_;
     size_t cur_page_;
 };

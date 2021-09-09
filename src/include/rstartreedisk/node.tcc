@@ -23,9 +23,9 @@ void treeWalker( RStarTreeDisk *treeRef, tree_node_handle root, functor &f ) {
         // Recurse through the rest of the tree
         bool isLeaf = currentNode->isLeafNode();
         if( !isLeaf ) {
-            for( auto iter = currentNode->entries.begin(); iter !=
-                    currentNode->entries_insertion_point; iter++ ) {
-                context.push( std::get<BranchType>(*iter).child );
+            for( unsigned i = 0; i < currentNode->cur_offset_; i++ ) {
+                context.push(
+                        std::get<BranchType>(currentNode->entries.at(i)).child );
             }
         }
     }
@@ -63,15 +63,14 @@ void Node<min_branch_factor, max_branch_factor>::deleteSubtrees()
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
     // FIXME : I don't think this actually destroys anything.
-    if (entries_insertion_point == entries.begin() || !std::holds_alternative<Branch>(entries[0]))
+    if( cur_offset_ == 0 || !std::holds_alternative<Branch>(entries[0]))
     {
         return;
     }
 
-    for (auto iter = entries.begin(); iter !=
-            entries_insertion_point; iter++ ) {
+    for( unsigned i = 0; i < cur_offset_; i++ ) { 
 
-        const Branch &b = std::get<Branch>( *iter );
+        const Branch &b = std::get<Branch>( entries.at(i) );
         tree_node_handle child_handle = b.child;
         pinned_node_ptr<NodeType> child =
             get_node_allocator( treeRef )->get_tree_node<NodeType>( child_handle );
@@ -82,12 +81,13 @@ void Node<min_branch_factor, max_branch_factor>::deleteSubtrees()
 template <int min_branch_factor, int max_branch_factor>
 Rectangle Node<min_branch_factor, max_branch_factor>::boundingBox() const
 {
-    assert( entries.begin() != entries_insertion_point );
+    assert( cur_offset_ > 0 );
     Rectangle boundingBox( boxFromNodeEntry<min_branch_factor,max_branch_factor>( entries[0] ) );
 
-    for (auto iter = entries.begin() + 1; iter !=
-            entries_insertion_point; iter++ ) {
-        boundingBox.expand( boxFromNodeEntry<min_branch_factor,max_branch_factor>( *iter ) );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        boundingBox.expand(
+                boxFromNodeEntry<min_branch_factor,max_branch_factor>(
+                    entries.at(i) ) );
     }
 
     return boundingBox;
@@ -96,9 +96,8 @@ Rectangle Node<min_branch_factor, max_branch_factor>::boundingBox() const
 template <int min_branch_factor, int max_branch_factor>
 bool Node<min_branch_factor, max_branch_factor>::updateBoundingBox(tree_node_handle child, Rectangle updatedBoundingBox)
 {
-    for (auto iter = entries.begin(); iter !=
-            entries_insertion_point; iter++ ) {
-        Branch &b = std::get<Branch>( *iter );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        Branch &b = std::get<Branch>( entries.at(i) );
         if (b.child == child)
         {
             if (b.boundingBox != updatedBoundingBox)
@@ -123,31 +122,20 @@ void Node<min_branch_factor, max_branch_factor>::removeChild(tree_node_handle ch
     using BranchType = typename
         Node<min_branch_factor,max_branch_factor>::Branch;
 
-    unsigned sz_before = (entries_insertion_point - entries.begin()
-            );
-
-    entries_insertion_point = std::remove_if( entries.begin(),
-            entries_insertion_point, [&child]( NodeEntry &entry ) {
-            return std::get<BranchType>( entry ).child == child; });
-    unsigned sz_after = (entries_insertion_point - entries.begin()
-            );
-    assert( sz_after == sz_before - 1 );
-
+    auto iter = std::remove_if( entries.begin(),
+       entries.begin() + cur_offset_, [&child]( NodeEntry &entry ) {
+        return std::get<BranchType>( entry ).child == child; });
+    cur_offset_ = (iter - entries.begin());
 }
 
 template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor, max_branch_factor>::removeData(const Point &givenPoint)
 {
-    unsigned sz_before = (entries_insertion_point - entries.begin()
-            );
-    entries_insertion_point = std::remove_if( entries.begin(),
-            entries_insertion_point, [&givenPoint]( NodeEntry &entry
+    auto iter = std::remove_if( entries.begin(),
+            entries.begin() + cur_offset_, [&givenPoint]( NodeEntry &entry
                 ) { return std::get<Point>( entry) == givenPoint; }
             );
-    unsigned sz_after = (entries_insertion_point - entries.begin()
-            );
-    assert( sz_after == sz_before - 1 );
-
+    cur_offset_ = (iter - entries.begin());
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -159,9 +147,8 @@ void Node<min_branch_factor, max_branch_factor>::exhaustiveSearch(const Point &r
     // Am I a leaf?
     bool isLeaf = isLeafNode();
     if( isLeaf ) {
-        for( auto iter = entries.begin(); iter !=
-                entries_insertion_point; iter++ ) {
-            const Point &p = std::get<Point>( *iter );
+        for( unsigned i = 0; i < cur_offset_; i++ ) {
+            const Point &p = std::get<Point>( entries.at(i) );
 
             if( p == requestedPoint ) {
                 accumulator.push_back( p );
@@ -170,9 +157,9 @@ void Node<min_branch_factor, max_branch_factor>::exhaustiveSearch(const Point &r
     }
     else
     {
-        for( auto iter = entries.begin(); iter !=
-                entries_insertion_point; iter++ ) {
-            tree_node_handle child_handle = std::get<Branch>( *iter ).child;
+        for( unsigned i = 0; i < cur_offset_; i++ ) {
+            tree_node_handle child_handle = std::get<Branch>(
+                    entries.at(i) ).child;
             pinned_node_ptr<NodeType> child =
                 get_node_allocator( treeRef )->get_tree_node<NodeType>(
                         child_handle );
@@ -205,9 +192,8 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Point &requested
 #ifdef STAT
             treeRef->stats.markLeafSearched();
 #endif
-            for( auto iter = curNode->entries.begin(); iter !=
-                    curNode->entries_insertion_point; iter++ ) {
-                const Point &p = std::get<Point>( *iter );
+            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
+                const Point &p = std::get<Point>( curNode->entries.at(i) );
 
                 if( p == requestedPoint ) {
                     accumulator.push_back( p );
@@ -219,9 +205,9 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Point &requested
 #ifdef STAT
             treeRef->stats.markNonLeafNodeSearched();
 #endif
-            for( auto iter = curNode->entries.begin(); iter !=
-                    curNode->entries_insertion_point; iter++ ) {
-                const Branch &b = std::get<Branch>( *iter );
+            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
+                const Branch &b = std::get<Branch>( curNode->entries.at(
+                            i ) );
 
                 if( b.boundingBox.containsPoint( requestedPoint ) ) {
                     tree_node_handle child_handle = b.child;
@@ -259,9 +245,8 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Rectangle &recta
 #ifdef STAT
             treeRef->stats.markLeafSearched();
 #endif
-            for( auto iter = curNode->entries.begin(); iter !=
-                    curNode->entries_insertion_point; iter++ ) {
-                const Point &p = std::get<Point>( *iter );
+            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
+                const Point &p = std::get<Point>( curNode->entries.at(i) );
 
                 if( rectangle.containsPoint( p ) )
                 {
@@ -274,9 +259,9 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Rectangle &recta
 #ifdef STAT
             treeRef->stats.markNonLeafNodeSearched();
 #endif
-            for(auto iter = curNode->entries.begin(); iter !=
-                    curNode->entries_insertion_point; iter++ ) {
-                const Branch &b = std::get<Branch>( *iter );
+            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
+                const Branch &b = std::get<Branch>(
+                        curNode->entries.at(i) );
 
                 if (b.boundingBox.intersectsRectangle(rectangle))
                 {
@@ -371,8 +356,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
         {
             pinned_node_ptr<NodeType> child =
                 get_node_allocator( treeRef )->get_tree_node<NodeType>( firstBranch.child );
-            assert( child->entries.begin() !=
-                    child->entries_insertion_point );
+            assert( child->cur_offset_ > 0 );
         }
 #endif
 
@@ -391,9 +375,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
             double smallestArea = std::numeric_limits<double>::infinity();
 
             // Choose the entry in N whose rectangle needs least overlap enlargement
-            unsigned num_entries_els =
-                (node->entries_insertion_point -
-                 node->entries.begin());
+            unsigned num_entries_els = node->cur_offset_;
             for (unsigned i = 0; i < num_entries_els; ++i)
             {
                 const NodeEntry &entry = node->entries[i];
@@ -402,8 +384,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
                 // Compute overlap
                 double testOverlapExpansionArea =
                     computeOverlapGrowth<NodeType::NodeEntry,NodeType::Branch,max_branch_factor>(i, node->entries,
-                            node->entries_insertion_point -
-                            node->entries.begin(), givenEntryBoundingBox);
+                            node->cur_offset_, givenEntryBoundingBox);
 
                 // Take largest overlap
                 if (smallestOverlapExpansion > testOverlapExpansionArea)
@@ -446,8 +427,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
 
             // CL2 [Choose subtree]
             // Find the bounding box with least required expansion/overlap
-            unsigned num_entries_els =
-                (node->entries_insertion_point - node->entries.begin());
+            unsigned num_entries_els = node->cur_offset_;
             for (unsigned i = 0; i < num_entries_els; ++i)
             {
                 const NodeEntry &entry = node->entries[i];
@@ -475,14 +455,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
         }
 
         // Descend
-        {
-            // Scoped to avoid name collisions
-            tree_node_handle child_handle = std::get<Branch>(node->entries[descentIndex]).child;
-            pinned_node_ptr<NodeType> child =
-                get_node_allocator( treeRef )->get_tree_node<NodeType>(
-                    child_handle );
-            node = child;
-        }
+        node_handle = std::get<Branch>(node->entries[descentIndex]).child;
     }
 }
 
@@ -490,14 +463,13 @@ template <int min_branch_factor, int max_branch_factor>
 tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(const Point &givenPoint)
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    assert( entries_insertion_point != entries.begin() );
+    assert( cur_offset_ > 0 );
 
     // Am I a leaf?
     bool isLeaf = isLeafNode();
     if( isLeaf ) {
-        for( auto iter = entries.begin(); iter !=
-                entries_insertion_point; iter++ ) {
-            if( std::get<Point>( *iter ) == givenPoint ) {
+        for( unsigned i = 0; i < cur_offset_; i++ ) {
+            if( std::get<Point>( entries.at(i) ) == givenPoint ) {
                 return self_handle_;
             }
         }
@@ -505,9 +477,8 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(const Poin
         return tree_node_handle();
     }
 
-    for( auto iter = entries.begin(); iter !=
-            entries_insertion_point; iter++ ) {
-        const Branch &b = std::get<Branch>( *iter );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        const Branch &b = std::get<Branch>( entries.at( i ) );
 
         if (b.boundingBox.containsPoint(givenPoint))
         {
@@ -536,10 +507,9 @@ unsigned Node<min_branch_factor,max_branch_factor>::chooseSplitLeafAxis()
 
     // Make the entries easier to work with
     std::vector<NodeEntry *> entriesCopy;
-    entriesCopy.reserve( (entries_insertion_point - entries.begin()) );
-    for (auto iter = entries.begin(); iter !=
-            entries_insertion_point; iter++ ) {
-        entriesCopy.push_back( &(*iter) );
+    entriesCopy.reserve( cur_offset_ );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        entriesCopy.push_back( &(entries.at(i)) );
     }
 
     // Consider all M-2m+2 distributions in each dimension
@@ -592,7 +562,7 @@ unsigned Node<min_branch_factor,max_branch_factor>::chooseSplitLeafAxis()
     }
 
     // Sort along our best axis
-    std::sort(entries.begin(), entries_insertion_point, [optimalAxis](NodeEntry &a, NodeEntry &b)
+    std::sort(entries.begin(), entries.begin()+cur_offset_, [optimalAxis](NodeEntry &a, NodeEntry &b)
     {
         return std::get<Point>(a)[optimalAxis] < std::get<Point>(b)[optimalAxis];
     });
@@ -610,15 +580,12 @@ unsigned Node<min_branch_factor,max_branch_factor>::chooseSplitNonLeafAxis()
 
     // Make entries easier to work with
     std::vector<NodeEntry *> lowerEntries;
-    lowerEntries.reserve( (entries_insertion_point -
-                entries.begin() ) );
+    lowerEntries.reserve( cur_offset_ );
     std::vector<NodeEntry *> upperEntries;
-    upperEntries.reserve( (entries_insertion_point - entries.begin()
-            ) );
-    for (auto iter = entries.begin(); iter !=
-        entries_insertion_point; iter++ ) {
-        lowerEntries.push_back( &(*iter) );
-        upperEntries.push_back( &(*iter) );
+    upperEntries.reserve( cur_offset_ );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        lowerEntries.push_back( &(entries.at(i)) );
+        upperEntries.push_back( &(entries.at(i)) );
     }
 
     // Consider all M-2m+2 distributions in each dimension
@@ -700,7 +667,8 @@ unsigned Node<min_branch_factor,max_branch_factor>::chooseSplitNonLeafAxis()
     // Sort to match the optimal axis
     if (sortLower)
     {
-        std::sort(entries.begin(), entries_insertion_point, [optimalAxis](NodeEntry &a, NodeEntry &b)
+
+        std::sort(entries.begin(), entries.begin() + cur_offset_, [optimalAxis](NodeEntry &a, NodeEntry &b)
         {
             return std::get<Branch>(a).boundingBox.lowerLeft[optimalAxis] < 
                     std::get<Branch>(b).boundingBox.lowerLeft[optimalAxis];
@@ -708,7 +676,7 @@ unsigned Node<min_branch_factor,max_branch_factor>::chooseSplitNonLeafAxis()
     }
     else
     {
-        std::sort(entries.begin(), entries_insertion_point, [optimalAxis](NodeEntry &a, NodeEntry &b)
+        std::sort(entries.begin(), entries.begin() + cur_offset_, [optimalAxis](NodeEntry &a, NodeEntry &b)
         {
             return std::get<Branch>(a).boundingBox.upperRight[optimalAxis] <
                     std::get<Branch>(b).boundingBox.upperRight[optimalAxis];
@@ -742,12 +710,11 @@ unsigned Node<min_branch_factor,max_branch_factor>::chooseSplitIndex(unsigned ax
     const auto groupABegin = entries.begin();
     const auto groupAEnd = entries.begin() + min_branch_factor;
     const auto groupBBegin = entries.begin() + min_branch_factor;
-    const auto groupBEnd = entries_insertion_point;
+    const auto groupBEnd = entries.begin() + cur_offset_;
 
     std::vector<NodeEntry> groupA(groupABegin, groupAEnd);
     std::vector<NodeEntry> groupB(groupBBegin, groupBEnd);
-    unsigned splitIndex = (entries_insertion_point - entries.begin()
-            ) / 2;
+    unsigned splitIndex = cur_offset_  / 2;
 
     // Find the best size out of all the distributions
     double minOverlap = std::numeric_limits<double>::infinity();
@@ -850,19 +817,16 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::splitNode()
 #endif
 
     // Copy everything to the right of the splitPoint (inclusive) to the new sibling
-    std::copy( entries.begin() + splitIndex, entries_insertion_point,
+    std::copy( entries.begin() + splitIndex, entries.begin() + cur_offset_,
             newSibling->entries.begin() );
 
-    newSibling->entries_insertion_point =
-        newSibling->entries.begin() + (entries_insertion_point -
-                (entries.begin() + splitIndex));
+    newSibling->cur_offset_ = cur_offset_ - splitIndex;
 
     if (std::holds_alternative<Branch>(newSibling->entries[0]))
     {
-        for (auto iter = newSibling->entries.begin(); iter !=
-                newSibling->entries_insertion_point; iter++ ) {
+        for( unsigned i = 0; i < newSibling->cur_offset_; i++ ) {
             // Update parents
-            Branch &b = std::get<Branch>(*iter);
+            Branch &b = std::get<Branch>( newSibling->entries.at(i) );
             pinned_node_ptr<NodeType> child =
                 get_node_allocator( treeRef )->get_tree_node<NodeType>( b.child
                         );
@@ -874,13 +838,11 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::splitNode()
     }
 
     // Chop our node's data down
-    unsigned sz = (entries_insertion_point - (entries.begin() +
-                splitIndex ) );
-    entries_insertion_point = entries.begin() + sz;
+    unsigned sz = cur_offset_ - splitIndex;
+    cur_offset_ = sz;
 
-    assert( entries_insertion_point != entries.begin() );
-    assert( newSibling->entries_insertion_point !=
-            newSibling->entries.begin() );
+    assert( cur_offset_ > 0 );
+    assert( newSibling->cur_offset_ > 0 );
 
     // Return our newly minted sibling
     return sibling_handle;
@@ -929,23 +891,22 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::adjustTree(tree_node
 
                 // AT4 [Propogate the node split upwards]
                 Branch b(sibling_ptr->boundingBox(), sibling_handle);
-                *(parent_ptr->entries_insertion_point) = std::move(b) ;
-                parent_ptr->entries_insertion_point++;
+                parent_ptr->entries.at(parent_ptr->cur_offset_) = std::move(b) ;
+                parent_ptr->cur_offset_++;
                 // FIXME check for overflow
 #ifndef NDEBUG
-                for( auto iter = parent_ptr->entries.begin(); iter
-                        != parent_ptr->entries_insertion_point;
-                        iter++ ) {
-                    assert( std::holds_alternative<Branch>( *iter ) );
+                for( unsigned i = 0; i < parent_ptr->cur_offset_; i++ ) {
+                    assert( std::holds_alternative<Branch>(
+                                parent_ptr->entries.at( i ) ) );
                     pinned_node_ptr<NodeType> child =
                         get_node_allocator( treeRef
                                 )->get_tree_node<NodeType>(
-                                std::get<Branch>( *iter ).child );
+                                std::get<Branch>(
+                                    parent_ptr->entries.at(i) ).child );
                     assert(child->level + 1 == parent_ptr->level);
                 }
 #endif
-                unsigned sz = parent_ptr->entries_insertion_point -
-                    parent_ptr->entries.begin();
+                unsigned sz = cur_offset_;
                 if ( sz > parent_ptr->treeRef->maxBranchFactor)
                 {
                     tree_node_handle parent_before_handle= node->parent;
@@ -1005,7 +966,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::reInsert(std::vector
 
     assert(hasReinsertedOnLevel.at(level));
 
-    std::sort(entries.begin(), entries_insertion_point,
+    std::sort(entries.begin(), entries.begin() + cur_offset_,
         [&globalCenterPoint](NodeEntry &a, NodeEntry &b)
         {
             Rectangle rectA = boxFromNodeEntry<min_branch_factor,max_branch_factor>(a);
@@ -1015,12 +976,13 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::reInsert(std::vector
 
     // 3. RI3 Remove the first p entries from N and adjust the bounding box -> OK so we need to adjust the data model
     //		to include a specified "p" value -> this should be unique to the node -> so it's a node variable
-    unsigned numNodesToReinsert = get_p_value( treeRef ) *
-        (entries_insertion_point - entries.begin() );
+    unsigned numNodesToReinsert = get_p_value( treeRef ) * cur_offset_;
 
     // 4. Insert the removed entries -> OK we can also specify a flag that is
     //		if you want to reinsert starting with largest values (i.e. start at index 0) or closest values (Start at index p)
 
+
+    unsigned remainder = cur_offset_ - numNodesToReinsert;
 
     // We need to reinsert these entries
     // We pop them all off before hand so that any reorganization of the tree during this recursive
@@ -1028,8 +990,10 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::reInsert(std::vector
     std::vector<NodeEntry> entriesToReinsert;
     entriesToReinsert.reserve(numNodesToReinsert);
 
-    std::copy(entries.begin(), entries.begin() + numNodesToReinsert, std::back_inserter(entriesToReinsert));
-    entries_insertion_point = entries.begin() + numNodesToReinsert; 
+    // copy these out
+    std::copy(entries.begin() + remainder, entries.begin() + cur_offset_, std::back_inserter(entriesToReinsert));
+    //adjust ending of array
+    cur_offset_ = remainder; 
 
     // During this recursive insert (we are already in an insert, since we are reInserting), we
     // may end up here again. If we do, we should still be using the same hasReinsertedOnLevel
@@ -1107,8 +1071,8 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
         std::holds_alternative<Point>(insertion_point->entries[0]);
     assert((givenIsLeaf && firstIsPoint) || (!givenIsLeaf && !firstIsPoint));
 #endif
-    *(insertion_point->entries_insertion_point) = nodeEntry;
-    insertion_point->entries_insertion_point++;
+    insertion_point->entries.at(insertion_point->cur_offset_) = nodeEntry;
+    insertion_point->cur_offset_++;
 
     if (!givenIsLeaf)
     {
@@ -1120,9 +1084,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
         child->parent = insertion_point_handle;
     }
 
-    unsigned num_els = insertion_point->entries_insertion_point -
-        insertion_point->entries.begin();
-    //FIXME: WE CNANOT EXCEED FOR ARRAYS. NEED TO +1
+    unsigned num_els = insertion_point->cur_offset_;
 
     // If we exceed treeRef->maxBranchFactor we need to do something about it
     if ( num_els > max_branch_factor )
@@ -1157,18 +1119,17 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
 
         // Make the existing root a child of newRoot
         Branch b1( boundingBox(), self_handle_ );
-        *(newRoot->entries_insertion_point) = std::move( b1 );
-        newRoot->entries_insertion_point++;
+        newRoot->entries.at(newRoot->cur_offset_) = std::move( b1 );
+        newRoot->cur_offset_++;
 
         // Make the new sibling node a child of newRoot
         sibling->parent = root_handle;
         Branch b2( sibling->boundingBox(), sibling_handle );
-        *(newRoot->entries_insertion_point) = std::move( b2 );
-        newRoot->entries_insertion_point++;
+        newRoot->entries.at( newRoot->cur_offset_ ) = std::move( b2 );
+        newRoot->cur_offset_++;
 
         // Ensure newRoot has both children
-        assert(newRoot->entries_insertion_point -
-                newRoot->entries.begin() == 2);
+        assert(newRoot->cur_offset_ == 2);
         assert(sibling->level+1 == newRoot->level);
 
         // Fix the reinserted length
@@ -1206,8 +1167,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
     tree_node_handle node_handle = self_handle_;
 
     // Is Leaf
-    assert( entries_insertion_point == entries.begin() ||
-            std::holds_alternative<Point>(entries[0]));
+    assert( cur_offset_ == 0 || std::holds_alternative<Point>(entries[0]));
 
     std::vector<NodeEntry> Q;
 
@@ -1223,8 +1183,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
             break;
         }
 
-        entriesSize = node->entries_insertion_point -
-            node->entries.begin();
+        entriesSize = node->cur_offset_;
 
         // CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
         if (entriesSize >= node->treeRef->minBranchFactor)
@@ -1250,7 +1209,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
 
             // Push these entries into Q
             std::copy(node->entries.begin(),
-                    node->entries_insertion_point, std::back_inserter(Q));
+                    node->entries.begin() + node->cur_offset_, std::back_inserter(Q));
 
             // FIXME: Should garbage collect node_ptr, it is dead now
             tree_node_handle garbage = node_handle;
@@ -1302,7 +1261,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::remove(Point &givenP
             root_handle );
 
     // D4 [Shorten tree]
-    if (root->entries_insertion_point - root->entries.begin() == 1 and !root->isLeafNode())
+    if (root->cur_offset_ == 1 and !root->isLeafNode())
     {
         // Slice the hasReinsertedOnLevel
         hasReinsertedOnLevel.pop_back();
@@ -1352,17 +1311,15 @@ void Node<min_branch_factor,max_branch_factor>::print() const
     bool isLeaf = isLeafNode();
     if (isLeaf)
     {
-        for( auto iter = entries.begin(); iter !=
-                entries_insertion_point; iter++ ) {
+        for( unsigned i = 0; i < cur_offset_; i++ ) {
             std::cout << indentation << "		" <<
-                std::get<Point>( *iter ) << std::endl;
+                std::get<Point>( entries.at(i) ) << std::endl;
         }
     }
     else
     {
-        for( auto iter = entries.begin(); iter !=
-                entries_insertion_point; iter++ ) {
-            const Branch &b = std::get<Branch>( *iter );
+        for( unsigned i = 0; i < cur_offset_; i++ ) {
+            const Branch &b = std::get<Branch>( entries.at(i) );
             std::cout << indentation << "		" << b.boundingBox << ", ptr: " << b.child << std::endl;
         }
     }
@@ -1400,9 +1357,9 @@ unsigned Node<min_branch_factor,max_branch_factor>::checksum() const
         void operator()( pinned_node_ptr<NodeType> node ) {
             bool isLeaf = node->entries.empty() || std::holds_alternative<Point>(node->entries[0]);
             if( isLeaf ) {
-                for( auto iter = node->entries.begin(); iter !=
-                        node->entries_insertion_point; iter++ ) {
-                    const Point &p = std::get<Point>( *iter );
+                for( unsigned i = 0; i < node->cur_offset_; i++ ) {
+                    const Point &p = std::get<Point>(
+                            node->entries.at(i) );
                     for( unsigned d = 0; d < dimensions; ++d ) {
                         checksum += (unsigned)p[d];
                     }
@@ -1452,8 +1409,7 @@ void Node<min_branch_factor,max_branch_factor>::stat() const
         void operator()(Node<min_branch_factor,max_branch_factor> * const node)
         {
 
-            unsigned entriesSize = node->entries_insertion_point -
-                node->entries.begin();
+            unsigned entriesSize = node->cur_offset_;
 
             if (entriesSize == 1)
             {
