@@ -110,6 +110,8 @@ namespace rstartreedisk
 
 		std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
 		root = root_ptr->insert( givenPoint, hasReinsertedOnLevel );
+        std::cout << "Did we overflow?" << hasReinsertedOnLevel.at(0) <<
+            hasReinsertedOnLevel.at(1) << std::endl;
 	}
 
 	void RStarTreeDisk::remove( Point givenPoint )

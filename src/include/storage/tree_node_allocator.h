@@ -98,6 +98,11 @@ public:
         return page_location_ == other.page_location_;
     }
 
+    bool operator!=( const tree_node_handle &other ) const {
+        return !(*this == other);
+    }
+
+
     bool operator==( const std::nullptr_t &arg ) const {
         return not page_location_.has_value();
     }

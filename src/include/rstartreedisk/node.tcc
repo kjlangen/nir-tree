@@ -791,7 +791,8 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::splitNode()
     // Call chooseSplitAxis to determine the axis perpendicular to which the split is performed
     // For now we will save the axis as a int -> since this allows for room for growth in the future
     // Call ChooseSplitIndex to create optimal splitting of data array
-    unsigned splitIndex = chooseSplitIndex(chooseSplitAxis());
+    unsigned splitAxis = chooseSplitAxis();
+    unsigned splitIndex = chooseSplitIndex(splitAxis);
 
     std::pair<pinned_node_ptr<NodeType>, tree_node_handle> alloc_data =
         get_node_allocator( treeRef )->create_new_tree_node<NodeType>();
@@ -838,8 +839,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::splitNode()
     }
 
     // Chop our node's data down
-    unsigned sz = cur_offset_ - splitIndex;
-    cur_offset_ = sz;
+    cur_offset_ = splitIndex;
 
     assert( cur_offset_ > 0 );
     assert( newSibling->cur_offset_ > 0 );
@@ -906,10 +906,10 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::adjustTree(tree_node
                     assert(child->level + 1 == parent_ptr->level);
                 }
 #endif
-                unsigned sz = cur_offset_;
-                if ( sz > parent_ptr->treeRef->maxBranchFactor)
+                unsigned sz = parent_ptr->cur_offset_;
+                if ( sz >= parent_ptr->treeRef->maxBranchFactor)
                 {
-                    tree_node_handle parent_before_handle= node->parent;
+                    tree_node_handle parent_before_handle = node->parent;
                     tree_node_handle sibling_parent_handle = parent_ptr->overflowTreatment(hasReinsertedOnLevel);
 
                     if( sibling_parent_handle ) {
@@ -1100,6 +1100,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
 
     // I4 [Grow tree taller]
     if( sibling_handle ) {
+
 
         assert( !parent );
         std::pair<pinned_node_ptr<NodeType>, tree_node_handle> alloc_data =
