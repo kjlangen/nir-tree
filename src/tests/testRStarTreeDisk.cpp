@@ -643,5 +643,10 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
     unlink( "rstardiskbacked.txt" );
 }
 
+TEST_CASE( "R*Disk Tree Handles" ) {
+    tree_node_handle t;
+    REQUIRE( t == nullptr );
+}
+
 
 

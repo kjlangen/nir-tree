@@ -85,6 +85,11 @@ public:
         page_location_= std::nullopt;
     }
 
+    tree_node_handle( std::nullptr_t arg ) {
+        page_location_= std::nullopt;
+    }
+
+
     operator bool() const {
         return page_location_.has_value();
     }
@@ -94,9 +99,16 @@ public:
     }
 
     bool operator==( const std::nullptr_t &arg ) const {
-        return page_location_.has_value();
+        return not page_location_.has_value();
     }
 
+    tree_node_handle &operator=( const tree_node_handle &other ) =
+        default;
+
+    tree_node_handle &operator=( const std::nullptr_t &arg ) { 
+        page_location_.reset();
+        return *this;
+    }
 
     struct page_location {
         page_location( size_t page_id, size_t offset ) :

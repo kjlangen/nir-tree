@@ -496,7 +496,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(const Poin
         }
     }
 
-    return tree_node_handle() /* nullptr */;
+    return tree_node_handle( nullptr );
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -931,7 +931,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::adjustTree(tree_node
                 }
 
                 node_handle = parent_ptr->self_handle_;
-                sibling_handle = tree_node_handle(); /* nullptr */;
+                sibling_handle = tree_node_handle( nullptr );
             }
             else
             {
@@ -943,7 +943,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::adjustTree(tree_node
 
                     // If we didn't update our bounding box and there was no split, no reason to keep
                     // going.
-                    return tree_node_handle() /* nullptr */;
+                    return tree_node_handle( nullptr );
                 }
             }
         }
@@ -1029,7 +1029,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::reInsert(std::vector
                 root_handle );
     }
 
-    return tree_node_handle() /* nullptr */; 
+    return tree_node_handle( nullptr );
 }
 
 // Overflow treatement for dealing with a node that is too big (overflow)
@@ -1062,7 +1062,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
         get_node_allocator( treeRef )->get_tree_node<NodeType>(
                 insertion_point_handle );
 
-    tree_node_handle sibling_handle = tree_node_handle() /* nullptr */;
+    tree_node_handle sibling_handle = tree_node_handle( nullptr );
 
     // I2 [Add record to leaf node]
     bool givenIsLeaf = std::holds_alternative<Point>(nodeEntry);
@@ -1113,7 +1113,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
 
         new (&(*(newRoot)))
             NodeType( treeRef, root_handle,
-                tree_node_handle() /*nullptr*/, this->level+1 );
+                tree_node_handle( nullptr ), this->level+1 );
         
         this->parent = root_handle;
 
@@ -1279,7 +1279,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::remove(Point &givenP
 
 
         // I'm the root now!
-        child->parent = tree_node_handle() /* nullptr */;
+        child->parent = tree_node_handle( nullptr );
 
         return b.child;
     }
