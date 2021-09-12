@@ -1101,7 +1101,6 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
     // I4 [Grow tree taller]
     if( sibling_handle ) {
 
-
         assert( !parent );
         std::pair<pinned_node_ptr<NodeType>, tree_node_handle> alloc_data =
             get_node_allocator( treeRef )->create_new_tree_node<NodeType>();
@@ -1264,6 +1263,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::remove(Point &givenP
     // D4 [Shorten tree]
     if (root->cur_offset_ == 1 and !root->isLeafNode())
     {
+        std::cout << "Removal should shorten tree!" << std::endl;
         // Slice the hasReinsertedOnLevel
         hasReinsertedOnLevel.pop_back();
 

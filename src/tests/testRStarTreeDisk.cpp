@@ -1060,3 +1060,342 @@ TEST_CASE("R*TreeDisk: testSplitNonLeafNode")
     }
     unlink( "rstardiskbacked.txt" );
 }
+
+TEST_CASE("R*TreeDisk: RemoveLeafNode")
+{
+
+    unlink( "rstardiskbacked.txt" );
+    {
+        unsigned maxBranchFactor = 7;
+        unsigned minBranchFactor = 3;
+        rstartreedisk::RStarTreeDisk tree(4096*5,3,7,
+                "rstardiskbacked.txt");
+
+        for( unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
+                i++) {
+            tree.insert(Point(i, i));
+        }
+
+        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
+                i++) {
+            Point p(i, i);
+            REQUIRE(tree.search(p).size() == 1);
+        }
+
+        //Find a leaf
+        auto root = tree.root;
+        auto node = tree.node_allocator_.get_tree_node<NodeType>(
+                root );
+        while( std::holds_alternative<NodeType::Branch>(node->entries[0])) {
+            const NodeType::Branch &b = std::get<NodeType::Branch>(node->entries[0]);
+            node = tree.node_allocator_.get_tree_node<NodeType>( b.child
+                    );
+        }
+
+        REQUIRE( std::holds_alternative<Point>(node->entries[0]) );
+        size_t cnt = node->cur_offset_;
+        std::vector<NodeType::NodeEntry> nodesToRemove( node->entries.begin(), node->entries.begin() + (cnt-minBranchFactor + 1));
+        for (const auto &entry : nodesToRemove)
+        {
+            const Point &p = std::get<Point>(entry);
+            tree.remove(p);
+        }
+
+        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1; ++i)
+        {
+            Point p(i, i);
+            NodeType::NodeEntry ne = p;
+            if (std::find(nodesToRemove.begin(), nodesToRemove.end(), ne) == nodesToRemove.end())
+            {
+                REQUIRE(tree.search(p).size() == 1);
+            }
+            else
+            {
+                REQUIRE(tree.search(p).size() == 0);
+            }
+        }
+    }
+
+    unlink( "rstardiskbacked.txt" );
+	
+}
+
+TEST_CASE("R*TreeDisk: testSearch")
+{
+	// Build the tree directly
+
+	// Cluster 1, n = 7
+	// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12)
+    unlink( "rstardiskbacked.txt" );
+    {
+        rstartreedisk::RStarTreeDisk tree( 4096*5, 3, 7,
+                "rstardiskbacked.txt");
+        auto root = tree.root;
+        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
+                root );
+
+        auto alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle( nullptr ), 0 );
+        auto cluster1a_handle = alloc_data.second;
+        auto cluster1a = alloc_data.first;
+        cluster1a->addEntryToNode(Point(-3.0, 16.0));
+        cluster1a->addEntryToNode(Point(-3.0, 15.0));
+        cluster1a->addEntryToNode(Point(-4.0, 13.0));
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle( nullptr ), 0 );
+        auto cluster1b_handle = alloc_data.second;
+        auto cluster1b = alloc_data.first;
+        cluster1b->addEntryToNode(Point(-5.0, 12.0));
+        cluster1b->addEntryToNode(Point(-5.0, 15.0));
+        cluster1b->addEntryToNode(Point(-6.0, 14.0));
+        cluster1b->addEntryToNode(Point(-8.0, 16.0));
+
+        // Cluster 2, n = 8
+        // (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle(nullptr), 0 );
+        auto cluster2a_handle = alloc_data.second;
+        auto cluster2a = alloc_data.first;
+        cluster2a->addEntryToNode(Point(-8.0, 10.0));
+        cluster2a->addEntryToNode(Point(-9.0, 10.0));
+        cluster2a->addEntryToNode(Point(-8.0, 9.0));
+        cluster2a->addEntryToNode(Point(-9.0, 9.0));
+        cluster2a->addEntryToNode(Point(-8.0, 8.0));
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle(nullptr), 0 );
+        auto cluster2b_handle = alloc_data.second;
+        auto cluster2b = alloc_data.first;
+        cluster2b->addEntryToNode(Point(-14.0, 8.0));
+        cluster2b->addEntryToNode(Point(-10.0, 8.0));
+        cluster2b->addEntryToNode(Point(-9.0, 7.0));
+
+        // Cluster 3, n = 9
+        // (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle(nullptr), 0 );
+        auto cluster3a_handle = alloc_data.second;
+        auto cluster3a = alloc_data.first;
+        cluster3a->addEntryToNode(Point(-3.0, 4.0));
+        cluster3a->addEntryToNode(Point(-3.0, 0.0));
+        cluster3a->addEntryToNode(Point(-2.0, 4.0));
+        cluster3a->addEntryToNode(Point(-1.0, 3.0));
+        cluster3a->addEntryToNode(Point(-1.0, 1.0));
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle(nullptr), 0 );
+        auto cluster3b_handle = alloc_data.second;
+        auto cluster3b = alloc_data.first;
+        cluster3b->addEntryToNode(Point(-5.0, 4.0));
+        cluster3b->addEntryToNode(Point(-4.0, 3.0));
+        cluster3b->addEntryToNode(Point(-4.0, 1.0));
+        cluster3b->addEntryToNode(Point(-6.0, 2.0));
+
+        // High level rstartree::Nodes
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle(nullptr), 0 );
+        auto left_handle = alloc_data.second;
+        auto left = alloc_data.first;
+        cluster1a->parent = left_handle;
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(cluster1a->boundingBox(),
+                    cluster1a_handle));
+        cluster1b->parent = left_handle;
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(cluster1b->boundingBox(),
+                    cluster1b_handle));
+        cluster2a->parent = left_handle;
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(cluster2a->boundingBox(),
+                    cluster2a_handle));
+        cluster2b->parent = left_handle;
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(cluster2b->boundingBox(),
+                    cluster2b_handle));
+        left->level = 1;
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        new (&(*alloc_data.first)) NodeType( &tree, alloc_data.second,
+                tree_node_handle(nullptr), 0 );
+        auto right_handle = alloc_data.second;
+        auto right = alloc_data.first;
+        cluster3a->parent = right_handle;
+        right->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(cluster3a->boundingBox(),
+                    cluster3a_handle));
+        cluster3b->parent = right_handle;
+        right->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(cluster3b->boundingBox(),
+                    cluster3b_handle));
+        right->level = 1;
+
+        left->parent = root;
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(left->boundingBox(),
+                    left_handle));
+        right->parent = root;
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(right->boundingBox(),
+                    right_handle));
+        rootNode->level = 2;
+
+        // Test search
+
+        // Test set one
+        Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+        std::vector<Point> v1 = rootNode->search(sr1);
+        REQUIRE(v1.size() == 3);
+        REQUIRE(std::find( v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
+        REQUIRE(std::find( v1.begin(), v1.end(), Point(-9.0, 10.0)) != v1.end());
+        REQUIRE(std::find( v1.begin(), v1.end(), Point(-5.0, 12.0)) != v1.end());
+
+        // Test set two
+        Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+        std::vector<Point> v2 = rootNode->search(sr2);
+        REQUIRE(v2.size() == 2);
+        REQUIRE(std::find( v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
+        REQUIRE(std::find( v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
+
+        // Test set three
+        Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+        std::vector<Point> v3 = rootNode->search(sr3);
+        REQUIRE(v3.size() == 12);
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 3.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 1.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-6.0, 2.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 10.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 9.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 8.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 12.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 15.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-6.0, 14.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 16.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 13.0)) != v3.end());
+
+        // Test set four
+        Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+        std::vector<Point> v4 = rootNode->search(sr4);
+        REQUIRE(v4.size() == 0);
+
+        // Test set five
+        Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+        std::vector<Point> v5 = rootNode->search(sr5);
+        REQUIRE(v5.size() == 0);
+    }
+    unlink( "rstardiskbacked.txt" );
+}
+
+TEST_CASE("R*TreeDisk: reInsertAccountsForNewTreeDepth")
+{
+    unlink( "rstardiskbacked.txt" );
+    {
+        // Need to construct a tree of depth at least 3.
+        unsigned maxBranchFactor = 7;
+        rstartreedisk::RStarTreeDisk tree(4096*10, 3, 7, "rstardiskbacked.txt");
+        std::vector<tree_node_handle> leafNodes;
+        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1; i++)
+        {
+            tree_node_handle leaf = createFullLeafNode(tree,
+                    tree_node_handle( nullptr ));
+            auto leafNode =
+                tree.node_allocator_.get_tree_node<NodeType>( leaf );
+            leafNode->level = 0;
+            leafNodes.push_back(leaf);
+        }
+
+        auto root = tree.root;
+        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
+                );
+        rootNode->level = 2;
+
+        // Construct intermediate layer
+        std::vector<tree_node_handle> middleLayer;
+        for (unsigned i = 0; i < 7; i++)
+        {
+            auto alloc_data =
+                tree.node_allocator_.create_new_tree_node<NodeType>();
+            new (&(*alloc_data.first)) NodeType( &tree,
+                    alloc_data.second, tree_node_handle( nullptr ), 0 );
+            auto child_handle = alloc_data.second;
+            auto child = alloc_data.first;
+            child->level = 1;
+            child->parent = root;
+            for (unsigned j = 0; j < 7; j++)
+            {
+                auto leaf = leafNodes.at(7*i + j);
+                auto leafNode =
+                    tree.node_allocator_.get_tree_node<NodeType>( leaf
+                            );
+                child->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                        NodeType::Branch>(leafNode->boundingBox(), leaf));
+                leafNode->parent = child_handle;
+            }
+            rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                    NodeType::Branch>(child->boundingBox(), child_handle));
+            middleLayer.push_back(child_handle);
+        }
+
+        // Emulate a case where we need to reinsert some extra entries in the middle layer,
+        // but a reinsertion forces a split while we still have entries outstanding.
+        // Shove two extra things into middleLayer[0]
+
+        auto leaf = leafNodes.at(maxBranchFactor*maxBranchFactor);
+        auto leafNode = tree.node_allocator_.get_tree_node<NodeType>(
+                leaf);
+
+        leafNode->level = 0;
+        leafNode->parent = middleLayer.at(0);
+
+        auto middleNode = tree.node_allocator_.get_tree_node<NodeType>(
+                middleLayer.at(0) );
+        middleNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
+                NodeType::Branch>(leafNode->boundingBox(), leaf));
+
+
+        std::vector<bool> hasReinsertedOnLevel = {false, true, false};
+
+        REQUIRE(middleNode->cur_offset_ > maxBranchFactor );
+        middleNode->reInsert(hasReinsertedOnLevel);
+
+        for(auto leaf : leafNodes) {
+            leafNode = tree.node_allocator_.get_tree_node<NodeType>(
+                leaf);
+
+            REQUIRE(leafNode->level == 0);
+        }
+
+        for (auto middle : middleLayer)
+        {
+            middleNode = tree.node_allocator_.get_tree_node<NodeType>(
+                middle);
+
+            REQUIRE(middleNode->level == 1);
+        }
+
+        REQUIRE(rootNode->level == 2 );
+        REQUIRE(rootNode->parent != nullptr);
+        auto newRootNode = tree.node_allocator_.get_tree_node<NodeType>(
+                rootNode->parent );
+        REQUIRE(newRootNode->level == 3);
+    }
+    unlink("rstardiskbacked.txt" );
+}
+
+
