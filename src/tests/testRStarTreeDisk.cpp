@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 using NodeType = rstartreedisk::Node<3,7>;
+using TreeType = rstartreedisk::RStarTreeDisk<3,7>;
 
 template <class NE, class B>
 static NE createBranchEntry(const Rectangle
@@ -15,7 +16,7 @@ static NE createBranchEntry(const Rectangle
 }
 
 static tree_node_handle
-createFullLeafNode(rstartreedisk::RStarTreeDisk &tree, tree_node_handle parent, Point p=Point::atOrigin)
+createFullLeafNode(TreeType &tree, tree_node_handle parent, Point p=Point::atOrigin)
 {
     // Allocate new node
     std::pair<pinned_node_ptr<NodeType>, tree_node_handle> alloc_data =
@@ -43,7 +44,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
 	// Test set one
     unlink( "rstardiskbacked.txt" );
     {
-        rstartreedisk::RStarTreeDisk tree( 4096, 3, 7, "rstardiskbacked.txt" );
+        TreeType tree( 4096, "rstardiskbacked.txt" );
         tree_node_handle root = tree.root;
 
         pinned_node_ptr<rstartreedisk::Node<3,7>> rootNode =
@@ -83,7 +84,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
     unlink( "rstardiskbacked.txt" );
     {
         // Test set two
-        rstartreedisk::RStarTreeDisk tree(4096, 3, 7, "rstardiskbacked.txt" );
+        TreeType tree(4096, "rstardiskbacked.txt" );
         tree_node_handle root = tree.root;
 
         pinned_node_ptr<rstartreedisk::Node<3,7>> rootNode =
@@ -126,7 +127,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
 TEST_CASE("R*TreeDisk: testUpdateBoundingBox") {
 
     unlink( "rstardiskbacked.txt" );
-	rstartreedisk::RStarTreeDisk tree(4096, 3, 7, "rstardiskbacked.txt");
+	TreeType tree(4096, "rstardiskbacked.txt");
     tree_node_handle root = tree.root;
 
     pinned_node_ptr<NodeType> parentNode =
@@ -190,7 +191,7 @@ TEST_CASE( "R*TreeDisk: testRemoveChild" ) {
     using NodeType = rstartreedisk::Node<3,7>;
 
     unlink( "rstardiskbacked.txt" );
-	rstartreedisk::RStarTreeDisk tree(4096, 3, 7, "rstardiskbacked.txt");
+	TreeType tree(4096, "rstardiskbacked.txt");
     tree_node_handle root = tree.root;
 
     pinned_node_ptr<NodeType> parentNode =
@@ -250,7 +251,7 @@ TEST_CASE("R*TreeDisk: testRemoveData")
     unlink( "rstardiskbacked.txt" );
 
 	// Setup a rtree::Node with some data
-	rstartreedisk::RStarTreeDisk tree( 4096, 3, 7, "rstardiskbacked.txt" );
+	TreeType tree( 4096, "rstardiskbacked.txt" );
 	tree_node_handle root = tree.root;
     auto parentNode = tree.node_allocator_.get_tree_node<NodeType>( root
             );
@@ -277,7 +278,7 @@ TEST_CASE("R*TreeDisk: testChooseLeaf")
 
     // Need a bunch of pages so we don't run out of memory while
     // everything is pinned
-	rstartreedisk::RStarTreeDisk tree( 4096*4, 3, 7, "rstardiskbacked.txt" );
+	TreeType tree( 4096*4, "rstardiskbacked.txt" );
     tree_node_handle root = tree.root;
 
 
@@ -345,7 +346,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 	// Organized into two rtree::Nodes
     unlink( "rstardiskbacked.txt" );
 
-	rstartreedisk::RStarTreeDisk tree( 4096 * 5, 3, 7, "rstardiskbacked.txt" );
+	TreeType tree( 4096 * 5, "rstardiskbacked.txt" );
     tree_node_handle root = tree.root;
     auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
             );
@@ -510,7 +511,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
     tree_node_handle cluster5d;
         
     {
-        rstartreedisk::RStarTreeDisk tree( 4096 * 5, 3, 7, "rstardiskbacked.txt" );
+        TreeType tree( 4096 * 5,"rstardiskbacked.txt" );
         root = tree.root;
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
                 );
@@ -640,7 +641,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         rootNode->level = 2;
     }
 
-    rstartreedisk::RStarTreeDisk tree( 4096 * 5, 3, 7, "rstardiskbacked.txt" );
+    TreeType tree( 4096 * 5, "rstardiskbacked.txt" );
     REQUIRE( root == tree.root );
     auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
             );
@@ -664,7 +665,7 @@ TEST_CASE("R*TreeDisk: testComplexSplitAxis")
 	
     {
         // Test split with X
-        rstartreedisk::RStarTreeDisk tree(4096 * 5, 3, 7, "rstardiskbacked.txt");
+        TreeType tree(4096 * 5, "rstardiskbacked.txt");
         tree_node_handle root = tree.root;
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
                 );
@@ -690,7 +691,7 @@ TEST_CASE("R*TreeDisk: testComplexSplitAxis")
 
     {
         // Test split with Y
-        rstartreedisk::RStarTreeDisk tree2(4096*5,3,7, "rstardiskbacked.txt");
+        TreeType tree2(4096*5, "rstardiskbacked.txt");
         auto rootNode = tree2.node_allocator_.get_tree_node<NodeType>( tree2.root );
         rootNode->addEntryToNode(Point(-11.0, -3.0));
         rootNode->addEntryToNode(Point(-9.0, -2.0));
@@ -718,8 +719,7 @@ TEST_CASE("R*TreeDisk: testSplitNode")
     unlink( "rstardiskbacked.txt" );
 
     {
-        rstartreedisk::RStarTreeDisk tree( 4096 * 5, 3,7,
-                "rstardiskbacked.txt");
+        TreeType tree( 4096 * 5, "rstardiskbacked.txt");
         auto root = tree.root;
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
                 );
@@ -756,8 +756,7 @@ TEST_CASE("R*TreeDisk: testSplitNode")
         // Test set two
         // Cluster 2, n = 8
         // (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
-        rstartreedisk::RStarTreeDisk tree2( 4096*5, 3,7,
-                "rstardiskbacked.txt" );
+        TreeType tree2( 4096*5, "rstardiskbacked.txt" );
         auto rootNode =
             tree2.node_allocator_.get_tree_node<NodeType>(tree2.root);
         rootNode->addEntryToNode(Point(-14.0, 8.0));
@@ -797,8 +796,7 @@ TEST_CASE("R*TreeDisk: testSplitNode")
 	// {(-5, 4), 1, 1}, {(-2, 4), 1, 1}, {(-1, 3), 1, 1}, {(-1, 1), 1, 1}, {(-3, 0), 1, 1},
 	// {(-6, 2), 1, 1}
     {
-        rstartreedisk::RStarTreeDisk tree3( 4096 * 5, 3, 7,
-                "rstardiskbacked.txt" );
+        TreeType tree3( 4096 * 5, "rstardiskbacked.txt" );
         auto rootNode = tree3.node_allocator_.get_tree_node<NodeType>(
                 tree3.root );
         tree_node_handle dummys[7];
@@ -879,7 +877,7 @@ TEST_CASE("R*TreeDisk: testInsertOverflowReInsertAndSplit")
 	// Leaf rtree::Node and new sibling leaf
 	// Cluster 4, n = 7
     {
-        rstartreedisk::RStarTreeDisk tree(4096*5, 3, 7, "rstardiskbacked.txt");
+        TreeType tree(4096*5, "rstardiskbacked.txt");
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
                 tree.root ); 
         auto alloc_data =
@@ -956,7 +954,7 @@ TEST_CASE("R*TreeDisk: testInsertGrowTreeHeight")
     {
         std::vector<bool> reInsertedAtLevel = { false };
         unsigned maxBranchFactor = 7;
-        rstartreedisk::RStarTreeDisk tree(4096*5, 3, 7, "rstardiskbacked.txt");
+        TreeType tree(4096*5, "rstardiskbacked.txt");
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
                 tree.root );
         REQUIRE( rootNode->level == 0 );
@@ -990,8 +988,7 @@ TEST_CASE("R*TreeDisk: testSplitNonLeafNode")
     unlink( "rstardiskbacked.txt" );
     {
         unsigned maxBranchFactor = 7;
-        rstartreedisk::RStarTreeDisk tree(4096*5, 3, 7,
-                "rstardiskbacked.txt" );
+        TreeType tree(4096*5, "rstardiskbacked.txt" );
         auto root_handle = tree.root;
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
                 root_handle );
@@ -1068,8 +1065,7 @@ TEST_CASE("R*TreeDisk: RemoveLeafNode")
     {
         unsigned maxBranchFactor = 7;
         unsigned minBranchFactor = 3;
-        rstartreedisk::RStarTreeDisk tree(4096*5,3,7,
-                "rstardiskbacked.txt");
+        TreeType tree(4096*5, "rstardiskbacked.txt");
 
         for( unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
                 i++) {
@@ -1128,8 +1124,7 @@ TEST_CASE("R*TreeDisk: testSearch")
 	// (-8, 16), (-3, 16), (-5, 15), (-3, 15), (-6, 14), (-4, 13), (-5, 12)
     unlink( "rstardiskbacked.txt" );
     {
-        rstartreedisk::RStarTreeDisk tree( 4096*5, 3, 7,
-                "rstardiskbacked.txt");
+        TreeType tree( 4096*5, "rstardiskbacked.txt");
         auto root = tree.root;
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
                 root );
@@ -1299,6 +1294,53 @@ TEST_CASE("R*TreeDisk: testSearch")
         std::vector<Point> v5 = rootNode->search(sr5);
         REQUIRE(v5.size() == 0);
     }
+    {
+        // Re-read the tree from disk, doall the searches again
+        TreeType tree( 4096*5, "rstardiskbacked.txt");
+        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
+                tree.root );
+        // Test set one
+        Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+        std::vector<Point> v1 = rootNode->search(sr1);
+        REQUIRE(v1.size() == 3);
+        REQUIRE(std::find( v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
+        REQUIRE(std::find( v1.begin(), v1.end(), Point(-9.0, 10.0)) != v1.end());
+        REQUIRE(std::find( v1.begin(), v1.end(), Point(-5.0, 12.0)) != v1.end());
+
+        // Test set two
+        Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+        std::vector<Point> v2 = rootNode->search(sr2);
+        REQUIRE(v2.size() == 2);
+        REQUIRE(std::find( v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
+        REQUIRE(std::find( v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
+
+        // Test set three
+        Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+        std::vector<Point> v3 = rootNode->search(sr3);
+        REQUIRE(v3.size() == 12);
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 3.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 1.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-6.0, 2.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 10.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 9.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 8.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 12.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 15.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-6.0, 14.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-8.0, 16.0)) != v3.end());
+        REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 13.0)) != v3.end());
+
+        // Test set four
+        Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+        std::vector<Point> v4 = rootNode->search(sr4);
+        REQUIRE(v4.size() == 0);
+
+        // Test set five
+        Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+        std::vector<Point> v5 = rootNode->search(sr5);
+        REQUIRE(v5.size() == 0);
+    }
     unlink( "rstardiskbacked.txt" );
 }
 
@@ -1308,7 +1350,7 @@ TEST_CASE("R*TreeDisk: reInsertAccountsForNewTreeDepth")
     {
         // Need to construct a tree of depth at least 3.
         unsigned maxBranchFactor = 7;
-        rstartreedisk::RStarTreeDisk tree(4096*10, 3, 7, "rstardiskbacked.txt");
+        TreeType tree(4096*10, "rstardiskbacked.txt");
         std::vector<tree_node_handle> leafNodes;
         for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1; i++)
         {

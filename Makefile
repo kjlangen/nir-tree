@@ -30,7 +30,6 @@ bin/main: $(OBJ)
 	cp src/rtree/node.o rtreenode.o
 	cp src/rplustree/node.o rplustreenode.o
 	cp src/rstartree/node.o rtstartreenode.o
-	cp src/rstartreedisk/node.o rtstartreedisknode.o
 	cp src/quadtree/node.o quadtreenode.o
 	cp src/revisedrstartree/node.o revisedrstartreenode.o
 	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;

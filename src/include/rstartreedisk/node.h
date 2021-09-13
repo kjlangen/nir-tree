@@ -20,18 +20,33 @@
 namespace rstartreedisk
 {
 
+    template <int min_branch_factor, int max_branch_factor>
     class RStarTreeDisk;
 
-	tree_node_allocator *get_node_allocator( RStarTreeDisk *treeRef );
-    float get_p_value( RStarTreeDisk *treeRef );
-    tree_node_handle get_root_handle( RStarTreeDisk *treeRef );
+    template <int min_branch_factor, int max_branch_factor>
+    tree_node_allocator *get_node_allocator(
+            RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef ) {
+        return &(treeRef->node_allocator_);
+    }
+
+    template <int min_branch_factor, int max_branch_factor>
+    float get_p_value(
+            RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef ) {
+        return treeRef->p;
+    }
+
+    template <int min_branch_factor, int max_branch_factor>
+    tree_node_handle get_root_handle(
+            RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef ) {
+        return treeRef->root;
+    }
 
     template <int min_branch_factor, int max_branch_factor>
 	class Node
 	{
 		private:
 
-			RStarTreeDisk *treeRef;
+			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
 
 			void searchSub(const Point &requestedPoint,
                     std::vector<Point> &accumulator);
@@ -58,12 +73,15 @@ namespace rstartreedisk
 			tree_node_handle parent;
             tree_node_handle self_handle_;
 
+            // Obnoxiously, this needs to have a +1 so we can overflow
+            // by 1 entry and deal with it later.
             typename std::array<NodeEntry, max_branch_factor+1> entries;
             unsigned cur_offset_;
 			unsigned level;
 
 			// Constructors and destructors
-            Node(RStarTreeDisk *treeRef, tree_node_handle self_handle,
+            Node(RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef,
+                    tree_node_handle self_handle,
                     tree_node_handle parent, unsigned level=0) :
                 treeRef(treeRef),
                 parent(parent),
