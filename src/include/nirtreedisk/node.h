@@ -124,7 +124,7 @@ namespace nirtreedisk
                     tree_node_handle()};
             };
 
-			void updateBranch(tree_node_handle child, InlineBoundedIsotheticPolygon &boundingPoly);
+			void updateBranch(tree_node_handle child,  const InlineBoundedIsotheticPolygon &boundingPoly);
             void removeEntry( const NodeEntry &entry );
             void removeEntry( const tree_node_handle &handle );
 

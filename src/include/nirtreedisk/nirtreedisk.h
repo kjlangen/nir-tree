@@ -46,15 +46,14 @@ namespace nirtreedisk
                 size_t existing_page_count =
                     node_allocator_.buffer_pool_.get_preexisting_page_count();
 
-                std::cout << "EXISTING PAGE COUNT: " << existing_page_count <<
-                    std::endl;
-
                 //If this is a fresh tree, we need a root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
                         node_allocator_.create_new_tree_node<Node<min_branch_factor,max_branch_factor>>();
                     root = alloc.second;
-                    new (&(*(alloc.first))) Node<min_branch_factor,max_branch_factor>( this, root, tree_node_handle() /*nullptr*/ );
+                    new (&(*(alloc.first)))
+                        Node<min_branch_factor,max_branch_factor>( this,
+                                tree_node_handle(nullptr), root );
                     return;
                 }
                 // Hunt for the root
@@ -74,16 +73,8 @@ namespace nirtreedisk
                             // Found the root
                             root = tree_node_handle( i, offset_multiplier *
                                     sizeof( Node<min_branch_factor,max_branch_factor> ));
-                            std::cout << "Found root at Page " << i << " offset "
-                                << offset_multiplier * sizeof(
-                                        Node<min_branch_factor,max_branch_factor> ) <<
-                                std::endl;
                             node_allocator_.buffer_pool_.unpin_page( p );
                             return;
-                        } else {
-                            std::cout << "Not root node. Has parent" <<
-                                std::endl;
-                            std::cout << interpreted_ptr->parent << std::endl;
                         }
                     }
                     node_allocator_.buffer_pool_.unpin_page( p );

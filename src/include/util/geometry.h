@@ -180,7 +180,7 @@ bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 
 
-#define MAX_RECTANGLE_COUNT 10
+#define MAX_RECTANGLE_COUNT 5 
 class InlineBoundedIsotheticPolygon {
 	public:
 		struct OptimalExpansion

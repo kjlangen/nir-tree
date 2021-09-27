@@ -26,12 +26,10 @@ page *tree_node_allocator::get_page_to_alloc_on( size_t object_size ) {
     space_left_in_cur_page_ = PAGE_DATA_SIZE;
 
     // We may have pre-allocated a whole bunch of pages.
-    std::cout << "Getting new page!" << std::endl;
     page *page_ptr = buffer_pool_.get_page( cur_page_ );
     if( page_ptr != nullptr ) {
         return page_ptr;
     }
 
-    std::cout << "Creating new page!" << std::endl;
     return buffer_pool_.create_new_page();
 }

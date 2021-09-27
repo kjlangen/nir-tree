@@ -67,7 +67,7 @@ Rectangle Node<min_branch_factor,max_branch_factor>::boundingBox()
 template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor,max_branch_factor>::updateBranch(
     tree_node_handle child_handle, 
-    InlineBoundedIsotheticPolygon &boundingPoly
+    const InlineBoundedIsotheticPolygon &boundingPoly
 ) {
     // Locate the child
     size_t childIndex;
@@ -256,6 +256,8 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
 template <int min_branch_factor, int max_branch_factor>
 tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point givenPoint)
 {
+
+    std::cout << "Choosing node!" << std::endl;
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     // CL1 [Initialize]
@@ -263,14 +265,19 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
     unsigned enclosingPolyIndex = 0;
 
+    std::cout << "Choosing node 2!" << std::endl;
     tree_node_allocator *allocator = get_node_allocator( treeRef );
+    std::cout << "Allocator is good!" << std::endl;
 
     for( ;; ) {
+        std::cout << "Getting node: " << cur_node_handle << std::endl;
         auto cur_node = allocator->get_tree_node<NodeType>(
                 cur_node_handle );
 
+        std::cout << "Checking if this is a leaf!" << std::endl;
         // CL2 [Leaf check]
         if( cur_node->isLeaf() ) {
+            std::cout << "Checking if this is a leaf 2!" << std::endl;
             return cur_node_handle;
         } else {
             // Compute the smallest expansion
@@ -669,7 +676,9 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     // Find the appropriate position for the new point
+    std::cout << "Choosing node!" << std::endl;
     tree_node_handle current_handle = chooseNode( givenPoint );
+    std::cout << "Found " << current_handle <<std::endl;
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
 
@@ -683,10 +692,15 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
             givenPoint;
     }
 
+    std::cout << "Done inserting." << std::endl;
+
     SplitResult finalSplit = current_node->adjustTree();
+
+    std::cout << "Done adjusting." << std::endl;
 
     // Grow the tree taller if we need to
     if( finalSplit.leftBranch.child != nullptr and finalSplit.rightBranch.child != nullptr ) {
+        std::cout << "Growing tree." << std::endl;
         auto alloc_data =
             allocator->create_new_tree_node<NodeType>();
         new (&(*alloc_data.first)) NodeType( treeRef,
@@ -714,6 +728,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
 
         return new_root_handle;
     }
+    std::cout << "Not Growing Tree." << std::endl;
 
     return self_handle_;
 }

@@ -45,11 +45,6 @@ void buffer_pool::initialize() {
         std::unique_ptr<page> page_ptr = std::make_unique<page>();
         int rc = read( backing_file_fd_, (char *) page_ptr.get(), PAGE_SIZE );
         if( rc == PAGE_SIZE ) {
-            std::cout << "Read page " << OFFSET_TO_PAGE_ID( file_offset
-                    ) << " from disk" << std::endl;
-            std::cout << "It has ID: " << page_ptr->header_.page_id_ <<
-                std::endl;
-
             page *raw_page_ptr = page_ptr.get();
 
             // Construct metadata and record it 
@@ -97,7 +92,6 @@ void buffer_pool::initialize() {
     assert( stat_buffer.st_size % PAGE_SIZE == 0 );
     highest_allocated_page_id_ = (stat_buffer.st_size / PAGE_SIZE ) - 1;
     existing_page_count_ = existing_page_count;
-    std::cout << "Created " << max_mem_pages_ << " pages." << std::endl;
 }
 
 page *buffer_pool::get_page( size_t page_id ) {
@@ -114,8 +108,6 @@ page *buffer_pool::get_page( size_t page_id ) {
         return page_ptr;
     }
 
-    std::cout << "Oh shoot, I don't have page_id: " << page_id <<
-        std::endl;
 
     // Step 2: It is not, so obtain a page
     // Will evict an old page if necessary
@@ -127,15 +119,12 @@ page *buffer_pool::get_page( size_t page_id ) {
     }
 
     // Step 3: Read in the contents of the page
-    std::cout << "Seeking to offset: " << PAGE_ID_TO_OFFSET( page_id )
-        << std::endl;
     off_t seek_ret = lseek( backing_file_fd_, PAGE_ID_TO_OFFSET(
                 page_id ), SEEK_SET );
     assert( seek_ret == (off_t) PAGE_ID_TO_OFFSET( page_id ) );
     int read_ret = read( backing_file_fd_, (char *) page_ptr,
             PAGE_SIZE );
     assert( read_ret == PAGE_SIZE );
-    std::cout << "Read in Page ID: " << page_ptr->header_.page_id_ << std::endl;
     assert( page_ptr->header_.page_id_ == page_id );
 
     // Step 4: Put the page into the page_index (obtain_clean_page puts it into
@@ -181,12 +170,8 @@ void buffer_pool::writeback_page( size_t page_id ) {
 
 void buffer_pool::writeback_page( page *page_ptr ) {
     // Seek to the right offset in the file and flush it out
-    std::cout << "Writing back page: " << page_ptr->header_.page_id_ <<
-        std::endl;
     size_t file_offset = PAGE_ID_TO_OFFSET( page_ptr->header_.page_id_ );
     off_t seek_ret = lseek( backing_file_fd_, file_offset, SEEK_SET );
-    std::cout << "Got seek_ret: " << seek_ret << " for offset " <<
-        file_offset << std::endl;
     assert( seek_ret == (off_t) file_offset );
     int write_ret = write( backing_file_fd_, (char *) page_ptr,
             PAGE_SIZE );
@@ -200,8 +185,6 @@ page *buffer_pool::obtain_clean_page() {
         freelist_.pop_front();
         page *raw_page_ptr = page_ptr.get();
         allocated_pages_.emplace_back( std::move(page_ptr) );
-        std::cout << "I had some left over pages in the freelist." <<
-            std::endl;
         return raw_page_ptr;
     }
 

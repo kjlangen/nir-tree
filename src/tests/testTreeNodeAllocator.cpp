@@ -142,7 +142,6 @@ TEST_CASE( "Tree Node Allocator: Test pinned_node_ptr scope" ) {
     // Should be nothing pinned!
     page *p1 = bp.get_page( 0 );
     REQUIRE( p1->header_.pin_count_ == 0 );
-    std::cout << "I am going to get teh second page!" << std::endl;
 
     // NOthing will be allocated on this yet, but because it is in the
     // freelist we can get it (since we prealloc'd 2 pages)

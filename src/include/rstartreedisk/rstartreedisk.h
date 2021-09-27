@@ -38,9 +38,6 @@ namespace rstartreedisk
                 size_t existing_page_count =
                     node_allocator_.buffer_pool_.get_preexisting_page_count();
 
-                std::cout << "EXISTING PAGE COUNT: " << existing_page_count <<
-                    std::endl;
-
                 // If this is a fresh tree, then make a fresh root
                 if( existing_page_count == 0 ) { 
                     std::pair<pinned_node_ptr<Node<min_branch_factor,max_branch_factor>>, tree_node_handle> alloc =
@@ -68,17 +65,9 @@ namespace rstartreedisk
                             // Found the root
                             root = tree_node_handle( i, offset_multiplier *
                                     sizeof( Node<min_branch_factor,max_branch_factor> ));
-                            std::cout << "Found root at Page " << i << " offset "
-                                << offset_multiplier * sizeof(
-                                        Node<min_branch_factor,max_branch_factor> ) <<
-                                std::endl;
                             node_allocator_.buffer_pool_.unpin_page( p );
                             return;
-                        } else {
-                            std::cout << "Not root node. Has parent" <<
-                                std::endl;
-                            std::cout << interpreted_ptr->parent << std::endl;
-                        }
+                        } 
                     }
                     node_allocator_.buffer_pool_.unpin_page( p );
                 }
