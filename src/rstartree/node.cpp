@@ -914,7 +914,7 @@ namespace rstartree
 		// vector because it corresponds to the activities we have performed during a single
 		// point/rectangle insertion (the top level one)
 
-		for (const NodeEntry entry : entriesToReinsert)
+		for (const NodeEntry &entry : entriesToReinsert)
 		{
 			assert(root->parent == nullptr);
 			// TODO: Will this actually do a copy or assume we know what we are doing?

@@ -1,6 +1,6 @@
 C++ = g++
 DIR = src/include # Include directory
-SXX = -std=c++17 # Standard
+SXX = -std=c++20 # Standard
 CXXFLAGS = -Wall
 CPPFLAGS = -DDIM=2 -I $(DIR)
 
@@ -29,7 +29,7 @@ bin/main: $(OBJ)
 	cp src/nirtree/node.o nirtreenode.o
 	cp src/rtree/node.o rtreenode.o
 	cp src/rplustree/node.o rplustreenode.o
-	cp src/rstartree/node.o rtstartreenode.o
+	cp src/rstartree/node.o rstartreenode.o
 	cp src/quadtree/node.o quadtreenode.o
 	cp src/revisedrstartree/node.o revisedrstartreenode.o
 	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;

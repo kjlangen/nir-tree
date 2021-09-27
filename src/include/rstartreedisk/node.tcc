@@ -1227,7 +1227,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
                     node->entries.begin() + node->cur_offset_, std::back_inserter(Q));
 
             // FIXME: Should garbage collect node_ptr, it is dead now
-            tree_node_handle garbage = node_handle;
+            //tree_node_handle garbage = node_handle;
 
             node_handle = parent->self_handle_;
             // Cleanup ourselves without deleting children b/c they will be reinserted
