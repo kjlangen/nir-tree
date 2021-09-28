@@ -1,5 +1,6 @@
 #include <catch2/catch.hpp>
 #include <nirtreedisk/nirtreedisk.h>
+#include <storage/page.h>
 #include <util/geometry.h>
 #include <iostream>
 #include <unistd.h>
@@ -740,3 +741,73 @@ TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
     unlink( "nirdiskbacked.txt" );
 }
 
+
+TEST_CASE("NIRTreeDisk: grow tree branch all same point")
+{
+    unlink( "nirdiskbacked.txt" );
+    {
+        unsigned max_branch_factor = 7;
+        /*
+        unsigned insertion_count = max_branch_factor * max_branch_factor
+            + 1;
+        */
+        unsigned insertion_count = max_branch_factor*max_branch_factor + 1;
+
+        TreeType tree(4096*10, "nirdiskbacked.txt");
+        for( unsigned i = 0; i < insertion_count; i++) {
+            tree.insert(Point(0,0));
+        }
+
+        //REQUIRE(rootNode->cur_offset_ == 2);
+        auto root = tree.root;
+        auto root_node = tree.node_allocator_.get_tree_node<NodeType>(
+                root );
+
+        for( unsigned i = 0; i < insertion_count; i++) {
+            REQUIRE( tree.search( Point(0,0) ).size() ==
+                    max_branch_factor*max_branch_factor+1 );
+        }
+
+        REQUIRE( root_node->cur_offset_ == 3 );
+        nirtreedisk::Branch bLeft = std::get<nirtreedisk::Branch>(root_node->entries[0]);
+        nirtreedisk::Branch bRight = std::get<nirtreedisk::Branch>(root_node->entries[1]);
+
+        auto left = tree.node_allocator_.get_tree_node<NodeType>(
+                bLeft.child );
+        auto right = tree.node_allocator_.get_tree_node<NodeType>(
+                bRight.child );
+
+        REQUIRE(left->cur_offset_ == 4);
+        REQUIRE(right->cur_offset_ == 4);
+    }
+    unlink( "nirdiskbacked.txt" );
+}
+
+
+TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
+{
+    unlink( "nirdiskbacked.txt" );
+    {
+        unsigned max_branch_factor = 7;
+        size_t nodes_per_page = PAGE_DATA_SIZE / sizeof(
+                NodeType);
+
+        // We need a decent number of pages in memory because during
+        // searches the whole path down to the leaf is pinned.
+        size_t page_count = 10;
+
+        size_t insertion_count = max_branch_factor * (nodes_per_page *
+                page_count) * 4;
+
+        TreeType tree(4096*page_count, "nirdiskbacked.txt");
+        for( unsigned i = 0; i < insertion_count; i++) {
+            tree.insert(Point(i,i));
+        }
+
+        for( unsigned i = 0; i < insertion_count; i++) {
+            REQUIRE( tree.search( Point(i,i) ).size() == 1);
+        }
+    }
+    unlink( "nirdiskbacked.txt" );
+
+}
