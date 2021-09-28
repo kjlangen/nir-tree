@@ -257,7 +257,6 @@ template <int min_branch_factor, int max_branch_factor>
 tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point givenPoint)
 {
 
-    std::cout << "Choosing node!" << std::endl;
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     // CL1 [Initialize]
@@ -265,19 +264,14 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
     unsigned enclosingPolyIndex = 0;
 
-    std::cout << "Choosing node 2!" << std::endl;
     tree_node_allocator *allocator = get_node_allocator( treeRef );
-    std::cout << "Allocator is good!" << std::endl;
 
     for( ;; ) {
-        std::cout << "Getting node: " << cur_node_handle << std::endl;
         auto cur_node = allocator->get_tree_node<NodeType>(
                 cur_node_handle );
 
-        std::cout << "Checking if this is a leaf!" << std::endl;
         // CL2 [Leaf check]
         if( cur_node->isLeaf() ) {
-            std::cout << "Checking if this is a leaf 2!" << std::endl;
             return cur_node_handle;
         } else {
             // Compute the smallest expansion
@@ -426,13 +420,18 @@ Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
 
         return defaultPartition;
     } else {
+        std::cout << "Choosing parition location for branch node." <<
+            std::endl;
         Point centreOfMass = Point::atOrigin;
         std::vector<Rectangle> sortable;
         double location;
 
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &b = std::get<Branch>( entries.at(i) );
-            sortable.insert(sortable.end(), b.boundingPoly.basicRectangles.begin(), b.boundingPoly.basicRectangles.end());
+            sortable.insert(sortable.end(),
+                    b.boundingPoly.basicRectangles.begin(),
+                    b.boundingPoly.basicRectangles.begin() +
+                    b.boundingPoly.rectangle_count_ );
         }
 
         for( Rectangle &boundingBox : sortable ) {
@@ -472,6 +471,7 @@ SplitResult
 Node<min_branch_factor,max_branch_factor>::splitNode(
     Partition p
 ) {
+    std::cout << "Splitting Node!" << std::endl;
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
@@ -484,6 +484,8 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
         referencePoly = parent_node->locateBranch(this->self_handle_).boundingPoly;
     } else {
         referencePoly = InlineBoundedIsotheticPolygon(boundingBox());
+        std::cout << "Constructed referencePoly: " << referencePoly <<
+            std::endl;
     }
 
     auto alloc_data = allocator->create_new_tree_node<NodeType>();
@@ -507,6 +509,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     split.rightBranch.boundingPoly.refine();
 
     if( isLeaf() ) {
+        std::cout << "We are splitting a leaf." << std::endl;
         bool containedLeft, containedRight;
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Point &dataPoint = std::get<Point>( entries.at(i) );
@@ -514,17 +517,23 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             containedRight = split.rightBranch.boundingPoly.containsPoint( dataPoint );
 
             if( containedLeft && !containedRight ) {
+                std::cout << "containedLeft, !containedRight" <<
+                    std::endl;
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     dataPoint;
             } else if( !containedLeft && containedRight ) {
+                std::cout << "!containedLeft, containedRight" <<
+                    std::endl;
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
-            } else if( right_node->cur_offset_ < right_node->cur_offset_
+            } else if( left_node->cur_offset_ < right_node->cur_offset_
                     ) {
-                right_node->entries.at( right_node->cur_offset_++ ) =
+                std::cout << "Both contained, going left" << std::endl;
+                left_node->entries.at( left_node->cur_offset_++ ) =
                     dataPoint;
             } else {
-                left_node->entries.at( left_node->cur_offset_++ ) =
+                std::cout << "Both contained, going right" << std::endl;
+                right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
             }
         }
@@ -536,9 +545,11 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 right_node->entries.begin(), right_node->entries.begin() +
                 right_node->cur_offset_ );
     } else {
+        std::cout << "Splitting Branch Node." << std::endl;
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &branch = std::get<Branch>( entries.at(i) );
-            if (branch.boundingPoly.boundingBox.upperRight[p.dimension] <= p.location) {
+            if( branch.boundingPoly.boundingBox.upperRight[p.dimension] <= p.location) {
+                std::cout << "Added branch left." << std::endl;
                 auto child =
                     allocator->get_tree_node<NodeType>(
                             branch.child );
@@ -547,6 +558,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     branch;
             } else if (branch.boundingPoly.boundingBox.lowerLeft[p.dimension] >= p.location) {
+                std::cout << "Added branch right." << std::endl;
                 auto child =
                     allocator->get_tree_node<NodeType>(
                             branch.child );
@@ -555,6 +567,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 assert( split.rightBranch.child == right_handle );
                 right_node->entries.at( right_node->cur_offset_++ ) = branch;
             } else {
+                std::cout << "Downward split!" << std::endl;
                 auto child =
                     allocator->get_tree_node<NodeType>(
                             branch.child );
@@ -579,7 +592,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 if( right_child->cur_offset_ > 0 ) {
                     right_child->parent = split.rightBranch.child;
                     right_node->entries.at( right_node->cur_offset_++ )
-                        =downwardSplit.rightBranch;
+                        = downwardSplit.rightBranch;
                 }
             }
         }
@@ -613,17 +626,23 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
 
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
-    // FIXME: START HERE
     while( current_handle != nullptr ) {
         auto current_node =
             allocator->get_tree_node<NodeType>(
                     current_handle );
+        std::cout << "isroot? " << (treeRef->root == current_handle) <<
+            std::endl;
         // If there was a split we were supposed to propagate then propagate it
         if( propagationSplit.leftBranch.child != nullptr and propagationSplit.rightBranch.child != nullptr ) {
+            std::cout << "Handling a split!" << std::endl;
+            std::cout << "Node currently has " <<
+                current_node->cur_offset_ << " entries!" << std::endl;
             {
                 auto left_node =
                     allocator->get_tree_node<NodeType>(
                             propagationSplit.leftBranch.child );
+                std::cout << "Left_node has cur_offset" <<
+                    left_node->cur_offset_ << std::endl;
                 if( left_node->cur_offset_ > 0 ) {
                     current_node->entries[ current_node->cur_offset_++ ] =
                         propagationSplit.leftBranch;
@@ -634,21 +653,31 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
                     allocator->get_tree_node<NodeType>(
                             propagationSplit.rightBranch.child );
 
+                std::cout << "Right_node has cur_offset" <<
+                    right_node->cur_offset_ << std::endl;
                 if( right_node->cur_offset_  > 0  ) {
-                    right_node->entries[ right_node->cur_offset_++ ] =
+                    current_node->entries[ current_node->cur_offset_++ ] =
                         propagationSplit.rightBranch;
                 }
             }
+            std::cout << "Now Node has " << current_node->cur_offset_ <<
+                " entries." << std::endl;
         }
 
         // Early exit if this node does not overflow
         if( current_node->cur_offset_ <= max_branch_factor ) {
+            std::cout << "Do not need to split." << std::endl;
             propagationSplit = {
                 {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)},
                 {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)}
             };
             break;
         }
+
+        std::cout << "Need to split!" << std::endl;
+        std::cout << "isroot? " << (treeRef->root == current_handle) <<
+            std::endl;
+
 
         // Otherwise, split node
         propagationSplit = current_node->splitNode();
@@ -658,13 +687,17 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
             auto parent_node =
                 allocator->get_tree_node<NodeType>(
                         current_node->parent );
+            std::cout << "Removing node " << current_handle << " from parent" << current_node->parent << std::endl;
             parent_node->removeEntry( current_handle );
         }
 
         // Ascend, propagating splits
+        std::cout << "Going up, taking left node." << std::endl;
         auto left_node =
             allocator->get_tree_node<NodeType>(
                     propagationSplit.leftBranch.child );
+        std::cout << "Left Node parent is: " << left_node->parent <<
+            std::endl;
         current_handle = left_node->parent;
     }
 
@@ -676,9 +709,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     // Find the appropriate position for the new point
-    std::cout << "Choosing node!" << std::endl;
     tree_node_handle current_handle = chooseNode( givenPoint );
-    std::cout << "Found " << current_handle <<std::endl;
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
 
@@ -692,11 +723,9 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
             givenPoint;
     }
 
-    std::cout << "Done inserting." << std::endl;
 
     SplitResult finalSplit = current_node->adjustTree();
 
-    std::cout << "Done adjusting." << std::endl;
 
     // Grow the tree taller if we need to
     if( finalSplit.leftBranch.child != nullptr and finalSplit.rightBranch.child != nullptr ) {
@@ -723,8 +752,10 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
         new_root_node->entries[ new_root_node->cur_offset_++ ] =
             finalSplit.rightBranch;
 
-        // FIXME: GC
+        // FIXME: GC original root node
         //delete this;
+
+        std::cout << "Created new root node: " << new_root_handle << std::endl;
 
         return new_root_handle;
     }

@@ -669,3 +669,74 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
 
     unlink( "nirdiskbacked.txt" );
 }
+
+TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
+{
+    unlink( "nirdiskbacked.txt" );
+    {
+        unsigned maxBranchFactor = 7;
+        TreeType tree(4096*5, "nirdiskbacked.txt");
+        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
+                tree.root );
+
+        for( unsigned i = 0; i < maxBranchFactor + 1; i++) {
+            tree_node_handle root = rootNode->insert(Point(0.0, 0.0));
+            rootNode = tree.node_allocator_.get_tree_node<NodeType>(
+                    root );
+        }
+
+        REQUIRE(rootNode->cur_offset_ == 2);
+        nirtreedisk::Branch bLeft = std::get<nirtreedisk::Branch>(rootNode->entries[0]);
+        nirtreedisk::Branch bRight = std::get<nirtreedisk::Branch>(rootNode->entries[1]);
+
+        auto left = tree.node_allocator_.get_tree_node<NodeType>(
+                bLeft.child );
+        auto right = tree.node_allocator_.get_tree_node<NodeType>(
+                bRight.child );
+
+        REQUIRE(left->cur_offset_ == 4);
+        REQUIRE(right->cur_offset_ == 4);
+    }
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
+{
+    unlink( "nirdiskbacked.txt" );
+    {
+        unsigned max_branch_factor = 7;
+        /*
+        unsigned insertion_count = max_branch_factor * max_branch_factor
+            + 1;
+        */
+        unsigned insertion_count = max_branch_factor*7 + 1;
+
+        TreeType tree(4096*10, "nirdiskbacked.txt");
+        for( unsigned i = 0; i < insertion_count; i++) {
+            tree.insert(Point(i,i));
+        }
+
+        //REQUIRE(rootNode->cur_offset_ == 2);
+        auto root = tree.root;
+        auto root_node = tree.node_allocator_.get_tree_node<NodeType>(
+                root );
+
+        for( unsigned i = 0; i < insertion_count; i++) {
+            REQUIRE( tree.search( Point(i,i) ).size() == 1 );
+        }
+
+        REQUIRE( root_node->cur_offset_ == 3 );
+        nirtreedisk::Branch bLeft = std::get<nirtreedisk::Branch>(root_node->entries[0]);
+        nirtreedisk::Branch bRight = std::get<nirtreedisk::Branch>(root_node->entries[1]);
+
+        auto left = tree.node_allocator_.get_tree_node<NodeType>(
+                bLeft.child );
+        auto right = tree.node_allocator_.get_tree_node<NodeType>(
+                bRight.child );
+
+        REQUIRE(left->cur_offset_ == 4);
+        REQUIRE(right->cur_offset_ == 4);
+    }
+    unlink( "nirdiskbacked.txt" );
+}
+
