@@ -266,7 +266,10 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
 
+    assert( cur_node_handle != nullptr );
+
     for( ;; ) {
+        assert( cur_node_handle != nullptr );
         auto cur_node = allocator->get_tree_node<NodeType>(
                 cur_node_handle );
 
@@ -275,10 +278,13 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
             return cur_node_handle;
         } else {
             // Compute the smallest expansion
+            assert( cur_node->cur_offset_ > 0 );
+
             unsigned smallestExpansionBranchIndex = 0;
             InlineBoundedIsotheticPolygon::OptimalExpansion smallestExpansion =
                 std::get<Branch>( cur_node->entries.at(0) ).boundingPoly.computeExpansionArea(givenPoint);
             InlineBoundedIsotheticPolygon::OptimalExpansion evalExpansion;
+
             for( size_t i = 1; i < cur_node->cur_offset_ &&
                     smallestExpansion.area != -1.0; i++ ) {
                 evalExpansion = std::get<Branch>(
@@ -288,7 +294,6 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                     smallestExpansion = evalExpansion;
                 }
             }
-
             if( smallestExpansion.area != -1.0 ) {
                 InlineBoundedIsotheticPolygon subsetPolygon( std::get<Branch>(
                             cur_node->entries.at(smallestExpansionBranchIndex) ).boundingPoly.basicRectangles[smallestExpansion.index]);
@@ -325,15 +330,25 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                             b_child->entries.begin() +
                             b_child->cur_offset_ );
                     b_child->cur_offset_--;
+                    for( unsigned i = 0; i < b_child->cur_offset_; i++ ) {
+                        assert( std::holds_alternative<Point>(
+                                    b_child->entries[i] ) or
+                                std::holds_alternative<Branch>(
+                                    b_child->entries[i] ) );
+                    }
                 }
+
                 b.boundingPoly.refine();
+
             }
+            assert( cur_node->cur_offset_ > smallestExpansionBranchIndex  );
 
             // Descend
             Branch &b = std::get<Branch>(
                     cur_node->entries.at(smallestExpansionBranchIndex) );
             cur_node_handle = b.child;
             enclosingPolyIndex = smallestExpansionBranchIndex;
+            assert( cur_node_handle != nullptr );
         }
     }
 }
@@ -524,6 +539,20 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
             }
+            for( unsigned i = 0; i < left_node->cur_offset_; i++ ) {
+                assert( std::holds_alternative<Point>(
+                            left_node->entries[i] ) or
+                        std::holds_alternative<Branch>(
+                            left_node->entries[i] ) );
+            }
+            for( unsigned i = 0; i < right_node->cur_offset_; i++ ) {
+                assert( std::holds_alternative<Point>(
+                            right_node->entries[i] ) or
+                        std::holds_alternative<Branch>(
+                            right_node->entries[i] ) );
+            }
+
+
         }
         cur_offset_ = 0;
 
@@ -587,6 +616,19 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                         = downwardSplit.rightBranch;
                 }
             }
+            for( unsigned i = 0; i < left_node->cur_offset_; i++ ) {
+                assert( std::holds_alternative<Point>(
+                            left_node->entries[i] ) or
+                        std::holds_alternative<Branch>(
+                            left_node->entries[i] ) );
+            }
+            for( unsigned i = 0; i < right_node->cur_offset_; i++ ) {
+                assert( std::holds_alternative<Point>(
+                            right_node->entries[i] ) or
+                        std::holds_alternative<Branch>(
+                            right_node->entries[i] ) );
+            }
+
         }
         cur_offset_ = 0;
     }
@@ -643,6 +685,13 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
                         propagationSplit.rightBranch;
                 }
             }
+            for( unsigned i = 0; i < current_node->cur_offset_; i++ ) {
+                assert( std::holds_alternative<Point>(
+                            current_node->entries[i] ) or
+                        std::holds_alternative<Branch>(
+                            current_node->entries[i] ) );
+            }
+
         }
 
         // Early exit if this node does not overflow
@@ -721,6 +770,14 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
         right_node->parent = new_root_handle;
         new_root_node->entries[ new_root_node->cur_offset_++ ] =
             finalSplit.rightBranch;
+
+        for( unsigned i = 0; i < new_root_node->cur_offset_; i++ ) {
+            assert( std::holds_alternative<Point>(
+                        new_root_node->entries[i] ) or
+                    std::holds_alternative<Branch>(
+                        new_root_node->entries[i] ) );
+        }
+
 
         // FIXME: GC original root node
         //delete this;

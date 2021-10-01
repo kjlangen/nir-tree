@@ -13,6 +13,7 @@
 #include <rplustree/rplustree.h>
 #include <rstartree/rstartree.h>
 #include <nirtree/nirtree.h>
+#include <nirtreedisk/nirtreedisk.h>
 #include <quadtree/quadtree.h>
 #include <revisedrstartree/revisedrstartree.h>
 #include <optional>
@@ -67,7 +68,7 @@ namespace BenchTypeClasses
 			static constexpr unsigned size = BitDataSize;
 			static constexpr unsigned querySize = BitQuerySize;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/bits02";
+			static constexpr char fileName[] = "/home/bjglasbe/Documents/code/nir-tree/data/bits02";
 
 	};
 
@@ -77,7 +78,7 @@ namespace BenchTypeClasses
 			static constexpr unsigned size = CaliforniaDataSize;
 			static constexpr unsigned querySize = CaliforniaQuerySize;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/california";
+			static constexpr char fileName[] = "/home/bjglasbe/Documents/code/nir-tree/data/california";
 	};
 
 	class Biological: public Benchmark
@@ -86,7 +87,7 @@ namespace BenchTypeClasses
 			static constexpr unsigned size = BiologicalDataSize;
 			static constexpr unsigned querySize = BiologicalQuerySize;
 			static constexpr unsigned dimensions = 3;
-			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/biological";
+			static constexpr char fileName[] = "/home/bjglasbe/Documents/code/nir-tree/data/biological";
 	};
 
 	class Forest : public Benchmark
@@ -95,7 +96,7 @@ namespace BenchTypeClasses
 			static constexpr unsigned size = ForestDataSize;
 			static constexpr unsigned querySize = ForestQuerySize;
 			static constexpr unsigned dimensions = 5;
-			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/forest";
+			static constexpr char fileName[] = "/home/bjglasbe/Documents/code/nir-tree/data/forest";
 	};
 
 	class Canada : public Benchmark
@@ -104,7 +105,7 @@ namespace BenchTypeClasses
 			static constexpr unsigned size = CanadaDataSize;
 			static constexpr unsigned querySize = CanadaQuerySize;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/canada";
+			static constexpr char fileName[] = "/home/bjglasbe/Documents/code/nir-tree/data/canada";
 	};
 
 	class Gaia : public Benchmark
@@ -113,7 +114,7 @@ namespace BenchTypeClasses
 			static constexpr unsigned size = GaiaDataSize;
 			static constexpr unsigned querySize = GaiaQuerySize;
 			static constexpr unsigned dimensions = 3;
-			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/gaia";
+			static constexpr char fileName[] = "/home/bjglasbe/Documents/code/nir-tree/data/gaia";
 	};
 
 	class MicrosoftBuildings : public Benchmark
@@ -122,7 +123,7 @@ namespace BenchTypeClasses
 			static constexpr unsigned size = MicrosoftBuildingsDataSize;
 			static constexpr unsigned querySize = 0;
 			static constexpr unsigned dimensions = 2;
-			static constexpr char fileName[] = "/home/kjlangen/nir-tree/data/microsoftbuildings";
+			static constexpr char fileName[] = "/home/bjglasbe/Documents/code/nir-tree/data/microsoftbuildings";
 	};
 };
 

@@ -193,7 +193,7 @@ static Rectangle *generateBitRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/bit02.2" : "/home/kjlangen/nir-tree/data/bit03.2";
+	std::string dataPath = dimensions == 2 ? "/home/bjglasbe/Documents/code/nir-tree/data/bit02.2" : "/home/bjglasbe/Documents/code/nir-tree/data/bit03.2";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -231,7 +231,7 @@ static Rectangle *generateHazeRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = dimensions == 2 ? "/home/kjlangen/nir-tree/data/pha02.2" : "/home/kjlangen/nir-tree/data/pha03.2";
+	std::string dataPath = dimensions == 2 ? "/home/bjglasbe/Documents/code/nir-tree/data/pha02.2" : "/home/bjglasbe/Documents/code/nir-tree/data/pha03.2";
 	file.open(dataPath.c_str());
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -269,7 +269,7 @@ static Rectangle *generateCaliRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea02.2";
+	std::string dataPath = "/home/bjglasbe/Documents/code/nir-tree/data/rea02.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -307,7 +307,7 @@ static Rectangle *generateBioRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea03.2";
+	std::string dataPath = "/home/bjglasbe/Documents/code/nir-tree/data/rea03.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -345,7 +345,7 @@ static Rectangle *generateForestRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/rea05.2";
+	std::string dataPath = "/home/bjglasbe/Documents/code/nir-tree/data/rea05.2";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	char *buffer = new char[sizeof(double)];
@@ -383,7 +383,7 @@ static Rectangle *generateCanadaRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/canadaQ";
+	std::string dataPath = "/home/bjglasbe/Documents/code/nir-tree/data/canadaQ";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	double bufferX, bufferY;
@@ -419,7 +419,7 @@ static Rectangle *generateGaiaRectangles()
 
 	// Setup file reader and double buffer
 	std::fstream file;
-	std::string dataPath = "/home/kjlangen/nir-tree/data/gaiaQ";
+	std::string dataPath = "/home/bjglasbe/Documents/code/nir-tree/data/gaiaQ";
 	file.open(dataPath);
 	fileGoodOrDie(file);
 	double buffer;
@@ -487,7 +487,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
-		spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
+		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
+		//spatialIndex = new nirtree::NIRTree(3,7);
+		spatialIndex = new nirtreedisk::NIRTreeDisk<3,7>(
+                4096*13000, "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -567,16 +570,23 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
+        /*
+        if( totalInserts % 10000 == 0 ) {
+		    std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
+        }
+        */
 		// std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
 	}
 	std::cout << "Insertion OK." << std::endl;
 
 	// Visualize the tree
+    /*
 	if (configU["visualization"])
 	{
 		spatialIndex->visualize();
 		std::cout << "Visualization OK." << std::endl;
 	}
+    */
 
 	// Validate checksum
 	if (spatialIndex->checksum() != directSum)

@@ -1711,11 +1711,13 @@ void InlineBoundedIsotheticPolygon::refine()
 			}
 		}
 		rectangleSetRefined.push_back(basicRectangles[rIndex]);
+        assert( rectangleSetRefined.size() <= MAX_RECTANGLE_COUNT );
         for( rectangle_count_ = 0; rectangle_count_ <
                 rectangleSetRefined.size(); rectangle_count_++ ) {
             basicRectangles[ rectangle_count_ ] = rectangleSetRefined[
                 rectangle_count_ ];
         }
+        rectangleSetRefined.clear();
 	}
 
 	assert( rectangle_count_ > 0 );
