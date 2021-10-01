@@ -166,7 +166,13 @@ public:
 
     template <typename T>
     std::pair<pinned_node_ptr<T>, tree_node_handle> create_new_tree_node() {
-        page *page_ptr = get_page_to_alloc_on( sizeof( T ) );
+        return create_new_tree_node<T>( sizeof( T ) );
+    }
+
+    template <typename T>
+    std::pair<pinned_node_ptr<T>, tree_node_handle>
+    create_new_tree_node( size_t node_size ) {
+        page *page_ptr = get_page_to_alloc_on( node_size );
         if( page_ptr == nullptr ) {
             return std::make_pair( pinned_node_ptr( buffer_pool_,
                         static_cast<T *>( nullptr ), static_cast<page *>(
@@ -175,7 +181,7 @@ public:
 
         size_t offset_into_page = (PAGE_DATA_SIZE - space_left_in_cur_page_);
         T *obj_ptr = (T *) (page_ptr->data_ + offset_into_page);
-        space_left_in_cur_page_ -= sizeof( T );
+        space_left_in_cur_page_ -= node_size;
 
         tree_node_handle meta_ptr( page_ptr->header_.page_id_,
                 offset_into_page );
@@ -183,6 +189,7 @@ public:
         return std::make_pair( pinned_node_ptr( buffer_pool_, obj_ptr,
                     page_ptr ), std::move(meta_ptr) );
     }
+
 
     template <typename T>
     pinned_node_ptr<T> get_tree_node( tree_node_handle node_ptr ) {

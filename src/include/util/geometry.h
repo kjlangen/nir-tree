@@ -271,4 +271,103 @@ class InlineBoundedIsotheticPolygon {
 bool operator==(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
 bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
 
+// DO NOT MATERIALIZE ON THE STACK
+class InlineUnboundedIsotheticPolygon {
+	public:
+		struct OptimalExpansion
+		{
+			unsigned index;
+			double area;
+		};
+
+        unsigned rectangle_count_;
+        unsigned max_rectangle_count_;
+		Rectangle boundingBox;
+        // Flexible array member
+		Rectangle basicRectangles[1];
+
+		InlineUnboundedIsotheticPolygon( unsigned max_rectangle_count )
+            : max_rectangle_count_(max_rectangle_count) {}
+		explicit InlineUnboundedIsotheticPolygon(const Rectangle &baseRectangle);
+		InlineUnboundedIsotheticPolygon(const InlineUnboundedIsotheticPolygon &basePolygon);
+
+		double area() const;
+		double computeIntersectionArea(const Rectangle &givenRectangle) const;
+		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;
+		OptimalExpansion computeExpansionArea(const Rectangle &givenRectangle) const;
+		void expand(const Point &givenPoint);
+		void expand(const Point &givenPoint, const OptimalExpansion &expansion);
+		bool intersectsRectangle(const Rectangle &givenRectangle) const;
+		bool intersectsPolygon(const InlineUnboundedIsotheticPolygon &givenPolygon) const;
+		bool borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const;
+		bool containsPoint(const Point &givenPoint) const ;
+		bool disjoint(const InlineUnboundedIsotheticPolygon &givenPolygon) const;
+		std::vector<Rectangle> intersection(const Rectangle &givenRectangle) const;
+		void intersection(const InlineUnboundedIsotheticPolygon &constraintPolygon);
+		void increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
+		void increaseResolution(const Point &givenPoint, const InlineUnboundedIsotheticPolygon &clippingPolygon);
+		void maxLimit(double limit, unsigned d=0);
+		void minLimit(double limit, unsigned d=0);
+		void merge(const InlineUnboundedIsotheticPolygon &mergePolygon);
+		void remove(unsigned basicRectangleIndex);
+		void deduplicate();
+		void refine();
+        
+        template <class iterator_type>
+        void shrink( iterator_type begin, iterator_type end )
+        {
+            // Early exit
+            if( begin == end or rectangle_count_ == 0 ) {
+                return;
+            }
+
+            std::vector<Rectangle> rectangleSetShrunk;
+            for( unsigned i = 0; i < rectangle_count_; i++ ) {
+                Rectangle &basicRectangle = basicRectangles[i];
+                bool addRectangle = false;
+                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
+                for( auto iter = begin; iter != end; iter++ ) {
+                    Point &pinPoint = std::get<Point>( *iter );
+                    if( basicRectangle.containsPoint(pinPoint) ) {
+                        shrunkRectangle.expand(pinPoint);
+                        addRectangle = true;
+                        assert(shrunkRectangle.containsPoint(pinPoint));
+                    }
+                }
+
+                if( addRectangle ) {
+                    rectangleSetShrunk.emplace_back(std::move(shrunkRectangle));
+                }
+            }
+
+            assert(rectangleSetShrunk.size() > 0);
+
+            for( rectangle_count_ = 0; rectangle_count_ <
+                    rectangleSetShrunk.size();
+                    rectangle_count_++ ) {
+                basicRectangles[ rectangle_count_ ] = rectangleSetShrunk[
+                    rectangle_count_ ];
+            }
+        }
+
+		bool exists() const;
+		bool valid() const;
+		bool unique() const;
+		bool lineFree() const;
+		bool infFree() const;
+
+		friend bool operator==(const InlineUnboundedIsotheticPolygon
+                &lhs, const InlineUnboundedIsotheticPolygon &rhs);
+		friend bool operator!=(const InlineUnboundedIsotheticPolygon
+                &lhs, const InlineUnboundedIsotheticPolygon &rhs);
+		friend std::ostream& operator<<(std::ostream &os, const InlineUnboundedIsotheticPolygon &polygon);
+
+};
+
+bool operator==(const InlineUnboundedIsotheticPolygon &lhs, const
+        InlineUnboundedIsotheticPolygon &rhs);
+bool operator!=(const InlineUnboundedIsotheticPolygon &lhs, const
+        InlineUnboundedIsotheticPolygon &rhs);
+
+
 #endif

@@ -37,6 +37,7 @@ namespace nirtreedisk
 		public:
             tree_node_handle root;
             tree_node_allocator node_allocator_;
+
 			Statistics stats;
 
 			// Constructors and destructors
