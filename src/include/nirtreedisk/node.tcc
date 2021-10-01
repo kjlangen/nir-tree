@@ -57,9 +57,13 @@ Rectangle Node<min_branch_factor,max_branch_factor>::boundingBox()
         }
         return bb;
     }
-    bb = std::get<Branch>( entries.at(0) ).boundingPoly.boundingBox;
+    auto &poly = std::get<InlineBoundedIsotheticPolygon>(
+            std::get<Branch>( entries.at(0) ).boundingPoly );
+    bb = poly.boundingBox;
     for( size_t i = 1; i < cur_offset_; i++ ) {
-        bb.expand( std::get<Branch>( entries.at(i) ).boundingPoly.boundingBox );
+        auto &node_i_poly = std::get<InlineBoundedIsotheticPolygon>(
+                std::get<Branch>( entries.at(i ) ).boundingPoly );
+        bb.expand( node_i_poly.boundingBox );
     }
     return bb;
 }
@@ -178,9 +182,17 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
             // Determine which branches we need to follow
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 Branch &b = std::get<Branch>( current_node->entries.at(i) );
-                if( b.boundingPoly.containsPoint(requestedPoint) ) {
-                    // Add to the nodes we will check
-                    context.push( b.child );
+                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                            b.boundingPoly ) ) {
+                    InlineBoundedIsotheticPolygon &poly =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                b.boundingPoly );
+                    if( poly.containsPoint( requestedPoint) ) {
+                        // Add to the nodes we will check
+                        context.push( b.child );
+                    }
+                } else {
+                    assert( false ); //FIXME, out of band poly
                 }
             }
 #ifdef STAT
@@ -233,9 +245,17 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 // Determine which branches we need to follow
                 Branch &b = std::get<Branch>( current_node->entries.at(i) );
-                if( b.boundingPoly.intersectsRectangle( requestedRectangle ) ) {
-                    // Add to the nodes we will check
-                    context.push( b.child );
+                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                            b.boundingPoly ) ) {
+                    InlineBoundedIsotheticPolygon &poly =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                b.boundingPoly );
+                    if( poly.intersectsRectangle( requestedRectangle ) ) {
+                        // Add to the nodes we will check
+                        context.push( b.child );
+                    }
+                } else {
+                    assert( false ); // FIXME: out of band poly
                 }
             }
 #ifdef STAT
@@ -281,28 +301,43 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
             assert( cur_node->cur_offset_ > 0 );
 
             unsigned smallestExpansionBranchIndex = 0;
+            // FIXME: out of band poly
+            auto &node_0_poly = std::get<InlineBoundedIsotheticPolygon>( std::get<Branch>(
+                    cur_node->entries.at(0)).boundingPoly );
             InlineBoundedIsotheticPolygon::OptimalExpansion smallestExpansion =
-                std::get<Branch>( cur_node->entries.at(0) ).boundingPoly.computeExpansionArea(givenPoint);
+                node_0_poly.computeExpansionArea(givenPoint);
             InlineBoundedIsotheticPolygon::OptimalExpansion evalExpansion;
 
             for( size_t i = 1; i < cur_node->cur_offset_ &&
                     smallestExpansion.area != -1.0; i++ ) {
-                evalExpansion = std::get<Branch>(
-                        cur_node->entries.at(i) ).boundingPoly.computeExpansionArea(givenPoint);
+                // FIXME: out of band poly
+                auto &node_i_poly =
+                    std::get<InlineBoundedIsotheticPolygon>(
+                            std::get<Branch>( cur_node->entries.at(i)
+                                ).boundingPoly );
+                evalExpansion = node_i_poly.computeExpansionArea(givenPoint);
                 if( evalExpansion.area < smallestExpansion.area && evalExpansion.area != 0.0 ) {
                     smallestExpansionBranchIndex = i;
                     smallestExpansion = evalExpansion;
                 }
             }
             if( smallestExpansion.area != -1.0 ) {
-                InlineBoundedIsotheticPolygon subsetPolygon( std::get<Branch>(
-                            cur_node->entries.at(smallestExpansionBranchIndex) ).boundingPoly.basicRectangles[smallestExpansion.index]);
+                // FIXME: out of band poly
+                auto &node_poly =
+                    std::get<InlineBoundedIsotheticPolygon>( std::get<Branch>(
+                        cur_node->entries.at(smallestExpansionBranchIndex
+                            ) ).boundingPoly );
+                InlineBoundedIsotheticPolygon subsetPolygon( node_poly.basicRectangles[smallestExpansion.index]);
                 subsetPolygon.expand(givenPoint);
 
                 for( size_t i = 0; i < cur_node->cur_offset_; i++ ) {
                     if( i != smallestExpansionBranchIndex ) {
+                        // FIXME: out of band poly
+                        auto &node_i_poly =
+                            std::get<InlineBoundedIsotheticPolygon>( std::get<Branch>(
+                                cur_node->entries.at(i) ).boundingPoly);
                         subsetPolygon.increaseResolution( givenPoint,
-                                std::get<Branch>( cur_node->entries.at(i) ).boundingPoly);
+                                node_i_poly );
                     }
                 }
 
@@ -310,35 +345,51 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                     auto parent =
                         allocator->get_tree_node<NodeType>(
                                 cur_node->parent );
-                    subsetPolygon.intersection(std::get<Branch>(
-                                parent->entries.at(enclosingPolyIndex)).boundingPoly);
+                    // FIXME: out of band poly
+                    auto &parent_poly =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                std::get<Branch>(
+                                    parent->entries.at(enclosingPolyIndex)).boundingPoly);
+                    subsetPolygon.intersection( parent_poly );
                 }
 
                 Branch &b = std::get<Branch>(
                         cur_node->entries.at(smallestExpansionBranchIndex) );
 
-                b.boundingPoly.remove(smallestExpansion.index);
-                b.boundingPoly.merge(subsetPolygon);
+                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                            b.boundingPoly ) ) {
 
-                auto b_child =
-                    allocator->get_tree_node<NodeType>( b.child );
+                    InlineBoundedIsotheticPolygon &poly =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                b.boundingPoly );
 
-                if( b_child->isLeaf() and b_child->cur_offset_ > 0 ) {
-                    b_child->entries.at( b_child->cur_offset_ ) = givenPoint;
-                    b_child->cur_offset_++;
-                    b.boundingPoly.shrink( b_child->entries.begin(),
-                            b_child->entries.begin() +
-                            b_child->cur_offset_ );
-                    b_child->cur_offset_--;
-                    for( unsigned i = 0; i < b_child->cur_offset_; i++ ) {
-                        assert( std::holds_alternative<Point>(
-                                    b_child->entries[i] ) or
-                                std::holds_alternative<Branch>(
-                                    b_child->entries[i] ) );
+                    poly.remove(smallestExpansion.index);
+
+                    // FIXME: overflow poly?
+                    poly.merge(subsetPolygon);
+
+                    auto b_child =
+                        allocator->get_tree_node<NodeType>( b.child );
+
+                    if( b_child->isLeaf() and b_child->cur_offset_ > 0 ) {
+                        b_child->entries.at( b_child->cur_offset_ ) = givenPoint;
+                        b_child->cur_offset_++;
+                        poly.shrink( b_child->entries.begin(),
+                                b_child->entries.begin() +
+                                b_child->cur_offset_ );
+                        b_child->cur_offset_--;
+                        for( unsigned i = 0; i < b_child->cur_offset_; i++ ) {
+                            assert( std::holds_alternative<Point>(
+                                        b_child->entries[i] ) or
+                                    std::holds_alternative<Branch>(
+                                        b_child->entries[i] ) );
+                        }
                     }
-                }
 
-                b.boundingPoly.refine();
+                    poly.refine();
+                } else {
+                    assert( false ); // FIXME: out of band poly
+                }
 
             }
             assert( cur_node->cur_offset_ > smallestExpansionBranchIndex  );
@@ -386,9 +437,15 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(Point give
             // Determine which branches we need to follow
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 Branch &b = std::get<Branch>( current_node->entries.at(i) );
-                if( b.boundingPoly.containsPoint(givenPoint) ) {
-                    // Add the child to the nodes we will consider
-                    context.push( b.child );
+                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                            b.boundingPoly ) ) {
+                    InlineBoundedIsotheticPolygon &poly =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                b.boundingPoly );
+                    if( poly.containsPoint(givenPoint) ) {
+                        // Add the child to the nodes we will consider
+                        context.push( b.child );
+                    }
                 }
             }
         }
@@ -441,10 +498,17 @@ Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
 
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &b = std::get<Branch>( entries.at(i) );
-            sortable.insert(sortable.end(),
-                    b.boundingPoly.basicRectangles.begin(),
-                    b.boundingPoly.basicRectangles.begin() +
-                    b.boundingPoly.rectangle_count_ );
+            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                        b.boundingPoly ) ) {
+                auto &poly = std::get<InlineBoundedIsotheticPolygon>(
+                        b.boundingPoly );
+                sortable.insert(sortable.end(),
+                        poly.basicRectangles.begin(),
+                        poly.basicRectangles.begin() +
+                        poly.rectangle_count_ );
+            } else {
+                assert( false ); //FIXME: out of band poly
+            }
         }
 
         for( Rectangle &boundingBox : sortable ) {
@@ -493,7 +557,11 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     if( parent != nullptr ) {
         auto parent_node =
             allocator->get_tree_node<NodeType>( parent );
-        referencePoly = parent_node->locateBranch(this->self_handle_).boundingPoly;
+        // FIXME: out of band poly
+        const Branch &parent_branch = parent_node->locateBranch(this->self_handle_);
+        auto &poly = std::get<InlineBoundedIsotheticPolygon>(
+                parent_branch.boundingPoly );
+        referencePoly = poly;
     } else {
         referencePoly = InlineBoundedIsotheticPolygon(boundingBox());
     }
@@ -512,18 +580,42 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     SplitResult split = {{referencePoly, left_handle}, {referencePoly,
         right_handle}};
 
-    split.leftBranch.boundingPoly.maxLimit(p.location, p.dimension);
-    split.rightBranch.boundingPoly.minLimit(p.location, p.dimension);
+    if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                split.leftBranch.boundingPoly ) ) {
+        auto &poly = std::get<InlineBoundedIsotheticPolygon>(
+                split.leftBranch.boundingPoly );
+        poly.maxLimit(p.location, p.dimension);
+        poly.refine();
+    } else {
+        assert( false ); // FIXME: out of band poly
+    }
 
-    split.leftBranch.boundingPoly.refine();
-    split.rightBranch.boundingPoly.refine();
+    if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                split.rightBranch.boundingPoly ) ) {
+        auto &poly =
+            std::get<InlineBoundedIsotheticPolygon>(
+                    split.rightBranch.boundingPoly );
+        poly.minLimit(p.location, p.dimension);
+        poly.refine();
+    } else {
+        assert( false ); // FIXME: out of band poly
+    }
+
+    // I'd imagine we can somehow pull a full poly out here and use it
+    // below, even if the poly is out of band FIXME
+    auto &split_left_poly = std::get<InlineBoundedIsotheticPolygon>(
+            split.leftBranch.boundingPoly );
+    auto &split_right_poly = std::get<InlineBoundedIsotheticPolygon>(
+            split.rightBranch.boundingPoly );
+
+
 
     if( isLeaf() ) {
         bool containedLeft, containedRight;
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Point &dataPoint = std::get<Point>( entries.at(i) );
-            containedLeft = split.leftBranch.boundingPoly.containsPoint( dataPoint );
-            containedRight = split.rightBranch.boundingPoly.containsPoint( dataPoint );
+            containedLeft = split_left_poly.containsPoint( dataPoint );
+            containedRight = split_right_poly.containsPoint( dataPoint );
 
             if( containedLeft && !containedRight ) {
                 left_node->entries.at( left_node->cur_offset_++ ) =
@@ -556,19 +648,23 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
         }
         cur_offset_ = 0;
 
-        split.leftBranch.boundingPoly.shrink( left_node->entries.begin(),
+        split_left_poly.shrink( left_node->entries.begin(),
                 left_node->entries.begin() + left_node->cur_offset_ );
-        split.rightBranch.boundingPoly.shrink(
+        split_right_poly.shrink(
                 right_node->entries.begin(), right_node->entries.begin() +
                 right_node->cur_offset_ );
     } else {
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &branch = std::get<Branch>( entries.at(i) );
+
+            // FIXME: out of band poly
+            auto &poly = std::get<InlineBoundedIsotheticPolygon>(
+                    branch.boundingPoly );
             bool is_contained_left =
-                branch.boundingPoly.boundingBox.upperRight[p.dimension]
+                poly.boundingBox.upperRight[p.dimension]
                 <= p.location;
             bool is_contained_right =
-                branch.boundingPoly.boundingBox.lowerLeft[p.dimension]
+                poly.boundingBox.lowerLeft[p.dimension]
                 >= p.location;
             if( is_contained_left and (not is_contained_right or
                 (left_node->cur_offset_ < right_node->cur_offset_ ) ) ){
@@ -904,11 +1000,13 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
                 allocator->get_tree_node<NodeType>( parent );
             Branch &branch = std::get<Branch>(
                     parent_node->entries[index] );
+            auto &poly = std::get<InlineBoundedIsotheticPolygon>(
+                    branch.boundingPoly ); //FIXME: out of band poly
 
             for( size_t i = 0; i < cur_offset_; i++ ) {
                 Point &dataPoint = std::get<Point>( entries[i] );
-                if( !branch.boundingPoly.containsPoint( dataPoint ) ) {
-                    std::cout << branch.boundingPoly << " fails to contain " << dataPoint << std::endl;
+                if( !poly.containsPoint( dataPoint ) ) {
+                    std::cout << poly << " fails to contain " << dataPoint << std::endl;
                     assert( false );
                 }
             }
@@ -921,11 +1019,19 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
                 if( i != j ) {
                     Branch &b_i = std::get<Branch>( entries[i] );
                     Branch &b_j = std::get<Branch>( entries[j] );
-                    if( b_i.boundingPoly.disjoint(b_j.boundingPoly) ) {
+                    // FIXME: out of band polys
+                    auto &b_i_poly =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                b_i.boundingPoly );
+                    auto &b_j_poly =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                b_j.boundingPoly );
+
+                    if( b_i_poly.disjoint(b_j_poly) ) {
                         std::cout << "Branch " << i << " is not disjoint from sibling Branch " << j << std::endl;
-                        std::cout << "branches[" << i << "].boundingPoly = " << b_i.boundingPoly << std::endl;
-                        std::cout << "branches[" << j << "].boundingPoly = " << b_j.boundingPoly << std::endl;
-                        assert( b_i.boundingPoly.disjoint( b_j.boundingPoly) );
+                        std::cout << "branches[" << i << "].boundingPoly= " << b_i_poly << std::endl;
+                        std::cout << "branches[" << j << "].boundingPoly = " << b_j_poly << std::endl;
+                        assert( b_i_poly.disjoint( b_j_poly ) );
                     }
                 }
             }
@@ -961,8 +1067,11 @@ void Node<min_branch_factor,max_branch_factor>::print(unsigned n)
         std::cout << indendtation << "    Branches: " << std::endl;
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &branch = std::get<Branch>( entries[i] );
+            // FIXME: out of band poly
+            auto &poly = std::get<InlineBoundedIsotheticPolygon>(
+                    branch.boundingPoly );
             std::cout << indendtation << "		" << branch.child << std::endl;
-            std::cout << indendtation << "		" << branch.boundingPoly << std::endl;
+            std::cout << indendtation << "		" << poly << std::endl;
         }
     }
     std::cout << std::endl;

@@ -187,7 +187,8 @@ TEST_CASE("NIRTreeDisk: testUpdateBoundingBox") {
                     5.0)));
 
 	const auto &b = std::get<nirtreedisk::Branch>(parentNode->entries[3]);
-	REQUIRE(b.boundingPoly ==
+    auto &poly = std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly );
+	REQUIRE(poly  ==
             InlineBoundedIsotheticPolygon(Rectangle(3.0, 3.0, 5.0, 5.0)));
     unlink( "nirdiskbacked.txt" );
 }

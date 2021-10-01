@@ -53,7 +53,7 @@ namespace nirtreedisk
                 tree_node_handle child ) : boundingPoly( boundingPoly ),
         child( child ) {}
 
-        InlineBoundedIsotheticPolygon boundingPoly;
+        std::variant<InlineBoundedIsotheticPolygon,tree_node_handle> boundingPoly;
         tree_node_handle child;
 
         bool operator==( const Branch &o ) const = default;
