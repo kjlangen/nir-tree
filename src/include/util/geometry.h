@@ -126,6 +126,97 @@ class Rectangle
 bool operator==(const Rectangle &lhs, const Rectangle &rhs);
 bool operator!=(const Rectangle &lhs, const Rectangle &rhs);
 
+class AbstractIsotheticPolygon {
+	public:
+		struct OptimalExpansion
+		{
+			unsigned index;
+			double area;
+		};
+
+        using iterator = Rectangle *;
+        using const_iterator = Rectangle const *;
+        virtual iterator begin() = 0;
+        virtual iterator end() = 0;
+        virtual const_iterator begin() const = 0;
+        virtual const_iterator end() const = 0;
+
+        virtual Rectangle getBoundingBox() const = 0;
+		virtual double area() const = 0;
+		virtual double computeIntersectionArea(const Rectangle
+                &givenRectangle) const = 0;
+		virtual OptimalExpansion computeExpansionArea(const Point
+                &givenPoint) const = 0;
+		virtual OptimalExpansion computeExpansionArea(const Rectangle
+                &givenRectangle) const = 0;
+		virtual void expand(const Point &givenPoint) = 0;
+		virtual void expand(const Point &givenPoint, const
+                OptimalExpansion &expansion) = 0;
+		virtual bool intersectsRectangle(const Rectangle
+                &givenRectangle) const = 0;
+		virtual bool intersectsPolygon(const AbstractIsotheticPolygon
+                &givenPolygon) const = 0;
+		virtual bool borderOnlyIntersectsRectangle(const Rectangle
+                &givenRectangle) const = 0;
+		virtual bool containsPoint(const Point &givenPoint) const = 0;
+		virtual bool disjoint(const AbstractIsotheticPolygon &givenPolygon)
+            const = 0;
+		virtual std::vector<Rectangle> intersection(const Rectangle
+                &givenRectangle) const = 0;
+		virtual AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon
+                &constraintPolygon) = 0;
+		virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
+                Rectangle &clippingRectangle) = 0;
+		virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
+                AbstractIsotheticPolygon &clippingPolygon) = 0;
+		virtual void maxLimit(double limit, unsigned d=0) = 0;
+		virtual void minLimit(double limit, unsigned d=0) = 0;
+		virtual AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon) = 0;
+		virtual void remove(unsigned basicRectangleIndex) = 0;
+		virtual void deduplicate() = 0;
+		virtual void refine() = 0;
+
+        virtual void updateRectanglesNoExpand( std::vector<Rectangle> &rectangles ) = 0;
+
+        template <class iterator_type>
+        void shrink( iterator_type begin, iterator_type end )
+        {
+            // Early exit
+            if( begin == end or this->begin() == this->end()) {
+                return;
+            }
+
+            std::vector<Rectangle> rectangleSetShrunk;
+
+            for( const auto &basicRectangle : *this ) {
+                bool addRectangle = false;
+                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
+                for( auto iter = begin; iter != end; iter++ ) {
+                    Point &pinPoint = std::get<Point>( *iter );
+                    if( basicRectangle.containsPoint(pinPoint) ) {
+                        shrunkRectangle.expand(pinPoint);
+                        addRectangle = true;
+                        assert(shrunkRectangle.containsPoint(pinPoint));
+                    }
+                }
+
+                if( addRectangle ) {
+                    rectangleSetShrunk.emplace_back( std::move(shrunkRectangle) );
+                }
+            }
+            assert( rectangleSetShrunk.size() > 0 );
+
+            updateRectanglesNoExpand( rectangleSetShrunk );
+        }
+
+
+		virtual bool exists() const = 0;
+		virtual bool valid() const = 0;
+		virtual bool unique() const = 0;
+		virtual bool lineFree() const = 0;
+		virtual bool infFree() const = 0;
+};
+
 class IsotheticPolygon
 {
 	public:
@@ -163,7 +254,8 @@ class IsotheticPolygon
 		void remove(unsigned basicRectangleIndex);
 		void deduplicate();
 		void refine();
-		void shrink(const std::vector<Point> &pinPoints);
+
+        void shrink(const std::vector<Point> &pinPoints);
 
 		bool exists() const;
 		bool valid() const;
@@ -181,13 +273,8 @@ bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 
 
 #define MAX_RECTANGLE_COUNT 5 
-class InlineBoundedIsotheticPolygon {
+class InlineBoundedIsotheticPolygon : public AbstractIsotheticPolygon {
 	public:
-		struct OptimalExpansion
-		{
-			unsigned index;
-			double area;
-		};
 
         unsigned rectangle_count_;
 		Rectangle boundingBox;
@@ -197,70 +284,75 @@ class InlineBoundedIsotheticPolygon {
 		explicit InlineBoundedIsotheticPolygon(const Rectangle &baseRectangle);
 		InlineBoundedIsotheticPolygon(const InlineBoundedIsotheticPolygon &basePolygon);
 
-		double area() const;
-		double computeIntersectionArea(const Rectangle &givenRectangle) const;
-		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;
-		OptimalExpansion computeExpansionArea(const Rectangle &givenRectangle) const;
-		void expand(const Point &givenPoint);
-		void expand(const Point &givenPoint, const OptimalExpansion &expansion);
-		bool intersectsRectangle(const Rectangle &givenRectangle) const;
-		bool intersectsPolygon(const InlineBoundedIsotheticPolygon &givenPolygon) const;
-		bool borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const;
-		bool containsPoint(const Point &givenPoint) const ;
-		bool disjoint(const InlineBoundedIsotheticPolygon &givenPolygon) const;
-		std::vector<Rectangle> intersection(const Rectangle &givenRectangle) const;
-        std::pair<bool,std::vector<Rectangle>> intersection(const InlineBoundedIsotheticPolygon &constraintPolygon);
-		bool increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
-		bool increaseResolution(const Point &givenPoint, const InlineBoundedIsotheticPolygon &clippingPolygon);
-		void maxLimit(double limit, unsigned d=0);
-		void minLimit(double limit, unsigned d=0);
-		bool merge(const InlineBoundedIsotheticPolygon &mergePolygon);
-		void remove(unsigned basicRectangleIndex);
-		void deduplicate();
-		void refine();
-        
-        template <class iterator_type>
-        void shrink( iterator_type begin, iterator_type end )
-        {
-            // Early exit
-            if( begin == end or rectangle_count_ == 0 ) {
-                return;
-            }
+        using iterator = Rectangle *;
+        using const_iterator = Rectangle const *;
 
-            std::vector<Rectangle> rectangleSetShrunk;
-            for( unsigned i = 0; i < rectangle_count_; i++ ) {
-                Rectangle &basicRectangle = basicRectangles[i];
-                bool addRectangle = false;
-                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
-                for( auto iter = begin; iter != end; iter++ ) {
-                    Point &pinPoint = std::get<Point>( *iter );
-                    if( basicRectangle.containsPoint(pinPoint) ) {
-                        shrunkRectangle.expand(pinPoint);
-                        addRectangle = true;
-                        assert(shrunkRectangle.containsPoint(pinPoint));
-                    }
-                }
-
-                if( addRectangle ) {
-                    rectangleSetShrunk.emplace_back(std::move(shrunkRectangle));
-                }
-            }
-
-            assert(rectangleSetShrunk.size() > 0);
-
-            for( rectangle_count_ = 0; rectangle_count_ <
-                    rectangleSetShrunk.size();
-                    rectangle_count_++ ) {
-                basicRectangles[ rectangle_count_ ] = rectangleSetShrunk[
-                    rectangle_count_ ];
-            }
+        iterator begin() override {
+            return basicRectangles.begin();
         }
 
-		bool exists() const;
-		bool valid() const;
-		bool unique() const;
-		bool lineFree() const;
-		bool infFree() const;
+        iterator end() override {
+            return basicRectangles.begin() + rectangle_count_;
+        }
+
+        const_iterator begin() const override {
+            return basicRectangles.cbegin();
+        }
+
+        const_iterator end() const override {
+            return basicRectangles.cbegin() + rectangle_count_;
+        }
+
+        void updateRectanglesNoExpand( std::vector<Rectangle>
+                &rectangles ) override {
+            assert( rectangles.size() <= MAX_RECTANGLE_COUNT );
+            std::copy( rectangles.begin(), rectangles.end(),
+                    basicRectangles.begin() );
+            rectangle_count_ = rectangles.size();
+        }
+
+		double area() const override;
+		double computeIntersectionArea(const Rectangle &givenRectangle)
+            const override;
+		OptimalExpansion computeExpansionArea(const Point &givenPoint)
+            const override;
+		OptimalExpansion computeExpansionArea(const Rectangle
+                &givenRectangle) const override;
+		void expand(const Point &givenPoint) override;
+		void expand(const Point &givenPoint, const OptimalExpansion
+                &expansion) override;
+		bool intersectsRectangle(const Rectangle &givenRectangle) const
+            override;
+		bool intersectsPolygon(const AbstractIsotheticPolygon
+                &givenPolygon) const override;
+		bool borderOnlyIntersectsRectangle(const Rectangle
+                &givenRectangle) const override;
+		bool containsPoint(const Point &givenPoint) const override;
+		bool disjoint(const AbstractIsotheticPolygon &givenPolygon)
+            const override;
+		std::vector<Rectangle> intersection(const Rectangle
+                &givenRectangle) const override;
+        AbstractIsotheticPolygon *intersection(const
+                AbstractIsotheticPolygon &constraintPolygon)
+            override;
+		AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
+                &clippingRectangle) override;
+        AbstractIsotheticPolygon *increaseResolution(const Point
+                &givenPoint, const AbstractIsotheticPolygon
+                &clippingPolygon) override;
+		void maxLimit(double limit, unsigned d=0) override;
+		void minLimit(double limit, unsigned d=0) override;
+		AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
+            override;
+		void remove(unsigned basicRectangleIndex) override;
+		void deduplicate() override;
+		void refine() override;
+        
+		bool exists() const override;
+		bool valid() const override;
+		bool unique() const override;
+		bool lineFree() const override;
+		bool infFree() const override;
 
 		friend bool operator==(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
 		friend bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
@@ -272,89 +364,96 @@ bool operator==(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIso
 bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
 
 // DO NOT MATERIALIZE ON THE STACK
-class InlineUnboundedIsotheticPolygon {
+class InlineUnboundedIsotheticPolygon : public AbstractIsotheticPolygon {
 	public:
-		struct OptimalExpansion
-		{
-			unsigned index;
-			double area;
-		};
-
         unsigned rectangle_count_;
         unsigned max_rectangle_count_;
 		Rectangle boundingBox;
         // Flexible array member
 		Rectangle basicRectangles[1];
 
-		InlineUnboundedIsotheticPolygon( unsigned max_rectangle_count )
-            : max_rectangle_count_(max_rectangle_count) {}
+        template <typename iter>
+        InlineUnboundedIsotheticPolygon( iter begin, iter end ) {
+            rectangle_count_ = end - begin;
+            max_rectangle_count_ = end - begin;
+            std::copy( begin, end, std::begin(basicRectangles) );
+        }
 		explicit InlineUnboundedIsotheticPolygon(const Rectangle &baseRectangle);
 		InlineUnboundedIsotheticPolygon(const InlineUnboundedIsotheticPolygon &basePolygon);
 
-		double area() const;
-		double computeIntersectionArea(const Rectangle &givenRectangle) const;
-		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;
-		OptimalExpansion computeExpansionArea(const Rectangle &givenRectangle) const;
-		void expand(const Point &givenPoint);
-		void expand(const Point &givenPoint, const OptimalExpansion &expansion);
-		bool intersectsRectangle(const Rectangle &givenRectangle) const;
-		bool intersectsPolygon(const InlineUnboundedIsotheticPolygon &givenPolygon) const;
-		bool borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const;
-		bool containsPoint(const Point &givenPoint) const ;
-		bool disjoint(const InlineUnboundedIsotheticPolygon &givenPolygon) const;
-		std::vector<Rectangle> intersection(const Rectangle &givenRectangle) const;
-		void intersection(const InlineUnboundedIsotheticPolygon &constraintPolygon);
-		void increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
-		void increaseResolution(const Point &givenPoint, const InlineUnboundedIsotheticPolygon &clippingPolygon);
-		void maxLimit(double limit, unsigned d=0);
-		void minLimit(double limit, unsigned d=0);
-		void merge(const InlineUnboundedIsotheticPolygon &mergePolygon);
-		void remove(unsigned basicRectangleIndex);
-		void deduplicate();
-		void refine();
-        
-        template <class iterator_type>
-        void shrink( iterator_type begin, iterator_type end )
-        {
-            // Early exit
-            if( begin == end or rectangle_count_ == 0 ) {
-                return;
-            }
+        using iterator = Rectangle *;
+        using const_iterator = Rectangle const *;
 
-            std::vector<Rectangle> rectangleSetShrunk;
-            for( unsigned i = 0; i < rectangle_count_; i++ ) {
-                Rectangle &basicRectangle = basicRectangles[i];
-                bool addRectangle = false;
-                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
-                for( auto iter = begin; iter != end; iter++ ) {
-                    Point &pinPoint = std::get<Point>( *iter );
-                    if( basicRectangle.containsPoint(pinPoint) ) {
-                        shrunkRectangle.expand(pinPoint);
-                        addRectangle = true;
-                        assert(shrunkRectangle.containsPoint(pinPoint));
-                    }
-                }
-
-                if( addRectangle ) {
-                    rectangleSetShrunk.emplace_back(std::move(shrunkRectangle));
-                }
-            }
-
-            assert(rectangleSetShrunk.size() > 0);
-
-            for( rectangle_count_ = 0; rectangle_count_ <
-                    rectangleSetShrunk.size();
-                    rectangle_count_++ ) {
-                basicRectangles[ rectangle_count_ ] = rectangleSetShrunk[
-                    rectangle_count_ ];
-            }
+        Rectangle getBoundingBox() const {
+            return boundingBox;
         }
 
-		bool exists() const;
-		bool valid() const;
-		bool unique() const;
-		bool lineFree() const;
-		bool infFree() const;
+        iterator begin() override {
+            return std::begin( basicRectangles );
+        }
+
+        iterator end() override {
+            return std::begin( basicRectangles ) + rectangle_count_;
+        }
+
+        const_iterator begin() const override {
+            return std::cbegin( basicRectangles );
+        }
+
+        const_iterator end() const override {
+            return std::cbegin( basicRectangles ) + rectangle_count_;
+        }
+
+        void updateRectanglesNoExpand( std::vector<Rectangle>
+                &rectangles ) override {
+            assert( rectangles.size() <= max_rectangle_count_ );
+            std::copy( rectangles.begin(), rectangles.end(), std::begin(
+                        basicRectangles ) );
+            rectangle_count_ = rectangles.size();
+        }
+
+
+		double area() const override;
+		double computeIntersectionArea(const Rectangle &givenRectangle)
+            const override;
+		OptimalExpansion computeExpansionArea(const Point &givenPoint)
+            const override;
+		OptimalExpansion computeExpansionArea(const Rectangle
+                &givenRectangle) const override;
+		void expand(const Point &givenPoint) override;
+		void expand(const Point &givenPoint, const OptimalExpansion
+                &expansion) override;
+		bool intersectsRectangle(const Rectangle &givenRectangle) const
+            override;
+		bool intersectsPolygon(const AbstractIsotheticPolygon 
+                &givenPolygon) const override;
+		bool borderOnlyIntersectsRectangle(const Rectangle
+                &givenRectangle) const override;
+		bool containsPoint(const Point &givenPoint) const  override;
+		bool disjoint(const AbstractIsotheticPolygon 
+                &givenPolygon) const override;
+		std::vector<Rectangle> intersection(const Rectangle
+                &givenRectangle) const override;
+		AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon 
+                &constraintPolygon) override;
+		AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
+                &clippingRectangle) override;
+		AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
+                AbstractIsotheticPolygon &clippingPolygon)
+            override;
+		void maxLimit(double limit, unsigned d=0) override;
+		void minLimit(double limit, unsigned d=0) override;
+		AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
+            override;
+		void remove(unsigned basicRectangleIndex) override;
+		void deduplicate() override;
+		void refine() override;
+        
+		bool exists() const override;
+		bool valid() const override;
+		bool unique() const override;
+		bool lineFree() const override;
+		bool infFree() const override;
 
 		friend bool operator==(const InlineUnboundedIsotheticPolygon
                 &lhs, const InlineUnboundedIsotheticPolygon &rhs);

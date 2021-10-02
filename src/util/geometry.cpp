@@ -1403,9 +1403,10 @@ bool InlineBoundedIsotheticPolygon::intersectsRectangle(const Rectangle &givenRe
 	return false;
 }
 
-bool InlineBoundedIsotheticPolygon::intersectsPolygon(const InlineBoundedIsotheticPolygon &givenPolygon) const
+bool InlineBoundedIsotheticPolygon::intersectsPolygon(const
+        AbstractIsotheticPolygon &givenPolygon) const
 {
-	if( !boundingBox.intersectsRectangle(givenPolygon.boundingBox) ) {
+	if( !boundingBox.intersectsRectangle( givenPolygon.getBoundingBox() ) ) {
 		return false;
 	}
 
@@ -1457,14 +1458,12 @@ bool InlineBoundedIsotheticPolygon::containsPoint(const Point &givenPoint) const
 	return false;
 }
 
-bool InlineBoundedIsotheticPolygon::disjoint(const InlineBoundedIsotheticPolygon &givenPolygon) const
+bool InlineBoundedIsotheticPolygon::disjoint( const
+        AbstractIsotheticPolygon &givenPolygon ) const
 {
 	bool rectanglesIntersect, opposingAlignment;
-    for( unsigned i = 0; i < rectangle_count_; i++ ) {
-        const Rectangle &basicRectangle = basicRectangles[ i ];
-		for( unsigned j = 0; j < givenPolygon.rectangle_count_; j++ ) {
-            const Rectangle &givenBasicRectangle =
-                givenPolygon.basicRectangles[ j ];
+    for( const Rectangle &basicRectangle : *this ) {
+        for( const Rectangle &givenBasicRectangle : givenPolygon ) {
 			rectanglesIntersect = basicRectangle.intersectsRectangle( givenBasicRectangle );
 			opposingAlignment = basicRectangle.alignedOpposingBorders( givenBasicRectangle );
 
@@ -1491,15 +1490,15 @@ std::vector<Rectangle> InlineBoundedIsotheticPolygon::intersection( const Rectan
 	return v;
 }
 
-std::pair<bool,std::vector<Rectangle>> InlineBoundedIsotheticPolygon::intersection(const InlineBoundedIsotheticPolygon &constraintPolygon)
+AbstractIsotheticPolygon
+*InlineBoundedIsotheticPolygon::intersection(const
+        AbstractIsotheticPolygon &constraintPolygon)
 {
 	Rectangle r;
 	std::vector<Rectangle> v;
 
-    for( unsigned i = 0; i < rectangle_count_; i++ ) {
-        Rectangle &basicRectangle = basicRectangles[ i ];
-        for( unsigned j = 0; j < constraintPolygon.rectangle_count_; j++ ) {
-            const Rectangle &constraintRectangle = constraintPolygon.basicRectangles[j];
+    for( const auto &basicRectangle : *this ) {
+        for( const auto &constraintRectangle : constraintPolygon ) {
 			r = basicRectangle.intersection( constraintRectangle );
 			if( r != Rectangle::atInfinity ) {
 				v.push_back(r);
@@ -1507,22 +1506,33 @@ std::pair<bool,std::vector<Rectangle>> InlineBoundedIsotheticPolygon::intersecti
 		}
 	}
 
+    // Need to replace polygon with the intersection rectangles
     if( v.size() > MAX_RECTANGLE_COUNT ) {
-        return std::make_pair(false, v);
+        // Too big, need to alloc out of band
+        InlineUnboundedIsotheticPolygon *unbounded_poly =
+            (InlineUnboundedIsotheticPolygon *) malloc(
+                compute_sizeof_inline_unbounded_polygon( v.size() ) );
+
+        new (unbounded_poly) InlineUnboundedIsotheticPolygon( v.begin(),
+                v.end() );
+
+        return unbounded_poly;
     }
 
-    for( rectangle_count_ = 0; rectangle_count_ < v.size();
-            rectangle_count_++ ) {
-        basicRectangles[ rectangle_count_ ] = v[ rectangle_count_ ];
-    }
+    // It fits, copy it in
+    updateRectanglesNoExpand( v );
 
-    return std::make_pair( true, std::vector<Rectangle>() );
+    return this;
 }
 
-bool InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle)
-{
-	// Fragment each of our constiuent rectangles based on the clippingRectangle. This may result in
-	// no splitting of the constiuent rectangles and that's okay.
+
+
+AbstractIsotheticPolygon *InlineBoundedIsotheticPolygon::increaseResolution(
+    const Point &givenPoint,
+    const Rectangle &clippingRectangle
+) {
+	// Fragment each of our constituent rectangles based on the clippingRectangle. This may result in
+	// no splitting of the constituent rectangles and that's okay.
 	std::vector<Rectangle> extraRectangles;
 
     for( unsigned i = 0; i < rectangle_count_; i++ ) {
@@ -1546,37 +1556,84 @@ bool InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, 
 		}
 	}
 
+	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
     if( extraRectangles.size() > MAX_RECTANGLE_COUNT ) {
-        assert( false );
-        return false;
+        // If we exceeded the max rectangle count, we need to create
+        // an appropriately sized unbounded polygon
+        InlineUnboundedIsotheticPolygon *unbounded_poly =
+            (InlineUnboundedIsotheticPolygon *) malloc(
+                    compute_sizeof_inline_unbounded_polygon(
+                        extraRectangles.size() ) );
+
+        new (unbounded_poly) InlineUnboundedIsotheticPolygon(
+                extraRectangles.begin(), extraRectangles.end() );
+
+        return unbounded_poly;
     }
 
-	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
+
     for( rectangle_count_ = 0; rectangle_count_ <
             extraRectangles.size(); rectangle_count_++ ) {
         basicRectangles[ rectangle_count_ ] =
             extraRectangles[ rectangle_count_ ];
     }
-    return true;
+    return this;
 }
 
-bool InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, const InlineBoundedIsotheticPolygon &clippingPolygon)
-{
-	// Quick exit
-	if( !boundingBox.intersectsRectangle( clippingPolygon.boundingBox ) ) {
-		return true;
-	}
-
-    for( unsigned i = 0; i < clippingPolygon.rectangle_count_; i++ ) {
-        const Rectangle &basicClippingRectangle =
-            clippingPolygon.basicRectangles[i];
-		bool success = increaseResolution( givenPoint, basicClippingRectangle );
-        assert( success );
-        if( !success ) {
-            return false;
-        }
+AbstractIsotheticPolygon *
+InlineBoundedIsotheticPolygon::increaseResolution(
+    const Point &given_point,
+    const AbstractIsotheticPolygon &clipping_polygon
+) {
+    // No intersection? fast exit
+    if( !boundingBox.intersectsRectangle(
+                clipping_polygon.getBoundingBox() ) ) {
+        return this;
     }
-    return true;
+
+    // Copy for unbounded in-memory manipulations
+    std::vector<Rectangle> rectangles_copy( basicRectangles.begin(),
+            basicRectangles.begin() + rectangle_count_ );
+
+    for( const auto &clipping_rectangle : clipping_polygon ) {
+        std::vector<Rectangle> modified_rectangles;
+        for( const auto &poly_rectangle : rectangles_copy ) {
+            if( not poly_rectangle.intersectsRectangle( clipping_rectangle ) ) {
+                modified_rectangles.push_back( poly_rectangle );
+            } else {
+                // Break the rectangle and add the fragments to extras
+                for( const Rectangle &fragment :
+                        poly_rectangle.fragmentRectangle(clipping_rectangle) ) {
+                    // If fragmentation results in a line anywhere then reject it unless it was part of
+                    // the original or contains the point we are interested in
+                    if( fragment.area() == 0.0 and not fragment.containsPoint( given_point ) ) {
+                        Rectangle original_line = fragment.intersection( poly_rectangle );
+                        if( original_line != Rectangle::atInfinity ) {
+                            modified_rectangles.push_back( original_line );
+                        }
+                    } else {
+                        modified_rectangles.push_back( fragment );
+                    }
+                }
+            }
+        }
+        rectangles_copy.swap( modified_rectangles );
+    }
+
+    // If it fits, shove the rectangles in
+    if( rectangles_copy.size() <= MAX_RECTANGLE_COUNT ) {
+        updateRectanglesNoExpand( rectangles_copy );
+        return this;
+    }
+
+    // Shoot, we need a bigger polygon
+    InlineUnboundedIsotheticPolygon *bigger_poly =
+        (InlineUnboundedIsotheticPolygon *) malloc(
+            compute_sizeof_inline_unbounded_polygon(
+                rectangles_copy.size() ) );
+    new (bigger_poly) InlineUnboundedIsotheticPolygon(
+            rectangles_copy.begin(), rectangles_copy.end() );
+    return bigger_poly;
 }
 
 void InlineBoundedIsotheticPolygon::maxLimit( double limit, unsigned d ) {
@@ -2018,14 +2075,20 @@ bool InlineUnboundedIsotheticPolygon::containsPoint(const Point &givenPoint) con
 	return false;
 }
 
-bool InlineUnboundedIsotheticPolygon::disjoint(const InlineUnboundedIsotheticPolygon &givenPolygon) const
-{
+std::iterator<Rectangle> InlineUnboundedIsotheticPolygon::begin() {
+    return basicRectangles.begin();
+}
+
+std::iterator<Rectangle> InlineUnboundedIsotheticPolygon::end() {
+    return basicRectangles.begin() + rectangle_count_;
+}
+
+bool InlineUnboundedIsotheticPolygon::disjoint(
+    const AbstractIsotheticPolygon &givenPolygon
+) const {
 	bool rectanglesIntersect, opposingAlignment;
-    for( unsigned i = 0; i < rectangle_count_; i++ ) {
-        const Rectangle &basicRectangle = basicRectangles[ i ];
-		for( unsigned j = 0; j < givenPolygon.rectangle_count_; j++ ) {
-            const Rectangle &givenBasicRectangle =
-                givenPolygon.basicRectangles[ j ];
+    for( const Rectangle &basicRectangle : *this ) {
+        for( const Rectangle givenBasicRectangle : givenPolygon ) {
 			rectanglesIntersect = basicRectangle.intersectsRectangle( givenBasicRectangle );
 			opposingAlignment = basicRectangle.alignedOpposingBorders( givenBasicRectangle );
 

@@ -330,23 +330,44 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
                 // SUBSET POLY STARTS HERE
                 InlineBoundedIsotheticPolygon subsetPolygon( node_poly.basicRectangles[smallestExpansion.index]);
+                subsetPolygon.expand(givenPoint);
+
                 // In case we overflow
+                // OK I need to sublcass these, this is getting absurd
                 InlineUnboundedIsotheticPolygon *out_of_band_poly =
                     nullptr;
-                subsetPolygon.expand(givenPoint);
 
                 for( size_t i = 0; i < cur_node->cur_offset_; i++ ) {
                     if( i != smallestExpansionBranchIndex ) {
-                        // FIXME: out of band poly
                         auto &node_i_poly =
                             std::get<InlineBoundedIsotheticPolygon>( std::get<Branch>(
                                 cur_node->entries.at(i) ).boundingPoly);
-                        //  FIXME: this might require reallocs...
-                        // Pre-compute size if overflow, then return it
-                        bool success = subsetPolygon.increaseResolution( givenPoint,
+                        std::vector<Rectangle> modified_rectangles = subsetPolygon.increaseResolution( givenPoint,
                                 node_i_poly );
+                        if( modified_rectangles.size() <= 
+                                MAX_RECTANGLE_COUNT ) {
+                            std::copy( modified_rectangles.begin(),
+                                modified_rectangles.end(),
+                                subsetPolygon.basicRectangles.begin()
+                            );
+                            subsetPolygon.rectangle_count_ =
+                                modified_rectangles.size();
+                        } else {
+                            out_of_band_poly =
+                                (InlineUnboundedIsotheticPolygon *)
+                                malloc( compute_sizeof_inline_unbounded_polygon(
+                                            modified_rectangles.size() ) );
 
-                        assert( success );
+                            std::copy( modified_rectangles.begin(),
+                                modified_rectangles.end(),
+                                std::begin( out_of_band_poly->basicRectangles )
+                            );
+
+                            out_of_band_poly->rectangle_count_ =
+                                modified_rectangles.size();
+                            out_of_band_poly->max_rectangle_count_ =
+                                modified_rectangles.size();
+                        }
                     }
                 }
 
