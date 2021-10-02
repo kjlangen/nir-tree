@@ -1491,7 +1491,7 @@ std::vector<Rectangle> InlineBoundedIsotheticPolygon::intersection( const Rectan
 	return v;
 }
 
-void InlineBoundedIsotheticPolygon::intersection(const InlineBoundedIsotheticPolygon &constraintPolygon)
+std::pair<bool,std::vector<Rectangle>> InlineBoundedIsotheticPolygon::intersection(const InlineBoundedIsotheticPolygon &constraintPolygon)
 {
 	Rectangle r;
 	std::vector<Rectangle> v;
@@ -1507,13 +1507,19 @@ void InlineBoundedIsotheticPolygon::intersection(const InlineBoundedIsotheticPol
 		}
 	}
 
+    if( v.size() > MAX_RECTANGLE_COUNT ) {
+        return std::make_pair(false, v);
+    }
+
     for( rectangle_count_ = 0; rectangle_count_ < v.size();
             rectangle_count_++ ) {
         basicRectangles[ rectangle_count_ ] = v[ rectangle_count_ ];
     }
+
+    return std::make_pair( true, std::vector<Rectangle>() );
 }
 
-void InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle)
+bool InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle)
 {
 	// Fragment each of our constiuent rectangles based on the clippingRectangle. This may result in
 	// no splitting of the constiuent rectangles and that's okay.
@@ -1540,26 +1546,37 @@ void InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, 
 		}
 	}
 
+    if( extraRectangles.size() > MAX_RECTANGLE_COUNT ) {
+        assert( false );
+        return false;
+    }
+
 	// The new bounding polygon is now entirely defined by the fragments in extraRectangles
     for( rectangle_count_ = 0; rectangle_count_ <
             extraRectangles.size(); rectangle_count_++ ) {
         basicRectangles[ rectangle_count_ ] =
             extraRectangles[ rectangle_count_ ];
     }
+    return true;
 }
 
-void InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, const InlineBoundedIsotheticPolygon &clippingPolygon)
+bool InlineBoundedIsotheticPolygon::increaseResolution(const Point &givenPoint, const InlineBoundedIsotheticPolygon &clippingPolygon)
 {
 	// Quick exit
 	if( !boundingBox.intersectsRectangle( clippingPolygon.boundingBox ) ) {
-		return;
+		return true;
 	}
 
     for( unsigned i = 0; i < clippingPolygon.rectangle_count_; i++ ) {
         const Rectangle &basicClippingRectangle =
             clippingPolygon.basicRectangles[i];
-		increaseResolution( givenPoint, basicClippingRectangle );
+		bool success = increaseResolution( givenPoint, basicClippingRectangle );
+        assert( success );
+        if( !success ) {
+            return false;
+        }
     }
+    return true;
 }
 
 void InlineBoundedIsotheticPolygon::maxLimit( double limit, unsigned d ) {
@@ -1611,11 +1628,14 @@ void InlineBoundedIsotheticPolygon::minLimit(double limit, unsigned d)
 	}
 }
 
-void InlineBoundedIsotheticPolygon::merge(const InlineBoundedIsotheticPolygon &mergePolygon)
+bool InlineBoundedIsotheticPolygon::merge(const InlineBoundedIsotheticPolygon &mergePolygon)
 {
 	// Merge basic rectangles
-    assert( rectangle_count_ + mergePolygon.rectangle_count_ <=
-            MAX_RECTANGLE_COUNT );
+    if( rectangle_count_ + mergePolygon.rectangle_count_ >
+            MAX_RECTANGLE_COUNT ) {
+        assert( false );
+        return false;
+    }
     for( unsigned i = 0; i < mergePolygon.rectangle_count_; i++ ) {
         basicRectangles[ rectangle_count_++ ] =
             mergePolygon.basicRectangles[ i ];
@@ -1631,6 +1651,7 @@ void InlineBoundedIsotheticPolygon::merge(const InlineBoundedIsotheticPolygon &m
 			boundingBox.expand(basicRectangle);
 		}
 	}
+    return true;
 }
 
 void InlineBoundedIsotheticPolygon::remove(unsigned basicRectangleIndex)
@@ -1828,10 +1849,9 @@ InlineUnboundedIsotheticPolygon::InlineUnboundedIsotheticPolygon(const Rectangle
 
 InlineUnboundedIsotheticPolygon::InlineUnboundedIsotheticPolygon(const InlineUnboundedIsotheticPolygon &basePolygon)
 {
+    // Assume we alloc'd enough space
 	boundingBox = basePolygon.boundingBox;
-
-    assert( max_rectangle_count_ >= basePolygon.rectangle_count_ );
-
+    max_rectangle_count_ = basePolygon.max_rectangle_count_;
     rectangle_count_ = 0;
     for( ; rectangle_count_ < basePolygon.rectangle_count_;
             rectangle_count_++ ) {
@@ -2363,4 +2383,46 @@ std::ostream& operator<<(std::ostream &os, const InlineUnboundedIsotheticPolygon
 	}
 	os << "|";
 	return os;
+}
+
+unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ) {
+    return sizeof(InlineUnboundedIsotheticPolygon) +
+        (num_rects-1)*sizeof(Rectangle);
+}
+
+InlineUnboundedIsotheticPolygon *merge_polygons(
+        InlineBoundedIsotheticPolygon *poly1,
+        InlineUnboundedIsotheticPolygon *poly2 ) {
+
+    unsigned new_rectangle_count = poly1->rectangle_count_ +
+        poly2->rectangle_count_;
+
+	// Merge basic rectangles
+    InlineUnboundedIsotheticPolygon *new_polygon =
+        (InlineUnboundedIsotheticPolygon *) malloc(
+                compute_sizeof_inline_unbounded_polygon(
+                    new_rectangle_count ) );
+    new_polygon->max_rectangle_count_ = new_rectangle_count;
+    new_polygon->rectangle_count_ = 0;
+
+    for( unsigned i = 0; i < poly1->rectangle_count_; i++ ) {
+        new_polygon->basicRectangles[ new_polygon->rectangle_count_++ ]
+            = poly1->basicRectangles[ i ];
+	}
+    for( unsigned i = 0; i < poly2->rectangle_count_; i++ ) {
+        new_polygon->basicRectangles[ new_polygon->rectangle_count_++ ]
+            = poly2->basicRectangles[ i ];
+	}
+
+	// Recompute the bounding box
+	if( new_polygon->rectangle_count_ == 0 ) {
+		new_polygon->boundingBox = Rectangle::atInfinity;
+	} else {
+		new_polygon->boundingBox = new_polygon->basicRectangles[0];
+        for( unsigned i = 1; i < new_polygon->rectangle_count_; i++ ) {
+            Rectangle &basicRectangle = new_polygon->basicRectangles[i];
+			new_polygon->boundingBox.expand(basicRectangle);
+		}
+	}
+    return new_polygon;
 }

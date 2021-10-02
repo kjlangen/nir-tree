@@ -209,12 +209,12 @@ class InlineBoundedIsotheticPolygon {
 		bool containsPoint(const Point &givenPoint) const ;
 		bool disjoint(const InlineBoundedIsotheticPolygon &givenPolygon) const;
 		std::vector<Rectangle> intersection(const Rectangle &givenRectangle) const;
-		void intersection(const InlineBoundedIsotheticPolygon &constraintPolygon);
-		void increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
-		void increaseResolution(const Point &givenPoint, const InlineBoundedIsotheticPolygon &clippingPolygon);
+        std::pair<bool,std::vector<Rectangle>> intersection(const InlineBoundedIsotheticPolygon &constraintPolygon);
+		bool increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
+		bool increaseResolution(const Point &givenPoint, const InlineBoundedIsotheticPolygon &clippingPolygon);
 		void maxLimit(double limit, unsigned d=0);
 		void minLimit(double limit, unsigned d=0);
-		void merge(const InlineBoundedIsotheticPolygon &mergePolygon);
+		bool merge(const InlineBoundedIsotheticPolygon &mergePolygon);
 		void remove(unsigned basicRectangleIndex);
 		void deduplicate();
 		void refine();
@@ -369,5 +369,10 @@ bool operator==(const InlineUnboundedIsotheticPolygon &lhs, const
 bool operator!=(const InlineUnboundedIsotheticPolygon &lhs, const
         InlineUnboundedIsotheticPolygon &rhs);
 
+unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ); 
+
+InlineUnboundedIsotheticPolygon *merge_polygons(
+        InlineBoundedIsotheticPolygon *poly1,
+        InlineUnboundedIsotheticPolygon *poly2 );
 
 #endif

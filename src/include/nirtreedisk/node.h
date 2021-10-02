@@ -60,8 +60,6 @@ namespace nirtreedisk
         bool operator!=( const Branch &o ) const = default;
     };
 
-
-
     struct SplitResult
     {
         Branch leftBranch;

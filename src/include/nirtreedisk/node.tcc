@@ -327,7 +327,12 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                     std::get<InlineBoundedIsotheticPolygon>( std::get<Branch>(
                         cur_node->entries.at(smallestExpansionBranchIndex
                             ) ).boundingPoly );
+
+                // SUBSET POLY STARTS HERE
                 InlineBoundedIsotheticPolygon subsetPolygon( node_poly.basicRectangles[smallestExpansion.index]);
+                // In case we overflow
+                InlineUnboundedIsotheticPolygon *out_of_band_poly =
+                    nullptr;
                 subsetPolygon.expand(givenPoint);
 
                 for( size_t i = 0; i < cur_node->cur_offset_; i++ ) {
@@ -336,8 +341,12 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                         auto &node_i_poly =
                             std::get<InlineBoundedIsotheticPolygon>( std::get<Branch>(
                                 cur_node->entries.at(i) ).boundingPoly);
-                        subsetPolygon.increaseResolution( givenPoint,
+                        //  FIXME: this might require reallocs...
+                        // Pre-compute size if overflow, then return it
+                        bool success = subsetPolygon.increaseResolution( givenPoint,
                                 node_i_poly );
+
+                        assert( success );
                     }
                 }
 
@@ -350,7 +359,29 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                         std::get<InlineBoundedIsotheticPolygon>(
                                 std::get<Branch>(
                                     parent->entries.at(enclosingPolyIndex)).boundingPoly);
-                    subsetPolygon.intersection( parent_poly );
+                    auto success_data = subsetPolygon.intersection( parent_poly );
+                    if( !success_data.first ) {
+                        // Construct an out of band polygon on the heap
+                        // somewhere. We may do transformations on this
+                        // later, so don't directly create it on disk
+                        // yet.
+                        out_of_band_poly = (InlineUnboundedIsotheticPolygon *) malloc( 
+                                compute_sizeof_inline_unbounded_polygon(
+                                    success_data.second.size() ) );
+
+                        // Initialize
+                        out_of_band_poly->rectangle_count_ = 0;
+                        out_of_band_poly->max_rectangle_count_ =
+                            success_data.second.size();
+
+                        // Copy over
+                        for( const auto &rect : success_data.second ) {
+                            out_of_band_poly->basicRectangles[
+                                out_of_band_poly->rectangle_count_++ ] =
+                                    rect;
+                        }
+
+                    }
                 }
 
                 Branch &b = std::get<Branch>(
@@ -365,8 +396,34 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
                     poly.remove(smallestExpansion.index);
 
-                    // FIXME: overflow poly?
-                    poly.merge(subsetPolygon);
+                    if( out_of_band_poly ) {
+                        // FIXME: overflow poly?
+                        InlineUnboundedIsotheticPolygon *new_poly =
+                            merge_polygons( &poly, out_of_band_poly );
+
+                        free( out_of_band_poly );
+
+                        // Now we put it on the disk
+                        tree_node_allocator *allocator =
+                            get_node_allocator( treeRef );
+
+                        auto alloc_data = allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                                compute_sizeof_inline_unbounded_polygon(
+                                    new_poly->rectangle_count_ ) );
+
+                        // Placement new on disk page
+                        new (&(*(alloc_data.first)))
+                            InlineUnboundedIsotheticPolygon( *new_poly );
+
+                        b.boundingPoly = alloc_data.second;
+
+                        free( new_poly );
+
+                    } else {
+                        // FIXME: overflow poly?
+                        bool successfully_merged = poly.merge(subsetPolygon);
+                        assert( successfully_merged );
+                    }
 
                     auto b_child =
                         allocator->get_tree_node<NodeType>( b.child );

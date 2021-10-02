@@ -172,6 +172,7 @@ public:
     template <typename T>
     std::pair<pinned_node_ptr<T>, tree_node_handle>
     create_new_tree_node( size_t node_size ) {
+        assert( node_size < PAGE_DATA_SIZE );
         page *page_ptr = get_page_to_alloc_on( node_size );
         if( page_ptr == nullptr ) {
             return std::make_pair( pinned_node_ptr( buffer_pool_,
