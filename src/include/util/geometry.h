@@ -142,6 +142,9 @@ class AbstractIsotheticPolygon {
         virtual const_iterator end() const = 0;
 
         virtual Rectangle getBoundingBox() const = 0;
+        virtual void clear() = 0;
+        virtual void recomputeBoundingBox() = 0;
+
 		virtual double area() const = 0;
 		virtual double computeIntersectionArea(const Rectangle
                 &givenRectangle) const = 0;
@@ -163,11 +166,11 @@ class AbstractIsotheticPolygon {
             const = 0;
 		virtual std::vector<Rectangle> intersection(const Rectangle
                 &givenRectangle) const = 0;
-		virtual AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon
+		[[nodiscard]] virtual AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon
                 &constraintPolygon) = 0;
-		virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
+		[[nodiscard]] virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
                 Rectangle &clippingRectangle) = 0;
-		virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
+		[[nodiscard]] virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
                 AbstractIsotheticPolygon &clippingPolygon) = 0;
 		virtual void maxLimit(double limit, unsigned d=0) = 0;
 		virtual void minLimit(double limit, unsigned d=0) = 0;
@@ -207,6 +210,11 @@ class AbstractIsotheticPolygon {
             assert( rectangleSetShrunk.size() > 0 );
 
             updateRectanglesNoExpand( rectangleSetShrunk );
+            if( (unsigned) (this->end() - this->begin() ) !=
+                    rectangleSetShrunk.size() ) {
+                recomputeBoundingBox();
+            }
+
         }
 
 
@@ -277,7 +285,6 @@ class InlineBoundedIsotheticPolygon : public AbstractIsotheticPolygon {
 	public:
 
         unsigned rectangle_count_;
-		Rectangle boundingBox;
 		std::array<Rectangle, MAX_RECTANGLE_COUNT> basicRectangles;
 
 		InlineBoundedIsotheticPolygon();
@@ -311,6 +318,35 @@ class InlineBoundedIsotheticPolygon : public AbstractIsotheticPolygon {
             rectangle_count_ = rectangles.size();
         }
 
+        Rectangle getBoundingBox() const override {
+            Rectangle boundingBox = basicRectangles[0];
+            for( unsigned i = 1; i < rectangle_count_; i++ ) {
+                boundingBox.expand( basicRectangles[i] );
+            }
+            return boundingBox;
+        }
+
+        void clear() override {
+            rectangle_count_ = 0;
+        }
+
+
+        void recomputeBoundingBox() override { 
+            /*
+            // Recompute the bounding box
+            if( rectangle_count_ == 0 ) {
+                boundingBox = Rectangle::atInfinity;
+            } else {
+                boundingBox = basicRectangles[0];
+                for( unsigned i = 1; i < rectangle_count_; i++ ) {
+                    Rectangle &basicRectangle = basicRectangles[i];
+                    boundingBox.expand(basicRectangle);
+                }
+            }
+            */
+        }
+
+
 		double area() const override;
 		double computeIntersectionArea(const Rectangle &givenRectangle)
             const override;
@@ -332,12 +368,12 @@ class InlineBoundedIsotheticPolygon : public AbstractIsotheticPolygon {
             const override;
 		std::vector<Rectangle> intersection(const Rectangle
                 &givenRectangle) const override;
-        AbstractIsotheticPolygon *intersection(const
+        [[nodiscard]] AbstractIsotheticPolygon *intersection(const
                 AbstractIsotheticPolygon &constraintPolygon)
             override;
-		AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
+		[[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
                 &clippingRectangle) override;
-        AbstractIsotheticPolygon *increaseResolution(const Point
+        [[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point
                 &givenPoint, const AbstractIsotheticPolygon
                 &clippingPolygon) override;
 		void maxLimit(double limit, unsigned d=0) override;
@@ -368,7 +404,7 @@ class InlineUnboundedIsotheticPolygon : public AbstractIsotheticPolygon {
 	public:
         unsigned rectangle_count_;
         unsigned max_rectangle_count_;
-		Rectangle boundingBox;
+
         // Flexible array member
 		Rectangle basicRectangles[1];
 
@@ -377,15 +413,39 @@ class InlineUnboundedIsotheticPolygon : public AbstractIsotheticPolygon {
             rectangle_count_ = end - begin;
             max_rectangle_count_ = end - begin;
             std::copy( begin, end, std::begin(basicRectangles) );
+            recomputeBoundingBox();
         }
-		explicit InlineUnboundedIsotheticPolygon(const Rectangle &baseRectangle);
+
 		InlineUnboundedIsotheticPolygon(const InlineUnboundedIsotheticPolygon &basePolygon);
 
         using iterator = Rectangle *;
         using const_iterator = Rectangle const *;
 
-        Rectangle getBoundingBox() const {
+        Rectangle getBoundingBox() const override {
+            Rectangle boundingBox = basicRectangles[0];
+            for( unsigned i = 1; i < rectangle_count_; i++ ) {
+                boundingBox.expand( basicRectangles[i] );
+            }
             return boundingBox;
+        }
+
+        void clear() override {
+            rectangle_count_ = 0;
+        }
+
+        void recomputeBoundingBox() override { 
+            // Recompute the bounding box
+            /*
+            if( rectangle_count_ == 0 ) {
+                boundingBox = Rectangle::atInfinity;
+            } else {
+                boundingBox = basicRectangles[0];
+                for( unsigned i = 1; i < rectangle_count_; i++ ) {
+                    Rectangle &basicRectangle = basicRectangles[i];
+                    boundingBox.expand(basicRectangle);
+                }
+            }
+            */
         }
 
         iterator begin() override {
@@ -469,9 +529,5 @@ bool operator!=(const InlineUnboundedIsotheticPolygon &lhs, const
         InlineUnboundedIsotheticPolygon &rhs);
 
 unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ); 
-
-InlineUnboundedIsotheticPolygon *merge_polygons(
-        InlineBoundedIsotheticPolygon *poly1,
-        InlineUnboundedIsotheticPolygon *poly2 );
 
 #endif

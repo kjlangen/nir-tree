@@ -570,6 +570,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
+
+        spatialIndex->validate();
         /*
         if( totalInserts % 10000 == 0 ) {
 		    std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;

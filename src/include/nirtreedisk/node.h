@@ -53,6 +53,9 @@ namespace nirtreedisk
                 tree_node_handle child ) : boundingPoly( boundingPoly ),
         child( child ) {}
 
+        Branch( tree_node_handle boundingPoly, tree_node_handle child )
+            : boundingPoly( boundingPoly ), child( child ) {}
+
         std::variant<InlineBoundedIsotheticPolygon,tree_node_handle> boundingPoly;
         tree_node_handle child;
 
@@ -107,7 +110,7 @@ namespace nirtreedisk
 			// Helper functions
 			bool isLeaf();
 			Rectangle boundingBox();
-			Branch locateBranch(tree_node_handle child) {
+			Branch &locateBranch(tree_node_handle child) {
                 for( size_t i = 0; i < cur_offset_; i++ ) {
                     Branch &b = std::get<Branch>( entries.at(i) );
                     if (b.child == child)
@@ -117,18 +120,19 @@ namespace nirtreedisk
                 }
                 // If we are here, panic
                 assert(false);
-
-                return {InlineBoundedIsotheticPolygon(),
-                    tree_node_handle()};
             };
+            AbstractIsotheticPolygon *fix_polygon(
+                    AbstractIsotheticPolygon *existing_polygon );
+
 
 			void updateBranch(tree_node_handle child,  const InlineBoundedIsotheticPolygon &boundingPoly);
             void removeEntry( const NodeEntry &entry );
             void removeEntry( const tree_node_handle &handle );
 
             void addEntryToNode( const NodeEntry &entry ) {
-                entries[ cur_offset_++ ] = entry;
+                entries.at( cur_offset_++ ) = entry;
             }
+
 			tree_node_handle chooseNode(Point givenPoint);
 			tree_node_handle findLeaf(Point givenPoint);
 			Partition partitionNode();
@@ -147,6 +151,7 @@ namespace nirtreedisk
 			// Miscellaneous
 			unsigned checksum();
 			bool validate(tree_node_handle expectedParent, unsigned index);
+			bool bounding_box_validate();
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 			unsigned height();

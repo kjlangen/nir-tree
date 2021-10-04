@@ -20,7 +20,9 @@ public:
     pinned_node_ptr( const pinned_node_ptr &other ) :
         pool_( other.pool_ ), obj_ptr_( other.obj_ptr_ ),
         page_ptr_( other.page_ptr_ ){
-            pool_.pin_page( page_ptr_ );
+            if( page_ptr_ != nullptr ) {
+                pool_.pin_page( page_ptr_ );
+            }
         
     }
 
@@ -38,8 +40,11 @@ public:
         // Set new
         obj_ptr_ = other.obj_ptr_;
         page_ptr_ = other.page_ptr_;
+
         // Pin new
-        pool_.pin_page( page_ptr_ );
+        if( page_ptr_ != nullptr ) {
+            pool_.pin_page( page_ptr_ );
+        }
         return *this;
     }
 

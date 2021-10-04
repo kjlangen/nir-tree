@@ -361,7 +361,7 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2")
 	// Organized into two rtree::Nodes
     unlink( "nirdiskbacked.txt" );
 
-	TreeType tree( 4096 * 5, "nirdiskbacked.txt" );
+	TreeType tree( 4096 * 10, "nirdiskbacked.txt" );
     tree_node_handle root = tree.root;
     auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
             );
@@ -522,7 +522,7 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
     tree_node_handle cluster5;
 
     {
-        TreeType tree( 4096 * 5, "nirdiskbacked.txt" );
+        TreeType tree( 4096 * 10, "nirdiskbacked.txt" );
         root = tree.root;
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
                 );
@@ -713,7 +713,7 @@ TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
         */
         unsigned insertion_count = max_branch_factor*7 + 1;
 
-        TreeType tree(4096*10, "nirdiskbacked.txt");
+        TreeType tree(4096*20, "nirdiskbacked.txt");
         for( unsigned i = 0; i < insertion_count; i++) {
             tree.insert(Point(i,i));
         }
@@ -748,10 +748,6 @@ TEST_CASE("NIRTreeDisk: grow tree branch all same point")
     unlink( "nirdiskbacked.txt" );
     {
         unsigned max_branch_factor = 7;
-        /*
-        unsigned insertion_count = max_branch_factor * max_branch_factor
-            + 1;
-        */
         unsigned insertion_count = max_branch_factor*max_branch_factor + 1;
 
         TreeType tree(4096*10, "nirdiskbacked.txt");
@@ -759,7 +755,6 @@ TEST_CASE("NIRTreeDisk: grow tree branch all same point")
             tree.insert(Point(0,0));
         }
 
-        //REQUIRE(rootNode->cur_offset_ == 2);
         auto root = tree.root;
         auto root_node = tree.node_allocator_.get_tree_node<NodeType>(
                 root );
@@ -795,7 +790,7 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
 
         // We need a decent number of pages in memory because during
         // searches the whole path down to the leaf is pinned.
-        size_t page_count = 10;
+        size_t page_count = 20;
 
         size_t insertion_count = max_branch_factor * (nodes_per_page *
                 page_count) * 4;
@@ -810,5 +805,9 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
         }
     }
     unlink( "nirdiskbacked.txt" );
+
+    std::cout << sizeof( nirtreedisk::Node<3,7> ) << std::endl;
+    std::cout << (sizeof( InlineBoundedIsotheticPolygon ) +
+        sizeof(tree_node_handle)) * 8 << std::endl;
 
 }
