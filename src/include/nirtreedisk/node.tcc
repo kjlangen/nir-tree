@@ -208,18 +208,26 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
         } else {
             // Determine which branches we need to follow
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
+                AbstractIsotheticPolygon *poly;
+                pinned_node_ptr<InlineUnboundedIsotheticPolygon>
+                    poly_pin( allocator->buffer_pool_, nullptr, nullptr );
                 Branch &b = std::get<Branch>( current_node->entries.at(i) );
                 if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
                             b.boundingPoly ) ) {
-                    InlineBoundedIsotheticPolygon &poly =
-                        std::get<InlineBoundedIsotheticPolygon>(
-                                b.boundingPoly );
-                    if( poly.containsPoint( requestedPoint) ) {
-                        // Add to the nodes we will check
-                        context.push( b.child );
-                    }
+                    poly = &(std::get<InlineBoundedIsotheticPolygon>(
+                                b.boundingPoly ) );
                 } else {
-                    assert( false ); //FIXME, out of band poly
+                    tree_node_handle poly_handle =
+                        std::get<tree_node_handle>( b.boundingPoly );
+                    poly_pin =
+                        allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                                poly_handle );
+                   
+                    poly = &(*poly_pin);
+                }
+                if( poly->containsPoint( requestedPoint) ) {
+                    // Add to the nodes we will check
+                    context.push( b.child );
                 }
             }
 #ifdef STAT
@@ -1083,23 +1091,34 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             }
 
             std::cout << "Done branch " << i << std::endl;
-            for( unsigned i = 0; i < left_node->cur_offset_; i++ ) {
-                assert( std::holds_alternative<Point>(
-                            left_node->entries.at(i) ) or
-                        std::holds_alternative<Branch>(
-                            left_node->entries.at(i) ) );
-            }
-            for( unsigned i = 0; i < right_node->cur_offset_; i++ ) {
-                assert( std::holds_alternative<Point>(
-                            right_node->entries.at(i) ) or
-                        std::holds_alternative<Branch>(
-                            right_node->entries.at(i) ) );
-            }
-
         }
 
         std::cout << "Done all branch loops for " << self_handle_ <<
             std::endl;
+
+        // It is possible that after splitting on the geometric median,
+        // we still end up with an overfull node. This can happen
+        // everything gets assigned to the left node except for one
+        // branch that needs a downward split. That downward split
+        // results in a node added to the left and to the right,
+        // resulting in an overfull left node.
+
+        // FIXME: presumes sorted to preserve no intersection
+        if( left_node->cur_offset_ > max_branch_factor ) {
+            // Move last entry to the right
+            right_node->entries.at( right_node->cur_offset_++ ) =
+                left_node->entries.at( left_node->cur_offset_-1 );
+            left_node->cur_offset_--;
+
+        } else if( right_node->cur_offset_ > max_branch_factor ) {
+            // Move first entry to the left
+            left_node->entries.at( left_node->cur_offset_++ ) =
+                right_node->entries.at( right_node->cur_offset_-1 );
+            right_node->cur_offset_--;
+        }
+
+        assert( left_node->cur_offset_ <= max_branch_factor );
+        assert( right_node->cur_offset_ <= max_branch_factor );
 
         // We used the polygon definitions above to split the data on a
         // partition line. But after the split, the actual boundingBox
