@@ -705,10 +705,9 @@ Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
                             poly_handle );
                 poly = &(*poly_pin);
             }
-            sortable.insert(sortable.end(),
-                    poly->begin(),
-                    poly->end() );
+            sortable.push_back( poly->getBoundingBox() );
         }
+
         for( Rectangle &boundingBox : sortable ) {
             centreOfMass += boundingBox.lowerLeft;
             centreOfMass += boundingBox.upperRight;
@@ -735,7 +734,6 @@ Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
                 costMetric = currentInducedSplits;
             }
         }
-
 
         return defaultPartition;
     }
@@ -913,7 +911,6 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     right_polygon->refine();
 
     if( isLeaf() ) {
-        std::cout  << "Leaf Split." << std::endl;
 
         bool containedLeft, containedRight;
         for( size_t i = 0; i < cur_offset_; i++ ) {
@@ -959,7 +956,6 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 right_node->entries.begin(), right_node->entries.begin() +
                 right_node->cur_offset_ );
     } else {
-        std::cout  << "Branch Split." << std::endl;
 
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &branch = std::get<Branch>( entries.at(i) );
@@ -1005,14 +1001,6 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 assert( split.rightBranch.child == right_handle );
                 right_node->entries.at( right_node->cur_offset_++ ) = branch;
             } else {
-
-                std::cout << "Branch " << i << " needs a downward split"
-                    << " has polygon " << poly->getBoundingBox() <<
-                    std::endl;
-
-                std::cout << "Partition point (dimension=" <<
-                    p.dimension << ", point=" << p.location << ")" << std::endl;
-                 
 
                 auto child =
                     allocator->get_tree_node<NodeType>(
@@ -1154,6 +1142,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 InlineUnboundedIsotheticPolygon( fixed_left->begin(),
                         fixed_left->end() );
             free( fixed_left );
+            fixed_left = &(*(alloc_data.first));
             split.leftBranch.boundingPoly = alloc_data.second;
         }
 
@@ -1170,8 +1159,10 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 InlineUnboundedIsotheticPolygon( fixed_right->begin(),
                         fixed_right->end() );
             free( fixed_right );
+            fixed_right = &(*(alloc_data.first));
             split.rightBranch.boundingPoly = alloc_data.second;
         }
+        assert( fixed_left->disjoint( *fixed_right ));
 
         cur_offset_ = 0;
     }
@@ -1474,7 +1465,8 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
 
-    if( parent != expectedParent || cur_offset_ > max_branch_factor ) {
+    if( expectedParent != nullptr and (parent != expectedParent ||
+                cur_offset_ > max_branch_factor )) {
         std::cout << "node = " << (void *)this << std::endl;
         std::cout << "parent = " << parent << " expectedParent = " << expectedParent << std::endl;
         std::cout << "maxBranchFactor = " << max_branch_factor << std::endl;
@@ -1521,7 +1513,6 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
                 if( i != j ) {
                     Branch &b_i = std::get<Branch>( entries.at(i) );
                     Branch &b_j = std::get<Branch>( entries.at(j) );
-                    // FIXME: out of band polys
                     AbstractIsotheticPolygon *poly;
                     pinned_node_ptr<InlineUnboundedIsotheticPolygon> poly_pin(
                             allocator->buffer_pool_, nullptr, nullptr );
@@ -1551,12 +1542,12 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
                         poly_pin2 =
                             allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
                                     poly_handle );
-                        poly2 = &(*poly_pin);
+                        poly2 = &(*poly_pin2);
                     }
 
 
 
-                    if( poly->disjoint(*poly2) ) {
+                    if( !poly->disjoint(*poly2) ) {
                         std::cout << "Branch " << i << " is not disjoint from sibling Branch " << j << std::endl;
                         /*
                         std::cout << "branches[" << i << "].boundingPoly= " << b_i_poly << std::endl;

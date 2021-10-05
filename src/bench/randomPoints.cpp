@@ -571,9 +571,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
 
-        spatialIndex->validate();
-        std::cout << "Insert OK." << std::endl;
-        if( totalInserts % 10000 == 0 ) {
+        //spatialIndex->validate();
+        if( totalInserts % 1000 == 0 ) {
 		    std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
         }
 		// std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
