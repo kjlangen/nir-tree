@@ -535,10 +535,18 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                     // on the heap. Need to copy this poly to a
                     // valid page location.
                     
-                    auto alloc_data = allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                            compute_sizeof_inline_unbounded_polygon(
+                    size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
                                 modified_poly->end() -
-                                modified_poly->begin() ) );
+                                modified_poly->begin() );
+                    if( alloc_size > 40960 ) {
+                        std::cout << "allocating poly with: " <<
+                            modified_poly->end() -
+                            modified_poly->begin() << "els." <<
+                            std::endl;
+                    }
+                    auto alloc_data =
+                        allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                                alloc_size );
 
                     new (&(*(alloc_data.first)))
                         InlineUnboundedIsotheticPolygon(
@@ -873,10 +881,20 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     } else {
         // We need another copy of the InlineUnboundedIsotheticPolygon
         // node on a page somewhere.
-        auto alloc_data = allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                compute_sizeof_inline_unbounded_polygon(
+        size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
                     ((InlineUnboundedIsotheticPolygon *)
-                     node_poly)->max_rectangle_count_ ) );
+                     node_poly)->max_rectangle_count_ );
+
+        if( alloc_size > 40960 ) {
+            std::cout << "allocating poly with: " <<
+                ((InlineUnboundedIsotheticPolygon
+                  *)node_poly)->max_rectangle_count_ << "els." <<
+                std::endl;
+        }
+
+        auto alloc_data = allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            alloc_size
+        );
         // Copy
         new (&(*alloc_data.first)) InlineUnboundedIsotheticPolygon(
                 *(InlineUnboundedIsotheticPolygon *) node_poly );
@@ -1132,12 +1150,21 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
         AbstractIsotheticPolygon *fixed_left = left_node->fix_polygon(
                 left_polygon );
         if( fixed_left != left_polygon ) {
+            size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
+                        ((InlineUnboundedIsotheticPolygon *)
+                         fixed_left)->max_rectangle_count_ );
+
+            if( alloc_size > 40960 ) {
+                std::cout << "allocating poly with: " <<
+                ((InlineUnboundedIsotheticPolygon
+                  *)fixed_left)->max_rectangle_count_ << "els." <<
+                    std::endl;
+            }
+
             // Need a new node
             auto alloc_data = 
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        compute_sizeof_inline_unbounded_polygon(
-                            ((InlineUnboundedIsotheticPolygon *)
-                             fixed_left)->rectangle_count_ ) );
+                            alloc_size );
             new (&(*(alloc_data.first)))
                 InlineUnboundedIsotheticPolygon( fixed_left->begin(),
                         fixed_left->end() );
@@ -1150,11 +1177,20 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 right_polygon );
         if( fixed_right != right_polygon ) {
             // Need a new node
+            size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
+                        ((InlineUnboundedIsotheticPolygon *)
+                         fixed_right)->max_rectangle_count_ );
+
+            if( alloc_size > 40960 ) {
+                std::cout << "allocating poly with: " <<
+                ((InlineUnboundedIsotheticPolygon
+                  *)fixed_right)->max_rectangle_count_ << "els." <<
+                    std::endl;
+            }
+
             auto alloc_data = 
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        compute_sizeof_inline_unbounded_polygon(
-                            ((InlineUnboundedIsotheticPolygon *)
-                             fixed_right)->rectangle_count_ ) );
+                        alloc_size );
             new (&(*(alloc_data.first)))
                 InlineUnboundedIsotheticPolygon( fixed_right->begin(),
                         fixed_right->end() );
