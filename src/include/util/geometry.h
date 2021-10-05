@@ -174,7 +174,7 @@ class AbstractIsotheticPolygon {
                 AbstractIsotheticPolygon &clippingPolygon) = 0;
 		virtual void maxLimit(double limit, unsigned d=0) = 0;
 		virtual void minLimit(double limit, unsigned d=0) = 0;
-		virtual AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon) = 0;
+		[[nodiscard]] virtual AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon) = 0;
 		virtual void remove(unsigned basicRectangleIndex) = 0;
 		virtual void deduplicate() = 0;
 		virtual void refine() = 0;
@@ -378,7 +378,7 @@ class InlineBoundedIsotheticPolygon : public AbstractIsotheticPolygon {
                 &clippingPolygon) override;
 		void maxLimit(double limit, unsigned d=0) override;
 		void minLimit(double limit, unsigned d=0) override;
-		AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
+		[[nodiscard]] AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
             override;
 		void remove(unsigned basicRectangleIndex) override;
 		void deduplicate() override;
@@ -494,16 +494,16 @@ class InlineUnboundedIsotheticPolygon : public AbstractIsotheticPolygon {
                 &givenPolygon) const override;
 		std::vector<Rectangle> intersection(const Rectangle
                 &givenRectangle) const override;
-		AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon 
+		[[nodiscard]] AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon 
                 &constraintPolygon) override;
-		AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
+		[[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
                 &clippingRectangle) override;
-		AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
+		[[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
                 AbstractIsotheticPolygon &clippingPolygon)
             override;
 		void maxLimit(double limit, unsigned d=0) override;
 		void minLimit(double limit, unsigned d=0) override;
-		AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
+		[[nodiscard]] AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
             override;
 		void remove(unsigned basicRectangleIndex) override;
 		void deduplicate() override;

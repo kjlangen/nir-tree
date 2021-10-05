@@ -42,8 +42,12 @@ namespace nirtreedisk
 
 			// Constructors and destructors
 			NIRTreeDisk( size_t memory_budget, std::string backing_file  ) :
-                node_allocator_( memory_budget, backing_file ) {
+                node_allocator_( memory_budget, backing_file )
+            {
+                std::cout << "Creating file of size: " << memory_budget << std::endl;
                     node_allocator_.initialize();
+                std::cout << "Done." << std::endl;
+
                 size_t existing_page_count =
                     node_allocator_.buffer_pool_.get_preexisting_page_count();
 
@@ -55,8 +59,11 @@ namespace nirtreedisk
                     new (&(*(alloc.first)))
                         Node<min_branch_factor,max_branch_factor>( this,
                                 tree_node_handle(nullptr), root );
+
+                    std::cout << "Done!" << std::endl;
                     return;
                 }
+
                 // Hunt for the root
                 for( size_t i = 0; i < existing_page_count; i++ ) {
                     page *p = node_allocator_.buffer_pool_.get_page( i );

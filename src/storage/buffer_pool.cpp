@@ -18,6 +18,9 @@ buffer_pool::buffer_pool( size_t pool_size_bytes, std::string
         max_mem_pages_++;
     }
 
+    std::cout << "Should create: " << max_mem_pages_ << " of size: " <<
+        PAGE_SIZE;
+
     backing_file_name_ = backing_file_name;
     clock_hand_pos_ = 0;
     highest_allocated_page_id_ = 0;
@@ -39,6 +42,7 @@ void buffer_pool::initialize() {
     assert( backing_file_fd_ != -1 );
 
     // Step 1: Read every data page we have, load 'em into memory
+    std::cout << "Reading existing pages." << std::endl;
     size_t existing_page_count = 0;
     size_t file_offset = 0;
     for( ;; ) {
@@ -68,8 +72,12 @@ void buffer_pool::initialize() {
         }
     }
 
+
     off_t rc = lseek( backing_file_fd_, file_offset, SEEK_SET );
     assert( rc == (off_t) file_offset );
+
+
+    std::cout << "Done reading " << existing_page_count  << " existing pages." << std::endl;
 
     // Create any more backing file data that we need
     for( size_t i = existing_page_count; i < max_mem_pages_; i++ ) { 
@@ -84,7 +92,12 @@ void buffer_pool::initialize() {
         freelist_.push_back( std::move( page_ptr ) );
 
         file_offset += PAGE_SIZE;
+
+        if( i % 1000 == 0 ) {
+            std::cout << "Done creating page: " << i << std::endl;
+        }
     }
+
 
     struct stat stat_buffer;
     int fstat_ret = fstat( backing_file_fd_, &stat_buffer );

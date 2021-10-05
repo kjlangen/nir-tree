@@ -490,7 +490,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
 		//spatialIndex = new nirtree::NIRTree(3,7);
 		spatialIndex = new nirtreedisk::NIRTreeDisk<3,7>(
-                4096*13000, "nirdiskbacked_california.txt");
+                4096*10*13000, "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -572,11 +572,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		totalInserts += 1;
 
         spatialIndex->validate();
-        /*
+        std::cout << "Insert OK." << std::endl;
         if( totalInserts % 10000 == 0 ) {
 		    std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
         }
-        */
 		// std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
 	}
 	std::cout << "Insertion OK." << std::endl;

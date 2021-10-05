@@ -1725,9 +1725,6 @@ AbstractIsotheticPolygon *InlineBoundedIsotheticPolygon::merge(const
         return this;
     }
 
-    std::cout << "Needed to make unbounded polygon of size: " <<
-        rectangle_count_ + additional_rect_count << std::endl;
-
     // Shoot, we need a bigger polygon
     InlineUnboundedIsotheticPolygon *bigger_poly =
         (InlineUnboundedIsotheticPolygon *) malloc(
@@ -2158,9 +2155,6 @@ AbstractIsotheticPolygon *InlineUnboundedIsotheticPolygon::intersection(const
     }
 
     // Otherwise, make another polygon
-    std::cout << "Needed to make unbounded polygon of size: " <<
-        v.size() << std::endl;
-
     InlineUnboundedIsotheticPolygon *bigger_poly =
         (InlineUnboundedIsotheticPolygon *) malloc(
                 compute_sizeof_inline_unbounded_polygon( v.size() ) );
@@ -2210,9 +2204,6 @@ AbstractIsotheticPolygon *InlineUnboundedIsotheticPolygon::increaseResolution(
 
     // Shoot, not enough space.
     // Make another polygon
-    std::cout << "Needed to make unbounded polygon of size: " <<
-        extraRectangles.size() << std::endl;
-
     InlineUnboundedIsotheticPolygon *bigger_poly =
         (InlineUnboundedIsotheticPolygon *) malloc(
                 compute_sizeof_inline_unbounded_polygon(
@@ -2274,8 +2265,6 @@ InlineUnboundedIsotheticPolygon::increaseResolution(
     }
 
     // Shoot, we need a bigger polygon
-    std::cout << "Needed to make unbounded polygon of size: " <<
-        rectangles_copy.size() << std::endl;
 
     InlineUnboundedIsotheticPolygon *bigger_poly =
         (InlineUnboundedIsotheticPolygon *) malloc(
@@ -2359,8 +2348,6 @@ AbstractIsotheticPolygon *InlineUnboundedIsotheticPolygon::merge(
     }
 
     // Time to make a new polygon!
-    std::cout << "Needed to make unbounded polygon of size: " <<
-        total_rect_count << std::endl;
 
     InlineUnboundedIsotheticPolygon *bigger_poly =
         (InlineUnboundedIsotheticPolygon *) malloc(
@@ -2474,9 +2461,6 @@ void InlineUnboundedIsotheticPolygon::refine()
         }
         rectangleSetRefined.clear();
 	}
-
-    std::cout << "Refine: reduced my rectangle count down to: " <<
-        rectangle_count_ << std::endl;
 
 	assert( rectangle_count_ > 0 );
 }
