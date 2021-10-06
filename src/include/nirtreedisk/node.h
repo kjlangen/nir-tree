@@ -121,8 +121,7 @@ namespace nirtreedisk
                 // If we are here, panic
                 assert(false);
             };
-            AbstractIsotheticPolygon *fix_polygon(
-                    AbstractIsotheticPolygon *existing_polygon );
+            void fix_polygon( IsotheticPolygon &existing_polygon );
 
 
 			void updateBranch(tree_node_handle child,  const InlineBoundedIsotheticPolygon &boundingPoly);

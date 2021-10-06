@@ -29,6 +29,8 @@
 #include <util/debug.h>
 #include <globals/globals.h>
 #include <variant>
+#include <cstddef>
+#include <storage/tree_node_allocator.h>
 
 class Point
 {
@@ -126,103 +128,10 @@ class Rectangle
 bool operator==(const Rectangle &lhs, const Rectangle &rhs);
 bool operator!=(const Rectangle &lhs, const Rectangle &rhs);
 
-class AbstractIsotheticPolygon {
-	public:
-		struct OptimalExpansion
-		{
-			unsigned index;
-			double area;
-		};
-
-        using iterator = Rectangle *;
-        using const_iterator = Rectangle const *;
-        virtual iterator begin() = 0;
-        virtual iterator end() = 0;
-        virtual const_iterator begin() const = 0;
-        virtual const_iterator end() const = 0;
-
-        virtual Rectangle getBoundingBox() const = 0;
-        virtual void clear() = 0;
-        virtual void recomputeBoundingBox() = 0;
-
-		virtual double area() const = 0;
-		virtual double computeIntersectionArea(const Rectangle
-                &givenRectangle) const = 0;
-		virtual OptimalExpansion computeExpansionArea(const Point
-                &givenPoint) const = 0;
-		virtual OptimalExpansion computeExpansionArea(const Rectangle
-                &givenRectangle) const = 0;
-		virtual void expand(const Point &givenPoint) = 0;
-		virtual void expand(const Point &givenPoint, const
-                OptimalExpansion &expansion) = 0;
-		virtual bool intersectsRectangle(const Rectangle
-                &givenRectangle) const = 0;
-		virtual bool intersectsPolygon(const AbstractIsotheticPolygon
-                &givenPolygon) const = 0;
-		virtual bool borderOnlyIntersectsRectangle(const Rectangle
-                &givenRectangle) const = 0;
-		virtual bool containsPoint(const Point &givenPoint) const = 0;
-		virtual bool disjoint(const AbstractIsotheticPolygon &givenPolygon)
-            const = 0;
-		virtual std::vector<Rectangle> intersection(const Rectangle
-                &givenRectangle) const = 0;
-		[[nodiscard]] virtual AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon
-                &constraintPolygon) = 0;
-		[[nodiscard]] virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
-                Rectangle &clippingRectangle) = 0;
-		[[nodiscard]] virtual AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
-                AbstractIsotheticPolygon &clippingPolygon) = 0;
-		virtual void maxLimit(double limit, unsigned d=0) = 0;
-		virtual void minLimit(double limit, unsigned d=0) = 0;
-		[[nodiscard]] virtual AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon) = 0;
-		virtual void remove(unsigned basicRectangleIndex) = 0;
-		virtual void deduplicate() = 0;
-		virtual void refine() = 0;
-
-        virtual void updateRectanglesNoExpand( std::vector<Rectangle> &rectangles ) = 0;
-
-        template <class iterator_type>
-        void shrink( iterator_type begin, iterator_type end )
-        {
-            // Early exit
-            if( begin == end or this->begin() == this->end()) {
-                return;
-            }
-
-            std::vector<Rectangle> rectangleSetShrunk;
-
-            for( const auto &basicRectangle : *this ) {
-                bool addRectangle = false;
-                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
-                for( auto iter = begin; iter != end; iter++ ) {
-                    Point &pinPoint = std::get<Point>( *iter );
-                    if( basicRectangle.containsPoint(pinPoint) ) {
-                        shrunkRectangle.expand(pinPoint);
-                        addRectangle = true;
-                        assert(shrunkRectangle.containsPoint(pinPoint));
-                    }
-                }
-
-                if( addRectangle ) {
-                    rectangleSetShrunk.emplace_back( std::move(shrunkRectangle) );
-                }
-            }
-            assert( rectangleSetShrunk.size() > 0 );
-
-            updateRectanglesNoExpand( rectangleSetShrunk );
-            if( (unsigned) (this->end() - this->begin() ) !=
-                    rectangleSetShrunk.size() ) {
-                recomputeBoundingBox();
-            }
-
-        }
-
-
-		virtual bool exists() const = 0;
-		virtual bool valid() const = 0;
-		virtual bool unique() const = 0;
-		virtual bool lineFree() const = 0;
-		virtual bool infFree() const = 0;
+class RectangleIterator {
+    struct RectangleIteratorBase {
+        virtual ~RectangleIteratorBase();
+    };
 };
 
 class IsotheticPolygon
@@ -238,6 +147,7 @@ class IsotheticPolygon
 		std::vector<Rectangle> basicRectangles;
 
 		IsotheticPolygon();
+        void reset();
 		explicit IsotheticPolygon(const Rectangle &baseRectangle);
 		IsotheticPolygon(const IsotheticPolygon &basePolygon);
 
@@ -279,254 +189,342 @@ class IsotheticPolygon
 bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 
+class DiskBackedIsotheticPolygon {
+public:
+    virtual IsotheticPolygon materialize_polygon() = 0;
+    virtual void push_polygon_to_disk( IsotheticPolygon &polygon ) = 0;
+};
 
 #define MAX_RECTANGLE_COUNT 5 
-class InlineBoundedIsotheticPolygon : public AbstractIsotheticPolygon {
+class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
 	public:
+
+        InlineBoundedIsotheticPolygon() {
+            rectangle_count_ = 0;
+        }
+
+        InlineBoundedIsotheticPolygon( const
+                InlineBoundedIsotheticPolygon &other ) = default;
+
+        InlineBoundedIsotheticPolygon &operator=( const
+                InlineBoundedIsotheticPolygon &other ) = default;
 
         unsigned rectangle_count_;
 		std::array<Rectangle, MAX_RECTANGLE_COUNT> basicRectangles;
 
-		InlineBoundedIsotheticPolygon();
-		explicit InlineBoundedIsotheticPolygon(const Rectangle &baseRectangle);
-		InlineBoundedIsotheticPolygon(const InlineBoundedIsotheticPolygon &basePolygon);
-
+    
         using iterator = Rectangle *;
         using const_iterator = Rectangle const *;
 
-        iterator begin() override {
+        iterator begin() {
             return basicRectangles.begin();
         }
 
-        iterator end() override {
+        iterator end() {
             return basicRectangles.begin() + rectangle_count_;
         }
 
-        const_iterator begin() const override {
+        const_iterator begin() const {
             return basicRectangles.cbegin();
         }
 
-        const_iterator end() const override {
+        const_iterator end() const {
             return basicRectangles.cbegin() + rectangle_count_;
         }
 
-        void updateRectanglesNoExpand( std::vector<Rectangle>
-                &rectangles ) override {
-            assert( rectangles.size() <= MAX_RECTANGLE_COUNT );
-            std::copy( rectangles.begin(), rectangles.end(),
+        IsotheticPolygon materialize_polygon() override {
+            IsotheticPolygon polygon;
+            std::copy( this->begin(), this->end(),
+                    std::back_inserter(polygon.basicRectangles) );
+            polygon.boundingBox = Rectangle(Point::atInfinity,
+                    Point::atNegInfinity);
+            for( const auto &rectangle : polygon.basicRectangles ) {
+                polygon.boundingBox.expand( rectangle );
+            }
+
+            return polygon;
+        }
+
+        void push_polygon_to_disk( IsotheticPolygon &polygon ) override {
+            assert( polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT );
+            std::copy( polygon.basicRectangles.begin(),
+                    polygon.basicRectangles.end(),
                     basicRectangles.begin() );
-            rectangle_count_ = rectangles.size();
+            rectangle_count_ = polygon.basicRectangles.size();
         }
-
-        Rectangle getBoundingBox() const override {
-            Rectangle boundingBox = basicRectangles[0];
-            for( unsigned i = 1; i < rectangle_count_; i++ ) {
-                boundingBox.expand( basicRectangles[i] );
-            }
-            return boundingBox;
-        }
-
-        void clear() override {
-            rectangle_count_ = 0;
-        }
-
-
-        void recomputeBoundingBox() override { 
-            /*
-            // Recompute the bounding box
-            if( rectangle_count_ == 0 ) {
-                boundingBox = Rectangle::atInfinity;
-            } else {
-                boundingBox = basicRectangles[0];
-                for( unsigned i = 1; i < rectangle_count_; i++ ) {
-                    Rectangle &basicRectangle = basicRectangles[i];
-                    boundingBox.expand(basicRectangle);
-                }
-            }
-            */
-        }
-
-
-		double area() const override;
-		double computeIntersectionArea(const Rectangle &givenRectangle)
-            const override;
-		OptimalExpansion computeExpansionArea(const Point &givenPoint)
-            const override;
-		OptimalExpansion computeExpansionArea(const Rectangle
-                &givenRectangle) const override;
-		void expand(const Point &givenPoint) override;
-		void expand(const Point &givenPoint, const OptimalExpansion
-                &expansion) override;
-		bool intersectsRectangle(const Rectangle &givenRectangle) const
-            override;
-		bool intersectsPolygon(const AbstractIsotheticPolygon
-                &givenPolygon) const override;
-		bool borderOnlyIntersectsRectangle(const Rectangle
-                &givenRectangle) const override;
-		bool containsPoint(const Point &givenPoint) const override;
-		bool disjoint(const AbstractIsotheticPolygon &givenPolygon)
-            const override;
-		std::vector<Rectangle> intersection(const Rectangle
-                &givenRectangle) const override;
-        [[nodiscard]] AbstractIsotheticPolygon *intersection(const
-                AbstractIsotheticPolygon &constraintPolygon)
-            override;
-		[[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
-                &clippingRectangle) override;
-        [[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point
-                &givenPoint, const AbstractIsotheticPolygon
-                &clippingPolygon) override;
-		void maxLimit(double limit, unsigned d=0) override;
-		void minLimit(double limit, unsigned d=0) override;
-		[[nodiscard]] AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
-            override;
-		void remove(unsigned basicRectangleIndex) override;
-		void deduplicate() override;
-		void refine() override;
-        
-		bool exists() const override;
-		bool valid() const override;
-		bool unique() const override;
-		bool lineFree() const override;
-		bool infFree() const override;
-
-		friend bool operator==(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
-		friend bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
-		friend std::ostream& operator<<(std::ostream &os, const InlineBoundedIsotheticPolygon &polygon);
 
 };
 
 bool operator==(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
 bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
 
-// DO NOT MATERIALIZE ON THE STACK
-class InlineUnboundedIsotheticPolygon : public AbstractIsotheticPolygon {
-	public:
-        unsigned rectangle_count_;
-        unsigned max_rectangle_count_;
+struct PageableIsotheticPolygon {
 
-        // Flexible array member
-		Rectangle basicRectangles[1];
+    // Rectangles present in this polygon chunk
+    unsigned rectangle_count_;
 
-        template <typename iter>
-        InlineUnboundedIsotheticPolygon( iter begin, iter end ) {
-            rectangle_count_ = end - begin;
-            max_rectangle_count_ = end - begin;
-            std::copy( begin, end, std::begin(basicRectangles) );
-            recomputeBoundingBox();
-        }
+    // The logical pointer to the next chunk of polygon data
+    tree_node_handle next_;
 
-		InlineUnboundedIsotheticPolygon(const InlineUnboundedIsotheticPolygon &basePolygon);
+    // Flexible array member
+    Rectangle basicRectangles[1];
 
-        using iterator = Rectangle *;
-        using const_iterator = Rectangle const *;
+    static size_t get_max_rectangle_count_per_page() {
+        return ((PAGE_DATA_SIZE -
+                sizeof(PageableIsotheticPolygon))/sizeof(Rectangle))+1;
+    }
 
-        Rectangle getBoundingBox() const override {
-            Rectangle boundingBox = basicRectangles[0];
-            for( unsigned i = 1; i < rectangle_count_; i++ ) {
-                boundingBox.expand( basicRectangles[i] );
-            }
-            return boundingBox;
-        }
-
-        void clear() override {
-            rectangle_count_ = 0;
-        }
-
-        void recomputeBoundingBox() override { 
-            // Recompute the bounding box
-            /*
-            if( rectangle_count_ == 0 ) {
-                boundingBox = Rectangle::atInfinity;
-            } else {
-                boundingBox = basicRectangles[0];
-                for( unsigned i = 1; i < rectangle_count_; i++ ) {
-                    Rectangle &basicRectangle = basicRectangles[i];
-                    boundingBox.expand(basicRectangle);
-                }
-            }
-            */
-        }
-
-        iterator begin() override {
-            return std::begin( basicRectangles );
-        }
-
-        iterator end() override {
-            return std::begin( basicRectangles ) + rectangle_count_;
-        }
-
-        const_iterator begin() const override {
-            return std::cbegin( basicRectangles );
-        }
-
-        const_iterator end() const override {
-            return std::cbegin( basicRectangles ) + rectangle_count_;
-        }
-
-        void updateRectanglesNoExpand( std::vector<Rectangle>
-                &rectangles ) override {
-            assert( rectangles.size() <= max_rectangle_count_ );
-            std::copy( rectangles.begin(), rectangles.end(), std::begin(
-                        basicRectangles ) );
-            rectangle_count_ = rectangles.size();
-        }
-
-
-		double area() const override;
-		double computeIntersectionArea(const Rectangle &givenRectangle)
-            const override;
-		OptimalExpansion computeExpansionArea(const Point &givenPoint)
-            const override;
-		OptimalExpansion computeExpansionArea(const Rectangle
-                &givenRectangle) const override;
-		void expand(const Point &givenPoint) override;
-		void expand(const Point &givenPoint, const OptimalExpansion
-                &expansion) override;
-		bool intersectsRectangle(const Rectangle &givenRectangle) const
-            override;
-		bool intersectsPolygon(const AbstractIsotheticPolygon 
-                &givenPolygon) const override;
-		bool borderOnlyIntersectsRectangle(const Rectangle
-                &givenRectangle) const override;
-		bool containsPoint(const Point &givenPoint) const  override;
-		bool disjoint(const AbstractIsotheticPolygon 
-                &givenPolygon) const override;
-		std::vector<Rectangle> intersection(const Rectangle
-                &givenRectangle) const override;
-		[[nodiscard]] AbstractIsotheticPolygon *intersection(const AbstractIsotheticPolygon 
-                &constraintPolygon) override;
-		[[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const Rectangle
-                &clippingRectangle) override;
-		[[nodiscard]] AbstractIsotheticPolygon *increaseResolution(const Point &givenPoint, const
-                AbstractIsotheticPolygon &clippingPolygon)
-            override;
-		void maxLimit(double limit, unsigned d=0) override;
-		void minLimit(double limit, unsigned d=0) override;
-		[[nodiscard]] AbstractIsotheticPolygon *merge(const AbstractIsotheticPolygon &mergePolygon)
-            override;
-		void remove(unsigned basicRectangleIndex) override;
-		void deduplicate() override;
-		void refine() override;
-        
-		bool exists() const override;
-		bool valid() const override;
-		bool unique() const override;
-		bool lineFree() const override;
-		bool infFree() const override;
-
-		friend bool operator==(const InlineUnboundedIsotheticPolygon
-                &lhs, const InlineUnboundedIsotheticPolygon &rhs);
-		friend bool operator!=(const InlineUnboundedIsotheticPolygon
-                &lhs, const InlineUnboundedIsotheticPolygon &rhs);
-		friend std::ostream& operator<<(std::ostream &os, const InlineUnboundedIsotheticPolygon &polygon);
+    static size_t compute_node_size( unsigned rect_count ) {
+        return sizeof(PageableIsotheticPolygon) + (rect_count-1) *
+            sizeof(Rectangle);
+    }
 
 };
 
-bool operator==(const InlineUnboundedIsotheticPolygon &lhs, const
-        InlineUnboundedIsotheticPolygon &rhs);
-bool operator!=(const InlineUnboundedIsotheticPolygon &lhs, const
-        InlineUnboundedIsotheticPolygon &rhs);
+// DO NOT MATERIALIZE ON THE STACK
+class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
+	public:
+
+        struct Iterator {
+            using iterator_category = std::forward_iterator_tag;
+            // Meaningless, do not compare
+            using difference_type = std::ptrdiff_t;
+            using value_type = Rectangle;
+            using pointer = Rectangle *;
+            using reference = Rectangle &;
+
+            Iterator( InlineUnboundedIsotheticPolygon *outer_poly,
+                    tree_node_allocator *allocator ) :
+                outer_poly_( outer_poly ),
+                allocator_( allocator ),
+                poly_pin_( allocator->buffer_pool_, nullptr, nullptr ),
+                cur_poly_depth_( 0 ),
+                cur_poly_offset_( 0 )
+                {
+                    at_end_ = (outer_poly_->poly_data_.rectangle_count_ == 0 );
+                
+                }
+
+            reference operator*() const {
+                if( cur_poly_depth_ == 0 ) {
+                    return
+                        outer_poly_->poly_data_.basicRectangles[cur_poly_offset_];
+                }
+                // Otherwise, something needs to be pinned
+                assert( poly_pin_ != nullptr );
+                return
+                    poly_pin_->basicRectangles[cur_poly_offset_];
+            }
+
+            pointer operator->() {
+                if( cur_poly_depth_ == 0 ) {
+                    return
+                        &(outer_poly_->poly_data_.basicRectangles[cur_poly_offset_]);
+                }
+                // Otherwise, something needs to be pinned
+                assert( poly_pin_ != nullptr );
+                return
+                    &(poly_pin_->basicRectangles[cur_poly_offset_]);
+
+            }
+
+            Iterator &operator++() {
+                if( at_end_ ) {
+                    return *this;
+                }
+                cur_poly_offset_++;
+                if( cur_poly_depth_ == 0 ) {
+                    // If we are still on the same page, carry on
+                    if( cur_poly_offset_ < 
+                            outer_poly_->poly_data_.rectangle_count_ ) {
+                        return *this;
+                    }
+                    // Overflowed the current page, read next
+                    if( !outer_poly_->poly_data_.next_ ) {
+                        at_end_ = true;
+                        return *this;
+                    }
+
+                    poly_pin_ =
+                        allocator_->get_tree_node<PageableIsotheticPolygon>(
+                                outer_poly_->poly_data_.next_ );
+
+                    cur_poly_depth_++;
+                    cur_poly_offset_ = 0;
+
+                    return *this;
+                }
+
+                // Still on same poly page
+                if( cur_poly_offset_ < poly_pin_->rectangle_count_ ) {
+                    return *this;
+                }
+
+                if( !poly_pin_->next_ ) {
+                    at_end_ = true;
+
+                    return *this;
+                }
+
+                poly_pin_ =
+                    allocator_->get_tree_node<PageableIsotheticPolygon>(
+                            poly_pin_->next_ );
+                cur_poly_offset_++;
+                cur_poly_offset_ = 0;
+
+                return *this;
+            }
+
+            Iterator operator++(int) {
+                Iterator tmp = *this;
+                ++(*this);
+                return tmp;
+            }
+
+            friend bool operator==(
+                const Iterator &a,
+                const Iterator &b 
+            ) {
+                if( a.at_end_ or b.at_end_ ) {
+                    return a.at_end_ and b.at_end_;
+                }
+                return a.outer_poly_ == b.outer_poly_ and 
+                        a.cur_poly_depth_ == b.cur_poly_depth_ and
+                    a.cur_poly_offset_ == b.cur_poly_offset_;
+            }
+            friend bool operator!=(
+                const Iterator &a,
+                const Iterator &b 
+            ) {
+                return !(a == b);
+            }
+
+            InlineUnboundedIsotheticPolygon *outer_poly_;
+            tree_node_allocator *allocator_;
+            pinned_node_ptr<PageableIsotheticPolygon> poly_pin_;
+
+            unsigned cur_poly_depth_;
+            unsigned cur_poly_offset_;
+            bool at_end_;
+        };
+
+        // Total rectangle count across all of the polygons
+        unsigned total_rectangle_count_;
+        unsigned cur_overflow_pages_;
+        tree_node_allocator *allocator_;
+
+        // First page of polygon data, we'll have to chase pointers for
+        // the rest
+        // N.B., you must malloc this struct with the appropriate size
+        // for the first polygon's data, the rest will be taken care of
+        // by the constructor
+        PageableIsotheticPolygon poly_data_;
+
+        InlineUnboundedIsotheticPolygon( tree_node_allocator *allocator ) {
+            poly_data_.next_ = tree_node_handle( nullptr );
+            poly_data_.rectangle_count_ = 0;
+            total_rectangle_count_ = 0;
+            cur_overflow_pages_ = 0;
+            allocator_ = allocator;
+        }
+
+        Iterator begin() {
+            return Iterator( this, allocator_ );
+        }
+
+        Iterator end() {
+            Iterator iter( this, allocator_ );
+            iter.at_end_ = true;
+            return iter;
+        }
+
+        IsotheticPolygon materialize_polygon() override {
+            // Copy all the sequentially arranged polygon stuff into an
+            // in-memory buffer
+            // Do operations there
+
+            IsotheticPolygon polygon;
+            for( auto &rectangle : *this ) {
+                polygon.basicRectangles.push_back( rectangle );
+            }
+
+            polygon.boundingBox = Rectangle(Point::atInfinity,
+                    Point::atNegInfinity);
+            for( const auto &rectangle : polygon.basicRectangles ) {
+                polygon.boundingBox.expand( rectangle );
+            }
+
+            return polygon;
+        }
+
+        void push_polygon_to_disk( IsotheticPolygon &in_memory_polygon ) override {
+
+            size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+                    sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+                + 1;
+
+            size_t max_rectangles_per_page =
+                PageableIsotheticPolygon::get_max_rectangle_count_per_page();
+
+
+            // We are always at least one page.
+            unsigned new_rectangle_count =
+                in_memory_polygon.basicRectangles.size();
+            unsigned copy_count = std::min( new_rectangle_count,
+                    (unsigned) max_rects_on_first_page);
+            std::copy( in_memory_polygon.basicRectangles.begin(),
+                    in_memory_polygon.basicRectangles.begin() + copy_count,
+                    std::begin( poly_data_.basicRectangles ) );
+            poly_data_.rectangle_count_ = copy_count;
+
+            if( copy_count == new_rectangle_count ) {
+                total_rectangle_count_ = new_rectangle_count;
+                poly_data_.next_ = tree_node_handle( nullptr );
+                return;
+            }
+
+            tree_node_handle next_poly_handle = poly_data_.next_;
+            pinned_node_ptr<PageableIsotheticPolygon> poly_pin(
+                    allocator_->buffer_pool_, nullptr, nullptr );
+
+            while( copy_count < new_rectangle_count ) {
+                //Check if we already have a page alloc'd
+                if( next_poly_handle == nullptr ) {
+                    auto alloc_data =
+                        allocator_->create_new_tree_node<PageableIsotheticPolygon>(
+                                PAGE_DATA_SIZE );
+                    new (&(*(alloc_data.first)))
+                        PageableIsotheticPolygon();
+                    next_poly_handle = alloc_data.second;
+                    if( poly_pin == nullptr ) {
+                        poly_data_.next_ = next_poly_handle;
+                    } else {
+                        poly_pin->next_ = next_poly_handle;
+                    }
+                    poly_pin = alloc_data.first;
+                    next_poly_handle = tree_node_handle(nullptr);
+                } else {
+                    poly_pin = allocator_->get_tree_node<PageableIsotheticPolygon>(
+                            next_poly_handle );
+                    cur_overflow_pages_++;
+                    next_poly_handle = poly_pin->next_;
+                }
+
+                unsigned entries_to_copy = std::min( new_rectangle_count
+                        - copy_count, (unsigned) max_rectangles_per_page );
+                std::copy( in_memory_polygon.basicRectangles.begin() + copy_count,
+                        in_memory_polygon.basicRectangles.begin() + copy_count +
+                        entries_to_copy, std::begin(
+                            poly_pin->basicRectangles ) );
+                copy_count += entries_to_copy;
+                poly_pin->rectangle_count_ = entries_to_copy;
+            }
+
+            poly_pin->next_ = tree_node_handle( nullptr );
+            total_rectangle_count_ = new_rectangle_count;
+
+        }
+};
 
 unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ); 
 

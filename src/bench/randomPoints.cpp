@@ -488,9 +488,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	else if (configU["tree"] == NIR_TREE)
 	{
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
-		//spatialIndex = new nirtree::NIRTree(3,7);
-		spatialIndex = new nirtreedisk::NIRTreeDisk<3,7>(
-                4096*10*13000, "nirdiskbacked_california.txt");
+		spatialIndex = new nirtree::NIRTree(3,7);
+		//spatialIndex = new nirtreedisk::NIRTreeDisk<3,7>(
+        //        4096*10*13000, "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{

@@ -1,5 +1,8 @@
 #include <catch2/catch.hpp>
 #include <util/geometry.h>
+#include <storage/tree_node_allocator.h>
+#include <storage/page.h>
+#include <unistd.h>
 
 TEST_CASE("Geometry: testPointEquality")
 {
@@ -1639,4 +1642,288 @@ TEST_CASE("Geometry: testPolygonRefine")
 	p1.refine();
 	REQUIRE(p1.basicRectangles.size() == 1);
 	REQUIRE(p1.basicRectangles[0] == Rectangle(0.0, 0.0, 6.0, 4.0));
+}
+
+TEST_CASE( "Geometry: InlineBoundedIsotheticPolygon materialization" ) {
+    InlineBoundedIsotheticPolygon inline_poly;
+    Point one_one(1,1);
+    Point two_two(2,2);
+    Rectangle one_two_rect( one_one, two_two );
+    inline_poly.basicRectangles = { one_two_rect, one_two_rect,
+        one_two_rect, one_two_rect, one_two_rect };
+    inline_poly.rectangle_count_ = 5;
+    IsotheticPolygon materialized_rect =
+        inline_poly.materialize_polygon();
+    REQUIRE( materialized_rect.basicRectangles.size() == 5 );
+    for( const auto &rect : materialized_rect.basicRectangles ) {
+        REQUIRE( rect == one_two_rect );
+    }
+
+    auto iter1 = inline_poly.begin();
+    auto iter2 = materialized_rect.basicRectangles.begin();
+    for( int i = 0; i < 5; i++ ) {
+        REQUIRE( *iter1 == *iter2 );
+        iter1++;
+        iter2++;
+    }
+    REQUIRE( iter1 == inline_poly.end() );
+    REQUIRE( iter2 == materialized_rect.basicRectangles.end() );
+}
+
+TEST_CASE( "Geometry: InlineBoundedIsotheticPolygon smaller, materialization" ) {
+    InlineBoundedIsotheticPolygon inline_poly;
+    Point one_one(1,1);
+    Point two_two(2,2);
+    Rectangle one_two_rect( one_one, two_two );
+    inline_poly.basicRectangles = { one_two_rect, one_two_rect,
+        one_two_rect };
+    inline_poly.rectangle_count_ = 3;
+    IsotheticPolygon materialized_rect =
+        inline_poly.materialize_polygon();
+    REQUIRE( materialized_rect.basicRectangles.size() == 3 );
+    for( const auto &rect : materialized_rect.basicRectangles ) {
+        REQUIRE( rect == one_two_rect );
+    }
+
+    auto iter1 = inline_poly.begin();
+    auto iter2 = materialized_rect.basicRectangles.begin();
+    for( int i = 0; i < 3; i++ ) {
+        REQUIRE( *iter1 == *iter2 );
+        iter1++;
+        iter2++;
+    }
+    REQUIRE( iter1 == inline_poly.end() );
+    REQUIRE( iter2 == materialized_rect.basicRectangles.end() );
+}
+
+TEST_CASE( "Geometry: InlineBoundedIsotheticPolygon push to disk" ) {
+    Point one_one(1,1);
+    Point two_two(2,2);
+    Rectangle one_two_rect( one_one, two_two );
+
+    InlineBoundedIsotheticPolygon inline_poly;
+    IsotheticPolygon local_poly;
+    local_poly.basicRectangles = { one_two_rect, one_two_rect,
+        one_two_rect };
+    inline_poly.push_polygon_to_disk( local_poly );
+    REQUIRE( inline_poly.rectangle_count_ == 3 );
+    auto iter1 = inline_poly.begin();
+    auto iter2 = local_poly.basicRectangles.begin();
+    for( int i = 0; i < 3; i++ ) {
+        REQUIRE( *iter1 == *iter2 );
+        iter1++;
+        iter2++;
+    }
+    REQUIRE( iter1 == inline_poly.end() );
+    REQUIRE( iter2 == local_poly.basicRectangles.end() );
+}
+
+TEST_CASE( "Geometry: Materialize single page big poly" ) {
+
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    auto alloc_data =
+        allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                PAGE_DATA_SIZE );
+    new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+            &allocator );
+    pinned_node_ptr<InlineUnboundedIsotheticPolygon> inline_poly = alloc_data.first;
+
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
+    REQUIRE( sizeof(InlineUnboundedIsotheticPolygon) +
+            (sizeof(Rectangle) * (max_rects_on_first_page)) +
+            (sizeof(page_header)) > PAGE_SIZE );
+
+    REQUIRE( sizeof(InlineUnboundedIsotheticPolygon) +
+            (sizeof(Rectangle) * (max_rects_on_first_page-1)) +
+            (sizeof(page_header)) <= PAGE_SIZE );
+
+    for( size_t i = 0; i < max_rects_on_first_page; i++ ) {
+        inline_poly->poly_data_.basicRectangles[i] = Rectangle(
+                Point(i,i), Point(i,i) );
+    }
+    inline_poly->poly_data_.rectangle_count_ = max_rects_on_first_page;
+    inline_poly->total_rectangle_count_ = max_rects_on_first_page;
+
+    IsotheticPolygon materialized_poly =
+        inline_poly->materialize_polygon();
+    REQUIRE( materialized_poly.basicRectangles.size() ==
+            inline_poly->total_rectangle_count_ );
+
+    auto iter1 = inline_poly->begin();
+    auto iter2 = materialized_poly.basicRectangles.begin();
+    for( size_t i = 0; i < max_rects_on_first_page; i++ ) {
+        REQUIRE( *iter1 == *iter2 );
+        iter1++;
+        iter2++;
+    }
+    REQUIRE( iter1 == inline_poly->end() );
+    REQUIRE( iter2 == materialized_poly.basicRectangles.end() );
+
+}
+
+TEST_CASE( "Geometry: Materialize multi-page big poly" ) {
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    auto alloc_data =
+        allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                PAGE_DATA_SIZE );
+    new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+            &allocator );
+    pinned_node_ptr<InlineUnboundedIsotheticPolygon> inline_poly = alloc_data.first;
+
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
+    size_t max_rectangles_per_page =
+        PageableIsotheticPolygon::get_max_rectangle_count_per_page();
+
+    size_t total_rectangles = max_rects_on_first_page + 2 *
+        max_rectangles_per_page - 5;
+
+    for( size_t i = 0; i < max_rects_on_first_page; i++ ) {
+        inline_poly->poly_data_.basicRectangles[i] = Rectangle(
+                Point(i,i), Point(i,i) );
+    }
+    inline_poly->poly_data_.rectangle_count_ = max_rects_on_first_page;
+    inline_poly->total_rectangle_count_ = total_rectangles;
+
+    auto poly_alloc_data =
+        allocator.create_new_tree_node<PageableIsotheticPolygon>(
+                PAGE_DATA_SIZE );
+    pinned_node_ptr<PageableIsotheticPolygon> pageable_poly =
+        poly_alloc_data.first;
+    new (&(*(poly_alloc_data.first))) PageableIsotheticPolygon();
+
+    inline_poly->poly_data_.next_ = poly_alloc_data.second;
+    pageable_poly->rectangle_count_ = max_rectangles_per_page;
+    for( size_t i = 0; i < max_rectangles_per_page; i++ ) {
+        pageable_poly->basicRectangles[i] = Rectangle( Point(i,i),
+                Point(i,i) );
+    }
+
+    poly_alloc_data =
+        allocator.create_new_tree_node<PageableIsotheticPolygon>(
+                PAGE_DATA_SIZE );
+    new (&(*poly_alloc_data.first)) PageableIsotheticPolygon();
+    pageable_poly->next_ = poly_alloc_data.second;
+
+    pageable_poly = poly_alloc_data.first;
+    pageable_poly->rectangle_count_ = max_rectangles_per_page-5;
+    for( size_t i = 0; i < max_rectangles_per_page-5; i++ ) {
+        pageable_poly->basicRectangles[i] = Rectangle( Point(i,i),
+                Point(i,i) );
+    }
+    pageable_poly->next_ = tree_node_handle(nullptr);
+
+    IsotheticPolygon materialized_poly =
+        inline_poly->materialize_polygon();
+    REQUIRE( materialized_poly.basicRectangles.size() ==
+            inline_poly->total_rectangle_count_ );
+
+    auto iter1 = inline_poly->begin();
+    auto iter2 = materialized_poly.basicRectangles.begin();
+    for( size_t i = 0; i < max_rects_on_first_page + (2 *
+            max_rectangles_per_page)-5; i++ ) {
+        REQUIRE( *iter1 == *iter2 );
+        iter1++;
+        iter2++;
+    }
+    REQUIRE( iter1 == inline_poly->end() );
+    REQUIRE( iter2 == materialized_poly.basicRectangles.end() );
+
+}
+
+TEST_CASE( "Write single_page big poly to disk" ) {
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
+    IsotheticPolygon polygon;
+    for( size_t i = 0; i < max_rects_on_first_page-5; i++ ) {
+        polygon.basicRectangles.push_back( Rectangle( Point(i,i),
+                    Point(i,i) ) );
+    }
+
+    auto alloc_data = allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            PAGE_DATA_SIZE );
+
+    new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+            &allocator );
+
+    auto inline_poly = alloc_data.first;
+
+    inline_poly->push_polygon_to_disk( polygon );
+
+    REQUIRE( inline_poly->total_rectangle_count_ ==
+            max_rects_on_first_page-5 );
+    REQUIRE( inline_poly->poly_data_.rectangle_count_ ==
+            max_rects_on_first_page-5 );
+    auto iter1 = inline_poly->begin();
+    auto iter2 = polygon.basicRectangles.begin();
+    for( size_t i = 0; i < max_rects_on_first_page-5; i++ ) {
+        REQUIRE( *iter1 == *iter2 );
+        iter1++;
+        iter2++;
+    }
+    REQUIRE( iter1 == inline_poly->end() );
+    REQUIRE( iter2 == polygon.basicRectangles.end() );
+    REQUIRE( !inline_poly->poly_data_.next_ );
+}
+
+TEST_CASE( "Write multi-page big poly to disk" ) {
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
+    size_t max_rectangles_per_page =
+        PageableIsotheticPolygon::get_max_rectangle_count_per_page();
+
+    IsotheticPolygon polygon;
+    for( size_t i = 0; i < max_rects_on_first_page +
+            2*max_rectangles_per_page-5; i++ ) {
+        polygon.basicRectangles.push_back( Rectangle( Point(i,i),
+                    Point(i,i) ) );
+    }
+
+    auto alloc_data = allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            PAGE_DATA_SIZE );
+
+    new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+            &allocator );
+
+    auto inline_poly = alloc_data.first;
+
+    inline_poly->push_polygon_to_disk( polygon );
+
+    REQUIRE( inline_poly->total_rectangle_count_ ==
+            max_rects_on_first_page + 2 * max_rectangles_per_page - 5 );
+    REQUIRE( inline_poly->poly_data_.rectangle_count_ ==
+            max_rects_on_first_page );
+    auto iter1 = inline_poly->begin();
+    auto iter2 = polygon.basicRectangles.begin();
+    for( size_t i = 0; i < max_rects_on_first_page + 2 *
+            max_rectangles_per_page -5; i++ ) {
+        REQUIRE( *iter1 == *iter2 );
+        iter1++;
+        iter2++;
+    }
+    REQUIRE( iter1 == inline_poly->end() );
+    REQUIRE( iter2 == polygon.basicRectangles.end() );
 }
