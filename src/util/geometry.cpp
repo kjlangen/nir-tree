@@ -1125,42 +1125,6 @@ void IsotheticPolygon::refine()
 	assert(basicRectangles.size() > 0);
 }
 
-void IsotheticPolygon::shrink(const std::vector<Point> &pinPoints)
-{
-	// Early exit
-	if (pinPoints.size() == 0 || basicRectangles.size() == 0)
-	{
-		return;
-	}
-
-	assert(pinPoints.size() > 0);
-
-	std::vector<Rectangle> rectangleSetShrunk;
-	for (const Rectangle &basicRectangle : basicRectangles)
-	{
-		bool addRectangle = false;
-		Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
-		for (const Point &pinPoint : pinPoints)
-		{
-			if (basicRectangle.containsPoint(pinPoint))
-			{
-				shrunkRectangle.expand(pinPoint);
-				addRectangle = true;
-				assert(shrunkRectangle.containsPoint(pinPoint));
-			}
-		}
-
-		if (addRectangle)
-		{
-			rectangleSetShrunk.emplace_back(std::move(shrunkRectangle));
-		}
-	}
-
-	assert(rectangleSetShrunk.size() > 0);
-
-	basicRectangles.swap(rectangleSetShrunk);
-}
-
 bool IsotheticPolygon::exists() const
 {
 	for (const Rectangle &basicRectangle : basicRectangles)
@@ -1285,3 +1249,14 @@ unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ) {
     return sizeof(InlineUnboundedIsotheticPolygon) +
         (num_rects-1)*sizeof(Rectangle);
 }
+
+bool operator==(const InlineBoundedIsotheticPolygon &lhs, const
+        InlineBoundedIsotheticPolygon &rhs) {
+    return lhs.rectangle_count_ == rhs.rectangle_count_ and
+        lhs.basicRectangles == rhs.basicRectangles;
+}
+bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const
+        InlineBoundedIsotheticPolygon &rhs) {
+    return !(lhs == rhs);
+}
+

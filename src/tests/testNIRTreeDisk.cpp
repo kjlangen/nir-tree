@@ -56,8 +56,13 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
         new (&(*alloc_data.first)) NodeType( &tree, child0, root );
         nirtreedisk::Node<3,7>::NodeEntry entry =
             createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,nirtreedisk::Branch>(
-                    InlineBoundedIsotheticPolygon( Rectangle(8.0, 1.0,
-                            12.0, 5.0) ), child0);
+                    InlineBoundedIsotheticPolygon(), child0);
+
+        std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(8.0, 1.0, 12.0, 5.0) )
+                    );
+
         rootNode->addEntryToNode( entry );
 
         alloc_data =
@@ -66,8 +71,12 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
         new (&(*alloc_data.first)) NodeType( &tree, child1, root );
         entry =
             createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,nirtreedisk::Branch>(
-                    InlineBoundedIsotheticPolygon( Rectangle(12.0, -4.0,
-                            16.0, -2.0) ), child1);
+                    InlineBoundedIsotheticPolygon(), child1);
+
+        std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(12.0, -4.0, 16.0, -2.0) ) );
+
         rootNode->addEntryToNode( entry );
 
         alloc_data =
@@ -76,8 +85,11 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
         new (&(*alloc_data.first)) NodeType( &tree, child2, root );
         entry =
             createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,nirtreedisk::Branch>(
-                    InlineBoundedIsotheticPolygon( Rectangle(8.0, -6.0,
-                            10.0, -4.0) ), child2 );
+                    InlineBoundedIsotheticPolygon( ), child2 );
+
+        std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(8.0, -6.0, 10.0, -4.0) ) );
         rootNode->addEntryToNode( entry );
 
         REQUIRE( rootNode->cur_offset_ == 3 );
@@ -97,32 +109,43 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
             tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
         tree_node_handle child0 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType( &tree, child0, root );
-        rootNode->addEntryToNode( 
-            createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
+
+        auto entry = createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
             nirtreedisk::Branch>(
-                InlineBoundedIsotheticPolygon(Rectangle(8.0, 12.0, 10.0,
-                    14.0)), child0) );
+                InlineBoundedIsotheticPolygon(), child0); 
+
+        std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(8.0, 12.0, 10.0, 14.0) ) );
+        rootNode->addEntryToNode( entry );
+
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
         tree_node_handle child1 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType( &tree, child1, root );
-        rootNode->addEntryToNode( 
-            createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
+
+        entry = createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
             nirtreedisk::Branch>(
-                InlineBoundedIsotheticPolygon(Rectangle(10.0, 12.0,
-                    12.0, 14.0)), child1) );
+                InlineBoundedIsotheticPolygon(), child1);
+        std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(10.0, 12.0, 12.0, 14.0) ) );
+        rootNode->addEntryToNode( entry );
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
         tree_node_handle child2 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType( &tree, child2, root );
-        rootNode->addEntryToNode(
-            createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
+        entry = createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
             nirtreedisk::Branch>(
-                InlineBoundedIsotheticPolygon(Rectangle(12.0, 12.0,
-                    14.0, 14.0)), child2) );
+                InlineBoundedIsotheticPolygon(), child2);
+        std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(12.0, 12.0, 14.0, 14.0) ) );
 
+        rootNode->addEntryToNode( entry );
+            
         REQUIRE( rootNode->cur_offset_ ==  3 );
 
         REQUIRE(rootNode->boundingBox() == Rectangle(8.0, 12.0, 14.0, 14.0));
@@ -145,51 +168,66 @@ TEST_CASE("NIRTreeDisk: testUpdateBoundingBox") {
     new (&(*alloc_data.first)) NodeType( &tree, child0, root );
     auto child0Node = alloc_data.first;
 	child0Node->parent = root;
-    parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
-        nirtreedisk::Branch>(InlineBoundedIsotheticPolygon(
-                Rectangle(8.0, -6.0, 10.0, -4.0)), child0) );
+    auto entry = createBranchEntry<NodeType::NodeEntry,
+        nirtreedisk::Branch>(InlineBoundedIsotheticPolygon(), child0);
+
+    std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(8.0, -6.0, 10.0, -4.0) ) );
+
+    parentNode->addEntryToNode( entry );
 
     alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
     tree_node_handle child1 = alloc_data.second;
     new (&(*alloc_data.first)) NodeType( &tree, child1, root );
     auto child1Node = alloc_data.first;
     child1Node->parent = root;
-    parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
-        nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(12.0,
-                    -4.0, 16.0, -2.0)), child1) );
 
+    entry = createBranchEntry<NodeType::NodeEntry,
+        nirtreedisk::Branch>(
+            InlineBoundedIsotheticPolygon(), child1);
+    std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(12.0, -4.0, 16.0, -2.0) ) );
+    parentNode->addEntryToNode(entry);
 
     alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
     tree_node_handle child2 = alloc_data.second;
     new (&(*alloc_data.first)) NodeType( &tree, child2, root );
     auto child2Node = alloc_data.first;
     child2Node->parent = root;
-    parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
+    
+    entry = createBranchEntry<NodeType::NodeEntry,
         nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(10.0,
-                    12.0, 12.0, 14.0)), child2) );
+            InlineBoundedIsotheticPolygon(), child2);
+    std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(10.0, 12.0, 12.0, 14.0) ) );
 
+    parentNode->addEntryToNode( entry );
     alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
     tree_node_handle child3 = alloc_data.second;
     new (&(*alloc_data.first)) NodeType( &tree, child3, root );
     auto child3Node = alloc_data.first;
     child3Node->parent = root;
-    parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
+    entry = createBranchEntry<NodeType::NodeEntry,
         nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(12.0,
-                    12.0, 14.0, 14.0)), child3) );
+            InlineBoundedIsotheticPolygon(), child3);
+    std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
+                    ).boundingPoly ).push_polygon_to_disk(
+                    IsotheticPolygon( Rectangle(12.0, 12.0, 14.0, 14.0) ) );
 
+    parentNode->addEntryToNode( entry );
     REQUIRE( parentNode->cur_offset_ == 4 );
 
-	parentNode->updateBranch(child3,
-            InlineBoundedIsotheticPolygon(Rectangle(3.0, 3.0, 5.0,
-                    5.0)));
+    InlineBoundedIsotheticPolygon stack_poly;
+    IsotheticPolygon loc_poly(Rectangle(3.0, 3.0, 5.0,5.0) );
+    stack_poly.push_polygon_to_disk( loc_poly );
+	parentNode->updateBranch(child3, stack_poly);
 
-	const auto &b = std::get<nirtreedisk::Branch>(parentNode->entries[3]);
+	auto &b = std::get<nirtreedisk::Branch>(parentNode->entries[3]);
     auto &poly = std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly );
-	REQUIRE(poly  ==
-            InlineBoundedIsotheticPolygon(Rectangle(3.0, 3.0, 5.0, 5.0)));
+	REQUIRE(poly.materialize_polygon().boundingBox == Rectangle(3.0, 3.0, 5.0, 5.0));
     unlink( "nirdiskbacked.txt" );
 }
 
@@ -718,6 +756,7 @@ TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
             tree.insert(Point(i,i));
         }
 
+
         //REQUIRE(rootNode->cur_offset_ == 2);
         auto root = tree.root;
         auto root_node = tree.node_allocator_.get_tree_node<NodeType>(
@@ -805,9 +844,5 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
         }
     }
     unlink( "nirdiskbacked.txt" );
-
-    std::cout << sizeof( nirtreedisk::Node<3,7> ) << std::endl;
-    std::cout << (sizeof( InlineBoundedIsotheticPolygon ) +
-        sizeof(tree_node_handle)) * 8 << std::endl;
 
 }

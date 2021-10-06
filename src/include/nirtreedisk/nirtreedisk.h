@@ -44,9 +44,7 @@ namespace nirtreedisk
 			NIRTreeDisk( size_t memory_budget, std::string backing_file  ) :
                 node_allocator_( memory_budget, backing_file )
             {
-                std::cout << "Creating file of size: " << memory_budget << std::endl;
-                    node_allocator_.initialize();
-                std::cout << "Done." << std::endl;
+                node_allocator_.initialize();
 
                 size_t existing_page_count =
                     node_allocator_.buffer_pool_.get_preexisting_page_count();
@@ -60,7 +58,6 @@ namespace nirtreedisk
                         Node<min_branch_factor,max_branch_factor>( this,
                                 tree_node_handle(nullptr), root );
 
-                    std::cout << "Done!" << std::endl;
                     return;
                 }
 

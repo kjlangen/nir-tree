@@ -11,9 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#ifndef __GEOMETRY__
-#define __GEOMETRY__
+#pragma once
 
 #include <iostream>
 #include <algorithm>
@@ -173,7 +171,66 @@ class IsotheticPolygon
 		void deduplicate();
 		void refine();
 
-        void shrink(const std::vector<Point> &pinPoints);
+        void shrink( const std::vector<Point> &pinPoints ) {
+            // Early exit
+            if( basicRectangles.size() == 0 || pinPoints.size() == 0 ) {
+                return;
+            }
+
+            std::vector<Rectangle> rectangleSetShrunk;
+            for (const Rectangle &basicRectangle : basicRectangles) {
+                bool addRectangle = false;
+                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
+                for( const auto &pinPoint : pinPoints ) {
+                    if( basicRectangle.containsPoint(pinPoint) ) {
+                        shrunkRectangle.expand( pinPoint );
+                        addRectangle = true;
+                        assert( shrunkRectangle.containsPoint(pinPoint) );
+                    }
+                }
+
+                if( addRectangle ) {
+                    rectangleSetShrunk.emplace_back( std::move(shrunkRectangle) );
+                }
+            }
+
+            assert(rectangleSetShrunk.size() > 0);
+
+            basicRectangles.swap(rectangleSetShrunk);
+
+        }
+
+
+        template <typename iter>
+        void shrink( iter begin, iter end ){
+            // Early exit
+            if( basicRectangles.size() == 0 || begin == end ) {
+                return;
+            }
+
+            std::vector<Rectangle> rectangleSetShrunk;
+            for (const Rectangle &basicRectangle : basicRectangles) {
+                bool addRectangle = false;
+                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
+                for( auto cur_iter = begin; cur_iter != end; cur_iter++ ) {
+                    Point &pinPoint = std::get<Point>( *cur_iter );
+                    if( basicRectangle.containsPoint(pinPoint) ) {
+                        shrunkRectangle.expand( pinPoint );
+                        addRectangle = true;
+                        assert( shrunkRectangle.containsPoint(pinPoint) );
+                    }
+                }
+
+                if( addRectangle ) {
+                    rectangleSetShrunk.emplace_back( std::move(shrunkRectangle) );
+                }
+            }
+
+            assert(rectangleSetShrunk.size() > 0);
+
+            basicRectangles.swap(rectangleSetShrunk);
+
+        }
 
 		bool exists() const;
 		bool valid() const;
@@ -192,7 +249,7 @@ bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 class DiskBackedIsotheticPolygon {
 public:
     virtual IsotheticPolygon materialize_polygon() = 0;
-    virtual void push_polygon_to_disk( IsotheticPolygon &polygon ) = 0;
+    virtual void push_polygon_to_disk( const IsotheticPolygon &polygon ) = 0;
 };
 
 #define MAX_RECTANGLE_COUNT 5 
@@ -201,6 +258,11 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
 
         InlineBoundedIsotheticPolygon() {
             rectangle_count_ = 0;
+        }
+
+        InlineBoundedIsotheticPolygon( const Rectangle &rect ) {
+            rectangle_count_ = 1;
+            basicRectangles[0] = rect;
         }
 
         InlineBoundedIsotheticPolygon( const
@@ -245,18 +307,26 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
             return polygon;
         }
 
-        void push_polygon_to_disk( IsotheticPolygon &polygon ) override {
+        void push_polygon_to_disk( const IsotheticPolygon &polygon ) override {
             assert( polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT );
             std::copy( polygon.basicRectangles.begin(),
                     polygon.basicRectangles.end(),
                     basicRectangles.begin() );
             rectangle_count_ = polygon.basicRectangles.size();
         }
+		friend bool operator==(const InlineBoundedIsotheticPolygon &lhs,
+                const InlineBoundedIsotheticPolygon &rhs);
+		friend bool operator!=(const InlineBoundedIsotheticPolygon&lhs,
+                const InlineBoundedIsotheticPolygon &rhs);
+
 
 };
 
-bool operator==(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
-bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const InlineBoundedIsotheticPolygon &rhs);
+bool operator==(const InlineBoundedIsotheticPolygon &lhs, const
+        InlineBoundedIsotheticPolygon &rhs);
+
+bool operator!=(const InlineBoundedIsotheticPolygon &lhs, const
+        InlineBoundedIsotheticPolygon &rhs);
 
 struct PageableIsotheticPolygon {
 
@@ -457,7 +527,7 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
             return polygon;
         }
 
-        void push_polygon_to_disk( IsotheticPolygon &in_memory_polygon ) override {
+        void push_polygon_to_disk( const IsotheticPolygon &in_memory_polygon ) override {
 
             size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
                     sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
@@ -527,5 +597,3 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
 };
 
 unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ); 
-
-#endif

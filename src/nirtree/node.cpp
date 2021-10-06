@@ -330,7 +330,9 @@ namespace nirtree
 					if (context->branches[smallestExpansionBranchIndex].child->data.size() > 0)
 					{
 						context->branches[smallestExpansionBranchIndex].child->data.push_back(givenPoint);
-						context->branches[smallestExpansionBranchIndex].boundingPoly.shrink(context->branches[smallestExpansionBranchIndex].child->data);
+						context->branches[smallestExpansionBranchIndex].boundingPoly.shrink(
+                                context->branches[smallestExpansionBranchIndex].child->data
+                        );
 						context->branches[smallestExpansionBranchIndex].child->data.pop_back();
 					}
 
@@ -521,8 +523,12 @@ namespace nirtree
 			}
 			data.clear();
 
-			split.leftBranch.boundingPoly.shrink(split.leftBranch.child->data);
-			split.rightBranch.boundingPoly.shrink(split.rightBranch.child->data);
+			split.leftBranch.boundingPoly.shrink(
+                    split.leftBranch.child->data
+            );
+			split.rightBranch.boundingPoly.shrink(
+                    split.rightBranch.child->data
+            );
 		}
 		else
 		{
