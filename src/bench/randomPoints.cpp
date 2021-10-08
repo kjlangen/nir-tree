@@ -488,9 +488,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	else if (configU["tree"] == NIR_TREE)
 	{
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new nirtree::NIRTree(3,7);
-		//spatialIndex = new nirtreedisk::NIRTreeDisk<3,7>(
-        //        4096*10*13000, "nirdiskbacked_california.txt");
+		//spatialIndex = new nirtree::NIRTree(3,7);
+		spatialIndex = new nirtreedisk::NIRTreeDisk<3,7>(
+                4096*10*13000, "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -575,6 +575,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         if( totalInserts % 1000 == 0 ) {
 		    std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
         }
+
+        if( totalInserts > 10000 ) {
+            break;
+        }
 		// std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
 	}
 	std::cout << "Insertion OK." << std::endl;
@@ -618,6 +622,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
+
+        if( totalSearches > 10000 ) {
+            break;
+        }
 		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Search OK." << std::endl;
@@ -629,6 +637,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
+    return;
 
 	// Search for rectangles
 	unsigned rangeSearchChecksum = 0;

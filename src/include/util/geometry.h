@@ -170,6 +170,7 @@ class IsotheticPolygon
 		void remove(unsigned basicRectangleIndex);
 		void deduplicate();
 		void refine();
+        void recomputeBoundingBox();
 
         void shrink( const std::vector<Point> &pinPoints ) {
             // Early exit
@@ -256,13 +257,19 @@ public:
 class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
 	public:
 
-        InlineBoundedIsotheticPolygon() {
+        InlineBoundedIsotheticPolygon() :
+            summary_rectangle_(
+                    Point(std::numeric_limits<double>::infinity()),
+                    Point(-std::numeric_limits<double>::infinity())
+            )
+        {
             rectangle_count_ = 0;
         }
 
         InlineBoundedIsotheticPolygon( const Rectangle &rect ) {
             rectangle_count_ = 1;
             basicRectangles[0] = rect;
+            summary_rectangle_ = basicRectangles[0];
         }
 
         InlineBoundedIsotheticPolygon( const
@@ -270,9 +277,6 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
 
         InlineBoundedIsotheticPolygon &operator=( const
                 InlineBoundedIsotheticPolygon &other ) = default;
-
-        unsigned rectangle_count_;
-		std::array<Rectangle, MAX_RECTANGLE_COUNT> basicRectangles;
 
     
         using iterator = Rectangle *;
@@ -298,12 +302,7 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
             IsotheticPolygon polygon;
             std::copy( this->begin(), this->end(),
                     std::back_inserter(polygon.basicRectangles) );
-            polygon.boundingBox = Rectangle(Point::atInfinity,
-                    Point::atNegInfinity);
-            for( const auto &rectangle : polygon.basicRectangles ) {
-                polygon.boundingBox.expand( rectangle );
-            }
-
+            polygon.boundingBox = summary_rectangle_;
             return polygon;
         }
 
@@ -313,11 +312,27 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
                     polygon.basicRectangles.end(),
                     basicRectangles.begin() );
             rectangle_count_ = polygon.basicRectangles.size();
+            summary_rectangle_ = polygon.boundingBox;
         }
+
+        unsigned get_rectangle_count() const {
+            return rectangle_count_;
+        }
+
+        Rectangle &get_summary_rectangle() {
+            return summary_rectangle_;
+
+        }
+
 		friend bool operator==(const InlineBoundedIsotheticPolygon &lhs,
                 const InlineBoundedIsotheticPolygon &rhs);
 		friend bool operator!=(const InlineBoundedIsotheticPolygon&lhs,
                 const InlineBoundedIsotheticPolygon &rhs);
+
+private:
+        unsigned rectangle_count_;
+        Rectangle summary_rectangle_;
+		std::array<Rectangle, MAX_RECTANGLE_COUNT> basicRectangles;
 
 
 };
@@ -358,7 +373,7 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
         struct Iterator {
             using iterator_category = std::forward_iterator_tag;
             // Meaningless, do not compare
-            using difference_type = std::ptrdiff_t;
+            using difference_type = void;
             using value_type = Rectangle;
             using pointer = Rectangle *;
             using reference = Rectangle &;
@@ -478,17 +493,6 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
             bool at_end_;
         };
 
-        // Total rectangle count across all of the polygons
-        unsigned total_rectangle_count_;
-        unsigned cur_overflow_pages_;
-        tree_node_allocator *allocator_;
-
-        // First page of polygon data, we'll have to chase pointers for
-        // the rest
-        // N.B., you must malloc this struct with the appropriate size
-        // for the first polygon's data, the rest will be taken care of
-        // by the constructor
-        PageableIsotheticPolygon poly_data_;
 
         InlineUnboundedIsotheticPolygon( tree_node_allocator *allocator ) {
             poly_data_.next_ = tree_node_handle( nullptr );
@@ -535,6 +539,8 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
 
             size_t max_rectangles_per_page =
                 PageableIsotheticPolygon::get_max_rectangle_count_per_page();
+
+            summary_rectangle_ = in_memory_polygon.boundingBox;
 
 
             // We are always at least one page.
@@ -594,6 +600,45 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
             total_rectangle_count_ = new_rectangle_count;
 
         }
+
+        unsigned get_total_rectangle_count() const {
+            return total_rectangle_count_;
+        }
+
+        unsigned get_cur_overflow_pages() const {
+            return cur_overflow_pages_;
+        }
+
+        Rectangle &get_summary_rectangle() {
+            return summary_rectangle_;
+        }
+
+        static pinned_node_ptr<InlineUnboundedIsotheticPolygon> read_polygon_from_disk(
+            tree_node_allocator *allocator,
+            tree_node_handle poly_handle
+        ) {
+            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                poly_handle
+            );
+            poly_pin->allocator_ = allocator;
+            return poly_pin;
+        }
+
+protected:
+        // Total rectangle count across all of the polygons
+        unsigned total_rectangle_count_;
+        unsigned cur_overflow_pages_;
+        tree_node_allocator *allocator_;
+        Rectangle summary_rectangle_;
+
+        // First page of polygon data, we'll have to chase pointers for
+        // the rest
+        // N.B., you must malloc this struct with the appropriate size
+        // for the first polygon's data, the rest will be taken care of
+        // by the constructor
+        PageableIsotheticPolygon poly_data_;
+
 };
+
 
 unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ); 

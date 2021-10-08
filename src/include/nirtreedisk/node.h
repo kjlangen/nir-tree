@@ -56,6 +56,19 @@ namespace nirtreedisk
         Branch( tree_node_handle boundingPoly, tree_node_handle child )
             : boundingPoly( boundingPoly ), child( child ) {}
 
+
+        Rectangle get_summary_rectangle( tree_node_allocator *allocator ) {
+            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                        boundingPoly ) ) {
+                return std::get<InlineBoundedIsotheticPolygon>(
+                        boundingPoly ).get_summary_rectangle();
+            }
+            tree_node_handle poly_handle = std::get<tree_node_handle>( boundingPoly );
+            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                    poly_handle );
+            return poly_pin->get_summary_rectangle();
+        }
+
         std::variant<InlineBoundedIsotheticPolygon,tree_node_handle> boundingPoly;
         tree_node_handle child;
 

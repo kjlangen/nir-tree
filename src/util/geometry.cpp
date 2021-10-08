@@ -968,12 +968,7 @@ void IsotheticPolygon::maxLimit(double limit, unsigned d)
 		}
 	}
 
-	// Recompute the bounding box
-	boundingBox = Rectangle(Point::atInfinity, Point::atNegInfinity);
-	for (Rectangle &basicRectangle : basicRectangles)
-	{
-		boundingBox.expand(basicRectangle);
-	}
+    recomputeBoundingBox();
 }
 
 void IsotheticPolygon::minLimit(double limit, unsigned d)
@@ -998,12 +993,7 @@ void IsotheticPolygon::minLimit(double limit, unsigned d)
 		}
 	}
 
-	// Recompute the bounding box
-	boundingBox = Rectangle(Point::atInfinity, Point::atNegInfinity);
-	for (Rectangle &basicRectangle :basicRectangles)
-	{
-		boundingBox.expand(basicRectangle);
-	}
+    recomputeBoundingBox();
 }
 
 void IsotheticPolygon::merge(const IsotheticPolygon &mergePolygon)
@@ -1015,19 +1005,7 @@ void IsotheticPolygon::merge(const IsotheticPolygon &mergePolygon)
 		basicRectangles.push_back(mergeRectangle);
 	}
 
-	// Recompute the bounding box
-	if (basicRectangles.size() == 0)
-	{
-		boundingBox = Rectangle::atInfinity;
-	}
-	else
-	{
-		boundingBox = basicRectangles[0];
-		for (Rectangle &basicRectangle : basicRectangles)
-		{
-			boundingBox.expand(basicRectangle);
-		}
-	}
+    recomputeBoundingBox();
 }
 
 void IsotheticPolygon::remove(unsigned basicRectangleIndex)
@@ -1036,19 +1014,7 @@ void IsotheticPolygon::remove(unsigned basicRectangleIndex)
 	basicRectangles[basicRectangleIndex] = basicRectangles[basicRectangles.size() - 1];
 	basicRectangles.pop_back();
 
-	// Recompute the bounding box
-	if (basicRectangles.size() == 0)
-	{
-		boundingBox = Rectangle::atInfinity;
-	}
-	else
-	{
-		boundingBox = basicRectangles[0];
-		for (Rectangle &basicRectangle : basicRectangles)
-		{
-			boundingBox.expand(basicRectangle);
-		}
-	}
+    recomputeBoundingBox();
 }
 
 void IsotheticPolygon::deduplicate()
@@ -1123,6 +1089,22 @@ void IsotheticPolygon::refine()
 	}
 
 	assert(basicRectangles.size() > 0);
+}
+
+void IsotheticPolygon::recomputeBoundingBox()
+{
+	if (basicRectangles.size() == 0)
+	{
+		boundingBox = Rectangle::atInfinity;
+	}
+	else
+	{
+		boundingBox = basicRectangles[0];
+		for (Rectangle &basicRectangle : basicRectangles)
+		{
+			boundingBox.expand(basicRectangle);
+		}
+	}
 }
 
 bool IsotheticPolygon::exists() const
