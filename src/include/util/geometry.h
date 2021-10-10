@@ -202,37 +202,6 @@ class IsotheticPolygon
         }
 
 
-        template <typename iter>
-        void shrink( iter begin, iter end ){
-            // Early exit
-            if( basicRectangles.size() == 0 || begin == end ) {
-                return;
-            }
-
-            std::vector<Rectangle> rectangleSetShrunk;
-            for (const Rectangle &basicRectangle : basicRectangles) {
-                bool addRectangle = false;
-                Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
-                for( auto cur_iter = begin; cur_iter != end; cur_iter++ ) {
-                    Point &pinPoint = std::get<Point>( *cur_iter );
-                    if( basicRectangle.containsPoint(pinPoint) ) {
-                        shrunkRectangle.expand( pinPoint );
-                        addRectangle = true;
-                        assert( shrunkRectangle.containsPoint(pinPoint) );
-                    }
-                }
-
-                if( addRectangle ) {
-                    rectangleSetShrunk.emplace_back( std::move(shrunkRectangle) );
-                }
-            }
-
-            assert(rectangleSetShrunk.size() > 0);
-
-            basicRectangles.swap(rectangleSetShrunk);
-
-        }
-
 		bool exists() const;
 		bool valid() const;
 		bool unique() const;

@@ -43,8 +43,6 @@ bool Node<min_branch_factor,max_branch_factor>::isLeaf()
     return std::holds_alternative<Point>( entries.at( 0 ) );
 }
 
-
-
 template <int min_branch_factor, int max_branch_factor>
 Rectangle Node<min_branch_factor,max_branch_factor>::boundingBox()
 {
@@ -310,7 +308,69 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
 #endif
 
     return accumulator;
+
 }
+
+template <typename iter>
+void shrink(
+    IsotheticPolygon &polygon,
+    iter begin,
+    iter end,
+    tree_node_allocator *allocator
+){
+    // Early exit
+    if( polygon.basicRectangles.size() == 0 || begin == end ) {
+        return;
+    }
+
+    std::vector<Rectangle> rectangleSetShrunk;
+    for (const Rectangle &basicRectangle : polygon.basicRectangles) {
+        bool addRectangle = false;
+        Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
+        for( auto cur_iter = begin; cur_iter != end; cur_iter++ ) {
+            if( std::holds_alternative<Point>( *cur_iter ) ) {
+                Point &pinPoint = std::get<Point>( *cur_iter );
+                if( basicRectangle.containsPoint(pinPoint) ) {
+                    shrunkRectangle.expand( pinPoint );
+                    addRectangle = true;
+                    assert( shrunkRectangle.containsPoint(pinPoint) );
+                }
+            } else {
+                Branch &b = std::get<Branch>(
+                        *cur_iter );
+                Rectangle bounding_box;
+                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                            b.boundingPoly ) ) {
+                    bounding_box =
+                        std::get<InlineBoundedIsotheticPolygon>(
+                                b.boundingPoly).get_summary_rectangle();
+                } else {
+                    tree_node_handle poly_handle =
+                        std::get<tree_node_handle>(
+                                b.boundingPoly );
+                    auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                            poly_handle );
+                    bounding_box = poly_pin->get_summary_rectangle();
+                }
+                if( basicRectangle.intersectsRectangle(
+                            bounding_box ) ) {
+                    shrunkRectangle.expand( bounding_box );
+                    addRectangle = true;
+                }
+            }
+        }
+
+        if( addRectangle ) {
+            rectangleSetShrunk.emplace_back( std::move(shrunkRectangle) );
+        }
+    }
+
+    assert(rectangleSetShrunk.size() > 0);
+
+    polygon.basicRectangles.swap(rectangleSetShrunk);
+    polygon.recomputeBoundingBox();
+}
+
 
 // Always called on root, this = root
 // This top-to-bottom sweep is only for adjusting bounding boxes to contain the point and
@@ -338,6 +398,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
         // CL2 [Leaf check]
         if( cur_node->isLeaf() ) {
+            std::cout << "Hit leaf." << std::endl;
             return cur_node_handle;
         } else {
             // Compute the smallest expansion
@@ -346,49 +407,28 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
             unsigned smallestExpansionBranchIndex = 0;
 
             tree_node_allocator *allocator = get_node_allocator( treeRef );
-            IsotheticPolygon node_poly;
-
-            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(std::get<Branch>(
-                    cur_node->entries.at(0)).boundingPoly ) ) {
-                node_poly =
-                    std::get<InlineBoundedIsotheticPolygon>(std::get<Branch>(
-                        cur_node->entries.at(0) ).boundingPoly
-                            ).materialize_polygon();
-            } else {
-                tree_node_handle poly_handle =
-                    std::get<tree_node_handle>(std::get<Branch>(
-                    cur_node->entries.at(0)).boundingPoly );
-                assert( poly_handle != tree_node_handle(nullptr) );
-                auto node_pin =
-                    InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                            allocator, poly_handle );
-                node_poly = node_pin->materialize_polygon();
-            }
+            IsotheticPolygon node_poly = std::get<Branch>(
+                    cur_node->entries.at(0) ).materialize_polygon(
+                    allocator );
 
             IsotheticPolygon::OptimalExpansion smallestExpansion =
                 node_poly.computeExpansionArea(givenPoint);
             IsotheticPolygon::OptimalExpansion evalExpansion;
 
+            if( smallestExpansion.area == -1.0 ) {
+                std::cout << "Contained." << std::endl;
+            }
+
             for( size_t i = 1; i < cur_node->cur_offset_ &&
                     smallestExpansion.area != -1.0; i++ ) {
                 Branch &b = std::get<Branch>( cur_node->entries.at(i) );
-                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                            b.boundingPoly ) ) {
-                    node_poly =
-                        std::get<InlineBoundedIsotheticPolygon>(
-                                    b.boundingPoly
-                                    ).materialize_polygon();
-                } else {
-                    tree_node_handle poly_handle =
-                        std::get<tree_node_handle>( b.boundingPoly );
-                    auto node_pin =
-                        InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                                allocator, poly_handle );
-                    node_poly = node_pin->materialize_polygon();
-                }
-
+                node_poly = b.materialize_polygon( allocator );
+             
                 evalExpansion = node_poly.computeExpansionArea(givenPoint);
-                if( evalExpansion.area < smallestExpansion.area && evalExpansion.area != 0.0 ) {
+                if( evalExpansion.area < smallestExpansion.area &&
+                                                                  evalExpansion.area
+                                                                  != 0.0
+                                                                  ) {
                     smallestExpansionBranchIndex = i;
                     smallestExpansion = evalExpansion;
                 }
@@ -396,21 +436,11 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
 
             if( smallestExpansion.area != -1.0 ) {
+                std::cout << "Not contained, we need to expand!" <<
+                    std::endl;
                 Branch &b = std::get<Branch>( cur_node->entries.at(
                     smallestExpansionBranchIndex ) );
-                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                      b.boundingPoly ) ) {
-                    node_poly =
-                        std::get<InlineBoundedIsotheticPolygon>(
-                                    b.boundingPoly ).materialize_polygon();
-                } else {
-                    tree_node_handle poly_handle =
-                        std::get<tree_node_handle>( b.boundingPoly );
-                    auto node_pin = 
-                        InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                                allocator, poly_handle );
-                    node_poly = node_pin->materialize_polygon();
-                }
+                node_poly = b.materialize_polygon( allocator );
 
                 IsotheticPolygon subsetPolygon(
                         node_poly.basicRectangles[smallestExpansion.index] );
@@ -419,24 +449,10 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
 
                 for( size_t i = 0; i < cur_node->cur_offset_; i++ ) {
                     if( i != smallestExpansionBranchIndex ) {
-                        Branch &b = std::get<Branch>(
+                        Branch &b_i = std::get<Branch>(
                                 cur_node->entries.at(i) );
-                        if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                                    b.boundingPoly ) ) {
-                            node_poly =
-                                std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).materialize_polygon();
-                        } else {
-                            tree_node_handle poly_handle =
-                                std::get<tree_node_handle>(
-                                        b.boundingPoly );
-                            auto node_pin =
-                                InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                                        allocator, poly_handle );
-                            node_poly = node_pin->materialize_polygon();
-                        }
-
-                        subsetPolygon.increaseResolution(
-                                givenPoint, node_poly );
+                        subsetPolygon.increaseResolution( givenPoint,
+                                b_i.materialize_polygon( allocator ) );
                     }
                 }
 
@@ -444,57 +460,39 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                     auto parent =
                         allocator->get_tree_node<NodeType>(
                                 cur_node->parent );
-                    Branch &b = std::get<Branch>(
-                            parent->entries.at(enclosingPolyIndex));
-                    if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                                b.boundingPoly ) ) {
-                        node_poly =
-                            std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly ).materialize_polygon();
-                    } else {
-                        tree_node_handle poly_handle =
-                            std::get<tree_node_handle>( b.boundingPoly );
-                        auto node_pin =
-                            InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                                    allocator, poly_handle );
-                        node_poly = node_pin->materialize_polygon();
-                    }
-
-                    subsetPolygon.intersection( node_poly );
+                    Branch &b_parent = parent->locateBranch(
+                            cur_node->self_handle_ );
+                    // FIXME: In a wild turn of events, performing this
+                    // polygon intersection causes a branch above a leaf
+                    // node to not have a bounding box that reflects the
+                    // contents of the leaf.
+                    //std::get<Branch>(
+                    //        parent->entries.at(enclosingPolyIndex));
+                    //subsetPolygon.intersection(
+                    //        b_parent.materialize_polygon( allocator ) );
                 }
 
-                Branch &b2 = std::get<Branch>(
-                        cur_node->entries.at(smallestExpansionBranchIndex) );
+                auto b_child =
+                    allocator->get_tree_node<NodeType>( b.child );
 
-                // If existing poly is inline in the page
-                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                            b2.boundingPoly ) ) {
-
-                    node_poly = std::get<InlineBoundedIsotheticPolygon>(
-                                b2.boundingPoly).materialize_polygon();
-                } else {
-                    // Otherwise, read the special page with the polygon
-                    tree_node_handle poly_handle =
-                        std::get<tree_node_handle>( b2.boundingPoly );
-                    // pull pin ptr out of scope so this doesn't get
-                    // immediately unpinned
-                    auto node_pin =
-                        InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                                allocator, poly_handle );
-                    node_poly = node_pin->materialize_polygon();
-                }
+                std::cout << "Validating before modifications..." <<
+                    std::endl;
+                validate( parent, 0 );
+                std::cout << "Validation OK." << std::endl;
 
                 node_poly.remove( smallestExpansion.index );
                 node_poly.merge( subsetPolygon );
 
-                auto b_child =
-                    allocator->get_tree_node<NodeType>( b2.child );
+
 
                 if( b_child->isLeaf() and b_child->cur_offset_ > 0 ) {
                     b_child->entries.at( b_child->cur_offset_ ) = givenPoint;
                     b_child->cur_offset_++;
-                    node_poly.shrink( b_child->entries.begin(),
+                    /*
+                    shrink( node_poly, b_child->entries.begin(),
                             b_child->entries.begin() +
-                            b_child->cur_offset_ );
+                            b_child->cur_offset_, allocator );
+                    */
                     b_child->cur_offset_--;
                     for( unsigned i = 0; i < b_child->cur_offset_; i++ ) {
                         assert( std::holds_alternative<Point>(
@@ -503,17 +501,22 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                                     b_child->entries.at(i) ) );
                     }
                 }
-                node_poly.refine();
+
+                //node_poly.refine();
 
                 if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                            b2.boundingPoly ) ) {
+                            b.boundingPoly ) ) {
 
                     if( node_poly.basicRectangles.size() <=
                             MAX_RECTANGLE_COUNT ) {
+                        std::cout << "Reusing existing poly." <<
+                            std::endl;
                         InlineBoundedIsotheticPolygon *inline_poly = &(std::get<InlineBoundedIsotheticPolygon>(
-                                    b2.boundingPoly));
+                                    b.boundingPoly));
                         inline_poly->push_polygon_to_disk( node_poly );
                     } else {
+                        std:: cout << "Creating new big polygon." <<
+                            std::endl;
                         auto alloc_data =
                             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                                     PAGE_DATA_SIZE );
@@ -522,16 +525,24 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                         alloc_data.first->push_polygon_to_disk(
                                 node_poly );
                         // Point to the newly created polygon location
-                        b2.boundingPoly = alloc_data.second;
+                        b.boundingPoly = alloc_data.second;
                     }
                 } else {
+                    std::cout << "Trying to reuse big poly." <<
+                        std::endl;
                     tree_node_handle poly_handle =
-                        std::get<tree_node_handle>( b2.boundingPoly );
+                        std::get<tree_node_handle>( b.boundingPoly );
                     auto node_pin =
                         InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
                                 allocator, poly_handle );
                     node_pin->push_polygon_to_disk( node_poly );
                 }
+
+                std::cout << "Validating after modifications..." <<
+                    std::endl;
+                validate( parent, 0 );
+                std::cout << "Validation OK" << std::endl;
+
 
             }
 
@@ -700,43 +711,6 @@ Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
     }
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::fix_polygon(
-    IsotheticPolygon &existing_polygon
-) {
-    // N.B.
-    // This is extremely expensive --- it requires materializing all
-    // of our children's polygons.
-    existing_polygon.reset();
-
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
-
-    // Walk over all our children's polygons, merge 'em all in
-    for( unsigned i = 0; i < cur_offset_; i++ ) {
-        Branch &b = std::get<Branch>( entries.at(i) );
-
-        IsotheticPolygon branch_poly;
-        if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                    b.boundingPoly ) ) {
-            // It's inline in the pinned node, jsut get the address
-            branch_poly = std::get<InlineBoundedIsotheticPolygon>(
-                        b.boundingPoly ).materialize_polygon();
-        } else {
-            // It's on another page, figure out where, read that page,
-            // set the address
-            tree_node_handle poly_handle =
-                std::get<tree_node_handle>( b.boundingPoly );
-            auto poly_pin =
-                InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                        allocator, poly_handle );
-            branch_poly = poly_pin->materialize_polygon();
-        }
-        
-        // Merge the existing polygon in with our child
-        existing_polygon.merge( branch_poly );
-    }
-}
-
 // Splitting a node will remove it from its parent node and its memory will be freed
 template <int min_branch_factor, int max_branch_factor>
 SplitResult
@@ -773,7 +747,14 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                         allocator, poly_handle );
             node_poly = left_poly_pin->materialize_polygon();
         }
-    } 
+    }
+
+    if( isLeaf() ) {
+        std::cout << "Node poly is a leaf..." << std::endl;
+        assert( node_poly.containsPoint( std::get<Point>( entries.at(
+                            cur_offset_-1 ) ) ) );
+    }
+
 
     auto alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle left_handle = alloc_data.second;
@@ -784,6 +765,9 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     tree_node_handle right_handle = alloc_data.second;
     auto right_node = alloc_data.first;
     new (&(*right_node)) NodeType( treeRef, parent, right_handle );
+
+    std::cout << "Splitting node: " << self_handle_ << " into node: " <<
+        left_handle << " and " << right_handle << std::endl;
 
     // At this point, we are going to use node_poly for both sides of
     // the split. If node_poly is an InlineBoundedIsotheticPolygon, then
@@ -816,13 +800,17 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     right_polygon.refine();
 
     if( isLeaf() ) {
-
+        std::cout << "Leaf Split." << std::endl;
+        std::cout << "Poly before split: " << node_poly << std::endl;
+        std::cout << "New point: " << std::get<Point>( entries.at(
+                    cur_offset_-1)) << std::endl;
 
         bool containedLeft, containedRight;
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Point &dataPoint = std::get<Point>( entries.at(i) );
             containedLeft = left_polygon.containsPoint( dataPoint );
             containedRight = right_polygon.containsPoint( dataPoint );
+            assert( containedLeft or containedRight );
 
             if( containedLeft && !containedRight ) {
                 left_node->entries.at( left_node->cur_offset_++ ) =
@@ -832,9 +820,11 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                     dataPoint;
             } else if( left_node->cur_offset_ < right_node->cur_offset_
                     ) {
+                assert( containedLeft and containedRight );
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     dataPoint;
             } else {
+                assert( containedLeft and containedRight );
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
             }
@@ -856,15 +846,44 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
 
         cur_offset_ = 0;
 
-        left_polygon.shrink( left_node->entries.begin(),
-                left_node->entries.begin() + left_node->cur_offset_ );
-        right_polygon.shrink(
-                right_node->entries.begin(), right_node->entries.begin() +
-                right_node->cur_offset_ );
+
+        std::cout << "Left poly before fix: " << left_polygon << std::endl;
+        Rectangle left_before_box = left_polygon.boundingBox;
+        std::cout << "Left poly bounding box: " <<
+            left_polygon.boundingBox << std::endl;
+
+        std::cout << "Right poly before fix: " << right_polygon << std::endl;
+        std::cout << "Right poly bounding box: " <<
+            right_polygon.boundingBox << std::endl;
+        Rectangle right_before_box = right_polygon.boundingBox;
+
+        shrink( left_polygon, left_node->entries.begin(),
+                left_node->entries.begin() + left_node->cur_offset_, allocator );
+
+        shrink( right_polygon, right_node->entries.begin(),
+                right_node->entries.begin() + right_node->cur_offset_ , allocator );
+
+        std::cout << "Left poly after fix: " << left_polygon << std::endl;
+        std::cout << "Left poly bounding box: " <<
+            left_polygon.boundingBox << std::endl;
+        std::cout << "Right poly after fix: " << right_polygon << std::endl;
+        std::cout << "Right poly bounding box: " <<
+            right_polygon.boundingBox << std::endl;
+
+        assert( left_polygon.disjoint( right_polygon ) );
+        assert( left_node->boundingBox() ==
+                left_polygon.boundingBox );
+        assert( right_node->boundingBox() ==
+                right_polygon.boundingBox );
+        std::cout << "Left Polygon matches boundingBox() " <<
+            left_handle << std::endl;
+        std::cout << "Right Polygon matches boundingBox() " <<
+            right_handle << std::endl;
+
 
 
         if( left_polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-            split.leftBranch.boundingPoly=
+            split.leftBranch.boundingPoly =
                 InlineBoundedIsotheticPolygon();
             std::get<InlineBoundedIsotheticPolygon>(
                     split.leftBranch.boundingPoly
@@ -894,7 +913,12 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             split.rightBranch.boundingPoly = poly_alloc_data.second;
             poly_alloc_data.first->push_polygon_to_disk( right_polygon );
         }
+
+        assert( node_poly.boundingBox.containsRectangle( left_polygon.boundingBox
+                    ) and node_poly.boundingBox.containsRectangle(
+                        right_polygon.boundingBox ) );
     } else {
+        std::cout << "Branch split." << std::endl;
 
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &branch = std::get<Branch>( entries.at(i) );
@@ -931,14 +955,23 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 right_node->entries.at( right_node->cur_offset_++ ) = branch;
             } else {
 
+
                 auto child =
                     allocator->get_tree_node<NodeType>(
                             branch.child );
+
+                std::cout << "Need to downsplit node: " << branch.child
+                    << std::endl;
 
                 SplitResult downwardSplit = child->splitNode( p );
 
                 // FIXME: GC branch.child
                 // delete branch.child;
+
+                std::cout << "downwardSplit complete. Adding " <<
+                    downwardSplit.leftBranch.child << " to: " << left_handle
+                    << " and " << downwardSplit.rightBranch.child <<
+                    "to: " << right_handle << std::endl;
 
                 auto left_child =
                     allocator->get_tree_node<NodeType>(
@@ -971,6 +1004,9 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
 
 
         // FIXME: presumes sorted to preserve no intersection
+        // FIXME: SUPER BROKEN POLYGONS
+        // FIXME: need to adjust partition line based on dimension
+        // and value of the thing we move over.
         if( (left_node->cur_offset_ > max_branch_factor and 
                 right_node->cur_offset_ == max_branch_factor) or
             (left_node->cur_offset_ == max_branch_factor and
@@ -1042,11 +1078,39 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             right_node->cur_offset_ << std::endl;
         */
 
+
         assert( left_node->cur_offset_ <= max_branch_factor );
         assert( right_node->cur_offset_ <= max_branch_factor );
+        
+        // Simplify the polygons
+        // FIXME: we cannot simplify polygons in this way, since it
+        // basically just reconstructs the area required with the
+        // minimal set of rectangles. But our rectangles previously were
+        // explicitly designed to try and dodge other polygons. Shrink
+        // should really be "take only the rectangles we need from
+        // existing polygons to represent the space"
+        /*
+        std::cout << "Shrinking polygons." << std::endl;
+        shrink( left_polygon, left_node->entries.begin(),
+                left_node->entries.end(), allocator );
 
-        left_node->fix_polygon( left_polygon );
-        right_node->fix_polygon( right_polygon );
+        shrink( right_polygon, right_node->entries.begin(),
+                right_node->entries.end(), allocator );
+
+        std::cout << "Checking BB on: " << left_handle << std::endl;
+        assert( left_polygon.boundingBox  ==
+                left_node->boundingBox() );
+
+        std::cout << "Left Polygon matches boundingBox() " <<
+            left_handle << std::endl;
+
+        std::cout << "Checking BB on: " << right_handle << std::endl;
+        assert( right_polygon.boundingBox ==
+                right_node->boundingBox() );
+
+        std::cout << "Right Polygon matches boundingBox() " <<
+            right_handle << std::endl;
+        */
 
         // Writeback our polygons
         if( left_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
@@ -1080,6 +1144,10 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                     right_polygon );
         }
 
+        assert( node_poly.boundingBox.containsRectangle( left_polygon.boundingBox
+                    ) and node_poly.boundingBox.containsRectangle(
+                        right_polygon.boundingBox ) );
+
         cur_offset_ = 0;
     }
     return split;
@@ -1110,6 +1178,7 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
 
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
+    // Loop from the bottom to the very top
     while( current_handle != nullptr ) {
         auto current_node =
             allocator->get_tree_node<NodeType>(
@@ -1140,33 +1209,84 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
                 }
             }
 
+            std::cout << "Validating just after adding nodes!" <<
+                std::endl;
+            current_node->validate( current_node->parent, 0 );
+
             for( unsigned i = 0; i < current_node->cur_offset_; i++ ) {
                 assert( std::holds_alternative<Point>(
                             current_node->entries.at(i) ) or
                         std::holds_alternative<Branch>(
                             current_node->entries.at(i) ) );
             }
-
         }
 
-        // Early exit if this node does not overflow
+        // If we have a parent, they need to know about the recomputed
+        // bounding boxes we have
+        /*
+        if( current_node->parent != nullptr and
+                current_node->cur_offset_ <= max_branch_factor ) {
+            std::cout << "Fixing up parent entries for my node." <<
+                std::endl;
+
+            std::cout << "Parent: " << current_node->parent <<
+                std::endl;
+            std::cout << "Me: " << current_node->self_handle_ <<
+                std::endl;
+
+            auto parent_node = allocator->get_tree_node<NodeType>(
+                    current_node->parent );
+            Branch my_branch = parent_node->locateBranch(
+                    current_node->self_handle_ );
+
+            pinned_node_ptr<InlineUnboundedIsotheticPolygon>
+                poly_pin( allocator->buffer_pool_, nullptr, nullptr );
+
+            // Get whatever polygon they currently have for us, and
+            // shrink it.
+            IsotheticPolygon branch_poly =
+                my_branch.materialize_polygon( allocator );
+
+            shrink( branch_poly, parent_node->entries.begin(),
+                    parent_node->entries.end(), allocator );
+
+            if( branch_poly.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
+                my_branch.boundingPoly =
+                    InlineBoundedIsotheticPolygon();
+                std::get<InlineBoundedIsotheticPolygon>(
+                        my_branch.boundingPoly
+                        ).push_polygon_to_disk( branch_poly );
+            } else {
+                auto alloc_data =
+                    allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                            PAGE_DATA_SIZE );
+                new (&(*alloc_data.first))
+                    InlineUnboundedIsotheticPolygon( allocator );
+                my_branch.boundingPoly = alloc_data.second;
+                alloc_data.first->push_polygon_to_disk( branch_poly
+                        );
+            }
+        }
+        */
+
+        // If this node does not require splitting, that's great, let's
+        // keep adjusting bounding boxes all the way to the top
         if( current_node->cur_offset_ <= max_branch_factor ) {
             propagationSplit = {
                 {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)},
                 {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)}
             };
+
             break;
         }
 
         // Otherwise, split node
         propagationSplit = current_node->splitNode();
-
-
         // Cleanup before ascending
         if( current_node->parent != nullptr ) {
             auto parent_node =
                 allocator->get_tree_node<NodeType>(
-                        current_node->parent );
+                    current_node->parent );
             parent_node->removeEntry( current_handle );
         }
 
@@ -1174,6 +1294,7 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
         auto left_node =
             allocator->get_tree_node<NodeType>(
                     propagationSplit.leftBranch.child );
+        std::cout << "Ascending left branch..." << std::endl;
         current_handle = left_node->parent;
     }
 
@@ -1350,24 +1471,37 @@ bool Node<min_branch_factor,max_branch_factor>::bounding_box_validate()
         tree_node_allocator *allocator = get_node_allocator( treeRef );
         for( unsigned i = 0; i < cur_offset_; i++ ) {
             Branch &b = std::get<Branch>( entries.at(i) );
-            Rectangle boundingBox;
+            Rectangle cachedBoundingBox;
+            Rectangle computedBoundingBox;
             if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
                         b.boundingPoly ) ) {
-                boundingBox = std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
-                        ).materialize_polygon().boundingBox;
+                auto &loc_poly =
+                    std::get<InlineBoundedIsotheticPolygon>(
+                            b.boundingPoly );
+                cachedBoundingBox = loc_poly.get_summary_rectangle();
+                computedBoundingBox = loc_poly.materialize_polygon().boundingBox;
             } else {
                 tree_node_handle poly_handle =
                     std::get<tree_node_handle>( b.boundingPoly );
                 auto poly_ptr =
                     InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
                             allocator, poly_handle );
-                boundingBox =
+                cachedBoundingBox = poly_ptr->get_summary_rectangle();
+                computedBoundingBox =
                     poly_ptr->materialize_polygon().boundingBox;
             }
+            assert( cachedBoundingBox == computedBoundingBox );
             tree_node_handle child_handle = b.child;
             auto child = allocator->get_tree_node<NodeType>(
                     child_handle );
-            assert( child->boundingBox() == boundingBox );
+            if( child->boundingBox() != computedBoundingBox ) {
+                std::cout << "Fail bbox check: " << child_handle <<
+                    std::endl;
+                std::cout << child->boundingBox() << std::endl;
+                std::cout << computedBoundingBox << std::endl;
+                std::cout << cachedBoundingBox << std::endl;
+            }
+            assert( child->boundingBox() == computedBoundingBox );
             child->bounding_box_validate();
         }
     }
@@ -1395,8 +1529,7 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
             tree_node_allocator *allocator = get_node_allocator( treeRef );
             auto parent_node =
                 allocator->get_tree_node<NodeType>( parent );
-            Branch &branch = std::get<Branch>(
-                    parent_node->entries.at(index) );
+            Branch &branch = parent_node->locateBranch( self_handle_ );
 
             IsotheticPolygon poly;
             if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
@@ -1414,7 +1547,7 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
             for( size_t i = 0; i < cur_offset_; i++ ) {
                 Point &dataPoint = std::get<Point>( entries.at(i) );
                 if( !poly.containsPoint( dataPoint ) ) {
-                    std::cout << "fails to contain " << dataPoint << std::endl;
+                    std::cout << poly << " fails to contain " << dataPoint << std::endl;
                     assert( false );
                 }
             }
@@ -1454,9 +1587,18 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
                     }
 
 
-
                     if( !poly.disjoint(poly2) ) {
                         std::cout << "Branch " << i << " is not disjoint from sibling Branch " << j << std::endl;
+                        std::cout << "Branch " << i << " " << b_i.child <<
+                            std:: endl;
+                        std::cout << "Branch " << j << " " << b_j.child <<
+                            std:: endl;
+
+                        std::cout << "Poly1 is: " << poly << std::endl;
+                        std::cout << "Poly2 is: " << poly2 << std::endl;
+                        std::cout << "Parent is: " << self_handle_ <<
+                            std::endl;
+
                         /*
                         std::cout << "branches[" << i << "].boundingPoly= " << b_i_poly << std::endl;
                         std::cout << "branches[" << j << "].boundingPoly = " << b_j_poly << std::endl;
