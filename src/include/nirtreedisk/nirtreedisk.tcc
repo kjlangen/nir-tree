@@ -67,7 +67,7 @@ bool NIRTreeDisk<min_branch_factor,max_branch_factor>::validate() {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     auto root_node = node_allocator_.get_tree_node<NodeType>( root );
-/*    assert( root_node->bounding_box_validate() ); */
+    root_node->bounding_box_validate();
     return root_node->validate( tree_node_handle(nullptr), 0 );
 }
 

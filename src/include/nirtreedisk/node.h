@@ -176,7 +176,7 @@ namespace nirtreedisk
 			// Miscellaneous
 			unsigned checksum();
 			bool validate(tree_node_handle expectedParent, unsigned index);
-			bool bounding_box_validate();
+            std::vector<Point> bounding_box_validate();
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 			unsigned height();

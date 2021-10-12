@@ -462,14 +462,8 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
                                 cur_node->parent );
                     Branch &b_parent = parent->locateBranch(
                             cur_node->self_handle_ );
-                    // FIXME: In a wild turn of events, performing this
-                    // polygon intersection causes a branch above a leaf
-                    // node to not have a bounding box that reflects the
-                    // contents of the leaf.
-                    //std::get<Branch>(
-                    //        parent->entries.at(enclosingPolyIndex));
-                    //subsetPolygon.intersection(
-                    //        b_parent.materialize_polygon( allocator ) );
+                    subsetPolygon.intersection(
+                            b_parent.materialize_polygon( allocator ) );
                 }
 
                 auto b_child =
@@ -667,49 +661,125 @@ Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
 
         return defaultPartition;
     } else {
-        Point centreOfMass = Point::atOrigin;
-        std::vector<Rectangle> sortable;
-        double location;
         tree_node_allocator *allocator = get_node_allocator( treeRef );
-
-        for( size_t i = 0; i < cur_offset_; i++ ) {
-            Branch &b = std::get<Branch>( entries.at(i) );
-
-            Rectangle summary_rectangle = b.get_summary_rectangle(
-                    allocator );
-            sortable.push_back( summary_rectangle );
+        std::vector<Rectangle> all_branch_polys;
+        for( unsigned i = 0; i < cur_offset_; i++ ) {
+            Branch &b_i = std::get<Branch>( entries.at(i) );
+            all_branch_polys.push_back( b_i.get_summary_rectangle(
+                        allocator ) );
         }
 
-        for( Rectangle &boundingBox : sortable ) {
-            centreOfMass += boundingBox.lowerLeft;
-            centreOfMass += boundingBox.upperRight;
-            totalMass += 2.0;
-        }
-
-        centreOfMass /= totalMass;
-
+        double best_candidate = 0.0;
+        unsigned min_cost = all_branch_polys.size();
+        unsigned best_dimension;
+        // D * ( M LOG M + M ) ~> O( D M LOG M )
         for( unsigned d = 0; d < dimensions; d++ ) {
-            location = centreOfMass[d];
+            std::sort( all_branch_polys.begin(), all_branch_polys.end(),
+                    [d](Rectangle &poly1, Rectangle &poly2
+                        ) {
+                        return poly1.upperRight[d] <
+                        poly2.upperRight[d];
+                    }
+            );
+            for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
+                unsigned cost = 0;
+                // starts at 1 cause first goes left
+                // Technically we should also walk the bottom bounds to
+                // be sure, even in the non F, C case.
+                unsigned left_count = 1;
+                unsigned right_count = 0; 
+                double partition_candidate =
+                    all_branch_polys.at(i).upperRight[d];
+                // Existing metric wanted to avoid recursive splits
+                // Let's try and do the same
+                for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
+                    if( i != j ) {
+                        Rectangle &poly_ref =
+                            all_branch_polys.at(j);
+                        bool greater_than_left = poly_ref.lowerLeft[d] <
+                            partition_candidate;
+                        bool less_than_right = partition_candidate <
+                            poly_ref.upperRight[d];
+                        bool requires_split = greater_than_left and
+                            less_than_right;
 
-            // Compute cost, # of splits if d is chosen
-            unsigned currentInducedSplits = 0;
-            for( Rectangle &s : sortable ) {
-                if( s.lowerLeft[d] < location && location < s.upperRight[d] ) {
-                    currentInducedSplits++;
+                        bool should_go_left = poly_ref.upperRight[d] <=
+                            partition_candidate;
+                        bool should_go_right = poly_ref.lowerLeft[d] >=
+                            partition_candidate;
+
+                        if( requires_split ) {
+                            left_count++;
+                            right_count++;
+                            cost++;
+                        } else if( should_go_left ) {
+                            // the zero area polys end up here too
+                            left_count++;
+                        } else if( should_go_right ) {
+                            right_count++;
+                        }
+
+                    }
+                }
+                std::cout << "Score for " << d << " loc " <<
+                    partition_candidate << ": " << cost << std::endl;
+                std::cout << "Left Count: " << left_count << std::endl;
+                std::cout << "Right Count: " << right_count << std::endl;
+                if( cost < min_cost and left_count <= max_branch_factor
+                        and right_count <= max_branch_factor and
+                        left_count > 0 and right_count > 0 ) {
+                    best_candidate = partition_candidate;
+                    best_dimension = d;
+                    min_cost = cost;
                 }
             }
-
-            // Compare cost
-            if( currentInducedSplits < costMetric ) {
-                defaultPartition.dimension = d;
-                defaultPartition.location = location;
-                costMetric = currentInducedSplits;
-            }
         }
+        // Degenerate case
+        assert( min_cost < all_branch_polys.size() );
+        std::cout << "Best dimension: " << best_dimension << std::endl;
+        std::cout << "Best candidate: " << best_candidate << std::endl;
 
+        defaultPartition.dimension = best_dimension;
+        defaultPartition.location = best_candidate;
+            
         return defaultPartition;
     }
 }
+
+
+struct summary_rectangle_sorter {
+
+    enum class sort_point {
+        LOWER_LEFT,
+        UPPER_RIGHT
+    };
+
+    summary_rectangle_sorter( unsigned dimension, sort_point sort_on, tree_node_allocator
+            *allocator ) :
+        dimension_( dimension ),
+        allocator_( allocator ),
+        sort_on_( sort_on ) {
+    }
+
+    template <class NE>
+    bool operator()( NE &n1, NE &n2 ) {
+        Branch &b1 = std::get<Branch>( n1 );
+        Branch &b2 = std::get<Branch>( n2 );
+
+        Rectangle bb1 = b1.get_summary_rectangle(
+                allocator_ );
+        Rectangle bb2 = b2.get_summary_rectangle(
+                allocator_ );
+        if( sort_on_ == sort_point::LOWER_LEFT ) {
+            return bb1.lowerLeft[ dimension_ ] <= bb2.lowerLeft[ dimension_ ];
+        }
+        return bb1.upperRight[ dimension_ ] <= bb2.upperRight[ dimension_ ];
+    }
+
+    unsigned dimension_;
+    tree_node_allocator *allocator_;
+    sort_point sort_on_;
+};
 
 // Splitting a node will remove it from its parent node and its memory will be freed
 template <int min_branch_factor, int max_branch_factor>
@@ -760,11 +830,13 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
     tree_node_handle left_handle = alloc_data.second;
     auto left_node = alloc_data.first;
     new (&(*left_node)) NodeType( treeRef, parent, left_handle );
+    assert( left_node->self_handle_ == left_handle );
 
     alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle right_handle = alloc_data.second;
     auto right_node = alloc_data.first;
     new (&(*right_node)) NodeType( treeRef, parent, right_handle );
+    assert( right_node->self_handle_ == right_handle );
 
     std::cout << "Splitting node: " << self_handle_ << " into node: " <<
         left_handle << " and " << right_handle << std::endl;
@@ -804,6 +876,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
         std::cout << "Poly before split: " << node_poly << std::endl;
         std::cout << "New point: " << std::get<Point>( entries.at(
                     cur_offset_-1)) << std::endl;
+        std::cout << "Node size: " << cur_offset_ << std::endl;
 
         bool containedLeft, containedRight;
         for( size_t i = 0; i < cur_offset_; i++ ) {
@@ -813,18 +886,22 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             assert( containedLeft or containedRight );
 
             if( containedLeft && !containedRight ) {
+                std::cout << "Adding left." << std::endl;
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     dataPoint;
             } else if( !containedLeft && containedRight ) {
+                std::cout << "Adding right." << std::endl;
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
             } else if( left_node->cur_offset_ < right_node->cur_offset_
                     ) {
                 assert( containedLeft and containedRight );
+                std::cout << "Adding left." << std::endl;
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     dataPoint;
             } else {
                 assert( containedLeft and containedRight );
+                std::cout << "Adding right." << std::endl;
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
             }
@@ -835,7 +912,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                             left_node->entries.at(i) ) );
             }
             for( unsigned i = 0; i < right_node->cur_offset_; i++ ) {
-                assert( std::holds_alternative<Point>(
+               assert( std::holds_alternative<Point>(
                             right_node->entries.at(i) ) or
                         std::holds_alternative<Branch>(
                             right_node->entries.at(i) ) );
@@ -846,41 +923,11 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
 
         cur_offset_ = 0;
 
-
-        std::cout << "Left poly before fix: " << left_polygon << std::endl;
-        Rectangle left_before_box = left_polygon.boundingBox;
-        std::cout << "Left poly bounding box: " <<
-            left_polygon.boundingBox << std::endl;
-
-        std::cout << "Right poly before fix: " << right_polygon << std::endl;
-        std::cout << "Right poly bounding box: " <<
-            right_polygon.boundingBox << std::endl;
-        Rectangle right_before_box = right_polygon.boundingBox;
-
         shrink( left_polygon, left_node->entries.begin(),
                 left_node->entries.begin() + left_node->cur_offset_, allocator );
 
         shrink( right_polygon, right_node->entries.begin(),
                 right_node->entries.begin() + right_node->cur_offset_ , allocator );
-
-        std::cout << "Left poly after fix: " << left_polygon << std::endl;
-        std::cout << "Left poly bounding box: " <<
-            left_polygon.boundingBox << std::endl;
-        std::cout << "Right poly after fix: " << right_polygon << std::endl;
-        std::cout << "Right poly bounding box: " <<
-            right_polygon.boundingBox << std::endl;
-
-        assert( left_polygon.disjoint( right_polygon ) );
-        assert( left_node->boundingBox() ==
-                left_polygon.boundingBox );
-        assert( right_node->boundingBox() ==
-                right_polygon.boundingBox );
-        std::cout << "Left Polygon matches boundingBox() " <<
-            left_handle << std::endl;
-        std::cout << "Right Polygon matches boundingBox() " <<
-            right_handle << std::endl;
-
-
 
         if( left_polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
             split.leftBranch.boundingPoly =
@@ -936,8 +983,9 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             bool is_contained_right =
                 summary_rectangle.lowerLeft[p.dimension]
                 >= p.location;
-            if( is_contained_left and (not is_contained_right or
-                (left_node->cur_offset_ < right_node->cur_offset_ ) ) ){
+            // Entirely contained in the left polygon
+            if( is_contained_left and not is_contained_right) {
+                std::cout << "Contained left!" << std::endl;
                 auto child =
                     allocator->get_tree_node<NodeType>(
                             branch.child );
@@ -945,14 +993,28 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 assert( split.leftBranch.child == left_handle );
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     branch;
-            } else if( is_contained_right and (not is_contained_left or
-                    (left_node->cur_offset_ >= right_node->cur_offset_) ) ) {
+            // Entirely contained in the right polygon
+            } else if( is_contained_right and not is_contained_left ) {
+                std::cout << "Contained right!" << std::endl;
                 auto child =
                     allocator->get_tree_node<NodeType>(
                             branch.child );
                 child->parent = split.rightBranch.child;
                 assert( split.rightBranch.child == right_handle );
                 right_node->entries.at( right_node->cur_offset_++ ) = branch;
+            // Partially spanned by both nodes, need to downsplit
+            } else if( summary_rectangle.upperRight[p.dimension] ==
+                    summary_rectangle.lowerLeft[p.dimension] ) {
+                // These go left too
+                std::cout << "Contained left!" << std::endl;
+                auto child =
+                    allocator->get_tree_node<NodeType>(
+                            branch.child );
+                child->parent = split.leftBranch.child;
+                assert( split.leftBranch.child == left_handle );
+                left_node->entries.at( left_node->cur_offset_++ ) =
+                    branch;
+
             } else {
 
 
@@ -1003,35 +1065,53 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
         // resulting in an overfull left node.
 
 
-        // FIXME: presumes sorted to preserve no intersection
-        // FIXME: SUPER BROKEN POLYGONS
-        // FIXME: need to adjust partition line based on dimension
-        // and value of the thing we move over.
+        assert( left_node->cur_offset_ <= max_branch_factor and
+                right_node->cur_offset_ <= max_branch_factor );
         if( (left_node->cur_offset_ > max_branch_factor and 
                 right_node->cur_offset_ == max_branch_factor) or
             (left_node->cur_offset_ == max_branch_factor and
                 right_node->cur_offset_ > max_branch_factor ) ) {
+            // This is a case where moving stuff between the nodes will
+            // not ameliorate our overfull node, because one is
+            // overflowing and the other is full.
+
+            // It's not clear to me this is possible because we split on
+            // the geometric mean, so either something lies to the left
+            // of the partition point or all of the branches here have
+            // the same bounding box, in which case it doesn't matter
+            // which branches we assign to what node. That is, at least
+            // one polygon must not be cut in two by the partitioning
+            // point along at least one axis, which is the axis we must
+            // have chosen. Provably *not* true for all rectilinear
+            // polygons, but I think because of the way the NIR-Tree
+            // bisects space it might be fine (no donut polygons)?
+            // FIXME prove this
+
             std::cout << "Weird edge case! Is this possible?" <<
             std::endl;
             assert( false );
         }
+
+        // OK, we aren't in one of the disaster scenarios where we can't
+        // remedy the overfull situation. We need to move an entry from
+        // the left node to the right node or vice versa.
+        // I'm not totally sure how to do this, because we have split a
+        // bunch of entries above but we now we need to move the
+        // partition line. We would need to undo the partition line and
+        // redraw it. This is not feasible. I think we need to select a
+        // partition line that always works.
         if( left_node->cur_offset_ > max_branch_factor ) {
 
             std::sort( left_node->entries.begin(),
-                    left_node->entries.begin() + cur_offset_,
-                    [&allocator,p]( NodeEntry &n1, NodeEntry &n2 ) {
-                        Branch &b1 = std::get<Branch>( n1 );
-                        Branch &b2 = std::get<Branch>( n2 );
-
-                        Rectangle bb1 = b1.get_summary_rectangle(
-                                allocator );
-                        Rectangle bb2 = b2.get_summary_rectangle(
-                                allocator );
-                        return bb1.upperRight[ p.dimension ] <= bb2.upperRight[ p.dimension ];
-                    }
+                    left_node->entries.begin() + left_node->cur_offset_,
+                    summary_rectangle_sorter( p.dimension,
+                        summary_rectangle_sorter::sort_point::LOWER_LEFT,
+                        allocator )
             );
+
             // Move last entry to the right
-            std::cout << "Zhuzh" << std::endl;
+            std::cout << "Zhuzh on new nodes: " << left_handle << ", "
+                << right_handle <<  std::endl;
             right_node->entries.at( right_node->cur_offset_ ) =
                 left_node->entries.at( left_node->cur_offset_-1 );
             left_node->cur_offset_--;
@@ -1039,34 +1119,77 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             Branch &b_to_adjust = std::get<Branch>( right_node->entries.at(
                         right_node->cur_offset_ ) );
 
+            // Figure out the box on what we just moved
+            Rectangle bounding_box = b_to_adjust.get_summary_rectangle(
+                    allocator );
+            std::cout << "Transferring branch to the right with bounding box: " <<
+                bounding_box << std::endl;
+
+            right_polygon.expand( bounding_box.lowerLeft );
+            assert( right_polygon.containsPoint( bounding_box.lowerLeft ) );
+            assert( right_polygon.containsPoint( bounding_box.upperRight ) );
+            // We could make this closer by reading the last left
+            // polygon, but not sure how much it matters
+            left_polygon.maxLimit( bounding_box.lowerLeft[p.dimension], p.dimension
+                    );
+
+
             auto child_to_adjust = allocator->get_tree_node<NodeType>(
                     b_to_adjust.child );
             child_to_adjust->parent = right_node->self_handle_;
             right_node->cur_offset_++;
+
         } else if( right_node->cur_offset_ > max_branch_factor ) {
+
             std::sort( right_node->entries.begin(),
-                    right_node->entries.begin() + cur_offset_,
-                    [&allocator,p]( NodeEntry &n1, NodeEntry &n2 ) {
-                        Branch &b1 = std::get<Branch>( n1 );
-                        Branch &b2 = std::get<Branch>( n2 );
-                        Rectangle bb1 = b1.get_summary_rectangle(
-                                allocator );
-                        Rectangle bb2 = b2.get_summary_rectangle(
-                                allocator );
-                        return bb1.upperRight[ p.dimension ] <= bb2.upperRight[ p.dimension ];
-                    }
+                    right_node->entries.begin() + right_node->cur_offset_,
+                    summary_rectangle_sorter( p.dimension,
+                       summary_rectangle_sorter::sort_point::UPPER_RIGHT,
+                       allocator )
             );
 
-            std::cout << "Zhuzh" << std::endl;
+            std::cout << "Zhuzh on new nodes: " << left_handle << ", " <<
+                right_handle << std::endl;
             // Move first entry to the left
             left_node->entries.at( left_node->cur_offset_ ) =
-                right_node->entries.at( right_node->cur_offset_-1 );
+                right_node->entries.at( 0 );
+
+            // Swap
+            right_node->entries.at( 0 ) = right_node->entries.at(
+                    right_node->cur_offset_-1 );
+
+            // Chop
             right_node->cur_offset_--;
 
             Branch &b_to_adjust = std::get<Branch>( left_node->entries.at(
                         left_node->cur_offset_ ) );
+
+            Rectangle bounding_box = b_to_adjust.get_summary_rectangle(
+                    allocator );
+            std::cout << "Transferring branch to the left (" <<
+                left_handle << ") from (" << right_handle << ") parent: " << parent << " with bounding box: " <<
+                bounding_box << std::endl;
+            left_polygon.expand( bounding_box.upperRight );
+            assert( left_polygon.containsPoint( bounding_box.upperRight ) );
+            assert( left_polygon.containsPoint( bounding_box.lowerLeft ) );
+            assert( left_polygon.containsPoint( Point(-121.7353960000000086,
+                            37.710995499999995673) ) );
+
+            // We could make this closer by reading the right's polygon in
+            // slot 1, but this might be another page access and its not
+            // clear how much it will help things
+            std::cout << "Before chopping, right_poly was: " <<
+                right_polygon << std::endl;
+            right_polygon.minLimit( bounding_box.upperRight[p.dimension], p.dimension
+                    );
+            std::cout << "After chopping, right_poly is: " <<
+                right_polygon << std::endl;
+
+
             auto child_to_adjust = allocator->get_tree_node<NodeType>(
                     b_to_adjust.child );
+            assert( child_to_adjust->parent == right_node->self_handle_
+                    );
             child_to_adjust->parent = left_node->self_handle_;
             left_node->cur_offset_++;
         }
@@ -1115,6 +1238,7 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
         // Writeback our polygons
         if( left_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
             //FIXME: we actually realloc this, even if we don't have to.
+            std::cout << "Overflowed left polygon." << std::endl;
             auto alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                         PAGE_DATA_SIZE );
@@ -1123,10 +1247,19 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
             split.leftBranch.boundingPoly = alloc_data.second;
             alloc_data.first->push_polygon_to_disk( left_polygon );
         } else {
+            std::cout << "Left polygon fits inline." << std::endl;
             split.leftBranch.boundingPoly =
                 InlineBoundedIsotheticPolygon();
             std::get<InlineBoundedIsotheticPolygon>(split.leftBranch.boundingPoly).push_polygon_to_disk(
                     left_polygon );
+            assert( std::get<InlineBoundedIsotheticPolygon>(
+                        split.leftBranch.boundingPoly
+                        ).get_summary_rectangle() ==
+                    left_polygon.boundingBox );
+            std::cout << "Left Polygon has same bounding box" <<
+                std::endl;
+            std::cout << "Got Left Polygon: " << left_polygon <<
+                std::endl;
         }
         if( right_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
             //FIXME: we actually realloc this, even if we don't have to.
@@ -1463,49 +1596,57 @@ unsigned Node<min_branch_factor,max_branch_factor>::checksum() {
 }
 
 template <int min_branch_factor, int max_branch_factor>
-bool Node<min_branch_factor,max_branch_factor>::bounding_box_validate()
+std::vector<Point> Node<min_branch_factor,max_branch_factor>::bounding_box_validate()
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     if( !isLeaf() ) {
         tree_node_allocator *allocator = get_node_allocator( treeRef );
+        std::vector<Point> all_child_points;
+        std::cout << "Node: " << self_handle_ << " has children: " <<
+            std::endl;
         for( unsigned i = 0; i < cur_offset_; i++ ) {
-            Branch &b = std::get<Branch>( entries.at(i) );
-            Rectangle cachedBoundingBox;
-            Rectangle computedBoundingBox;
-            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                        b.boundingPoly ) ) {
-                auto &loc_poly =
-                    std::get<InlineBoundedIsotheticPolygon>(
-                            b.boundingPoly );
-                cachedBoundingBox = loc_poly.get_summary_rectangle();
-                computedBoundingBox = loc_poly.materialize_polygon().boundingBox;
-            } else {
-                tree_node_handle poly_handle =
-                    std::get<tree_node_handle>( b.boundingPoly );
-                auto poly_ptr =
-                    InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                            allocator, poly_handle );
-                cachedBoundingBox = poly_ptr->get_summary_rectangle();
-                computedBoundingBox =
-                    poly_ptr->materialize_polygon().boundingBox;
+            Branch &b_i = std::get<Branch>( entries.at(i) );
+            std::cout << "Child: " << b_i.child << std::endl;
+            auto child_ptr = allocator->get_tree_node<NodeType>(
+                    b_i.child );
+            std::vector<Point> child_points =
+                child_ptr->bounding_box_validate();
+            for( Point &p : child_points ) {
+                all_child_points.push_back( p );
             }
-            assert( cachedBoundingBox == computedBoundingBox );
-            tree_node_handle child_handle = b.child;
-            auto child = allocator->get_tree_node<NodeType>(
-                    child_handle );
-            if( child->boundingBox() != computedBoundingBox ) {
-                std::cout << "Fail bbox check: " << child_handle <<
-                    std::endl;
-                std::cout << child->boundingBox() << std::endl;
-                std::cout << computedBoundingBox << std::endl;
-                std::cout << cachedBoundingBox << std::endl;
-            }
-            assert( child->boundingBox() == computedBoundingBox );
-            child->bounding_box_validate();
         }
+        if( parent != nullptr ) {
+            auto parent_node = allocator->get_tree_node<NodeType>( parent );
+            Branch &parent_branch = parent_node->locateBranch( self_handle_ );
+            IsotheticPolygon parent_poly =
+                parent_branch.materialize_polygon( allocator );
+            Rectangle bounding_box =
+                parent_branch.get_summary_rectangle( allocator );
+            for( Point &p : all_child_points ) {
+                if( !parent_poly.containsPoint( p ) ) {
+                    std::cout << "Parent poly (" << parent << "does not contain: " << p
+                        << std::endl;
+                    std::cout << "Poly was: " << parent_poly <<
+                        std::endl;
+                    std::cout << "My node is: " << self_handle_ <<
+                        std::endl;
+                    assert( false );
+                }
+                if( !bounding_box.containsPoint( p ) ) {
+                    std::cout << "Parent poly contains " << p <<
+                        " but the box does not!" << std::endl;
+                    assert( false );
+                }
+            }
+        }
+        return all_child_points;
     }
-    return true;
+    std::vector<Point> my_points;
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        my_points.push_back( std::get<Point>( entries.at(i) ) );
+    }
+    return my_points;
 }
 
 template <int min_branch_factor, int max_branch_factor>
