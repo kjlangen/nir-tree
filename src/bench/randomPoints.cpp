@@ -483,7 +483,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	else if (configU["tree"] == R_STAR_TREE)
 	{
-		spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
+		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
+		spatialIndex = new rstartreedisk::RStarTreeDisk<3,7>( 4096 *10
+                *13000, "rstardiskbacked_california.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
@@ -571,18 +573,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		totalTimeInserts += delta.count();
 		totalInserts += 1;
 
-        std::cout << "Inserted: " << nextPoint.value() << std::endl;
-        spatialIndex->validate();
-
-        std::cout << "Insert OK." << std::endl;
-        //spatialIndex->validate();
-        if( totalInserts % 1000 == 0 ) {
+        if( totalInserts % 10000 == 0 ) {
 		    std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
         }
 
-        if( totalInserts > 10000 ) {
-            break;
-        }
 		// std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
 	}
 	std::cout << "Insertion OK." << std::endl;
@@ -641,7 +635,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
-    return;
 
 	// Search for rectangles
 	unsigned rangeSearchChecksum = 0;
@@ -684,10 +677,11 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	std::cout << "Checksum OK." << std::endl;
 
+    /*
 	// Delete points and time their deletion
 	std::cout << "Beginning deletion." << std::endl;
 	pointGen.reset();
-	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
+	while((nextPoint = pointGen.nextPoint()))
 	{
 		// Delete
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
@@ -699,6 +693,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		// std::cout << "Point[" << i << "] deleted." << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Deletion OK." << std::endl;
+    */
 
 	// Timing Statistics
 	std::cout << "Total time to insert: " << totalTimeInserts << "s" << std::endl;

@@ -12,6 +12,7 @@
 #include <rtree/rtree.h>
 #include <rplustree/rplustree.h>
 #include <rstartree/rstartree.h>
+#include <rstartreedisk/rstartreedisk.h>
 #include <nirtree/nirtree.h>
 #include <nirtreedisk/nirtreedisk.h>
 #include <quadtree/quadtree.h>
