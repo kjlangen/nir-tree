@@ -293,6 +293,30 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
 
         }
 
+        bool containsPoint( const Point &p ) {
+            if( not summary_rectangle_.containsPoint( p ) ) {
+                return false;
+            }
+            for( auto iter = begin(); iter != end(); iter++ ) {
+                if( iter->containsPoint( p ) ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool intersectsRectangle( const Rectangle &rect ) {
+            if( not summary_rectangle_.intersectsRectangle( rect ) ) {
+                return false;
+            }
+            for( auto iter = begin(); iter != end(); iter++ ) {
+                if( iter->intersectsRectangle( rect ) ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
 		friend bool operator==(const InlineBoundedIsotheticPolygon &lhs,
                 const InlineBoundedIsotheticPolygon &rhs);
 		friend bool operator!=(const InlineBoundedIsotheticPolygon&lhs,
@@ -580,6 +604,30 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
 
         Rectangle &get_summary_rectangle() {
             return summary_rectangle_;
+        }
+
+        bool containsPoint( const Point &p ) {
+            if( not summary_rectangle_.containsPoint( p ) ) {
+                return false;
+            }
+            for( auto iter = begin(); iter != end(); iter++ ) {
+                if( iter->containsPoint( p ) ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool intersectsRectangle( const Rectangle &rect ) {
+            if( not summary_rectangle_.intersectsRectangle( rect ) ) {
+                return false;
+            }
+            for( auto iter = begin(); iter != end(); iter++ ) {
+                if( iter->intersectsRectangle( rect ) ) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         static pinned_node_ptr<InlineUnboundedIsotheticPolygon> read_polygon_from_disk(

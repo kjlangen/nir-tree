@@ -740,15 +740,11 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
     unlink( "nirdiskbacked.txt" );
 }
 
-TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
+/*TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
 {
     unlink( "nirdiskbacked.txt" );
     {
         unsigned max_branch_factor = 7;
-        /*
-        unsigned insertion_count = max_branch_factor * max_branch_factor
-            + 1;
-        */
         unsigned insertion_count = max_branch_factor*7 + 1;
 
         TreeType tree(4096*20, "nirdiskbacked.txt");
@@ -780,8 +776,10 @@ TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
     }
     unlink( "nirdiskbacked.txt" );
 }
+*/
 
 
+/*
 TEST_CASE("NIRTreeDisk: grow tree branch all same point")
 {
     unlink( "nirdiskbacked.txt" );
@@ -846,3 +844,4 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
     unlink( "nirdiskbacked.txt" );
 
 }
+*/

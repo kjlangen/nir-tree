@@ -182,37 +182,24 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
         } else {
             // Determine which branches we need to follow
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
-                IsotheticPolygon poly;
                 Branch &b = std::get<Branch>( current_node->entries.at(i) );
                 if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
                             b.boundingPoly ) ) {
                     InlineBoundedIsotheticPolygon &loc_poly = 
                         std::get<InlineBoundedIsotheticPolygon>(
                                 b.boundingPoly );
-                    // Quick check
-                    if( !loc_poly.get_summary_rectangle().containsPoint(
-                                requestedPoint ) ) {
-                        continue;
+                    if( loc_poly.containsPoint( requestedPoint ) ) {
+                        context.push( b.child );
                     }
-                    // Full containment check required
-                    poly = loc_poly.materialize_polygon();
                 } else {
                     tree_node_handle poly_handle =
                         std::get<tree_node_handle>( b.boundingPoly );
                     auto poly_pin =
                         InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
                                 allocator, poly_handle );
-                    // Quick check
-                    if( !poly_pin->get_summary_rectangle().containsPoint(
-                                requestedPoint ) ){
-                        continue;
+                    if( poly_pin->containsPoint( requestedPoint ) ) {
+                        context.push( b.child );
                     }
-                    // Full containment check required
-                    poly = poly_pin->materialize_polygon();
-                }
-                if( poly.containsPoint( requestedPoint) ) {
-                    // Add to the nodes we will check
-                    context.push( b.child );
                 }
             }
 #ifdef STAT
@@ -264,38 +251,25 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
         } else {
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 // Determine which branches we need to follow
-                IsotheticPolygon poly;
                 Branch &b = std::get<Branch>( current_node->entries.at(i) );
                 if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
                             b.boundingPoly ) ) {
                     InlineBoundedIsotheticPolygon &loc_poly = 
                         std::get<InlineBoundedIsotheticPolygon>(
                                 b.boundingPoly );
-                    // Quick check
-                    if( !loc_poly.get_summary_rectangle().intersectsRectangle(
-                                requestedRectangle ) ) {
-                        continue;
+
+                    if( loc_poly.intersectsRectangle( requestedRectangle ) ) {
+                        context.push( b.child );
                     }
-                    // Full containment check required
-                    poly = std::get<InlineBoundedIsotheticPolygon>(
-                                b.boundingPoly ).materialize_polygon();
                 } else {
                     tree_node_handle poly_handle =
                         std::get<tree_node_handle>( b.boundingPoly );
                     auto poly_pin =
                         InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
                                 allocator, poly_handle );
-                    // Quick check
-                    if( !poly_pin->get_summary_rectangle().intersectsRectangle(
-                                requestedRectangle ) ) {
-                        continue;
+                    if( poly_pin->intersectsRectangle( requestedRectangle ) ) {
+                        context.push( b.child );
                     }
-                    // Full containment check required
-                    poly = poly_pin->materialize_polygon();
-                }
-                if( poly.intersectsRectangle( requestedRectangle ) ) {
-                    // Add to the nodes we will check
-                    context.push( b.child );
                 }
             }
 #ifdef STAT
@@ -640,7 +614,7 @@ Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
 
         double best_candidate = 0.0;
         unsigned min_cost = all_branch_polys.size();
-        unsigned best_dimension;
+        unsigned best_dimension = 0;
         // D * ( M LOG M + M ) ~> O( D M LOG M )
         for( unsigned d = 0; d < dimensions; d++ ) {
             std::sort( all_branch_polys.begin(), all_branch_polys.end(),
