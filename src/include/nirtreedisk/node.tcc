@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Shorthand so I don't have to write this a billion times
+#define NODE_TEMPLATE_PARAMS template <int min_branch_factor, int max_branch_factor, class strategy>
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor, max_branch_factor>::deleteSubtrees()
+#define NODE_CLASS_TYPES Node<min_branch_factor, max_branch_factor, strategy>
+
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::deleteSubtrees()
 {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
     if( isLeaf() ) {
         return;
     }
@@ -33,8 +37,8 @@ void Node<min_branch_factor, max_branch_factor>::deleteSubtrees()
     }
 }
 
-template <int min_branch_factor, int max_branch_factor>
-bool Node<min_branch_factor,max_branch_factor>::isLeaf()
+NODE_TEMPLATE_PARAMS
+bool NODE_CLASS_TYPES::isLeaf()
 {
     if( cur_offset_ == 0 ) {
         return true;
@@ -43,8 +47,8 @@ bool Node<min_branch_factor,max_branch_factor>::isLeaf()
     return std::holds_alternative<Point>( entries.at( 0 ) );
 }
 
-template <int min_branch_factor, int max_branch_factor>
-Rectangle Node<min_branch_factor,max_branch_factor>::boundingBox()
+NODE_TEMPLATE_PARAMS
+Rectangle NODE_CLASS_TYPES::boundingBox()
 {
     Rectangle bb;
     assert( cur_offset_ > 0 );
@@ -69,8 +73,8 @@ Rectangle Node<min_branch_factor,max_branch_factor>::boundingBox()
     return bb;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::updateBranch(
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::updateBranch(
     tree_node_handle child_handle, 
     const InlineBoundedIsotheticPolygon &boundingPoly
 ) {
@@ -83,8 +87,8 @@ void Node<min_branch_factor,max_branch_factor>::updateBranch(
     std::get<Branch>( entries.at( childIndex ) ).boundingPoly = boundingPoly;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::removeEntry(
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::removeEntry(
     const tree_node_handle &entry
 ) {
     assert( !isLeaf() );
@@ -101,9 +105,9 @@ void Node<min_branch_factor,max_branch_factor>::removeEntry(
     cur_offset_--;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::removeEntry(
-    const Node<min_branch_factor,max_branch_factor>::NodeEntry &entry
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::removeEntry(
+    const NODE_CLASS_TYPES::NodeEntry &entry
 ) {
     // Locate the child
     size_t childIndex;
@@ -122,10 +126,10 @@ void Node<min_branch_factor,max_branch_factor>::removeEntry(
     cur_offset_--;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator)
 {
-    using NodeType = Node<min_branch_factor, max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
     if( isLeaf() ) {
         // We are a leaf so add our data points when they are the search point
         for( size_t i = 0; i < cur_offset_; i++ ) {
@@ -145,11 +149,11 @@ void Node<min_branch_factor,max_branch_factor>::exhaustiveSearch(Point &requeste
     }
 }
 
-template <int min_branch_factor, int max_branch_factor>
-std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
+NODE_TEMPLATE_PARAMS
+std::vector<Point> NODE_CLASS_TYPES::search(
     Point &requestedPoint
 ) {
-    using NodeType = Node<min_branch_factor, max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     std::vector<Point> accumulator;
 
@@ -215,11 +219,11 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
     return accumulator;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-std::vector<Point> Node<min_branch_factor,max_branch_factor>::search(
+NODE_TEMPLATE_PARAMS
+std::vector<Point> NODE_CLASS_TYPES::search(
     Rectangle &requestedRectangle
 ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     std::vector<Point> accumulator;
 
@@ -349,12 +353,12 @@ void shrink(
 // Always called on root, this = root
 // This top-to-bottom sweep is only for adjusting bounding boxes to contain the point and
 // choosing a particular leaf
-template <int min_branch_factor, int max_branch_factor>
-tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point givenPoint)
+NODE_TEMPLATE_PARAMS
+tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
 {
     // FIXME: try and avoid all these materialize calls
 
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     // CL1 [Initialize]
     tree_node_handle cur_node_handle = self_handle_;
@@ -494,10 +498,10 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseNode(Point giv
     }
 }
 
-template <int min_branch_factor, int max_branch_factor>
-tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(Point givenPoint)
+NODE_TEMPLATE_PARAMS
+tree_node_handle NODE_CLASS_TYPES::findLeaf(Point givenPoint)
 {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
     // Initialize our context stack
     std::stack<tree_node_handle> context;
     context.push(self_handle_);
@@ -567,120 +571,63 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(Point give
     return tree_node_handle( nullptr );
 }
 
-template <int min_branch_factor, int max_branch_factor>
-Partition Node<min_branch_factor,max_branch_factor>::partitionNode()
+NODE_TEMPLATE_PARAMS
+Partition NODE_CLASS_TYPES::partitionLeafNode()
 {
     Partition defaultPartition;
     double totalMass = 0.0;
+    Point variance = Point::atOrigin;
+    Point average = Point::atOrigin;
+    Point sumOfSquares = Point::atOrigin;
+
+    for( size_t i = 0; i < cur_offset_; i++ ) {
+        Point &dataPoint = std::get<Point>( entries.at(i) );
+        average += dataPoint;
+        sumOfSquares += dataPoint * dataPoint;
+        totalMass += 1.0;
+    }
+
+    // Compute final terms
+    average /= totalMass;
+    sumOfSquares /= totalMass;
+
+    // Compute final variance
+    variance = sumOfSquares - average * average;
+
+    // Choose most variate dimension
+    defaultPartition.dimension = 0;
+    for( unsigned d = 0; d < dimensions; d++ ) {
+        if( variance[d] > variance[defaultPartition.dimension] ) {
+            defaultPartition.dimension = d;
+        }
+    }
+    defaultPartition.location = average[defaultPartition.dimension];
+
+    return defaultPartition;
+}
+
+NODE_TEMPLATE_PARAMS
+Partition NODE_CLASS_TYPES::partitionNode()
+{
 
     if( isLeaf() ) {
-        // Setup variance values
-        Point variance = Point::atOrigin;
-        Point average = Point::atOrigin;
-        Point sumOfSquares = Point::atOrigin;
-
-        for( size_t i = 0; i < cur_offset_; i++ ) {
-            Point &dataPoint = std::get<Point>( entries.at(i) );
-            average += dataPoint;
-            sumOfSquares += dataPoint * dataPoint;
-            totalMass += 1.0;
-        }
-
-        // Compute final terms
-        average /= totalMass;
-        sumOfSquares /= totalMass;
-
-        // Compute final variance
-        variance = sumOfSquares - average * average;
-
-        // Choose most variate dimension
-        defaultPartition.dimension = 0;
-        for( unsigned d = 0; d < dimensions; d++ ) {
-            if( variance[d] > variance[defaultPartition.dimension] ) {
-                defaultPartition.dimension = d;
-            }
-        }
-        defaultPartition.location = average[defaultPartition.dimension];
-
-        return defaultPartition;
-    } else {
-        tree_node_allocator *allocator = get_node_allocator( treeRef );
-        std::vector<Rectangle> all_branch_polys;
-        for( unsigned i = 0; i < cur_offset_; i++ ) {
-            Branch &b_i = std::get<Branch>( entries.at(i) );
-            all_branch_polys.push_back( b_i.get_summary_rectangle(
-                        allocator ) );
-        }
-
-        double best_candidate = 0.0;
-        unsigned min_cost = all_branch_polys.size();
-        unsigned best_dimension = 0;
-        // D * ( M LOG M + M ) ~> O( D M LOG M )
-        for( unsigned d = 0; d < dimensions; d++ ) {
-            std::sort( all_branch_polys.begin(), all_branch_polys.end(),
-                    [d](Rectangle &poly1, Rectangle &poly2
-                        ) {
-                        return poly1.upperRight[d] <
-                        poly2.upperRight[d];
-                    }
-            );
-            for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
-                unsigned cost = 0;
-                // starts at 1 cause first goes left
-                // Technically we should also walk the bottom bounds to
-                // be sure, even in the non F, C case.
-                unsigned left_count = 1;
-                unsigned right_count = 0; 
-                double partition_candidate =
-                    all_branch_polys.at(i).upperRight[d];
-                // Existing metric wanted to avoid recursive splits
-                // Let's try and do the same
-                for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
-                    if( i != j ) {
-                        Rectangle &poly_ref =
-                            all_branch_polys.at(j);
-                        bool greater_than_left = poly_ref.lowerLeft[d] <
-                            partition_candidate;
-                        bool less_than_right = partition_candidate <
-                            poly_ref.upperRight[d];
-                        bool requires_split = greater_than_left and
-                            less_than_right;
-
-                        bool should_go_left = poly_ref.upperRight[d] <=
-                            partition_candidate;
-                        bool should_go_right = poly_ref.lowerLeft[d] >=
-                            partition_candidate;
-
-                        if( requires_split ) {
-                            left_count++;
-                            right_count++;
-                            cost++;
-                        } else if( should_go_left ) {
-                            // the zero area polys end up here too
-                            left_count++;
-                        } else if( should_go_right ) {
-                            right_count++;
-                        }
-
-                    }
-                }
-                if( cost < min_cost and left_count <= max_branch_factor
-                        and right_count <= max_branch_factor and
-                        left_count > 0 and right_count > 0 ) {
-                    best_candidate = partition_candidate;
-                    best_dimension = d;
-                    min_cost = cost;
-                }
-            }
-        }
-        // Degenerate case
-        assert( min_cost < all_branch_polys.size() );
-
-        defaultPartition.dimension = best_dimension;
-        defaultPartition.location = best_candidate;
-            
-        return defaultPartition;
+        return partitionLeafNode();
     }
+
+    // Branch split
+    //
+    // We need to ensure that this branch split does not result in nodes
+    // that are still overfull. Since choosing a partitioning that
+    // splits a polygon results in a node being added to the left and
+    // right (and thus does not help in reducing entry counts in the
+    // split-nodes), we want to avoid that. So, we walk along polygon
+    // boundaries.
+    //
+    // However, we also want to ensure that the split partitions the
+    // space rougly evenly so that we don't have to split again so soon,
+    // which just increases the depth of the tree.
+    return partitionBranchNode();
+
 }
 
 
@@ -719,12 +666,11 @@ struct summary_rectangle_sorter {
 };
 
 // Splitting a node will remove it from its parent node and its memory will be freed
-template <int min_branch_factor, int max_branch_factor>
-SplitResult
-Node<min_branch_factor,max_branch_factor>::splitNode(
+NODE_TEMPLATE_PARAMS
+SplitResult NODE_CLASS_TYPES::splitNode(
     Partition p
 ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
 
@@ -917,18 +863,25 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
                 child->parent = split.rightBranch.child;
                 assert( split.rightBranch.child == right_handle );
                 right_node->entries.at( right_node->cur_offset_++ ) = branch;
-            // Partially spanned by both nodes, need to downsplit
             } else if( summary_rectangle.upperRight[p.dimension] ==
                     summary_rectangle.lowerLeft[p.dimension] ) {
-                // These go left too
+                // These go left or right situationally
                 auto child =
                     allocator->get_tree_node<NodeType>(
                             branch.child );
-                child->parent = split.leftBranch.child;
-                assert( split.leftBranch.child == left_handle );
-                left_node->entries.at( left_node->cur_offset_++ ) =
-                    branch;
+                if( left_node->cur_offset_ <= right_node->cur_offset_ ) {
+                    child->parent = split.leftBranch.child;
+                    assert( split.leftBranch.child == left_handle );
+                    left_node->entries.at( left_node->cur_offset_++ ) =
+                        branch;
+                } else {
 
+                    child->parent = split.rightBranch.child;
+                    assert( split.rightBranch.child == right_handle );
+                    right_node->entries.at( right_node->cur_offset_++ ) =
+                        branch;
+                }
+            // Partially spanned by both nodes, need to downsplit
             } else {
 
 
@@ -1163,20 +1116,18 @@ Node<min_branch_factor,max_branch_factor>::splitNode(
 }
 
 // Splitting a node will remove it from its parent node and its memory will be freed
-template <int min_branch_factor, int max_branch_factor>
-SplitResult
-Node<min_branch_factor,max_branch_factor>::splitNode()
+NODE_TEMPLATE_PARAMS
+SplitResult NODE_CLASS_TYPES::splitNode()
 {
     SplitResult returnSplit = splitNode(partitionNode());
     return returnSplit;
 }
 
 // This bottom-to-top sweep is only for splitting bounding boxes as necessary
-template <int min_branch_factor, int max_branch_factor>
-SplitResult
-Node<min_branch_factor,max_branch_factor>::adjustTree()
+NODE_TEMPLATE_PARAMS
+SplitResult NODE_CLASS_TYPES::adjustTree()
 {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     tree_node_handle current_handle = self_handle_;
 
@@ -1305,9 +1256,9 @@ Node<min_branch_factor,max_branch_factor>::adjustTree()
     return propagationSplit;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point givenPoint ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+NODE_TEMPLATE_PARAMS
+tree_node_handle NODE_CLASS_TYPES::insert( Point givenPoint ) {
+    using NodeType = NODE_CLASS_TYPES;
 
     // Find the appropriate position for the new point
     tree_node_handle current_handle = chooseNode( givenPoint );
@@ -1370,10 +1321,10 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert( Point given
 }
 
 // To be called on a leaf
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::condenseTree()
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::condenseTree()
 {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     auto current_node_handle = self_handle_;
     auto previous_node_handle = tree_node_handle( nullptr );
@@ -1402,9 +1353,9 @@ void Node<min_branch_factor,max_branch_factor>::condenseTree()
 }
 
 // Always called on root, this = root
-template <int min_branch_factor, int max_branch_factor>
-tree_node_handle Node<min_branch_factor,max_branch_factor>::remove( Point givenPoint ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+NODE_TEMPLATE_PARAMS
+tree_node_handle NODE_CLASS_TYPES::remove( Point givenPoint ) {
+    using NodeType = NODE_CLASS_TYPES;
 
     // D1 [Find node containing record]
     tree_node_handle leaf_handle = findLeaf( givenPoint );
@@ -1437,9 +1388,9 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::remove( Point givenP
     return self_handle_;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-unsigned Node<min_branch_factor,max_branch_factor>::checksum() {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+NODE_TEMPLATE_PARAMS
+unsigned NODE_CLASS_TYPES::checksum() {
+    using NodeType = NODE_CLASS_TYPES;
 
     unsigned sum = 0;
 
@@ -1466,10 +1417,10 @@ unsigned Node<min_branch_factor,max_branch_factor>::checksum() {
     return sum;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-std::vector<Point> Node<min_branch_factor,max_branch_factor>::bounding_box_validate()
+NODE_TEMPLATE_PARAMS
+std::vector<Point> NODE_CLASS_TYPES::bounding_box_validate()
 {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     if( !isLeaf() ) {
         tree_node_allocator *allocator = get_node_allocator( treeRef );
@@ -1517,9 +1468,9 @@ std::vector<Point> Node<min_branch_factor,max_branch_factor>::bounding_box_valid
     return my_points;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expectedParent, unsigned index) {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+NODE_TEMPLATE_PARAMS
+bool NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigned index) {
+    using NodeType = NODE_CLASS_TYPES;
 
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
@@ -1633,8 +1584,8 @@ bool Node<min_branch_factor,max_branch_factor>::validate( tree_node_handle expec
     return valid;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::print(unsigned n)
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::print(unsigned n)
 {
     std::string indendtation(n * 4, ' ');
     std::cout << indendtation << "Node " << (void *)this << std::endl;
@@ -1659,10 +1610,10 @@ void Node<min_branch_factor,max_branch_factor>::print(unsigned n)
     std::cout << std::endl;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::printTree(unsigned n)
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::printTree(unsigned n)
 {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     // Print this node first
     print(n);
@@ -1685,10 +1636,10 @@ void Node<min_branch_factor,max_branch_factor>::printTree(unsigned n)
     std::cout << std::endl;
 }
 
-template <int min_branch_factor, int max_branch_factor>
-unsigned Node<min_branch_factor,max_branch_factor>::height()
+NODE_TEMPLATE_PARAMS
+unsigned NODE_CLASS_TYPES::height()
 {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     unsigned ret = 0;
     tree_node_handle current_handle = self_handle_;
@@ -1706,10 +1657,10 @@ unsigned Node<min_branch_factor,max_branch_factor>::height()
     }
 }
 
-template <int min_branch_factor, int max_branch_factor>
-void Node<min_branch_factor,max_branch_factor>::stat() {
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::stat() {
 #ifdef STAT
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    using NodeType = NODE_CLASS_TYPES;
 
     std::stack<tree_node_handle> context;
 

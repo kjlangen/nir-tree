@@ -5,8 +5,11 @@
 #include <iostream>
 #include <unistd.h>
 
-using NodeType = nirtreedisk::Node<3,7>;
-using TreeType = nirtreedisk::NIRTreeDisk<3,7>;
+#define DefaultNodeType nirtreedisk::Node<3,7,nirtreedisk::LineMinimizeDownsplits>
+#define DefaulTreeType nirtreedisk::NIRTreeDisk<3,7, nirtreedisk::LineMinimizeDownsplits>
+
+#define MeanBalancedNodeType nirtreedisk::Node<3,7,nirtreedisk::LineMinimizeDistanceFromMean>
+#define MeanBalancedTreeType nirtreedisk::NIRTreeDisk<3,7, nirtreedisk::LineMinimizeDistanceFromMean>
 
 template <class NE, class B>
 static NE createBranchEntry(
@@ -18,14 +21,14 @@ static NE createBranchEntry(
 }
 
 static tree_node_handle
-createFullLeafNode(TreeType &tree, tree_node_handle parent, Point p=Point::atOrigin)
+createFullLeafNode(DefaulTreeType &tree, tree_node_handle parent, Point p=Point::atOrigin)
 {
     // Allocate new node
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle node_handle = alloc_data.second;
     auto node = alloc_data.first;
-    new (&(*node)) NodeType( &tree, tree_node_handle(nullptr),
+    new (&(*node)) DefaultNodeType( &tree, tree_node_handle(nullptr),
             node_handle );
 
 	for (unsigned i = 0; i < 7; i++) {
@@ -44,18 +47,18 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
 
     unlink( "nirdiskbacked.txt" );
     {
-        TreeType tree( 4096*5, "nirdiskbacked.txt" );
+        DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
         tree_node_handle root = tree.root;
 
-        pinned_node_ptr<nirtreedisk::Node<3,7>> rootNode =
-            tree.node_allocator_.get_tree_node<nirtreedisk::Node<3,7>>( root );
+        pinned_node_ptr<DefaultNodeType> rootNode =
+            tree.node_allocator_.get_tree_node<DefaultNodeType>( root );
         
-        std::pair<pinned_node_ptr<nirtreedisk::Node<3,7>>, tree_node_handle> alloc_data =
-            tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
+        std::pair<pinned_node_ptr<DefaultNodeType>, tree_node_handle> alloc_data =
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         tree_node_handle child0 = alloc_data.second;
-        new (&(*alloc_data.first)) NodeType( &tree, child0, root );
-        nirtreedisk::Node<3,7>::NodeEntry entry =
-            createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,nirtreedisk::Branch>(
+        new (&(*alloc_data.first)) DefaultNodeType( &tree, child0, root );
+        DefaultNodeType::NodeEntry entry =
+            createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
                     InlineBoundedIsotheticPolygon(), child0);
 
         std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -66,11 +69,11 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
         rootNode->addEntryToNode( entry );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         tree_node_handle child1 = alloc_data.second;
-        new (&(*alloc_data.first)) NodeType( &tree, child1, root );
+        new (&(*alloc_data.first)) DefaultNodeType( &tree, child1, root );
         entry =
-            createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,nirtreedisk::Branch>(
+            createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
                     InlineBoundedIsotheticPolygon(), child1);
 
         std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -80,11 +83,11 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
         rootNode->addEntryToNode( entry );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         tree_node_handle child2 = alloc_data.second;
-        new (&(*alloc_data.first)) NodeType( &tree, child2, root );
+        new (&(*alloc_data.first)) DefaultNodeType( &tree, child2, root );
         entry =
-            createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,nirtreedisk::Branch>(
+            createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
                     InlineBoundedIsotheticPolygon( ), child2 );
 
         std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -99,18 +102,18 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
     unlink( "nirdiskbacked.txt" );
     {
         // Test set two
-        TreeType tree(4096 * 5, "nirdiskbacked.txt" );
+        DefaulTreeType tree(4096 * 5, "nirdiskbacked.txt" );
         tree_node_handle root = tree.root;
 
         auto rootNode =
-            tree.node_allocator_.get_tree_node<nirtreedisk::Node<3,7>>( root );
+            tree.node_allocator_.get_tree_node<DefaultNodeType>( root );
         
         auto  alloc_data =
-            tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         tree_node_handle child0 = alloc_data.second;
-        new (&(*alloc_data.first)) NodeType( &tree, child0, root );
+        new (&(*alloc_data.first)) DefaultNodeType( &tree, child0, root );
 
-        auto entry = createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
+        auto entry = createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(), child0); 
 
@@ -121,11 +124,11 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
 
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         tree_node_handle child1 = alloc_data.second;
-        new (&(*alloc_data.first)) NodeType( &tree, child1, root );
+        new (&(*alloc_data.first)) DefaultNodeType( &tree, child1, root );
 
-        entry = createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
+        entry = createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(), child1);
         std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -134,10 +137,10 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
         rootNode->addEntryToNode( entry );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<nirtreedisk::Node<3,7>>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         tree_node_handle child2 = alloc_data.second;
-        new (&(*alloc_data.first)) NodeType( &tree, child2, root );
-        entry = createBranchEntry<nirtreedisk::Node<3,7>::NodeEntry,
+        new (&(*alloc_data.first)) DefaultNodeType( &tree, child2, root );
+        entry = createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(), child2);
         std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -156,19 +159,19 @@ TEST_CASE("NIRTreeDisk: testBoundingBox")
 TEST_CASE("NIRTreeDisk: testUpdateBoundingBox") {
 
     unlink( "nirdiskbacked.txt" );
-	TreeType tree(4096*5, "nirdiskbacked.txt");
+	DefaulTreeType tree(4096*5, "nirdiskbacked.txt");
     tree_node_handle root = tree.root;
 
     auto parentNode =
-        tree.node_allocator_.get_tree_node<NodeType>( root );
+        tree.node_allocator_.get_tree_node<DefaultNodeType>( root );
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child0 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child0, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child0, root );
     auto child0Node = alloc_data.first;
 	child0Node->parent = root;
-    auto entry = createBranchEntry<NodeType::NodeEntry,
+    auto entry = createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(InlineBoundedIsotheticPolygon(), child0);
 
     std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -177,13 +180,13 @@ TEST_CASE("NIRTreeDisk: testUpdateBoundingBox") {
 
     parentNode->addEntryToNode( entry );
 
-    alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
+    alloc_data = tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child1 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child1, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child1, root );
     auto child1Node = alloc_data.first;
     child1Node->parent = root;
 
-    entry = createBranchEntry<NodeType::NodeEntry,
+    entry = createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(), child1);
     std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -191,13 +194,13 @@ TEST_CASE("NIRTreeDisk: testUpdateBoundingBox") {
                     IsotheticPolygon( Rectangle(12.0, -4.0, 16.0, -2.0) ) );
     parentNode->addEntryToNode(entry);
 
-    alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
+    alloc_data = tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child2 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child2, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child2, root );
     auto child2Node = alloc_data.first;
     child2Node->parent = root;
     
-    entry = createBranchEntry<NodeType::NodeEntry,
+    entry = createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(), child2);
     std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -205,12 +208,12 @@ TEST_CASE("NIRTreeDisk: testUpdateBoundingBox") {
                     IsotheticPolygon( Rectangle(10.0, 12.0, 12.0, 14.0) ) );
 
     parentNode->addEntryToNode( entry );
-    alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
+    alloc_data = tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child3 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child3, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child3, root );
     auto child3Node = alloc_data.first;
     child3Node->parent = root;
-    entry = createBranchEntry<NodeType::NodeEntry,
+    entry = createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(), child3);
     std::get<InlineBoundedIsotheticPolygon>( std::get<nirtreedisk::Branch>( entry
@@ -233,49 +236,49 @@ TEST_CASE("NIRTreeDisk: testUpdateBoundingBox") {
 
 TEST_CASE( "NIRTreeDisk: testRemoveChild" ) {
     unlink( "nirdiskbacked.txt" );
-	TreeType tree(4096*5, "nirdiskbacked.txt");
+	DefaulTreeType tree(4096*5, "nirdiskbacked.txt");
     tree_node_handle root = tree.root;
 
     auto parentNode =
-        tree.node_allocator_.get_tree_node<NodeType>( root );
+        tree.node_allocator_.get_tree_node<DefaultNodeType>( root );
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child0 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child0, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child0, root );
     auto child0Node = alloc_data.first;
 	child0Node->parent = root;
-	parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
+	parentNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(
                 Rectangle(8.0, -6.0, 10.0, -4.0)), child0) );
 
-    alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
+    alloc_data = tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child1 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child1, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child1, root );
     auto child1Node = alloc_data.first;
     child1Node->parent = root;
-    parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
+    parentNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(12.0, -4.0, 16.0,
                     -2.0)), child1) );
 
-    alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
+    alloc_data = tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child2 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child2, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child2, root );
     auto child2Node = alloc_data.first;
     child2Node->parent = root;
-    parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
+    parentNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(10.0, 12.0, 12.0,
                     14.0)), child2) );
 
-    alloc_data = tree.node_allocator_.create_new_tree_node<NodeType>();
+    alloc_data = tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     tree_node_handle child3 = alloc_data.second;
-    new (&(*alloc_data.first)) NodeType( &tree, child3, root );
+    new (&(*alloc_data.first)) DefaultNodeType( &tree, child3, root );
     auto child3Node = alloc_data.first;
     child3Node->parent = root;
-    parentNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,
+    parentNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(12.0, 12.0, 14.0,
                     14.0)), child3) );
@@ -295,9 +298,9 @@ TEST_CASE("NIRTreeDisk: testRemoveData")
     unlink( "nirdiskbacked.txt" );
 
 	// Setup a rtree::Node with some data
-	TreeType tree( 4096, "nirdiskbacked.txt" );
+	DefaulTreeType tree( 4096, "nirdiskbacked.txt" );
 	tree_node_handle root = tree.root;
-    auto parentNode = tree.node_allocator_.get_tree_node<NodeType>( root
+    auto parentNode = tree.node_allocator_.get_tree_node<DefaultNodeType>( root
             );
 
     parentNode->addEntryToNode( Point(9.0, -5.0) );
@@ -323,23 +326,23 @@ TEST_CASE("NIRTreeDisk: testFindLeaf")
 
     // Need a bunch of pages so we don't run out of memory while
     // everything is pinned
-	TreeType tree( 4096*5, "nirdiskbacked.txt" );
+	DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
     tree_node_handle root = tree.root;
 
-    auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
+    auto rootNode = tree.node_allocator_.get_tree_node<DefaultNodeType>( root
             );
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto leftNode = alloc_data.first;
     tree_node_handle left = alloc_data.second;
-    new (&(*leftNode)) NodeType( &tree, left, root );
+    new (&(*leftNode)) DefaultNodeType( &tree, left, root );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto rightNode = alloc_data.first;
     tree_node_handle right = alloc_data.second;
-    new (&(*rightNode)) NodeType( &tree, right, root );
+    new (&(*rightNode)) DefaultNodeType( &tree, right, root );
 
     tree_node_handle leftChild0 = createFullLeafNode(
             tree, left, Point(8.5, 12.5));
@@ -348,16 +351,16 @@ TEST_CASE("NIRTreeDisk: testFindLeaf")
     tree_node_handle leftChild2 = createFullLeafNode(tree, left,
             Point(13.5,13.5));
     leftNode->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+        createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(8.0, 12.0, 10.0,
                     14.0)), leftChild0 ) );
-    leftNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+    leftNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0, 12.0,
                     15.0)), leftChild1 ) );
-    leftNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+    leftNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(12.0, 12.0, 14.0,
                     14.0)), leftChild2 ) );
-    rootNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+    rootNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0, 14.0,
                     15.0)), left ) );
 
@@ -367,16 +370,16 @@ TEST_CASE("NIRTreeDisk: testFindLeaf")
             Point(13.0,-3.0));
     tree_node_handle rightChild2 = createFullLeafNode(tree,right);
     rightNode->parent = root;
-    rightNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+    rightNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, 1.0, 12.0,
                     5.0)), rightChild0 ));
-    rightNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+    rightNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(12.0, -4.0, 16.0,
                     -2.0)), rightChild1 ));
-    rightNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+    rightNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(8.0, -6.0, 10.0,
                     -4.0)), rightChild2 ));
-    rootNode->addEntryToNode( createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+    rootNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, -6.0, 16.0,
                     5.0)), right ));
 
@@ -399,45 +402,45 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2")
 	// Organized into two rtree::Nodes
     unlink( "nirdiskbacked.txt" );
 
-	TreeType tree( 4096 * 10, "nirdiskbacked.txt" );
+	DefaulTreeType tree( 4096 * 10, "nirdiskbacked.txt" );
     tree_node_handle root = tree.root;
-    auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
+    auto rootNode = tree.node_allocator_.get_tree_node<DefaultNodeType>( root
             );
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster4aNode = alloc_data.first;
     tree_node_handle cluster4a = alloc_data.second;
-    new (&(*cluster4aNode)) NodeType( &tree, tree_node_handle(nullptr), cluster4a );
+    new (&(*cluster4aNode)) DefaultNodeType( &tree, tree_node_handle(nullptr), cluster4a );
     cluster4aNode->addEntryToNode( Point(-10.0, -2.0) );
     cluster4aNode->addEntryToNode( Point(-12.0, -3.0) );
     cluster4aNode->addEntryToNode( Point(-11.0, -3.0) );
     cluster4aNode->addEntryToNode( Point(-10.0, -3.0) );
 	
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster4bNode = alloc_data.first;
     tree_node_handle cluster4b = alloc_data.second;
-    new (&(*cluster4bNode)) NodeType( &tree, tree_node_handle(nullptr), cluster4b );
+    new (&(*cluster4bNode)) DefaultNodeType( &tree, tree_node_handle(nullptr), cluster4b );
 
 	cluster4bNode->addEntryToNode( Point(-9.0, -3.0) );
 	cluster4bNode->addEntryToNode( Point(-7.0, -3.0) );
 	cluster4bNode->addEntryToNode( Point(-10.0, -5.0) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster4Node = alloc_data.first;
     tree_node_handle cluster4 = alloc_data.second;
 
 
-    new (&(*cluster4Node)) NodeType( &tree, root, cluster4);
+    new (&(*cluster4Node)) DefaultNodeType( &tree, root, cluster4);
 	cluster4aNode->parent = cluster4;
 	cluster4Node->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry, nirtreedisk::Branch>(
+        createBranchEntry<DefaultNodeType::NodeEntry, nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster4aNode->boundingBox()), cluster4a) );
 	cluster4bNode->parent = cluster4;
 	cluster4Node->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+        createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(cluster4bNode->boundingBox()), cluster4b));
 
 	// Cluster 5, n = 16
@@ -446,10 +449,10 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2")
 	// (-14, -15), (-13, -15), (-12, -15)
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster5aNode = alloc_data.first;
     tree_node_handle cluster5a = alloc_data.second;
-    new (&(*cluster5aNode)) NodeType( &tree, cluster5a,
+    new (&(*cluster5aNode)) DefaultNodeType( &tree, cluster5a,
                 tree_node_handle(nullptr) );
 	cluster5aNode->addEntryToNode( Point(-14.5, -13.0) );
 	cluster5aNode->addEntryToNode( Point(-14.0, -13.0) );
@@ -457,20 +460,20 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2")
 	cluster5aNode->addEntryToNode( Point(-15.0, -14.0) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster5bNode = alloc_data.first;
     tree_node_handle cluster5b = alloc_data.second;
-    new (&(*cluster5bNode)) NodeType( &tree, tree_node_handle(), cluster5b );
+    new (&(*cluster5bNode)) DefaultNodeType( &tree, tree_node_handle(), cluster5b );
 	cluster5bNode->addEntryToNode( Point(-14.0, -14.0) );
 	cluster5bNode->addEntryToNode( Point(-13.0, -14.0) );
 	cluster5bNode->addEntryToNode( Point(-12.0, -14.0) );
 	cluster5bNode->addEntryToNode( Point(-13.5, -16.0) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster5cNode = alloc_data.first;
     tree_node_handle cluster5c = alloc_data.second;
-    new (&(*cluster5cNode)) NodeType( &tree,
+    new (&(*cluster5cNode)) DefaultNodeType( &tree,
                 tree_node_handle(nullptr), cluster5c );
 
 	cluster5cNode->addEntryToNode( Point(-15.0, -14.5) );
@@ -479,10 +482,10 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2")
 	cluster5cNode->addEntryToNode( Point(-13.5, -15.5) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster5dNode = alloc_data.first;
     tree_node_handle cluster5d = alloc_data.second;
-    new (&(*cluster5dNode)) NodeType( &tree, tree_node_handle( nullptr
+    new (&(*cluster5dNode)) DefaultNodeType( &tree, tree_node_handle( nullptr
                 ), cluster5d );
 	cluster5dNode->addEntryToNode( Point(-15.0, -15.0));
 	cluster5dNode->addEntryToNode( Point(-14.0, -15.0));
@@ -491,42 +494,42 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2")
 	cluster5dNode->addEntryToNode( Point(-15.0, -15.0));
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<NodeType>();
+        tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
     auto cluster5Node = alloc_data.first;
     tree_node_handle cluster5 = alloc_data.second;
-    new (&(*cluster5Node)) NodeType( &tree, root, cluster5 );
+    new (&(*cluster5Node)) DefaultNodeType( &tree, root, cluster5 );
 
 	cluster5aNode->parent = cluster5;
 	cluster5Node->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,
+        createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(cluster5aNode->boundingBox()),cluster5a));
 	cluster5bNode->parent = cluster5;
 	cluster5Node->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,
+        createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(cluster5bNode->boundingBox()), cluster5b));
 
 
 	cluster5cNode->parent = cluster5;
 	cluster5Node->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,
+        createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(cluster5cNode->boundingBox()), cluster5c));
 
 	cluster5dNode->parent = cluster5;
 	cluster5Node->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,
+        createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(cluster5dNode->boundingBox()), cluster5d));
 
 	// Root
 	rootNode->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,
+        createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(cluster4Node->boundingBox()), cluster4));
 	rootNode->addEntryToNode(
-        createBranchEntry<NodeType::NodeEntry,
+        createBranchEntry<DefaultNodeType::NodeEntry,
         nirtreedisk::Branch>(
             InlineBoundedIsotheticPolygon(cluster5Node->boundingBox()), cluster5));
 
@@ -560,44 +563,44 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
     tree_node_handle cluster5;
 
     {
-        TreeType tree( 4096 * 10, "nirdiskbacked.txt" );
+        DefaulTreeType tree( 4096 * 10, "nirdiskbacked.txt" );
         root = tree.root;
-        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
+        auto rootNode = tree.node_allocator_.get_tree_node<DefaultNodeType>( root
                 );
 
         auto alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster4aNode = alloc_data.first;
         cluster4a = alloc_data.second;
-        new (&(*cluster4aNode)) NodeType( &tree, tree_node_handle(nullptr), cluster4a );
+        new (&(*cluster4aNode)) DefaultNodeType( &tree, tree_node_handle(nullptr), cluster4a );
         cluster4aNode->addEntryToNode( Point(-10.0, -2.0) );
         cluster4aNode->addEntryToNode( Point(-12.0, -3.0) );
         cluster4aNode->addEntryToNode( Point(-11.0, -3.0) );
         cluster4aNode->addEntryToNode( Point(-10.0, -3.0) );
         
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster4bNode = alloc_data.first;
         cluster4b = alloc_data.second;
-        new (&(*cluster4bNode)) NodeType( &tree, tree_node_handle(nullptr), cluster4b );
+        new (&(*cluster4bNode)) DefaultNodeType( &tree, tree_node_handle(nullptr), cluster4b );
 
         cluster4bNode->addEntryToNode( Point(-9.0, -3.0) );
         cluster4bNode->addEntryToNode( Point(-7.0, -3.0) );
         cluster4bNode->addEntryToNode( Point(-10.0, -5.0) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster4Node = alloc_data.first;
         cluster4 = alloc_data.second;
 
-        new (&(*cluster4Node)) NodeType( &tree, root, cluster4);
+        new (&(*cluster4Node)) DefaultNodeType( &tree, root, cluster4);
         cluster4aNode->parent = cluster4;
         cluster4Node->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry, nirtreedisk::Branch>(
+            createBranchEntry<DefaultNodeType::NodeEntry, nirtreedisk::Branch>(
                     InlineBoundedIsotheticPolygon(cluster4aNode->boundingBox()), cluster4a) );
         cluster4bNode->parent = cluster4;
         cluster4Node->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry,nirtreedisk::Branch>(
+            createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster4bNode->boundingBox()), cluster4b));
 
         // Cluster 5, n = 16
@@ -606,10 +609,10 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
         // (-14, -15), (-13, -15), (-12, -15)
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster5aNode = alloc_data.first;
         cluster5a = alloc_data.second;
-        new (&(*cluster5aNode)) NodeType( &tree, cluster5a,
+        new (&(*cluster5aNode)) DefaultNodeType( &tree, cluster5a,
                     tree_node_handle(nullptr) );
         cluster5aNode->addEntryToNode( Point(-14.5, -13.0) );
         cluster5aNode->addEntryToNode( Point(-14.0, -13.0) );
@@ -617,20 +620,20 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
         cluster5aNode->addEntryToNode( Point(-15.0, -14.0) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster5bNode = alloc_data.first;
         cluster5b = alloc_data.second;
-        new (&(*cluster5bNode)) NodeType( &tree, tree_node_handle(), cluster5b );
+        new (&(*cluster5bNode)) DefaultNodeType( &tree, tree_node_handle(), cluster5b );
         cluster5bNode->addEntryToNode( Point(-14.0, -14.0) );
         cluster5bNode->addEntryToNode( Point(-13.0, -14.0) );
         cluster5bNode->addEntryToNode( Point(-12.0, -14.0) );
         cluster5bNode->addEntryToNode( Point(-13.5, -16.0) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster5cNode = alloc_data.first;
         cluster5c = alloc_data.second;
-        new (&(*cluster5cNode)) NodeType( &tree,
+        new (&(*cluster5cNode)) DefaultNodeType( &tree,
                     tree_node_handle(nullptr), cluster5c );
 
         cluster5cNode->addEntryToNode( Point(-15.0, -14.5) );
@@ -639,10 +642,10 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
         cluster5cNode->addEntryToNode( Point(-13.5, -15.5) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster5dNode = alloc_data.first;
         cluster5d = alloc_data.second;
-        new (&(*cluster5dNode)) NodeType( &tree, tree_node_handle( nullptr
+        new (&(*cluster5dNode)) DefaultNodeType( &tree, tree_node_handle( nullptr
                     ), cluster5d );
         cluster5dNode->addEntryToNode( Point(-15.0, -15.0));
         cluster5dNode->addEntryToNode( Point(-14.0, -15.0));
@@ -651,42 +654,42 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
         cluster5dNode->addEntryToNode( Point(-15.0, -15.0));
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<NodeType>();
+            tree.node_allocator_.create_new_tree_node<DefaultNodeType>();
         auto cluster5Node = alloc_data.first;
         cluster5 = alloc_data.second;
-        new (&(*cluster5Node)) NodeType( &tree, root, cluster5 );
+        new (&(*cluster5Node)) DefaultNodeType( &tree, root, cluster5 );
 
         cluster5aNode->parent = cluster5;
         cluster5Node->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry,
+            createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster5aNode->boundingBox()),cluster5a));
         cluster5bNode->parent = cluster5;
         cluster5Node->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry,
+            createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster5bNode->boundingBox()), cluster5b));
 
 
         cluster5cNode->parent = cluster5;
         cluster5Node->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry,
+            createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster5cNode->boundingBox()), cluster5c));
 
         cluster5dNode->parent = cluster5;
         cluster5Node->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry,
+            createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster5dNode->boundingBox()), cluster5d));
 
         // Root
         rootNode->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry,
+            createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster4Node->boundingBox()), cluster4));
         rootNode->addEntryToNode(
-            createBranchEntry<NodeType::NodeEntry,
+            createBranchEntry<DefaultNodeType::NodeEntry,
             nirtreedisk::Branch>(
                 InlineBoundedIsotheticPolygon(cluster5Node->boundingBox()), cluster5));
 
@@ -694,8 +697,8 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
     }
 
     // Read existing tree from disk
-    TreeType tree( 4096 * 5, "nirdiskbacked.txt" );
-    auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( tree.root
+    DefaulTreeType tree( 4096 * 5, "nirdiskbacked.txt" );
+    auto rootNode = tree.node_allocator_.get_tree_node<DefaultNodeType>( tree.root
             );
 
 	// Test finding leaves
@@ -715,13 +718,13 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
     unlink( "nirdiskbacked.txt" );
     {
         unsigned maxBranchFactor = 7;
-        TreeType tree(4096*5, "nirdiskbacked.txt");
-        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
+        DefaulTreeType tree(4096*5, "nirdiskbacked.txt");
+        auto rootNode = tree.node_allocator_.get_tree_node<DefaultNodeType>(
                 tree.root );
 
         for( unsigned i = 0; i < maxBranchFactor + 1; i++) {
             tree_node_handle root = rootNode->insert(Point(0.0, 0.0));
-            rootNode = tree.node_allocator_.get_tree_node<NodeType>(
+            rootNode = tree.node_allocator_.get_tree_node<DefaultNodeType>(
                     root );
         }
 
@@ -729,9 +732,9 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
         nirtreedisk::Branch bLeft = std::get<nirtreedisk::Branch>(rootNode->entries[0]);
         nirtreedisk::Branch bRight = std::get<nirtreedisk::Branch>(rootNode->entries[1]);
 
-        auto left = tree.node_allocator_.get_tree_node<NodeType>(
+        auto left = tree.node_allocator_.get_tree_node<DefaultNodeType>(
                 bLeft.child );
-        auto right = tree.node_allocator_.get_tree_node<NodeType>(
+        auto right = tree.node_allocator_.get_tree_node<DefaultNodeType>(
                 bRight.child );
 
         REQUIRE(left->cur_offset_ == 4);
@@ -740,22 +743,22 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
     unlink( "nirdiskbacked.txt" );
 }
 
-/*TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
+TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
 {
     unlink( "nirdiskbacked.txt" );
     {
         unsigned max_branch_factor = 7;
         unsigned insertion_count = max_branch_factor*7 + 1;
 
-        TreeType tree(4096*20, "nirdiskbacked.txt");
+        MeanBalancedTreeType tree(4096*20, "nirdiskbacked.txt");
         for( unsigned i = 0; i < insertion_count; i++) {
             tree.insert(Point(i,i));
         }
 
 
-        //REQUIRE(rootNode->cur_offset_ == 2);
         auto root = tree.root;
-        auto root_node = tree.node_allocator_.get_tree_node<NodeType>(
+        auto root_node =
+            tree.node_allocator_.get_tree_node<MeanBalancedNodeType>(
                 root );
 
         for( unsigned i = 0; i < insertion_count; i++) {
@@ -766,9 +769,11 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
         nirtreedisk::Branch bLeft = std::get<nirtreedisk::Branch>(root_node->entries[0]);
         nirtreedisk::Branch bRight = std::get<nirtreedisk::Branch>(root_node->entries[1]);
 
-        auto left = tree.node_allocator_.get_tree_node<NodeType>(
+        auto left =
+            tree.node_allocator_.get_tree_node<MeanBalancedNodeType>(
                 bLeft.child );
-        auto right = tree.node_allocator_.get_tree_node<NodeType>(
+        auto right =
+            tree.node_allocator_.get_tree_node<MeanBalancedNodeType>(
                 bRight.child );
 
         REQUIRE(left->cur_offset_ == 4);
@@ -776,10 +781,7 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
     }
     unlink( "nirdiskbacked.txt" );
 }
-*/
 
-
-/*
 TEST_CASE("NIRTreeDisk: grow tree branch all same point")
 {
     unlink( "nirdiskbacked.txt" );
@@ -787,13 +789,14 @@ TEST_CASE("NIRTreeDisk: grow tree branch all same point")
         unsigned max_branch_factor = 7;
         unsigned insertion_count = max_branch_factor*max_branch_factor + 1;
 
-        TreeType tree(4096*10, "nirdiskbacked.txt");
+        MeanBalancedTreeType tree(4096*10, "nirdiskbacked.txt");
         for( unsigned i = 0; i < insertion_count; i++) {
             tree.insert(Point(0,0));
         }
 
         auto root = tree.root;
-        auto root_node = tree.node_allocator_.get_tree_node<NodeType>(
+        auto root_node =
+            tree.node_allocator_.get_tree_node<MeanBalancedNodeType>(
                 root );
 
         for( unsigned i = 0; i < insertion_count; i++) {
@@ -805,9 +808,9 @@ TEST_CASE("NIRTreeDisk: grow tree branch all same point")
         nirtreedisk::Branch bLeft = std::get<nirtreedisk::Branch>(root_node->entries[0]);
         nirtreedisk::Branch bRight = std::get<nirtreedisk::Branch>(root_node->entries[1]);
 
-        auto left = tree.node_allocator_.get_tree_node<NodeType>(
+        auto left = tree.node_allocator_.get_tree_node<DefaultNodeType>(
                 bLeft.child );
-        auto right = tree.node_allocator_.get_tree_node<NodeType>(
+        auto right = tree.node_allocator_.get_tree_node<DefaultNodeType>(
                 bRight.child );
 
         REQUIRE(left->cur_offset_ == 4);
@@ -823,7 +826,7 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
     {
         unsigned max_branch_factor = 7;
         size_t nodes_per_page = PAGE_DATA_SIZE / sizeof(
-                NodeType);
+                DefaultNodeType);
 
         // We need a decent number of pages in memory because during
         // searches the whole path down to the leaf is pinned.
@@ -832,7 +835,7 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
         size_t insertion_count = max_branch_factor * (nodes_per_page *
                 page_count) * 4;
 
-        TreeType tree(4096*page_count, "nirdiskbacked.txt");
+        MeanBalancedTreeType tree(4096*page_count, "nirdiskbacked.txt");
         for( unsigned i = 0; i < insertion_count; i++) {
             tree.insert(Point(i,i));
         }
@@ -844,4 +847,3 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
     unlink( "nirdiskbacked.txt" );
 
 }
-*/

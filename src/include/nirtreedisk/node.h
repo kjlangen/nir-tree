@@ -37,15 +37,24 @@
 
 namespace nirtreedisk
 {
+    struct BranchPartitionStrategy {};
 
-    template <int min_branch_factor, int max_branch_factor>
+    struct LineMinimizeDownsplits : BranchPartitionStrategy {};
+
+    struct LineMinimizeDistanceFromMean : BranchPartitionStrategy {};
+
+    template <int min_branch_factor, int max_branch_factor,
+             class strategy>
     class NIRTreeDisk;
 
-    template <int min_branch_factor, int max_branch_factor>
+    template <int min_branch_factor, int max_branch_factor,
+             class strategy>
+    requires (std::derived_from<strategy,BranchPartitionStrategy>)
     tree_node_allocator *get_node_allocator(
-            NIRTreeDisk<min_branch_factor,max_branch_factor> *treeRef ) {
+            NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef ) {
         return &(treeRef->node_allocator_);
     }
+
 
     struct Branch
     {
@@ -104,8 +113,10 @@ namespace nirtreedisk
 
     };
 
-    template <int min_branch_factor, int max_branch_factor>
-	class Node
+    template <int min_branch_factor, int max_branch_factor,
+             class strategy>
+    requires (std::derived_from<strategy,BranchPartitionStrategy>)
+    class Node
 	{
 		private:
 			struct ReinsertionEntry
@@ -116,7 +127,7 @@ namespace nirtreedisk
 				unsigned level;
 			};
 
-			NIRTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
+			NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
 
 		public:
             typedef std::variant<Point, Branch> NodeEntry;
@@ -127,7 +138,7 @@ namespace nirtreedisk
             tree_node_handle self_handle_;
 
 			// Constructors and destructors
-			Node(NIRTreeDisk<min_branch_factor,max_branch_factor> *treeRef, tree_node_handle parent,
+			Node(NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef, tree_node_handle parent,
                     tree_node_handle self_handle ) :
                 treeRef( treeRef ),
                 parent( parent ),
@@ -161,6 +172,205 @@ namespace nirtreedisk
 			tree_node_handle chooseNode(Point givenPoint);
 			tree_node_handle findLeaf(Point givenPoint);
 			Partition partitionNode();
+			Partition partitionLeafNode();
+
+            template <class S = strategy>
+            Partition partitionBranchNode( typename
+                    std::enable_if<std::is_same<S,LineMinimizeDownsplits>::value,S>::type
+                    * = 0 ) {
+                Partition defaultPartition;
+
+                tree_node_allocator *allocator = get_node_allocator( treeRef );
+                std::vector<Rectangle> all_branch_polys;
+                for( unsigned i = 0; i < cur_offset_; i++ ) {
+                    Branch &b_i = std::get<Branch>( entries.at(i) );
+                    all_branch_polys.push_back( b_i.get_summary_rectangle(
+                                allocator ) );
+                }
+
+                double best_candidate = 0.0;
+                double min_cost = std::numeric_limits<double>::max();
+                unsigned best_dimension = 0;
+                // D * ( M LOG M + M ) ~> O( D M LOG M )
+                for( unsigned d = 0; d < dimensions; d++ ) {
+                    std::sort( all_branch_polys.begin(), all_branch_polys.end(),
+                            [d](Rectangle &poly1, Rectangle &poly2
+                                ) {
+                                return poly1.upperRight[d] <
+                                poly2.upperRight[d];
+                            }
+                    );
+                    for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
+                        double cost = 0;
+                        // starts at 1 cause first goes left
+                        // Technically we should also walk the bottom bounds to
+                        // be sure, even in the non F, C case.
+                        unsigned left_count = 1;
+                        unsigned right_count = 0; 
+                        double partition_candidate =
+                            all_branch_polys.at(i).upperRight[d];
+                        double running_total = 0.0;
+                        // Existing metric wanted to avoid recursive splits
+                        // Let's try and do the same
+                        for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
+                            Rectangle &poly_ref = all_branch_polys.at(j);
+                            running_total += poly_ref.lowerLeft[d] +
+                                poly_ref.upperRight[d];
+
+                            if( i != j ) {
+                                bool greater_than_left = poly_ref.lowerLeft[d] <
+                                    partition_candidate;
+                                bool less_than_right = partition_candidate <
+                                    poly_ref.upperRight[d];
+                                bool requires_split = greater_than_left and
+                                    less_than_right;
+
+                                bool should_go_left = poly_ref.upperRight[d] <=
+                                    partition_candidate;
+                                bool should_go_right = poly_ref.lowerLeft[d] >=
+                                    partition_candidate;
+
+                                if( requires_split ) {
+                                    left_count++;
+                                    right_count++;
+                                    cost++;
+                                } else if( should_go_left ) {
+                                    // the zero area polys end up here too
+                                    left_count++;
+                                } else if( should_go_right ) {
+                                    right_count++;
+                                }
+
+                            }
+                        }
+                        if( cost < min_cost and left_count <= max_branch_factor
+                                and right_count <= max_branch_factor and
+                                left_count > 0 and right_count > 0 ) {
+                            best_candidate = partition_candidate;
+                            best_dimension = d;
+                            min_cost = cost;
+                        }
+                    }
+                }
+                // Degenerate case
+                assert( min_cost < std::numeric_limits<double>::max() );
+
+                defaultPartition.dimension = best_dimension;
+                defaultPartition.location = best_candidate;
+                    
+                return defaultPartition;
+            }
+
+            template <class S = strategy>
+            Partition partitionBranchNode(typename
+                    std::enable_if<std::is_same<S,LineMinimizeDistanceFromMean>::value,
+                    S>::type * = 0) {
+                Partition defaultPartition;
+
+                tree_node_allocator *allocator = get_node_allocator( treeRef );
+                std::vector<Rectangle> all_branch_polys;
+                for( unsigned i = 0; i < cur_offset_; i++ ) {
+                    Branch &b_i = std::get<Branch>( entries.at(i) );
+                    all_branch_polys.push_back( b_i.get_summary_rectangle(
+                                allocator ) );
+                }
+
+                double best_candidate = 0.0;
+                double min_cost = std::numeric_limits<double>::max();
+                unsigned best_dimension = 0;
+                // D * ( M LOG M + M ) ~> O( D M LOG M )
+                for( unsigned d = 0; d < dimensions; d++ ) {
+                    std::sort( all_branch_polys.begin(), all_branch_polys.end(),
+                            [d](Rectangle &poly1, Rectangle &poly2
+                                ) {
+                                return poly1.upperRight[d] <
+                                poly2.upperRight[d];
+                            }
+                    );
+                    for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
+                        double cost = 0;
+                        // starts at 1 cause first goes left
+                        // Technically we should also walk the bottom bounds to
+                        // be sure, even in the non F, C case.
+                        unsigned left_count = 1;
+                        unsigned right_count = 0; 
+                        double partition_candidate =
+                            all_branch_polys.at(i).upperRight[d];
+                        double running_total = 0.0;
+                        // Existing metric wanted to avoid recursive splits
+                        // Let's try and do the same
+                        for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
+                            Rectangle &poly_ref = all_branch_polys.at(j);
+                            running_total += poly_ref.lowerLeft[d] +
+                                poly_ref.upperRight[d];
+
+                            if( i != j ) {
+                                bool greater_than_left = poly_ref.lowerLeft[d] <
+                                    partition_candidate;
+                                bool less_than_right = partition_candidate <
+                                    poly_ref.upperRight[d];
+                                bool requires_split = greater_than_left and
+                                    less_than_right;
+
+                                bool should_go_left = poly_ref.upperRight[d] <=
+                                    partition_candidate;
+                                bool should_go_right = poly_ref.lowerLeft[d] >=
+                                    partition_candidate;
+                                bool is_zero_area =
+                                    poly_ref.lowerLeft[d] ==
+                                    poly_ref.upperRight[d];
+
+                                if( requires_split ) {
+                                    left_count++;
+                                    right_count++;
+                                    cost++;
+                                } else if( should_go_left ) {
+                                    // the zero area polys end up here too
+                                    if( is_zero_area ) {
+                                        if( left_count <= right_count ) {
+                                            left_count++;
+                                        } else {
+                                            right_count++;
+                                        }
+                                    } else {
+                                        left_count++;
+                                    }
+                                } else if( should_go_right ) {
+                                    right_count++;
+                                }
+
+                            }
+                        }
+
+                        // Cost function 2
+                        // If the split will not overflow our children
+                        if( left_count <= max_branch_factor
+                            and right_count <= max_branch_factor and
+                            left_count > 0 and right_count > 0 )
+                        {
+                            double mean_d_pt = running_total /
+                                (2*all_branch_polys.size());
+                            // Distance
+                            cost = (mean_d_pt-partition_candidate);
+                            cost = cost * cost;
+                            if( cost < min_cost ) {
+                                best_candidate = partition_candidate;
+                                best_dimension = d;
+                                min_cost = cost;
+                            }
+                        }
+
+                    }
+                }
+                // Degenerate case
+                assert( min_cost < std::numeric_limits<double>::max() );
+
+                defaultPartition.dimension = best_dimension;
+                defaultPartition.location = best_candidate;
+                    
+                return defaultPartition;
+            }
+
 			SplitResult splitNode(Partition p);
 			SplitResult splitNode();
 			SplitResult adjustTree();

@@ -31,7 +31,9 @@
 
 namespace nirtreedisk
 {
-    template <int min_branch_factor, int max_branch_factor>
+
+    template <int min_branch_factor, int max_branch_factor,
+             class strategy = LineMinimizeDownsplits>
 	class NIRTreeDisk: public Index
 	{
 		public:
@@ -52,10 +54,10 @@ namespace nirtreedisk
                 //If this is a fresh tree, we need a root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
-                        node_allocator_.create_new_tree_node<Node<min_branch_factor,max_branch_factor>>();
+                        node_allocator_.create_new_tree_node<Node<min_branch_factor,max_branch_factor,strategy>>();
                     root = alloc.second;
                     new (&(*(alloc.first)))
-                        Node<min_branch_factor,max_branch_factor>( this,
+                        Node<min_branch_factor,max_branch_factor,strategy>( this,
                                 tree_node_handle(nullptr), root );
 
                     return;
@@ -68,16 +70,17 @@ namespace nirtreedisk
                     char *page_bytes = p->data_;
                     for( size_t offset_multiplier = 0; offset_multiplier <
                             (PAGE_DATA_SIZE /
-                             sizeof(Node<min_branch_factor,max_branch_factor>));
+                             sizeof(Node<min_branch_factor,max_branch_factor,strategy>));
                              offset_multiplier++ ) { 
-                        Node<min_branch_factor,max_branch_factor> *interpreted_ptr =
-                            (Node<min_branch_factor,max_branch_factor> *) (page_bytes +
+                        Node<min_branch_factor,max_branch_factor,strategy> *interpreted_ptr =
+                            (Node<min_branch_factor,max_branch_factor,strategy> *) (page_bytes +
                                 offset_multiplier * sizeof(
-                                    Node<min_branch_factor,max_branch_factor> ));
+                                    Node<min_branch_factor,max_branch_factor,strategy> ));
                         if( interpreted_ptr->parent == tree_node_handle() ) {
                             // Found the root
                             root = tree_node_handle( i, offset_multiplier *
-                                    sizeof( Node<min_branch_factor,max_branch_factor> ));
+                                    sizeof(
+                                        Node<min_branch_factor,max_branch_factor,strategy> ));
                             node_allocator_.buffer_pool_.unpin_page( p );
                             return;
                         }
@@ -90,7 +93,7 @@ namespace nirtreedisk
 
 			~NIRTreeDisk() {
                 using NodeType =
-                    Node<min_branch_factor,max_branch_factor>;
+                    Node<min_branch_factor,max_branch_factor,strategy>;
                 auto root_node = node_allocator_.get_tree_node<NodeType>( root );
                 root_node->deleteSubtrees();
                 // FIXME: Free root_node
