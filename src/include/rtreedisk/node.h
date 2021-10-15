@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 #include <util/geometry.h>
+#include <globals/globals.h>
 #include <util/statistics.h>
 #include <storage/tree_node_allocator.h>
 
@@ -80,6 +81,8 @@ namespace rtreedisk
         tree_node_handle findLeaf(Point givenPoint);
         void moveData(unsigned fromIndex, std::vector<Point> &toData);
         void moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<tree_node_handle> &toChildren);
+        void moveData(std::vector<Point> &fromData);
+        void moveChildren(std::vector<tree_node_handle> &fromChildren, std::vector<Rectangle> &fromBoxes);
         tree_node_handle splitNode(tree_node_handle newChildHandle);
         tree_node_handle splitNode(Point newData);
         tree_node_handle adjustTree(tree_node_handle siblingLeaf);
