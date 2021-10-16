@@ -160,9 +160,12 @@ namespace rstartreedisk
             const Rectangle &givenBox) {
         // We cannot be a leaf
         assert(els_to_consider > 0 );
+#if !defined( NDEBUG )
         bool is_branch = std::holds_alternative<B>(
                     entries[0] );
         assert( is_branch );
+#endif
+
         
         // 1. Make a test rectangle we will use to not modify the original
         const Rectangle &origRectangle =

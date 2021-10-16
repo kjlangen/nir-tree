@@ -216,14 +216,8 @@ class IsotheticPolygon
 bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 
-class DiskBackedIsotheticPolygon {
-public:
-    virtual IsotheticPolygon materialize_polygon() = 0;
-    virtual void push_polygon_to_disk( const IsotheticPolygon &polygon ) = 0;
-};
-
 #define MAX_RECTANGLE_COUNT 5 
-class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
+class InlineBoundedIsotheticPolygon {
 	public:
 
         InlineBoundedIsotheticPolygon() :
@@ -267,7 +261,7 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
             return basicRectangles.cbegin() + rectangle_count_;
         }
 
-        IsotheticPolygon materialize_polygon() override {
+        IsotheticPolygon materialize_polygon() {
             IsotheticPolygon polygon;
             std::copy( this->begin(), this->end(),
                     std::back_inserter(polygon.basicRectangles) );
@@ -275,7 +269,7 @@ class InlineBoundedIsotheticPolygon : DiskBackedIsotheticPolygon {
             return polygon;
         }
 
-        void push_polygon_to_disk( const IsotheticPolygon &polygon ) override {
+        void push_polygon_to_disk( const IsotheticPolygon &polygon ) {
             assert( polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT );
             std::copy( polygon.basicRectangles.begin(),
                     polygon.basicRectangles.end(),
@@ -360,7 +354,7 @@ struct PageableIsotheticPolygon {
 };
 
 // DO NOT MATERIALIZE ON THE STACK
-class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
+class InlineUnboundedIsotheticPolygon {
 	public:
 
         struct Iterator {
@@ -505,7 +499,7 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
             return iter;
         }
 
-        IsotheticPolygon materialize_polygon() override {
+        IsotheticPolygon materialize_polygon() {
             // Copy all the sequentially arranged polygon stuff into an
             // in-memory buffer
             // Do operations there
@@ -524,7 +518,7 @@ class InlineUnboundedIsotheticPolygon : public DiskBackedIsotheticPolygon {
             return polygon;
         }
 
-        void push_polygon_to_disk( const IsotheticPolygon &in_memory_polygon ) override {
+        void push_polygon_to_disk( const IsotheticPolygon &in_memory_polygon ) {
 
             size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
                     sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))

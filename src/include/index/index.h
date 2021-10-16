@@ -20,6 +20,7 @@ class Index
 		virtual void stat() = 0;
 		virtual void print() = 0;
 		virtual void visualize() = 0;
+        virtual void write_metadata() {} 
 };
 
 #endif

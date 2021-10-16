@@ -116,8 +116,7 @@ namespace nirtreedisk
     template <int min_branch_factor, int max_branch_factor,
              class strategy>
     requires (std::derived_from<strategy,BranchPartitionStrategy>)
-    class Node
-	{
+    class Node {
 		private:
 			struct ReinsertionEntry
 			{
@@ -127,9 +126,8 @@ namespace nirtreedisk
 				unsigned level;
 			};
 
-			NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
-
 		public:
+			NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
             typedef std::variant<Point, Branch> NodeEntry;
 
             tree_node_handle parent;
@@ -143,7 +141,8 @@ namespace nirtreedisk
                 treeRef( treeRef ),
                 parent( parent ),
                 cur_offset_( 0 ),
-                self_handle_( self_handle ) {}
+                self_handle_( self_handle ) {
+            }
 			void deleteSubtrees();
 
 			// Helper functions
@@ -283,16 +282,28 @@ namespace nirtreedisk
                     std::sort( all_branch_polys.begin(), all_branch_polys.end(),
                             [d](Rectangle &poly1, Rectangle &poly2
                                 ) {
+                                if( poly1.upperRight[d] ==
+                                        poly2.upperRight[d]  ) {
+                                    for( unsigned i = 0; i < dimensions;
+                                            i++ ) {
+                                        if( poly1.upperRight[i] ==
+                                                poly2.upperRight[i] ) {
+                                            continue;
+                                        }
+                                        return poly1.upperRight[i] <
+                                            poly2.upperRight[i];
+                                    }
+                                }
                                 return poly1.upperRight[d] <
                                 poly2.upperRight[d];
                             }
                     );
                     for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
                         double cost = 0;
-                        // starts at 1 cause first goes left
+                        // starts at 1 cause {i} goes left
                         // Technically we should also walk the bottom bounds to
                         // be sure, even in the non F, C case.
-                        unsigned left_count = 1;
+                        unsigned left_count = 0;
                         unsigned right_count = 0; 
                         double partition_candidate =
                             all_branch_polys.at(i).upperRight[d];
@@ -304,41 +315,46 @@ namespace nirtreedisk
                             running_total += poly_ref.lowerLeft[d] +
                                 poly_ref.upperRight[d];
 
-                            if( i != j ) {
-                                bool greater_than_left = poly_ref.lowerLeft[d] <
-                                    partition_candidate;
-                                bool less_than_right = partition_candidate <
-                                    poly_ref.upperRight[d];
-                                bool requires_split = greater_than_left and
-                                    less_than_right;
+                            bool greater_than_left = poly_ref.lowerLeft[d] <
+                                partition_candidate;
+                            bool less_than_right = partition_candidate <
+                                poly_ref.upperRight[d];
+                            bool requires_split = greater_than_left and
+                                less_than_right;
 
-                                bool should_go_left = poly_ref.upperRight[d] <=
-                                    partition_candidate;
-                                bool should_go_right = poly_ref.lowerLeft[d] >=
-                                    partition_candidate;
-                                bool is_zero_area =
-                                    poly_ref.lowerLeft[d] ==
-                                    poly_ref.upperRight[d];
+                            bool should_go_left = poly_ref.upperRight[d] <=
+                                partition_candidate;
+                            bool should_go_right = poly_ref.lowerLeft[d] >=
+                                partition_candidate;
+                            bool is_zero_area =
+                                poly_ref.lowerLeft[d] ==
+                                poly_ref.upperRight[d];
 
-                                if( requires_split ) {
+                            if( requires_split ) {
+                                //std::cout << "SIMUL: entry requires split." << std::endl;
+                                left_count++;
+                                right_count++;
+                                cost++;
+                            } else if( is_zero_area and
+                                    poly_ref.upperRight[d] ==
+                                    partition_candidate ) {
+                                // Partition on a zero-area thing, can
+                                // pick either side as convenient
+                                if( left_count <= right_count ) {
+                                    //std::cout << "SIMUL: entry contest, goes left." << std::endl;
                                     left_count++;
-                                    right_count++;
-                                    cost++;
-                                } else if( should_go_left ) {
-                                    // the zero area polys end up here too
-                                    if( is_zero_area ) {
-                                        if( left_count <= right_count ) {
-                                            left_count++;
-                                        } else {
-                                            right_count++;
-                                        }
-                                    } else {
-                                        left_count++;
-                                    }
-                                } else if( should_go_right ) {
+                                } else {
+                                    //std::cout << "SIMUL: entry contest, goes right." << std::endl;
                                     right_count++;
                                 }
-
+                            } else if( should_go_left ) {
+                                //std::cout << "SIMUL: entry goes left." << std::endl;
+                                left_count++;
+                            } else if( should_go_right ) {
+                                //std::cout << "SIMUL: entry goes right." << std::endl;
+                                right_count++;
+                            } else {
+                                assert( false );
                             }
                         }
 
@@ -357,6 +373,9 @@ namespace nirtreedisk
                                 best_candidate = partition_candidate;
                                 best_dimension = d;
                                 min_cost = cost;
+                                //std::cout << "Best Candidate LC: " <<
+                                //    left_count << " and RC: " <<
+                                //    right_count << std::endl;
                             }
                         }
 
@@ -367,6 +386,33 @@ namespace nirtreedisk
 
                 defaultPartition.dimension = best_dimension;
                 defaultPartition.location = best_candidate;
+
+                // Sort per the dimension we need
+                std::sort( entries.begin(), entries.begin() +
+                        cur_offset_,
+                        [this,allocator,best_dimension](NodeEntry &entry1, NodeEntry &entry2 ) {
+                            Branch &b1 = std::get<Branch>( entry1 );
+                            Branch &b2 = std::get<Branch>( entry2 );
+                            Rectangle poly1 = b1.get_summary_rectangle(
+                                    allocator );
+                            Rectangle poly2 = b2.get_summary_rectangle(
+                                    allocator );
+                            if( poly1.upperRight[best_dimension] ==
+                                    poly2.upperRight[best_dimension]  ) {
+                                for( unsigned i = 0; i < dimensions; i++ ) {
+                                    if( poly1.upperRight[i] ==
+                                            poly2.upperRight[i] ) {
+                                        continue;
+                                    }
+                                    return poly1.upperRight[i] <
+                                        poly2.upperRight[i];
+                                }
+                            }
+                            return poly1.upperRight[best_dimension] <
+                            poly2.upperRight[best_dimension];
+                        }
+                );
+
                     
                 return defaultPartition;
             }

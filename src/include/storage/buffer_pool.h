@@ -19,6 +19,7 @@ public:
     void writeback_page( size_t page_id );
     void pin_page( page *page_ptr );
     void unpin_page( page *page_ptr );
+    void writeback_all_pages();
 
     inline size_t get_in_memory_page_count() { return max_mem_pages_; }
     inline size_t get_highest_allocated_page_id() { return

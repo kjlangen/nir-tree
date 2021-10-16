@@ -26,8 +26,10 @@
 #include <storage/tree_node_allocator.h>
 #include <util/bmpPrinter.h>
 #include <util/statistics.h>
-
 #include <nirtreedisk/node.h>
+
+#include <unistd.h>
+#include <fcntl.h>
 
 namespace nirtreedisk
 {
@@ -39,19 +41,21 @@ namespace nirtreedisk
 		public:
             tree_node_handle root;
             tree_node_allocator node_allocator_;
+            std::string backing_file_;
 
 			Statistics stats;
 
 			// Constructors and destructors
 			NIRTreeDisk( size_t memory_budget, std::string backing_file  ) :
-                node_allocator_( memory_budget, backing_file )
+                node_allocator_( memory_budget, backing_file ),
+                backing_file_( backing_file )
             {
                 node_allocator_.initialize();
 
                 size_t existing_page_count =
                     node_allocator_.buffer_pool_.get_preexisting_page_count();
 
-                //If this is a fresh tree, we need a root
+                // If this is a fresh tree, we need a root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
                         node_allocator_.create_new_tree_node<Node<min_branch_factor,max_branch_factor,strategy>>();
@@ -63,39 +67,18 @@ namespace nirtreedisk
                     return;
                 }
 
-                // Hunt for the root
-                for( size_t i = 0; i < existing_page_count; i++ ) {
-                    page *p = node_allocator_.buffer_pool_.get_page( i );
-                    node_allocator_.buffer_pool_.pin_page( p );
-                    char *page_bytes = p->data_;
-                    for( size_t offset_multiplier = 0; offset_multiplier <
-                            (PAGE_DATA_SIZE /
-                             sizeof(Node<min_branch_factor,max_branch_factor,strategy>));
-                             offset_multiplier++ ) { 
-                        Node<min_branch_factor,max_branch_factor,strategy> *interpreted_ptr =
-                            (Node<min_branch_factor,max_branch_factor,strategy> *) (page_bytes +
-                                offset_multiplier * sizeof(
-                                    Node<min_branch_factor,max_branch_factor,strategy> ));
-                        if( interpreted_ptr->parent == tree_node_handle() ) {
-                            // Found the root
-                            root = tree_node_handle( i, offset_multiplier *
-                                    sizeof(
-                                        Node<min_branch_factor,max_branch_factor,strategy> ));
-                            node_allocator_.buffer_pool_.unpin_page( p );
-                            return;
-                        }
-                    }
-                    node_allocator_.buffer_pool_.unpin_page( p );
-                }
+                std::string meta_file = backing_file_ + ".meta";
+                int fd = open( meta_file.c_str(), O_RDONLY );
+                assert( fd >= 0 );
 
-                assert( false );
+                int rc = read( fd, (char *) &root, sizeof( root ) );
+                assert( rc == sizeof( root ) );
+
             }
 
 			~NIRTreeDisk() {
-                using NodeType =
-                    Node<min_branch_factor,max_branch_factor,strategy>;
-                auto root_node = node_allocator_.get_tree_node<NodeType>( root );
-                root_node->deleteSubtrees();
+                //auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+                //root_node->deleteSubtrees();
                 // FIXME: Free root_node
             }
 
@@ -112,6 +95,36 @@ namespace nirtreedisk
 			void stat();
 			void print();
 			void visualize();
+
+            inline pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> get_node( tree_node_handle node_handle ) {
+                auto ptr =
+                    node_allocator_.get_tree_node<Node<min_branch_factor,max_branch_factor,strategy>>(
+                            node_handle );
+                ptr->treeRef = this;
+                return ptr;
+            }
+
+#pragma GCC poison get_tree_node
+
+            void write_metadata() override {
+                // Step 1:
+                // Writeback everything to disk
+                node_allocator_.buffer_pool_.writeback_all_pages();
+
+                // Step 2:
+                // Write metadata file
+
+                auto root_node = get_node( root );
+                assert( root_node->self_handle_ == root );
+                std::string meta_fname = backing_file_ + ".meta";
+                int fd = open( meta_fname.c_str(), O_WRONLY |
+                        O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR );
+                assert( fd >= 0 );
+                // yes, yes, i should loop this whatever
+                int rc = write( fd, (char *) &root, sizeof(root) );
+                assert( rc == sizeof(root) );
+                close( fd );
+            }
 	};
 #include "nirtreedisk.tcc"
 }

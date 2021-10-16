@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 template <int min_branch_factor, int max_branch_factor, class strategy>
 std::vector<Point> NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::exhaustiveSearch( Point requestedPoint ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
     std::vector<Point> v;
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     root_node->exhaustiveSearch( requestedPoint, v );
     return v;
 }
@@ -25,67 +24,53 @@ std::vector<Point> NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::ex
 template <int min_branch_factor, int max_branch_factor, class strategy>
 std::vector<Point>
 NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::search( Point requestedPoint ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
+    auto root_node = get_node(  root );
+    assert( root_node->self_handle_ == root );
 
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
     return root_node->search(requestedPoint);
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 std::vector<Point>
 NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::search( Rectangle requestedRectangle ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     return root_node->search( requestedRectangle );
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::insert( Point givenPoint ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     root = root_node->insert(givenPoint);
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::remove( Point givenPoint ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     root = root_node->remove( givenPoint );
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 unsigned NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::checksum() {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     return root_node->checksum();
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 bool NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::validate() {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     root_node->bounding_box_validate();
     return root_node->validate( tree_node_handle(nullptr), 0 );
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::stat() {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     root_node->stat();
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::print() {
-    using NodeType = Node<min_branch_factor,max_branch_factor,strategy>;
-
-    auto root_node = node_allocator_.get_tree_node<NodeType>( root );
+    auto root_node = get_node( root );
     root_node->printTree();
 }
 
