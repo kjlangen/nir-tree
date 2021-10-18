@@ -780,6 +780,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::adjustTree(tree_nod
                 if (parentNode->cur_offset_ < max_branch_factor)
                 {
                     parentNode->boundingBoxes[parentNode->cur_offset_] = siblingNode->boundingBox();
+                    parentNode->boundingBoxes[parentNode->cur_offset_] = siblingNode->self_handle_;
                     parentNode->cur_offset_++;
                     siblingNode->parent = node->parent;
 
