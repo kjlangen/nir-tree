@@ -104,8 +104,6 @@ namespace nirtreedisk
                 return ptr;
             }
 
-#pragma GCC poison get_tree_node
-
             void write_metadata() override {
                 // Step 1:
                 // Writeback everything to disk

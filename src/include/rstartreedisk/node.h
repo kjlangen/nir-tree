@@ -46,8 +46,6 @@ namespace rstartreedisk
 	{
 		private:
 
-			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
-
 			void searchSub(const Point &requestedPoint,
                     std::vector<Point> &accumulator);
 			void searchSub(const Rectangle &rectangle,
@@ -70,6 +68,7 @@ namespace rstartreedisk
 			};
 			typedef std::variant<Point, Branch> NodeEntry;
 
+			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
 			tree_node_handle parent;
             tree_node_handle self_handle_;
 
