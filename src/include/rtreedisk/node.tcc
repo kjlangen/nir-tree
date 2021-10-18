@@ -817,9 +817,10 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert(Point givenP
     tree_node_handle siblingLeaf = tree_node_handle(nullptr);
 
     // I2 [Add record to leaf node]
-    if (leaf->cur_offset_ < max_branch_factor)
+    if (leaf->cur_offset_data_ < max_branch_factor)
     {
-        leaf->data[leaf->cur_offset_] = givenPoint;
+        leaf->data[leaf->cur_offset_data_] = givenPoint;
+        leaf->cur_offset_data_++;
     }
     else
     {
@@ -833,6 +834,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert(Point givenP
     if (siblingNodeHandle)
     {
         auto siblingNode = allocator->get_tree_node<NodeType>(siblingNodeHandle);
+
         auto alloc_data = allocator->create_new_tree_node<NodeType>();
         tree_node_handle root_handle = alloc_data.second;
         auto newRoot = alloc_data.first;
