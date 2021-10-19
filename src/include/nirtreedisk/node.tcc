@@ -644,68 +644,47 @@ struct summary_rectangle_sorter {
 };
 
 NODE_TEMPLATE_PARAMS
-void NODE_CLASS_TYPES::make_disjoint_from_siblings(
-    IsotheticPolygon &polygon
+IsotheticPolygon NODE_CLASS_TYPES::construct_merged_branch_poly(
 ) {
-    // No parent, noone to be disjoint from.
-    if( parent == nullptr ) {
-        return;
-    }
-
     tree_node_allocator *allocator = get_node_allocator( treeRef );
-    auto parent_node = treeRef->get_node( parent );
-    for( auto iter = parent_node->entries.begin(); iter !=
-            parent_node->entries.begin()
-            + parent_node->cur_offset_; iter++ ) {
+    IsotheticPolygon constructed_poly(
+            std::get<Branch>(*(entries.begin())).materialize_polygon(
+                allocator ) );
+    for( auto iter = entries.begin()+1; iter != entries.begin() +
+            cur_offset_; iter++ ) {
         Branch &b = std::get<Branch>( *iter );
-        if( b.child == self_handle_ ) {
-            // This is us, skip
+        constructed_poly.merge( b.materialize_polygon( allocator ) );
+        constructed_poly.refine();
+    }
+    return constructed_poly;
+}
+
+
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::make_disjoint_from_children(
+    IsotheticPolygon &polygon,
+    tree_node_handle handle_to_skip
+) {
+    tree_node_allocator *allocator = get_node_allocator( treeRef );
+    for( auto iter = entries.begin(); iter !=
+            entries.begin() + cur_offset_; iter++ ) {
+        Branch &b = std::get<Branch>( *iter );
+        if( b.child == handle_to_skip ) {
             continue;
         }
         IsotheticPolygon child_poly = b.materialize_polygon( allocator );
         polygon.increaseResolution( Point::atInfinity, child_poly );
     }
-
 }
+
 // Splitting a node will remove it from its parent node and its memory will be freed
 NODE_TEMPLATE_PARAMS
 SplitResult NODE_CLASS_TYPES::splitNode(
-    Partition p
+    Partition p,
+    bool is_downsplit
 ) {
     using NodeType = NODE_CLASS_TYPES;
     tree_node_allocator *allocator = get_node_allocator( treeRef );
-
-    /*
-    // FIXME: Entry point for no longer considering parent polys.
-    // Need to disjoint ourselves from our siblings only.
-    if( parent != nullptr ) {
-        auto parent_node = treeRef->get_node( parent );
-        for( auto iter = parent_node->entries.begin(); iter !=
-                parent_node->entries.begin() + parent_node->cur_offset_;
-                iter++ ) {
-
-            Branch &parent_branch = std::get<Branch>( *iter );
-            IsotheticPolygon parent_poly;
-
-            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                        parent_branch.boundingPoly ) ) {
-
-                // Copy because we will unpin parent now
-                parent_poly = std::get<InlineBoundedIsotheticPolygon>(
-                            parent_branch.boundingPoly
-                            ).materialize_polygon();
-            } else {
-                poly_handle = std::get<tree_node_handle>(
-                        parent_branch.boundingPoly );
-                left_poly_pin =
-                    InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                            allocator, poly_handle );
-                parent_poly = left_poly_pin->materialize_polygon();
-            }
-
-        }
-    }
-    */
 
     auto alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle left_handle = alloc_data.second;
@@ -765,9 +744,24 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         // siblings. If we don't, then we are automatically disjoint
         // from our siblings since these arethe only two polys and they
         // are disjoint from each other now.
+        if( parent ) {
+            auto parent_node = treeRef->get_node( parent );
+            if( not is_downsplit ) {
+                parent_node->make_disjoint_from_children( left_polygon,
+                        self_handle_ );
+                parent_node->make_disjoint_from_children( right_polygon,
+                        self_handle_ );
+            } else {
+                // Intersect with our existing poly to avoid intersect
+                // with other children
+                Branch &b = parent_node->locateBranch( self_handle_ );
+                IsotheticPolygon parent_poly = b.materialize_polygon(
+                        allocator );
+                left_polygon.intersection( parent_poly );
+                right_polygon.intersection( parent_poly );
+            }
 
-        make_disjoint_from_siblings( left_polygon );
-        make_disjoint_from_siblings( right_polygon );
+        }
         cur_offset_ = 0;
 
         // Push left to disk
@@ -867,8 +861,29 @@ SplitResult NODE_CLASS_TYPES::splitNode(
 
                 auto child = treeRef->get_node( branch.child );
 
-                SplitResult downwardSplit = child->splitNode( p );
+                SplitResult downwardSplit = child->splitNode( p, true );
+                // This downsplit needs to construct polygons that are
+                // disjoint from the things in left node or right_node,
+                // respectively, not our parent 
 
+                // The problem, though, is that the split node we are
+                // building may not have all of the other entries we
+                // need to put in it. In this case, there are other
+                // things that we will need to be disjoint from later.
+                // Other nodes that are not downsplit will need to know
+                // about this polygon that likely differs from the
+                // originating polygon in our parent node.
+                // Beyond that, we might also add a polygon that other
+                // polygons will need to avoid later, which is not
+                // ideal.
+
+                // OK, well can we ignore disjointedness and just start
+                // adding stuff in , and then fix it before returning?
+                // Not clear. When we start fragmenting rectangles it
+                // needs to be known that the clipping rectangle does
+                // not hold any points of interest. If we just start
+                // shoving stuff in, we don't know that for sure when we
+                // fix it later.
                 // FIXME: GC branch.child
                 // delete branch.child;
 
@@ -903,9 +918,31 @@ SplitResult NODE_CLASS_TYPES::splitNode(
 
         IsotheticPolygon left_polygon( left_node->boundingBox() );
         IsotheticPolygon right_polygon( right_node->boundingBox() );
+        assert( left_polygon.disjoint( right_polygon ) );
 
-        make_disjoint_from_siblings( left_polygon );
-        make_disjoint_from_siblings( right_polygon );
+        // FIXME:
+        // I think a bug can happen here where we downsplit two nodes.
+        // We can make our polygon bigger than our parents, provided we
+        // don't intersect with our siblings. But they can do that too,
+        // and these expansions can intersect.
+        if( parent ) {
+            auto parent_node = treeRef->get_node( parent );
+            if( not is_downsplit ) {
+                parent_node->make_disjoint_from_children( left_polygon,
+                        self_handle_ );
+                parent_node->make_disjoint_from_children( right_polygon,
+                        self_handle_ );
+            } else {
+                // Intersect with our existing poly to avoid intersect
+                // with other children
+                Branch &b = parent_node->locateBranch( self_handle_ );
+                IsotheticPolygon parent_poly = b.materialize_polygon(
+                        allocator );
+                left_polygon.intersection( parent_poly );
+                right_polygon.intersection( parent_poly );
+            }
+
+        }
 
         // Writeback our polygons
         if( left_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
@@ -952,7 +989,7 @@ SplitResult NODE_CLASS_TYPES::splitNode(
 NODE_TEMPLATE_PARAMS
 SplitResult NODE_CLASS_TYPES::splitNode()
 {
-    SplitResult returnSplit = splitNode(partitionNode());
+    SplitResult returnSplit = splitNode(partitionNode(), false);
     return returnSplit;
 }
 
@@ -1294,7 +1331,7 @@ bool NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigned index
                             allocator, poly_handle );
                 poly = poly_pin->materialize_polygon();
             }
-            for( size_t i = 0; i < cur_offset_; i++ ) {
+           for( size_t i = 0; i < cur_offset_; i++ ) {
                 Point &dataPoint = std::get<Point>( entries.at(i) );
                 if( !poly.containsPoint( dataPoint ) ) {
                     std::cout << poly << " fails to contain " << dataPoint << std::endl;

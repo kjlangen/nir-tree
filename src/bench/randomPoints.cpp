@@ -622,30 +622,28 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 
     }
 
-#ifndef NDEBUG
 	// Validate tree
-	//assert(spatialIndex->validate());
-	//std::cout << "Validation OK." << std::endl;
-#endif
+	spatialIndex->validate();
+	std::cout << "Validation OK." << std::endl;
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
 	pointGen.reset();
-    Point the_point = pointGen.nextPoint().value();
-    pointGen.reset();
 	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Search
 		Point &p = nextPoint.value();
-		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		if (spatialIndex->search(the_point)[0] != the_point)
-		{
-			exit(1);
-		}
-		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
-		totalTimeSearches += delta.count();
-		totalSearches += 1;
+        for( int i = 0; i < 1000; i++ ) {
+            std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+            if (spatialIndex->search(p)[0] != p)
+            {
+                exit(1);
+            }
+            std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+            totalTimeSearches += delta.count();
+            totalSearches += 1;
+        }
 
         if( totalSearches > 100000 ) {
             break;
