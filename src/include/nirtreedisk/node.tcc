@@ -643,6 +643,30 @@ struct summary_rectangle_sorter {
     sort_point sort_on_;
 };
 
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::make_disjoint_from_siblings(
+    IsotheticPolygon &polygon
+) {
+    // No parent, noone to be disjoint from.
+    if( parent == nullptr ) {
+        return;
+    }
+
+    tree_node_allocator *allocator = get_node_allocator( treeRef );
+    auto parent_node = treeRef->get_node( parent );
+    for( auto iter = parent_node->entries.begin(); iter !=
+            parent_node->entries.begin()
+            + parent_node->cur_offset_; iter++ ) {
+        Branch &b = std::get<Branch>( *iter );
+        if( b.child == self_handle_ ) {
+            // This is us, skip
+            continue;
+        }
+        IsotheticPolygon child_poly = b.materialize_polygon( allocator );
+        polygon.increaseResolution( Point::atInfinity, child_poly );
+    }
+
+}
 // Splitting a node will remove it from its parent node and its memory will be freed
 NODE_TEMPLATE_PARAMS
 SplitResult NODE_CLASS_TYPES::splitNode(
@@ -651,92 +675,70 @@ SplitResult NODE_CLASS_TYPES::splitNode(
     using NodeType = NODE_CLASS_TYPES;
     tree_node_allocator *allocator = get_node_allocator( treeRef );
 
-    pinned_node_ptr<InlineUnboundedIsotheticPolygon> left_poly_pin(
-            allocator->buffer_pool_, nullptr, nullptr );
-
-    IsotheticPolygon node_poly(boundingBox());
-    tree_node_handle poly_handle( nullptr );
-
+    /*
+    // FIXME: Entry point for no longer considering parent polys.
+    // Need to disjoint ourselves from our siblings only.
     if( parent != nullptr ) {
         auto parent_node = treeRef->get_node( parent );
-        Branch &parent_branch = parent_node->locateBranch(this->self_handle_);
+        for( auto iter = parent_node->entries.begin(); iter !=
+                parent_node->entries.begin() + parent_node->cur_offset_;
+                iter++ ) {
 
-        if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                    parent_branch.boundingPoly ) ) {
+            Branch &parent_branch = std::get<Branch>( *iter );
+            IsotheticPolygon parent_poly;
 
-            // Copy because we will unpin parent now
-            node_poly = std::get<InlineBoundedIsotheticPolygon>(
-                        parent_branch.boundingPoly
-                        ).materialize_polygon();
-        } else {
-            poly_handle = std::get<tree_node_handle>(
-                    parent_branch.boundingPoly );
-            left_poly_pin =
-                InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                        allocator, poly_handle );
-            node_poly = left_poly_pin->materialize_polygon();
+            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                        parent_branch.boundingPoly ) ) {
+
+                // Copy because we will unpin parent now
+                parent_poly = std::get<InlineBoundedIsotheticPolygon>(
+                            parent_branch.boundingPoly
+                            ).materialize_polygon();
+            } else {
+                poly_handle = std::get<tree_node_handle>(
+                        parent_branch.boundingPoly );
+                left_poly_pin =
+                    InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
+                            allocator, poly_handle );
+                parent_poly = left_poly_pin->materialize_polygon();
+            }
+
         }
     }
+    */
 
     auto alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle left_handle = alloc_data.second;
-    auto left_node = alloc_data.first;
+    auto left_node = alloc_data.first; // take pin
     new (&(*left_node)) NodeType( treeRef, parent, left_handle );
     assert( left_node->self_handle_ == left_handle );
 
     alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle right_handle = alloc_data.second;
-    auto right_node = alloc_data.first;
+    auto right_node = alloc_data.first; // take pin
     new (&(*right_node)) NodeType( treeRef, parent, right_handle );
     assert( right_node->self_handle_ == right_handle );
 
-    // At this point, we are going to use node_poly for both sides of
-    // the split. If node_poly is an InlineBoundedIsotheticPolygon, then
-    // it is of fixed size, and can be created on the stack and copied
-    // around as we want. If node_poly is an
-    // InlineUnboundedIsotheticPolygon, then we can't just pass it
-    // around on the stack and copy it as we want. We need to create a
-    // second copy of the polygon on disk somewhere, get a
-    // tree_node_handle to that location, and pass that around instead
-
-    // Default values, will override
     SplitResult split = {
         { tree_node_handle(nullptr), left_handle }, 
         { tree_node_handle(nullptr), right_handle } };
 
-
-    // Duplicate
-    // FIXME: one of these copies is unnecessary but it makes the code
-    // below far more intelligible
-    IsotheticPolygon left_polygon = node_poly;
-    IsotheticPolygon right_polygon = node_poly;
-
-
-    // this is the left polygon
-    left_polygon.maxLimit( p.location, p.dimension );
-    left_polygon.refine();
-
-    // this is the right polygon
-    right_polygon.minLimit( p.location, p.dimension );
-    right_polygon.refine();
-
-    if( isLeaf() ) {
-
+    if( this->isLeaf() ) {
         bool containedLeft, containedRight;
         for( size_t i = 0; i < cur_offset_; i++ ) {
+
             Point &dataPoint = std::get<Point>( entries.at(i) );
-            containedLeft = left_polygon.containsPoint( dataPoint );
-            containedRight = right_polygon.containsPoint( dataPoint );
+            containedLeft = dataPoint[ p.dimension ] <= p.location;
+            containedRight = dataPoint[ p.dimension ] >= p.location;
             assert( containedLeft or containedRight );
 
-            if( containedLeft && !containedRight ) {
+            if( containedLeft and not containedRight ) {
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     dataPoint;
-            } else if( !containedLeft && containedRight ) {
+            } else if( not containedLeft and containedRight ) {
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
-            } else if( left_node->cur_offset_ < right_node->cur_offset_
-                    ) {
+            } else if( left_node->cur_offset_ < right_node->cur_offset_ ) {
                 assert( containedLeft and containedRight );
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     dataPoint;
@@ -745,30 +747,30 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
             }
-            for( unsigned i = 0; i < left_node->cur_offset_; i++ ) {
-                assert( std::holds_alternative<Point>(
-                            left_node->entries.at(i) ) or
-                        std::holds_alternative<Branch>(
-                            left_node->entries.at(i) ) );
-            }
-            for( unsigned i = 0; i < right_node->cur_offset_; i++ ) {
-               assert( std::holds_alternative<Point>(
-                            right_node->entries.at(i) ) or
-                        std::holds_alternative<Branch>(
-                            right_node->entries.at(i) ) );
-            }
-
-
         }
 
+        // All points have been routed.
+
+        IsotheticPolygon left_polygon( left_node->boundingBox() );
+        IsotheticPolygon right_polygon( right_node->boundingBox() );
+
+        assert( left_polygon.disjoint( right_polygon ) );
+
+        assert( left_polygon.basicRectangles.size() <=
+                MAX_RECTANGLE_COUNT );
+        assert( right_polygon.basicRectangles.size() <=
+                MAX_RECTANGLE_COUNT );
+
+        // If we have a parent, we need to make these disjoint from our
+        // siblings. If we don't, then we are automatically disjoint
+        // from our siblings since these arethe only two polys and they
+        // are disjoint from each other now.
+
+        make_disjoint_from_siblings( left_polygon );
+        make_disjoint_from_siblings( right_polygon );
         cur_offset_ = 0;
 
-        shrink( left_polygon, left_node->entries.begin(),
-                left_node->entries.begin() + left_node->cur_offset_, allocator );
-
-        shrink( right_polygon, right_node->entries.begin(),
-                right_node->entries.begin() + right_node->cur_offset_ , allocator );
-
+        // Push left to disk
         if( left_polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
             split.leftBranch.boundingPoly =
                 InlineBoundedIsotheticPolygon();
@@ -785,8 +787,9 @@ SplitResult NODE_CLASS_TYPES::splitNode(
             poly_alloc_data.first->push_polygon_to_disk( left_polygon );
         }
 
+        // Push right to disk
         if( right_polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-            split.rightBranch.boundingPoly=
+            split.rightBranch.boundingPoly =
                 InlineBoundedIsotheticPolygon();
             std::get<InlineBoundedIsotheticPolygon>(
                     split.rightBranch.boundingPoly
@@ -799,11 +802,9 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                 InlineUnboundedIsotheticPolygon( allocator );
             split.rightBranch.boundingPoly = poly_alloc_data.second;
             poly_alloc_data.first->push_polygon_to_disk( right_polygon );
-        }
 
-        assert( node_poly.boundingBox.containsRectangle( left_polygon.boundingBox
-                    ) and node_poly.boundingBox.containsRectangle(
-                        right_polygon.boundingBox ) );
+        }
+        return split;
     } else {
 
         for( size_t i = 0; i < cur_offset_; i++ ) {
@@ -822,6 +823,7 @@ SplitResult NODE_CLASS_TYPES::splitNode(
             bool is_contained_right =
                 summary_rectangle.lowerLeft[p.dimension]
                 >= p.location;
+
             // Entirely contained in the left polygon
             if( is_contained_left and not is_contained_right) {
                 //std::cout << "Entry goes left." << std::endl;
@@ -894,140 +896,16 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         // branch that needs a downward split. That downward split
         // results in a node added to the left and to the right,
         // resulting in an overfull left node.
+        // TODO: FIXME
 
-
-        //std::cout << "True Split: " << left_node->cur_offset_ << " and " <<
-        //    right_node->cur_offset_ << std::endl;
         assert( left_node->cur_offset_ <= max_branch_factor and
                 right_node->cur_offset_ <= max_branch_factor );
 
-        if( (left_node->cur_offset_ > max_branch_factor and 
-                right_node->cur_offset_ == max_branch_factor) or
-            (left_node->cur_offset_ == max_branch_factor and
-                right_node->cur_offset_ > max_branch_factor ) ) {
-            // This is a case where moving stuff between the nodes will
-            // not ameliorate our overfull node, because one is
-            // overflowing and the other is full.
+        IsotheticPolygon left_polygon( left_node->boundingBox() );
+        IsotheticPolygon right_polygon( right_node->boundingBox() );
 
-            std::cout << "Weird edge case for poly split!" << std::endl;
-            assert( false );
-        }
-
-        // OK, we aren't in one of the disaster scenarios where we can't
-        // remedy the overfull situation. We need to move an entry from
-        // the left node to the right node or vice versa.
-        // I'm not totally sure how to do this, because we have split a
-        // bunch of entries above but we now we need to move the
-        // partition line. We would need to undo the partition line and
-        // redraw it.
-
-        if( left_node->cur_offset_ > max_branch_factor ) {
-
-            std::sort( left_node->entries.begin(),
-                    left_node->entries.begin() + left_node->cur_offset_,
-                    summary_rectangle_sorter( p.dimension,
-                        summary_rectangle_sorter::sort_point::LOWER_LEFT,
-                        allocator )
-            );
-
-            // Move last entry to the right
-            right_node->entries.at( right_node->cur_offset_ ) =
-                left_node->entries.at( left_node->cur_offset_-1 );
-            left_node->cur_offset_--;
-
-            Branch &b_to_adjust = std::get<Branch>( right_node->entries.at(
-                        right_node->cur_offset_ ) );
-
-            // Figure out the box on what we just moved
-            Rectangle bounding_box = b_to_adjust.get_summary_rectangle(
-                    allocator );
-            right_polygon.expand( bounding_box.lowerLeft );
-            assert( right_polygon.containsPoint( bounding_box.lowerLeft ) );
-            assert( right_polygon.containsPoint( bounding_box.upperRight ) );
-            // We could make this closer by reading the last left
-            // polygon, but not sure how much it matters
-            left_polygon.maxLimit( bounding_box.lowerLeft[p.dimension], p.dimension
-                    );
-
-
-            auto child_to_adjust = treeRef->get_node( b_to_adjust.child );
-            child_to_adjust->parent = right_node->self_handle_;
-            right_node->cur_offset_++;
-
-        } else if( right_node->cur_offset_ > max_branch_factor ) {
-
-            std::sort( right_node->entries.begin(),
-                    right_node->entries.begin() + right_node->cur_offset_,
-                    summary_rectangle_sorter( p.dimension,
-                       summary_rectangle_sorter::sort_point::UPPER_RIGHT,
-                       allocator )
-            );
-
-            // Move first entry to the left
-            left_node->entries.at( left_node->cur_offset_ ) =
-                right_node->entries.at( 0 );
-
-            // Swap
-            right_node->entries.at( 0 ) = right_node->entries.at(
-                    right_node->cur_offset_-1 );
-
-            // Chop
-            right_node->cur_offset_--;
-
-            Branch &b_to_adjust = std::get<Branch>( left_node->entries.at(
-                        left_node->cur_offset_ ) );
-
-            Rectangle bounding_box = b_to_adjust.get_summary_rectangle(
-                    allocator );
-            left_polygon.expand( bounding_box.upperRight );
-            assert( left_polygon.containsPoint( bounding_box.upperRight ) );
-            assert( left_polygon.containsPoint( bounding_box.lowerLeft ) );
-
-            // We could make this closer by reading the right's polygon in
-            // slot 1, but this might be another page access and its not
-            // clear how much it will help things
-            right_polygon.minLimit( bounding_box.upperRight[p.dimension], p.dimension
-                    );
-
-            auto child_to_adjust = treeRef->get_node( b_to_adjust.child );
-            assert( child_to_adjust->parent == right_node->self_handle_
-                    );
-            child_to_adjust->parent = left_node->self_handle_;
-            left_node->cur_offset_++;
-        }
-
-        assert( left_node->cur_offset_ <= max_branch_factor );
-        assert( right_node->cur_offset_ <= max_branch_factor );
-        
-        // Simplify the polygons
-        // FIXME: we cannot simplify polygons in this way, since it
-        // basically just reconstructs the area required with the
-        // minimal set of rectangles. But our rectangles previously were
-        // explicitly designed to try and dodge other polygons. Shrink
-        // should really be "take only the rectangles we need from
-        // existing polygons to represent the space"
-        /*
-        std::cout << "Shrinking polygons." << std::endl;
-        shrink( left_polygon, left_node->entries.begin(),
-                left_node->entries.end(), allocator );
-
-        shrink( right_polygon, right_node->entries.begin(),
-                right_node->entries.end(), allocator );
-
-        std::cout << "Checking BB on: " << left_handle << std::endl;
-        assert( left_polygon.boundingBox  ==
-                left_node->boundingBox() );
-
-        std::cout << "Left Polygon matches boundingBox() " <<
-            left_handle << std::endl;
-
-        std::cout << "Checking BB on: " << right_handle << std::endl;
-        assert( right_polygon.boundingBox ==
-                right_node->boundingBox() );
-
-        std::cout << "Right Polygon matches boundingBox() " <<
-            right_handle << std::endl;
-        */
+        make_disjoint_from_siblings( left_polygon );
+        make_disjoint_from_siblings( right_polygon );
 
         // Writeback our polygons
         if( left_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
@@ -1064,12 +942,8 @@ SplitResult NODE_CLASS_TYPES::splitNode(
             std::get<InlineBoundedIsotheticPolygon>(split.rightBranch.boundingPoly).push_polygon_to_disk(
                     right_polygon );
         }
-
-        assert( node_poly.boundingBox.containsRectangle( left_polygon.boundingBox
-                    ) and node_poly.boundingBox.containsRectangle(
-                        right_polygon.boundingBox ) );
-
         cur_offset_ = 0;
+
     }
     return split;
 }

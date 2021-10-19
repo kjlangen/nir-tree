@@ -417,6 +417,7 @@ namespace nirtreedisk
                 return defaultPartition;
             }
 
+            void make_disjoint_from_siblings( IsotheticPolygon &polygon );
 			SplitResult splitNode(Partition p);
 			SplitResult splitNode();
 			SplitResult adjustTree();

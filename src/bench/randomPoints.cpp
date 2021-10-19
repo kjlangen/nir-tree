@@ -608,12 +608,14 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         std::cout << "Insertion OK." << std::endl;
 
         // Validate checksum
+        /*
         if (spatialIndex->checksum() != directSum)
         {
             std::cout << "Bad Checksum!" << std::endl;
             exit(1);
         }
         std::cout << "Checksum OK." << std::endl;
+        */
 
         spatialIndex->write_metadata();
 
@@ -629,12 +631,14 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
 	pointGen.reset();
+    Point the_point = pointGen.nextPoint().value();
+    pointGen.reset();
 	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Search
 		Point &p = nextPoint.value();
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		if (spatialIndex->search(p)[0] != p)
+		if (spatialIndex->search(the_point)[0] != the_point)
 		{
 			exit(1);
 		}
@@ -643,21 +647,22 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		totalTimeSearches += delta.count();
 		totalSearches += 1;
 
-        if( totalSearches > 10000 ) {
+        if( totalSearches > 100000 ) {
             break;
         }
 		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Search OK." << std::endl;
-    return;
 
 	// Validate checksum
+    /*
 	if (spatialIndex->checksum() != directSum)
 	{
 		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
+    */
 
 	// Search for rectangles
 	unsigned rangeSearchChecksum = 0;
@@ -693,12 +698,14 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 #endif
 
 	// Validate checksum
+    /*
 	if (spatialIndex->checksum() != directSum)
 	{
 		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
+    */
 
     /*
 	// Delete points and time their deletion
