@@ -1974,3 +1974,234 @@ TEST_CASE( "Write multi-page big poly to disk" ) {
     REQUIRE( inline_poly->get_summary_rectangle() == polygon.boundingBox
             );
 }
+
+TEST_CASE( "Test simplify real poly" ) {
+
+    std::vector<Rectangle> rectangles;
+    {
+        Point lower(-115.57735750000000507, 32.851100999999999885);
+        Point upper(-115.57423649999999782, 32.852118000000004372);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.57423649999999782, 32.851100999999999885);
+        Point upper(-115.56960850000000107, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56960850000000107, 32.851100999999999885);
+        Point upper(-115.56886199999999576, 32.851477500000001442);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56886199999999576, 32.851100999999999885);
+        Point upper(-115.56808849999998756, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56808849999998756, 32.851100999999999885);
+        Point upper(-115.56640899999999306, 32.851454500000002668);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56640899999999306, 32.851100999999999885);
+        Point upper(-115.56390999999999281, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56324599999999236, 32.851100999999999885);
+        Point upper(-115.56324599999999236, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56199250000000234, 32.851100999999999885);
+        Point upper(-115.56199250000000234, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+
+    }
+    {
+        Point lower(-115.56139899999999443, 32.851100999999999885);
+        Point upper(-115.56139899999999443, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+
+    }
+    {
+        Point lower(-115.56960850000000107, 32.851511500000000865);
+        Point upper(-115.56886199999999576, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56808849999998756, 32.851889999999997372);
+        Point upper(-115.56640899999999306, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56390999999999281, 32.852047999999996364);
+        Point upper(-115.56324599999999236, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56324599999999236, 32.852047999999996364);
+        Point upper(-115.56199250000000234, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-115.56199250000000234, 32.852047999999996364);
+        Point upper(-115.56139899999999443, 32.852118000000004372);
+        Rectangle rect( lower, upper );
+        rectangles.push_back( rect );
+    }
+
+    IsotheticPolygon polygon;
+    polygon.basicRectangles = rectangles;
+    polygon.recomputeBoundingBox();
+
+    IsotheticPolygon polygon2( polygon );
+    // This is super reducable, should fix
+    // FIXME:
+    polygon.refine();
+    polygon.recomputeBoundingBox();
+    std::cout << polygon2.basicRectangles.size() << std::endl;
+    std::cout << polygon.basicRectangles.size() << std::endl;
+    REQUIRE( polygon.basicRectangles.size() <
+            polygon2.basicRectangles.size() );
+    REQUIRE( polygon.boundingBox == polygon2.boundingBox );
+}
+
+TEST_CASE( "Geo: Intersection after refinement?" ) {
+
+    std::vector<Rectangle> rectangles;
+    {
+        Point lower(-121.69346149999999795, 37.58718499999999807);
+        Point upper(-121.69093349999999987, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.69974050000000432, 37.58718499999999807);
+        Point upper(-121.69346149999999795, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.69346149999999795, 37.588747499999996649);
+        Point upper(-121.69346149999999795, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.69346149999999795, 37.58718499999999807);
+        Point upper(-121.69346149999999795, 37.588747499999996649);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.7073624999999879, 37.58718499999999807);
+        Point upper(-121.69974050000000432, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.73004299999999489, 37.58718499999999807);
+        Point upper(-121.7089004999999986, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.7089004999999986, 37.597501499999999908);
+        Point upper(-121.7073624999999879, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.7089004999999986, 37.58718499999999807);
+        Point upper(-121.7073624999999879, 37.596841499999996472);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.69974050000000432, 37.588556999999994446);
+        Point upper(-121.69974050000000432, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.69974050000000432, 37.58718499999999807);
+        Point upper(-121.69974050000000432, 37.588556999999994446);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.75518249999998943, 37.58718499999999807);
+        Point upper(-121.73004299999999489, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.73004299999999489, 37.598364500000002408);
+        Point upper(-121.73004299999999489, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.73004299999999489, 37.58718499999999807);
+        Point upper(-121.73004299999999489, 37.598364500000002408);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+
+    IsotheticPolygon polygon;
+    polygon.basicRectangles = rectangles;
+    polygon.recomputeBoundingBox();
+
+    Point lower(-121.73004299999999489, 37.598364500000002408);
+    Point upper(-121.73004299999999489, 37.598364500000002408);
+    Rectangle test_rectangle( lower, upper );
+    IsotheticPolygon test_polygon( test_rectangle );
+    REQUIRE( polygon.disjoint( test_polygon ) );
+
+    rectangles.clear();
+    {
+        Point lower(-121.75518249999998943, 37.58718499999999807);
+        Point upper(-121.7089004999999986, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.7089004999999986, 37.58718499999999807);
+        Point upper(-121.7073624999999879, 37.596841499999996472);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.7073624999999879, 37.58718499999999807);
+        Point upper(-121.69093349999999987, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+    {
+        Point lower(-121.7089004999999986, 37.597501499999999908);
+        Point upper(-121.7073624999999879, 37.598513999999994439);
+        Rectangle rect(lower, upper );
+        rectangles.push_back( rect );
+    }
+
+    IsotheticPolygon polygon2;
+    polygon2.basicRectangles = rectangles;
+    polygon2.recomputeBoundingBox();
+
+    REQUIRE( polygon2.disjoint( test_polygon ) );
+}

@@ -367,6 +367,7 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
             IsotheticPolygon node_poly = std::get<Branch>(
                     cur_node->entries.at(0) ).materialize_polygon(
                     allocator );
+            assert( node_poly.basicRectangles.size() > 0 );
 
             IsotheticPolygon::OptimalExpansion smallestExpansion =
                 node_poly.computeExpansionArea(givenPoint);
@@ -376,6 +377,7 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                     smallestExpansion.area != -1.0; i++ ) {
                 Branch &b = std::get<Branch>( cur_node->entries.at(i) );
                 node_poly = b.materialize_polygon( allocator );
+                assert( node_poly.basicRectangles.size() > 0 );
              
                 evalExpansion = node_poly.computeExpansionArea(givenPoint);
                 if( evalExpansion.area < smallestExpansion.area &&
@@ -392,9 +394,11 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                 Branch &b = std::get<Branch>( cur_node->entries.at(
                     smallestExpansionBranchIndex ) );
                 node_poly = b.materialize_polygon( allocator );
+                assert( node_poly.basicRectangles.size() > 0 );
+                assert( smallestExpansion.index >= 0);
 
                 IsotheticPolygon subsetPolygon(
-                        node_poly.basicRectangles[smallestExpansion.index] );
+                        node_poly.basicRectangles.at(smallestExpansion.index) );
 
                 subsetPolygon.expand(givenPoint);
 
@@ -417,6 +421,7 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
 
                 auto b_child = treeRef->get_node( b.child );
 
+                assert( node_poly.basicRectangles.size() > 0 );
                 node_poly.remove( smallestExpansion.index );
                 node_poly.merge( subsetPolygon );
 
@@ -436,7 +441,10 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                     }
                 }
 
+                auto child_before_refine = treeRef->get_node( b.child );
                 node_poly.refine();
+
+                assert( node_poly.basicRectangles.size() > 0 );
 
                 if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
                             b.boundingPoly ) ) {
@@ -644,23 +652,6 @@ struct summary_rectangle_sorter {
 };
 
 NODE_TEMPLATE_PARAMS
-IsotheticPolygon NODE_CLASS_TYPES::construct_merged_branch_poly(
-) {
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
-    IsotheticPolygon constructed_poly(
-            std::get<Branch>(*(entries.begin())).materialize_polygon(
-                allocator ) );
-    for( auto iter = entries.begin()+1; iter != entries.begin() +
-            cur_offset_; iter++ ) {
-        Branch &b = std::get<Branch>( *iter );
-        constructed_poly.merge( b.materialize_polygon( allocator ) );
-        constructed_poly.refine();
-    }
-    return constructed_poly;
-}
-
-
-NODE_TEMPLATE_PARAMS
 void NODE_CLASS_TYPES::make_disjoint_from_children(
     IsotheticPolygon &polygon,
     tree_node_handle handle_to_skip
@@ -731,7 +722,12 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         // All points have been routed.
 
         IsotheticPolygon left_polygon( left_node->boundingBox() );
+        std::cout << "Left_node  (" << left_node->isLeaf() << ") Bounding Box: " <<
+            left_node->boundingBox() << std::endl;
         IsotheticPolygon right_polygon( right_node->boundingBox() );
+        std::cout << "Right_node (" << right_node->isLeaf() << ") Bounding Box: " <<
+            right_node->boundingBox() << std::endl;
+
 
         assert( left_polygon.disjoint( right_polygon ) );
 
@@ -746,19 +742,41 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         // are disjoint from each other now.
         if( parent ) {
             auto parent_node = treeRef->get_node( parent );
+            std::cout << "Parent " << parent << " bounding box: " <<
+                parent_node->boundingBox() << std::endl;
             if( not is_downsplit ) {
                 parent_node->make_disjoint_from_children( left_polygon,
                         self_handle_ );
+                assert( left_polygon.basicRectangles.size() > 0 );
+                left_polygon.refine();
+                assert( left_polygon.basicRectangles.size() > 0 );
                 parent_node->make_disjoint_from_children( right_polygon,
                         self_handle_ );
+                assert( right_polygon.basicRectangles.size() > 0 );
+                right_polygon.refine();
+                assert( right_polygon.basicRectangles.size() > 0 );
             } else {
                 // Intersect with our existing poly to avoid intersect
                 // with other children
                 Branch &b = parent_node->locateBranch( self_handle_ );
                 IsotheticPolygon parent_poly = b.materialize_polygon(
                         allocator );
+                assert( parent_poly.basicRectangles.size() > 0 );
+                assert( left_polygon.basicRectangles.size() > 0 );
+                IsotheticPolygon poly_backup = left_polygon;
                 left_polygon.intersection( parent_poly );
+                if( left_polygon.basicRectangles.size() == 0 ) {
+                    std::cout << "Weird situation: " << poly_backup << 
+                        " is disjoint from parent: " << parent_poly << std::endl;
+                }
+                assert( left_polygon.basicRectangles.size() > 0 );
+                left_polygon.refine();
+                assert( left_polygon.basicRectangles.size() > 0 );
+                assert( right_polygon.basicRectangles.size() > 0 );
                 right_polygon.intersection( parent_poly );
+                assert( right_polygon.basicRectangles.size() > 0 );
+                right_polygon.refine();
+                assert( right_polygon.basicRectangles.size() > 0 );
             }
 
         }
@@ -930,8 +948,14 @@ SplitResult NODE_CLASS_TYPES::splitNode(
             if( not is_downsplit ) {
                 parent_node->make_disjoint_from_children( left_polygon,
                         self_handle_ );
+                assert( left_polygon.basicRectangles.size() > 0 );
+                left_polygon.refine();
+                assert( left_polygon.basicRectangles.size() > 0 );
                 parent_node->make_disjoint_from_children( right_polygon,
                         self_handle_ );
+                assert( right_polygon.basicRectangles.size() > 0 );
+                right_polygon.refine();
+                assert( right_polygon.basicRectangles.size() > 0 );
             } else {
                 // Intersect with our existing poly to avoid intersect
                 // with other children
@@ -939,7 +963,13 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                 IsotheticPolygon parent_poly = b.materialize_polygon(
                         allocator );
                 left_polygon.intersection( parent_poly );
+                assert( left_polygon.basicRectangles.size() > 0 );
+                left_polygon.refine();
+                assert( left_polygon.basicRectangles.size() > 0 );
                 right_polygon.intersection( parent_poly );
+                assert( right_polygon.basicRectangles.size() > 0 );
+                right_polygon.refine();
+                assert( right_polygon.basicRectangles.size() > 0 );
             }
 
         }
@@ -1330,7 +1360,7 @@ bool NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigned index
                     InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
                             allocator, poly_handle );
                 poly = poly_pin->materialize_polygon();
-            }
+           }
            for( size_t i = 0; i < cur_offset_; i++ ) {
                 Point &dataPoint = std::get<Point>( entries.at(i) );
                 if( !poly.containsPoint( dataPoint ) ) {

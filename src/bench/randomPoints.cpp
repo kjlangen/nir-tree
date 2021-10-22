@@ -599,6 +599,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
             totalTimeInserts += delta.count();
             totalInserts += 1;
 
+            spatialIndex->validate();
+            std::cout << "Insert OK." << std::endl;
+
             if( totalInserts % 10000 == 0 ) {
                 std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
             }
@@ -623,8 +626,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
     }
 
 	// Validate tree
+    /*
 	spatialIndex->validate();
 	std::cout << "Validation OK." << std::endl;
+    */
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
