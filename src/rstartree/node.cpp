@@ -1313,6 +1313,6 @@ namespace rstartree
 		}
 
 		const Point &p = std::get<Point>(entry);
-		return Rectangle(p, p);
+		return Rectangle(p, Point::closest_larger_point(p) );
 	}
 }

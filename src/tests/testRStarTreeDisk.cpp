@@ -740,16 +740,16 @@ TEST_CASE("R*TreeDisk: testSplitNode")
                 splitNodeHandle );
 
         // Test the split
-        REQUIRE(rootNode->cur_offset_ == 4);
+        REQUIRE(rootNode->cur_offset_ == 5);
         REQUIRE(std::get<Point>(rootNode->entries[0]) == Point(-3.0, -11.0));
         REQUIRE(std::get<Point>(rootNode->entries[1]) == Point(-2.0, -6.0));
         REQUIRE(std::get<Point>(rootNode->entries[2]) == Point(-2.0, -6.0));
         REQUIRE(std::get<Point>(rootNode->entries[3]) == Point(-2.0, -9.0));
-        REQUIRE(splitNode->cur_offset_ == 4);
-        REQUIRE(std::get<Point>(splitNode->entries[0]) == Point(-1.0, -7.0));
-        REQUIRE(std::get<Point>(splitNode->entries[1]) == Point(1.0, -7.0));
-        REQUIRE(std::get<Point>(splitNode->entries[2]) == Point(2.0, -6.0));
-        REQUIRE(std::get<Point>(splitNode->entries[3]) == Point(3.0, -8.0));
+        REQUIRE(std::get<Point>(rootNode->entries[4]) == Point(-1.0, -7.0));
+        REQUIRE(splitNode->cur_offset_ == 3);
+        REQUIRE(std::get<Point>(splitNode->entries[0]) == Point(1.0, -7.0));
+        REQUIRE(std::get<Point>(splitNode->entries[1]) == Point(2.0, -6.0));
+        REQUIRE(std::get<Point>(splitNode->entries[2]) == Point(3.0, -8.0));
         REQUIRE(splitNode->level == rootNode->level);
     }
     unlink( "rstardiskbacked.txt" );
@@ -777,16 +777,16 @@ TEST_CASE("R*TreeDisk: testSplitNode")
                 splitNodeHandle );
 
         // Test the split
-        REQUIRE(rootNode->cur_offset_ == 3);
+        REQUIRE(rootNode->cur_offset_ == 4);
         REQUIRE(std::get<Point>(rootNode->entries[0]) == Point(-9.0, 7.0));
         REQUIRE(std::get<Point>(rootNode->entries[1]) == Point(-14.0, 8.0));
         REQUIRE(std::get<Point>(rootNode->entries[2]) == Point(-10.0, 8.0));
-        REQUIRE(splitNode->cur_offset_ == 5);
-        REQUIRE(std::get<Point>(splitNode->entries[0]) == Point(-8.0, 8.0));
-        REQUIRE(std::get<Point>(splitNode->entries[1]) == Point(-9.0, 9.0));
-        REQUIRE(std::get<Point>(splitNode->entries[2]) == Point(-8.0, 9.0));
-        REQUIRE(std::get<Point>(splitNode->entries[3]) == Point(-9.0, 10.0));
-        REQUIRE(std::get<Point>(splitNode->entries[4]) == Point(-8.0, 10.0));
+        REQUIRE(std::get<Point>(rootNode->entries[3]) == Point(-8.0, 8.0));
+        REQUIRE(splitNode->cur_offset_ == 4);
+        REQUIRE(std::get<Point>(splitNode->entries[0]) == Point(-9.0, 9.0));
+        REQUIRE(std::get<Point>(splitNode->entries[1]) == Point(-8.0, 9.0));
+        REQUIRE(std::get<Point>(splitNode->entries[2]) == Point(-9.0, 10.0));
+        REQUIRE(std::get<Point>(splitNode->entries[3]) == Point(-8.0, 10.0));
         REQUIRE(rootNode->level == splitNode->level);
     }
     unlink( "rstardiskbacked.txt" );
@@ -812,19 +812,26 @@ TEST_CASE("R*TreeDisk: testSplitNode")
 
         rootNode->level = 1;
         rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
-                NodeType::Branch>(Rectangle(-6.0, 3.0, -4.0, 5.0), dummys[0]));
+                NodeType::Branch>(Rectangle(-6.0, 3.0,
+                        nextafter(-4.0,DBL_MAX), nextafter(5.0,DBL_MAX)), dummys[0]));
         rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
-                NodeType::Branch>(Rectangle(-6.0, 3.0, -4.0, 5.0), dummys[1]));
+                NodeType::Branch>(Rectangle(-6.0, 3.0,
+                        nextafter(-4.0,DBL_MAX), nextafter(5.0,DBL_MAX)), dummys[1]));
         rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
-                NodeType::Branch>(Rectangle(-3.0, 3.0, -1.0, 5.0), dummys[2]));
+                NodeType::Branch>(Rectangle(-3.0, 3.0,
+                        nextafter(-1.0,DBL_MAX), nextafter(5.0,DBL_MAX)), dummys[2]));
         rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
-                NodeType::Branch>(Rectangle(-2.0, 2.0, 0.0, 4.0), dummys[3]));
+                NodeType::Branch>(Rectangle(-2.0, 2.0,
+                        nextafter(0.0,DBL_MAX), nextafter(4.0,DBL_MAX)), dummys[3]));
         rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
-                NodeType::Branch>(Rectangle(-2.0, 0.0, 0.0, 2.0), dummys[4]));
+                NodeType::Branch>(Rectangle(-2.0, 0.0,
+                        nextafter(0.0,DBL_MAX), nextafter(2.0,DBL_MAX)), dummys[4]));
         rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
-                NodeType::Branch>(Rectangle(-4.0, -1.0, -2.0, 1.0), dummys[5]));
+                NodeType::Branch>(Rectangle(-4.0, -1.0,
+                        nextafter(-2.0,DBL_MAX), nextafter(1.0,DBL_MAX)), dummys[5]));
         rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry,
-                NodeType::Branch>(Rectangle(-7.0, 1.0, -5.0, 3.0), dummys[6]));
+                NodeType::Branch>(Rectangle(-7.0, 1.0,
+                        nextafter(-5.0,DBL_MAX), nextafter(3.0,DBL_MAX)), dummys[6]));
 
 
         // Extra rstartree::Node causing the split
@@ -851,15 +858,31 @@ TEST_CASE("R*TreeDisk: testSplitNode")
         REQUIRE(splitNode->level == 1);
 
         REQUIRE(rootNode->cur_offset_ == 3);
-        REQUIRE(std::get<NodeType::Branch>(rootNode->entries[0]).boundingBox == Rectangle(-7.0, 1.0, -5.0, 3.0));
-        REQUIRE(std::get<NodeType::Branch>(rootNode->entries[1]).boundingBox == Rectangle(-6.0, 3.0, -4.0, 5.0));
-        REQUIRE(std::get<NodeType::Branch>(rootNode->entries[2]).boundingBox == Rectangle(-6.0, 3.0, -4.0, 5.0));
+        REQUIRE(std::get<NodeType::Branch>(rootNode->entries[0]).boundingBox
+                == Rectangle(-7.0, 1.0, nextafter(-5.0,DBL_MAX),
+                    nextafter(3.0,DBL_MAX)));
+        REQUIRE(std::get<NodeType::Branch>(rootNode->entries[1]).boundingBox
+                == Rectangle(-6.0, 3.0, nextafter(-4.0,DBL_MAX),
+                    nextafter(5.0,DBL_MAX)));
+        REQUIRE(std::get<NodeType::Branch>(rootNode->entries[2]).boundingBox
+                == Rectangle(-6.0, 3.0, nextafter(-4.0,DBL_MAX),
+                    nextafter(5.0,DBL_MAX)));
         REQUIRE(splitNode->cur_offset_ == 5);
-        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[0]).boundingBox == Rectangle(-4.0, -1.0, -2.0, 1.0));
-        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[1]).boundingBox == Rectangle(-3.0, 3.0, -1.0, 5.0));
-        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[2]).boundingBox == Rectangle(-2.0, 2.0, 0.0, 4.0));
-        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[3]).boundingBox == Rectangle(-2.0, 0.0, 0.0, 2.0));
-        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[4]).boundingBox == Rectangle(1.0, 1.0, 2.0, 2.0));
+        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[0]).boundingBox
+                == Rectangle(-4.0, -1.0, nextafter(-2.0,DBL_MAX),
+                    nextafter(1.0,DBL_MAX)));
+        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[1]).boundingBox
+                == Rectangle(-3.0, 3.0, nextafter(-1.0,DBL_MAX),
+                    nextafter(5.0,DBL_MAX)));
+        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[2]).boundingBox
+                == Rectangle(-2.0, 2.0, nextafter(0.0,DBL_MAX),
+                    nextafter(4.0,DBL_MAX)));
+        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[3]).boundingBox
+                == Rectangle(-2.0, 0.0, nextafter(0.0,DBL_MAX),
+                    nextafter(2.0,DBL_MAX)));
+        REQUIRE(std::get<NodeType::Branch>(splitNode->entries[4]).boundingBox
+                == Rectangle(1.0, 1.0, nextafter(2.0, DBL_MAX),
+                    nextafter(2.0, DBL_MAX)));
         REQUIRE(std::get<NodeType::Branch>(splitNode->entries[4]).child
                 == extra_handle);
     }
@@ -907,7 +930,9 @@ TEST_CASE("R*TreeDisk: testInsertOverflowReInsertAndSplit")
         Point point(0.0,0.0);
 
         REQUIRE(childNode->cur_offset_  == 7);
-        REQUIRE(childNode->boundingBox().centrePoint() == Point(0.0,0.0));
+        Point center = childNode->boundingBox().centrePoint();
+        REQUIRE(center[0] == (nextafter(30.0,DBL_MAX) -30.0)/2 );
+        REQUIRE(center[1] == (nextafter(30.0,DBL_MAX) -30.0)/2 );
         REQUIRE(rootNode->checksum() == 0);
 
         // We are not the root and we haven't inserted anything yet. Should call reinsert
@@ -1255,7 +1280,8 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test search
 
         // Test set one
-        Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+        Rectangle sr1 = Rectangle(-9.0, 9.5, nextafter(-5.0, DBL_MAX),
+                nextafter(12.5, DBL_MAX));
         std::vector<Point> v1 = rootNode->search(sr1);
         REQUIRE(v1.size() == 3);
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
@@ -1263,14 +1289,16 @@ TEST_CASE("R*TreeDisk: testSearch")
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-5.0, 12.0)) != v1.end());
 
         // Test set two
-        Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+        Rectangle sr2 = Rectangle(-8.0, 4.0, nextafter(-5.0, DBL_MAX),
+                nextafter(8.0, DBL_MAX));
         std::vector<Point> v2 = rootNode->search(sr2);
         REQUIRE(v2.size() == 2);
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
 
         // Test set three
-        Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+        Rectangle sr3 = Rectangle(-8.0, 0.0, nextafter(-4.0, DBL_MAX),
+                nextafter(16.0, DBL_MAX));
         std::vector<Point> v3 = rootNode->search(sr3);
         REQUIRE(v3.size() == 12);
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
@@ -1287,12 +1315,14 @@ TEST_CASE("R*TreeDisk: testSearch")
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 13.0)) != v3.end());
 
         // Test set four
-        Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+        Rectangle sr4 = Rectangle(2.0, -4.0, nextafter(4.0, DBL_MAX),
+                nextafter(-2.0, DBL_MAX));
         std::vector<Point> v4 = rootNode->search(sr4);
         REQUIRE(v4.size() == 0);
 
         // Test set five
-        Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+        Rectangle sr5 = Rectangle(-3.5, 1.0, nextafter(-1.5, DBL_MAX),
+                nextafter(3.0, DBL_MAX));
         std::vector<Point> v5 = rootNode->search(sr5);
         REQUIRE(v5.size() == 0);
     }
@@ -1302,7 +1332,8 @@ TEST_CASE("R*TreeDisk: testSearch")
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
                 tree.root );
         // Test set one
-        Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+        Rectangle sr1 = Rectangle(-9.0, 9.5, nextafter(-5.0, DBL_MAX),
+                nextafter(12.5, DBL_MAX));
         std::vector<Point> v1 = rootNode->search(sr1);
         REQUIRE(v1.size() == 3);
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
@@ -1310,14 +1341,16 @@ TEST_CASE("R*TreeDisk: testSearch")
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-5.0, 12.0)) != v1.end());
 
         // Test set two
-        Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+        Rectangle sr2 = Rectangle(-8.0, 4.0, nextafter(-5.0, DBL_MAX),
+                nextafter(8.0, DBL_MAX));
         std::vector<Point> v2 = rootNode->search(sr2);
         REQUIRE(v2.size() == 2);
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
 
         // Test set three
-        Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+        Rectangle sr3 = Rectangle(-8.0, 0.0, nextafter(-4.0, DBL_MAX),
+                nextafter(16.0, DBL_MAX));
         std::vector<Point> v3 = rootNode->search(sr3);
         REQUIRE(v3.size() == 12);
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
@@ -1334,12 +1367,14 @@ TEST_CASE("R*TreeDisk: testSearch")
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 13.0)) != v3.end());
 
         // Test set four
-        Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+        Rectangle sr4 = Rectangle(2.0, -4.0, nextafter(4.0, DBL_MAX),
+                nextafter(-2.0, DBL_MAX));
         std::vector<Point> v4 = rootNode->search(sr4);
         REQUIRE(v4.size() == 0);
 
         // Test set five
-        Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+        Rectangle sr5 = Rectangle(-3.5, 1.0, nextafter(-1.5, DBL_MAX),
+                nextafter(3.0, DBL_MAX));
         std::vector<Point> v5 = rootNode->search(sr5);
         REQUIRE(v5.size() == 0);
     }

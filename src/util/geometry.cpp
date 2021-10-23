@@ -333,7 +333,9 @@ double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 	for( unsigned d = 1; d < dimensions; d++ ) {
 		intersectionArea = intersectionArea * fabs( fmin( upperRight[d], givenRectangle.upperRight[d] ) - fmax( lowerLeft[d], givenRectangle.lowerLeft[d] ) );
 	}
-    assert( intersectionArea > 0.0 );
+
+    // Can actually get to 0.0 with floating point round-offs
+    assert( intersectionArea >= 0.0 );
 
 	return intersectionArea;
 }
