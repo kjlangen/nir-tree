@@ -290,25 +290,22 @@ Rectangle::Rectangle()
 	upperRight = Point();
 }
 
-Rectangle::Rectangle(double x, double y, double xp, double yp)
-{
-	lowerLeft = Point(x, y);
-	upperRight = Point(xp, yp);
-}
+Rectangle::Rectangle(double x, double y, double xp, double yp) :
+    lowerLeft( x, y ),
+    upperRight( xp, yp )
+{}
 
-Rectangle::Rectangle(Point lowerLeft, Point upperRight)
-{
-	this->lowerLeft = lowerLeft;
-	this->upperRight = upperRight;
-}
+Rectangle::Rectangle(Point lowerLeft, Point upperRight) :
+    lowerLeft( lowerLeft ),
+    upperRight( upperRight )
+{}
 
 double Rectangle::area() const
 {
-	double a = fabs(upperRight[0] - lowerLeft[0]);
+	double a = fabs( upperRight[0] - lowerLeft[0] );
 
-	for (unsigned d = 1; d < dimensions; ++d)
-	{
-		a = a * fabs(upperRight[d] - lowerLeft[d]);
+	for( unsigned d = 1; d < dimensions; d++ ) {
+		a = a * fabs( upperRight[d] - lowerLeft[d] );
 	}
 
 	return a;
@@ -317,9 +314,8 @@ double Rectangle::area() const
 double Rectangle::margin() const
 {
 	double margin = 0.0;
-	for(unsigned d = 0; d < dimensions; d++)
-	{
-		margin += fabs(upperRight[d] - lowerLeft[d]);
+	for( unsigned d = 0; d < dimensions; d++ ) {
+		margin += fabs( upperRight[d] - lowerLeft[d] );
 	}
 
 	return margin;
@@ -328,116 +324,112 @@ double Rectangle::margin() const
 double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 {
 	// Quick exit
-	if (!intersectsRectangle(givenRectangle))
-	{
+	if( not intersectsRectangle(givenRectangle) ) {
 		return 0.0;
 	}
 
-	double intersectionArea = fabs(fmin(upperRight[0], givenRectangle.upperRight[0]) - fmax(lowerLeft[0], givenRectangle.lowerLeft[0]));
+	double intersectionArea = fabs( fmin( upperRight[0], givenRectangle.upperRight[0] ) - fmax( lowerLeft[0], givenRectangle.lowerLeft[0] ) );
 
-	for (unsigned d = 1; d < dimensions; ++d)
-	{
-		intersectionArea = intersectionArea * fabs(fmin(upperRight[d], givenRectangle.upperRight[d]) - fmax(lowerLeft[d], givenRectangle.lowerLeft[d]));
+	for( unsigned d = 1; d < dimensions; d++ ) {
+		intersectionArea = intersectionArea * fabs( fmin( upperRight[d], givenRectangle.upperRight[d] ) - fmax( lowerLeft[d], givenRectangle.lowerLeft[d] ) );
 	}
+    assert( intersectionArea > 0.0 );
 
 	return intersectionArea;
 }
 
-double Rectangle::computeExpansionArea(const Point &givenPoint) const
+double Rectangle::computeExpansionArea( const Point &givenPoint ) const
 {
 	// Early exit
-	if (containsPoint(givenPoint))
-	{
+	if( containsPoint(givenPoint) ) {
 		return -1.0;
 	}
 
 	// Expanded rectangle area computed directly
-	double expandedArea = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
-	double existingArea = fabs(lowerLeft[0] - upperRight[0]);
+	double expandedArea = fabs( fmin(lowerLeft[0], givenPoint[0] ) -
+            fmax( upperRight[0], nextafter( givenPoint[0], DBL_MAX ) ) );
+	double existingArea = fabs( lowerLeft[0] - upperRight[0] );
 
-	for (unsigned d = 1; d < dimensions; ++d)
-	{
-		expandedArea *= fabs(fmin(lowerLeft[d], givenPoint[d]) - fmax(upperRight[d], givenPoint[d]));
-		existingArea *= fabs(lowerLeft[d] - upperRight[d]);
+	for (unsigned d = 1; d < dimensions; d++) {
+		expandedArea *= fabs( fmin(lowerLeft[d], givenPoint[d] ) - fmax(
+                    upperRight[d], nextafter( givenPoint[d], DBL_MAX ) ) );
+		existingArea *= fabs( lowerLeft[d] - upperRight[d] );
 	}
 
 	// Compute the difference
 	return expandedArea - existingArea;
 }
 
-double Rectangle::computeExpansionMargin(const Point &givenPoint) const
+double Rectangle::computeExpansionMargin( const Point &givenPoint ) const
 {
 	// Early exit
-	if (containsPoint(givenPoint))
-	{
+	if( containsPoint(givenPoint) ) {
 		return -1.0;
 	}
 
 	// Expanded rectangle area computed directly
-	double expandedMargin = fabs(fmin(lowerLeft[0], givenPoint[0]) - fmax(upperRight[0], givenPoint[0]));
-	double existingMargin = fabs(lowerLeft[0] - upperRight[0]);
+	double expandedMargin = fabs( fmin( lowerLeft[0], givenPoint[0] ) - fmax( upperRight[0], givenPoint[0] ) );
+	double existingMargin = fabs( lowerLeft[0] - upperRight[0] );
 
-	for (unsigned d = 1; d < dimensions; ++d)
-	{
-		expandedMargin += fabs(fmin(lowerLeft[d], givenPoint[d]) - fmax(upperRight[d], givenPoint[d]));
-		existingMargin += fabs(lowerLeft[d] - upperRight[d]);
+	for( unsigned d = 1; d < dimensions; d++) {
+		expandedMargin += fabs( fmin( lowerLeft[d], givenPoint[d] ) - fmax( upperRight[d], givenPoint[d] ) );
+		existingMargin += fabs( lowerLeft[d] - upperRight[d] );
 	}
 
 	// Compute the difference
 	return expandedMargin - existingMargin;
 }
 
-double Rectangle::computeExpansionArea(const Rectangle &givenRectangle) const
+double Rectangle::computeExpansionArea( const Rectangle &givenRectangle ) const
 {
 	// Early exit
-	if (containsRectangle(givenRectangle))
-	{
+	if( containsRectangle( givenRectangle ) ) {
 		return -1.0;
 	}
 
 	// Expanded rectangle area computed directly
-	double expandedArea = fabs(fmin(givenRectangle.lowerLeft[0], lowerLeft[0]) - fmax(givenRectangle.upperRight[0], upperRight[0]));
+	double expandedArea = fabs( fmin( givenRectangle.lowerLeft[0], lowerLeft[0] ) - fmax( givenRectangle.upperRight[0], upperRight[0] ) );
 
-	for (unsigned d = 1; d < dimensions; ++d)
-	{
-		expandedArea = expandedArea * fabs(fmin(givenRectangle.lowerLeft[d], lowerLeft[d]) - fmax(givenRectangle.upperRight[d], upperRight[d]));
+	for( unsigned d = 1; d < dimensions; d++) {
+		expandedArea = expandedArea * fabs( fmin( givenRectangle.lowerLeft[d], lowerLeft[d] ) - fmax( givenRectangle.upperRight[d], upperRight[d] ) );
 	}
 
 	// Compute the difference
 	return expandedArea - area();
 }
 
-double Rectangle::marginDelta(const Point &givenPoint, const Rectangle &givenRectangle) const
+double Rectangle::marginDelta( const Point &givenPoint, const Rectangle &givenRectangle ) const
 {
-	double currentIntersectionMargin = intersection(givenRectangle).margin();
-	double expandedIntersectionMargin = copyExpand(givenPoint).intersection(givenRectangle).margin();
+	double currentIntersectionMargin = intersection( givenRectangle ).margin();
+	double expandedIntersectionMargin = copyExpand( givenPoint ).intersection( givenRectangle ).margin();
 	return expandedIntersectionMargin - currentIntersectionMargin;
 }
 
-double Rectangle::areaDelta(const Point &givenPoint, const Rectangle &givenRectangle) const
+double Rectangle::areaDelta( const Point &givenPoint, const Rectangle &givenRectangle ) const
 {
-	double currentIntersectionArea = computeIntersectionArea(givenRectangle);
-	double expandedIntersectionArea = copyExpand(givenPoint).computeIntersectionArea(givenRectangle);
+	double currentIntersectionArea = computeIntersectionArea( givenRectangle );
+	double expandedIntersectionArea = copyExpand( givenPoint ).computeIntersectionArea( givenRectangle );
 	return expandedIntersectionArea - currentIntersectionArea;
 }
 
-void Rectangle::expand(const Point &givenPoint)
+void Rectangle::expand( const Point &givenPoint )
 {
+    // If we are expanding to include the point, we actualy need to
+    // expand slightly past it on the upperRight bound b/c that bound is exclusive
 	lowerLeft << givenPoint;
-	upperRight >> givenPoint;
+	upperRight >> Point::closest_larger_point( givenPoint );
 }
 
-void Rectangle::expand(const Rectangle &givenRectangle)
+void Rectangle::expand( const Rectangle &givenRectangle )
 {
 	lowerLeft << givenRectangle.lowerLeft;
 	upperRight >> givenRectangle.upperRight;
 }
 
-bool Rectangle::alignedForMerging(const Rectangle &givenRectangle) const
+bool Rectangle::alignedForMerging( const Rectangle &givenRectangle ) const
 {
 	unsigned alignedDimensions = 0;
 	unsigned intersectingDimensions = 0;
-    unsigned specialIntDims = 0;
 
 	for( unsigned d = 0; d < dimensions; d++ ) {
 
@@ -448,91 +440,63 @@ bool Rectangle::alignedForMerging(const Rectangle &givenRectangle) const
                     givenRectangle.lowerLeft[d] <= upperRight[d]) or 
 				(givenRectangle.lowerLeft[d] <= lowerLeft[d] and 
                  lowerLeft[d] <= givenRectangle.upperRight[d]) ) {
-			specialIntDims++;
-			if( specialIntDims > 1 ) {
-				return false;
-			}
-		} else if( (lowerLeft[d] < givenRectangle.lowerLeft[d] and
-                    givenRectangle.lowerLeft[d] < upperRight[d]) or 
-				(givenRectangle.lowerLeft[d] < lowerLeft[d] and 
-                 lowerLeft[d] < givenRectangle.upperRight[d]) ) {
 			intersectingDimensions++;
 			if( intersectingDimensions > 1 ) {
 				return false;
 			}
 		}
 	}
-    if( alignedDimensions == dimensions - 1 and specialIntDims == 1 and
-            intersectingDimensions != 1 ) {
-        std::cout << "Found case we would not have merged before did: " <<
-            *this << " and other: " << givenRectangle << std::endl;
+	return alignedDimensions == dimensions - 1 and
+        intersectingDimensions == 1;
+}
+
+bool Rectangle::alignedOpposingBorders( const Rectangle &givenRectangle ) const
+{
+    // If a rectangle continues where the other one stops along any
+    // dimension
+	for( unsigned d = 0; d < dimensions; d++ ) {
+        if( lowerLeft[d] == givenRectangle.upperRight[d] ) {
+            return true;
+        }
+        if( upperRight[d] == givenRectangle.lowerLeft[d] ) {
+            return true;
+        }
+	}
+	return false;
+}
+
+bool Rectangle::intersectsRectangle( const Rectangle &givenRectangle ) const
+{
+    for( unsigned d = 0; d < dimensions; d++ ) {
+        // N.B.: upper right not inclusive
+
+        bool we_contain = (lowerLeft[d] <=
+                givenRectangle.lowerLeft[d] and
+                givenRectangle.lowerLeft[d] < upperRight[d]);
+
+        bool they_contain = (givenRectangle.lowerLeft[d] <= lowerLeft[d]
+                and lowerLeft[d] < givenRectangle.upperRight[d]);
+
+        if( not we_contain and not they_contain ) {
+            return false;
+        }
     }
-
-	return alignedDimensions == dimensions - 1 and specialIntDims == 1;
+    return true;
 }
 
-bool Rectangle::alignedOpposingBorders(const Rectangle &givenRectangle) const
-{
-	bool result = false;
 
-	for (unsigned d = 0; d < dimensions && !result; ++d)
-	{
-		result = result || lowerLeft[d] == givenRectangle.upperRight[d] || upperRight[d] == givenRectangle.lowerLeft[d];
-	}
-
-	return result;
+bool Rectangle::containsPoint( const Point &givenPoint ) const {
+    // N.B: upper right not inclusive
+	return lowerLeft <= givenPoint and givenPoint < upperRight;
 }
 
-bool Rectangle::intersectsRectangle(const Rectangle &givenRectangle) const
+bool Rectangle::containsRectangle( const Rectangle &givenRectangle ) const
 {
-	// Compute the range intersections
-	bool interval = true;
-
-	for (unsigned d = 0; d < dimensions && interval; ++d)
-	{
-		interval =
-			interval &&
-			((lowerLeft[d] <= givenRectangle.lowerLeft[d] && givenRectangle.lowerLeft[d] <= upperRight[d]) ||
-			(givenRectangle.lowerLeft[d] <= lowerLeft[d] && lowerLeft[d] <= givenRectangle.upperRight[d]));
-	}
-
-	return interval;
-}
-
-bool Rectangle::strictIntersectsRectangle(const Rectangle &givenRectangle) const
-{
-	// Compute the range intersections
-	bool interval = true;
-
-	for (unsigned d = 0; d < dimensions && interval; ++d)
-	{
-		interval =
-			interval &&
-			((lowerLeft[d] < givenRectangle.lowerLeft[d] && givenRectangle.lowerLeft[d] < upperRight[d]) ||
-			(givenRectangle.lowerLeft[d] < lowerLeft[d] && lowerLeft[d] < givenRectangle.upperRight[d]));
-	}
-
-	return interval;
-}
-
-bool Rectangle::borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const
-{
-	return intersectsRectangle(givenRectangle) && alignedOpposingBorders(givenRectangle);
-}
-
-bool Rectangle::containsPoint(const Point &givenPoint) const
-{
-	return lowerLeft <= givenPoint && givenPoint <= upperRight;
-}
-
-bool Rectangle::strictContainsPoint(const Point &givenPoint) const
-{
-	return lowerLeft < givenPoint && givenPoint < upperRight;
-}
-
-bool Rectangle::containsRectangle(const Rectangle &givenRectangle) const
-{
-	return containsPoint(givenRectangle.lowerLeft) && containsPoint(givenRectangle.upperRight);
+    // N.B.: upper point not inclusive on either rectangle.
+    Point included_point =
+        Point::closest_smaller_point(givenRectangle.upperRight);
+	return containsPoint(givenRectangle.lowerLeft) and
+        containsPoint(included_point);
 }
 
 Point Rectangle::centrePoint() const
@@ -540,18 +504,17 @@ Point Rectangle::centrePoint() const
 	return (lowerLeft + upperRight) / 2.0;
 }
 
-Rectangle Rectangle::copyExpand(const Point &givenPoint) const
+Rectangle Rectangle::copyExpand( const Point &givenPoint ) const
 {
 	Rectangle r(*this);
 	r.expand(givenPoint);
 	return r;
 }
 
-Rectangle Rectangle::intersection(const Rectangle &clippingRectangle) const
+Rectangle Rectangle::intersection( const Rectangle &clippingRectangle ) const
 {
 	// Quick exit
-	if (!intersectsRectangle(clippingRectangle))
-	{
+	if( not intersectsRectangle(clippingRectangle) ) {
 		return Rectangle::atInfinity;
 	}
 
@@ -565,15 +528,14 @@ Rectangle Rectangle::intersection(const Rectangle &clippingRectangle) const
 	return r;
 }
 
-std::vector<Rectangle> Rectangle::fragmentRectangle(const Rectangle &clippingRectangle) const
+std::vector<Rectangle> Rectangle::fragmentRectangle( const Rectangle &clippingRectangle ) const
 {
 	// Return vector
 	std::vector<Rectangle> v;
-	v.reserve(dimensions);
+	v.reserve( dimensions );
 
 	// Quick exit
-	if (!intersectsRectangle(clippingRectangle) || alignedOpposingBorders(clippingRectangle))
-	{
+	if( not intersectsRectangle( clippingRectangle ) ) {
 		v.push_back(Rectangle(lowerLeft, upperRight));
 		return v;
 	}
@@ -583,8 +545,7 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(const Rectangle &clippingRec
 	Point minimums = Point::atNegInfinity;
 
 	unsigned finalSize = 0;
-	for (unsigned d = 0; d < dimensions; ++d)
-	{
+	for( unsigned d = 0; d < dimensions; d++ ) {
 		// Alter the original rectangle to respect the clipping rectangle. In the y-dimension this
 		// corresponds to making a 'floor' and 'ceiling' rectangle around the clipping rectangle and
 		// then doing the same for all other dimensions. If creating a 'floor' or 'ceiling' is not
@@ -596,44 +557,41 @@ std::vector<Rectangle> Rectangle::fragmentRectangle(const Rectangle &clippingRec
 		Rectangle floor(lowerLeft, upperRight);
 
 		// Make the original into a 'ceiling' in this d dimension
-		if (clippingRectangle.upperRight[d] <= upperRight[d])
-		{
+		if( clippingRectangle.upperRight[d] < upperRight[d] ) {
 			// New ceiling
 			ceiling.lowerLeft[d] = clippingRectangle.upperRight[d];
 			ceiling.upperRight << maximums;
 			ceiling.lowerLeft >> minimums;
 			maximums[d] = ceiling.lowerLeft[d];
 			v.push_back(ceiling);
-			++finalSize;
+			finalSize++;
 		}
 
 		// Make the original into a 'floor' in this d dimension
-		if (clippingRectangle.lowerLeft[d] >= lowerLeft[d])
-		{
+		if( clippingRectangle.lowerLeft[d] > lowerLeft[d]) {
 			// New floor
 			floor.upperRight[d] = clippingRectangle.lowerLeft[d];
 			floor.upperRight << maximums;
 			floor.lowerLeft >> minimums;
 			minimums[d] = floor.upperRight[d];
 			v.push_back(floor);
-			++finalSize;
+			finalSize++;
 		}
-
 	}
 
-	v.resize(finalSize);
+	v.resize( finalSize );
 
 	return v;
 }
 
-bool operator==(const Rectangle &lhs, const Rectangle &rhs)
+bool operator==( const Rectangle &lhs, const Rectangle &rhs )
 {
-	return lhs.lowerLeft == rhs.lowerLeft && lhs.upperRight == rhs.upperRight;
+	return lhs.lowerLeft == rhs.lowerLeft and lhs.upperRight == rhs.upperRight;
 }
 
-bool operator!=(const Rectangle &lhs, const Rectangle &rhs)
+bool operator!=( const Rectangle &lhs, const Rectangle &rhs )
 {
-	return lhs.lowerLeft != rhs.lowerLeft || lhs.upperRight != rhs.upperRight;
+    return not (lhs == rhs);
 }
 
 std::ostream& operator<<(std::ostream &os, const Rectangle &rectangle)
@@ -706,8 +664,7 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const 
 	{
 		evalArea = basicRectangles.at(i).computeExpansionArea(givenPoint);
 
-		if (evalArea < expansion.area && basicRectangles.at(i).area() != 0.0)
-		{
+		if( evalArea < expansion.area and basicRectangles.at(i).area() != 0.0 ) {
 			expansion.index = i;
 			expansion.area = evalArea;
 		}
@@ -832,8 +789,7 @@ bool IsotheticPolygon::borderOnlyIntersectsRectangle(const Rectangle &givenRecta
 
 bool IsotheticPolygon::containsPoint(const Point &givenPoint) const
 {
-	if (!boundingBox.containsPoint(givenPoint))
-	{
+	if( !boundingBox.containsPoint(givenPoint) ) {
 		return false;
 	}
 
@@ -885,24 +841,21 @@ std::vector<Rectangle> IsotheticPolygon::intersection(const Rectangle &givenRect
 	return v;
 }
 
-void IsotheticPolygon::intersection(const IsotheticPolygon &constraintPolygon)
+void IsotheticPolygon::intersection( const IsotheticPolygon &constraintPolygon )
 {
 	Rectangle r;
 	std::vector<Rectangle> v;
 
-	for (const Rectangle &basicRectangle : basicRectangles)
-	{
-		for (const Rectangle &constraintRectangle : constraintPolygon.basicRectangles)
-		{
-			r = basicRectangle.intersection(constraintRectangle);
-			if (r != Rectangle::atInfinity)
-			{
+	for( const Rectangle &basicRectangle : basicRectangles ) {
+		for( const Rectangle &constraintRectangle : constraintPolygon.basicRectangles ) {
+			r = basicRectangle.intersection( constraintRectangle );
+			if( r != Rectangle::atInfinity ) {
 				v.push_back(r);
 			}
 		}
 	}
 	basicRectangles.clear();
-	basicRectangles.swap(v);
+	basicRectangles.swap( v );
 }
 
 void IsotheticPolygon::increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle)
@@ -911,29 +864,22 @@ void IsotheticPolygon::increaseResolution(const Point &givenPoint, const Rectang
 	// no splitting of the constiuent rectangles and that's okay.
 	std::vector<Rectangle> extraRectangles;
 
-	for (const Rectangle &basicRectangle : basicRectangles)
-	{
-		if (!basicRectangle.intersectsRectangle(clippingRectangle))
-		{
+	for( const Rectangle &basicRectangle : basicRectangles ) {
+		if( not basicRectangle.intersectsRectangle(clippingRectangle) ) {
 			extraRectangles.push_back(basicRectangle);
 		}
-		else
-		{
+		else {
 			// Break the rectangle and add the fragments to extras
-			for (const Rectangle &fragment : basicRectangle.fragmentRectangle(clippingRectangle))
-			{
+			for( const Rectangle &fragment : basicRectangle.fragmentRectangle(clippingRectangle) ) {
 				// If fragmentation results in a line anywhere then reject it unless it was part of
 				// the original or contains the point we are interested in
-				if (fragment.area() == 0.0  && !fragment.containsPoint(givenPoint))
-				{
+				if( fragment.area() == 0.0 and not fragment.containsPoint(givenPoint) ) {
 					Rectangle originalLine = fragment.intersection(basicRectangle);
-					if (originalLine != Rectangle::atInfinity)
-					{
+					if (originalLine != Rectangle::atInfinity) {
 						extraRectangles.push_back(originalLine);
 					}
 				}
-				else
-				{
+				else {
 					extraRectangles.push_back(fragment);
 				}
 			}
@@ -945,17 +891,14 @@ void IsotheticPolygon::increaseResolution(const Point &givenPoint, const Rectang
 	basicRectangles.swap(extraRectangles);
 }
 
-void IsotheticPolygon::increaseResolution(const Point &givenPoint, const IsotheticPolygon &clippingPolygon)
-{
+void IsotheticPolygon::increaseResolution( const Point &givenPoint, const IsotheticPolygon &clippingPolygon ) {
 	// Quick exit
-	if (!boundingBox.intersectsRectangle(clippingPolygon.boundingBox))
-	{
+	if( not boundingBox.intersectsRectangle(clippingPolygon.boundingBox) ) {
 		return;
 	}
 
-	for (const Rectangle &basicClippingRectangle : clippingPolygon.basicRectangles)
-	{
-		increaseResolution(givenPoint, basicClippingRectangle);
+	for( const Rectangle &basicClippingRectangle : clippingPolygon.basicRectangles ) {
+		increaseResolution( givenPoint, basicClippingRectangle );
 	}
 }
 
@@ -1069,8 +1012,6 @@ void IsotheticPolygon::refine()
 	unsigned rIndex;
 	std::vector<Rectangle> rectangleSetRefined;
 
-    IsotheticPolygon dup = *this;
-
 	for( unsigned d = 0; d < dimensions; d++ ) {
 		// Refine along d
 		std::sort(basicRectangles.begin(), basicRectangles.end(), [d](Rectangle &a, Rectangle &b){return a.lowerLeft.orderedCompare(b.lowerLeft, d);});
@@ -1114,14 +1055,6 @@ void IsotheticPolygon::refine()
 	}
     recomputeBoundingBox();
     assert( boundingBefore == boundingBox );
-
-
-    if( dup != *this ) {
-        std::cout << "Rectangles before refinement: " << dup
-            << std::endl;
-        std::cout << "Rectangles after refinement: " << *this
-            << std::endl;
-    }
 
 	assert(basicRectangles.size() > 0);
 }

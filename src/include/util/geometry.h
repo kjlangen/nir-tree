@@ -19,6 +19,7 @@
 #include <cassert>
 #include <vector>
 #include <cmath>
+#include <cfloat>
 #include <cstring>
 #include <limits>
 #include <cfenv>
@@ -39,6 +40,23 @@ class Point
 		static Point atInfinity;
 		static Point atNegInfinity;
 		static Point atOrigin;
+        static Point closest_larger_point( const Point &existing_point ) {
+            Point local_point( existing_point );
+            for( unsigned d = 0; d < dimensions; d++ ) {
+                local_point[d] = nextafter( local_point[d], DBL_MAX );
+                assert( local_point[d] > existing_point[d] );
+            }
+            return local_point;
+        }
+        static Point closest_smaller_point( const Point &existing_point ) {
+            Point local_point( existing_point );
+            for( unsigned d = 0; d < dimensions; d++ ) {
+                local_point[d] = nextafter( local_point[d], -DBL_MAX );
+                assert( local_point[d] < existing_point[d] );
+            }
+            return local_point;
+        }
+
 
 		Point();
 
@@ -88,13 +106,16 @@ class Rectangle
 		static Rectangle atNegInfinity;
 		static Rectangle atOrigin;
 
+        // Lower point is inclusive
 		Point lowerLeft;
+        // Upper point is exclusive
 		Point upperRight;
 
 		Rectangle();
 		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
 		Rectangle(const Rectangle &o) = default;
+
 		double area() const;
 		double margin() const;
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;
@@ -108,10 +129,7 @@ class Rectangle
 		bool alignedForMerging(const Rectangle &givenRectangle) const;
 		bool alignedOpposingBorders(const Rectangle &givenRectangle) const;
 		bool intersectsRectangle(const Rectangle &givenRectangle) const;
-		bool strictIntersectsRectangle(const Rectangle &givenRectangle) const;
-		bool borderOnlyIntersectsRectangle(const Rectangle &givenRectangle) const;
 		bool containsPoint(const Point &givenPoint) const;
-		bool strictContainsPoint(const Point &givenPoint) const;
 		bool containsRectangle(const Rectangle &givenRectangle) const;
 		Point centrePoint() const;
 		Rectangle copyExpand(const Point &givenPoint) const;
@@ -175,7 +193,7 @@ class IsotheticPolygon
 
         void shrink( const std::vector<Point> &pinPoints ) {
             // Early exit
-            if( basicRectangles.size() == 0 || pinPoints.size() == 0 ) {
+            if( basicRectangles.size() == 0 or pinPoints.size() == 0 ) {
                 return;
             }
 

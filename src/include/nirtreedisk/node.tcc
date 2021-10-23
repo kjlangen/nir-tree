@@ -53,7 +53,7 @@ Rectangle NODE_CLASS_TYPES::boundingBox()
 
     if( isLeaf() ) {
         Point &p = std::get<Point>( entries.at(0) );
-        bb = Rectangle(p, p);
+        bb = Rectangle(p, Point::closest_larger_point( p ) );
         for( size_t i = 1; i < cur_offset_; i++ ) {
             bb.expand( std::get<Point>( entries.at( i ) ) );
         }
@@ -698,7 +698,7 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         for( size_t i = 0; i < cur_offset_; i++ ) {
 
             Point &dataPoint = std::get<Point>( entries.at(i) );
-            containedLeft = dataPoint[ p.dimension ] <= p.location;
+            containedLeft = dataPoint[ p.dimension ] < p.location; // Not inclusive
             containedRight = dataPoint[ p.dimension ] >= p.location;
             assert( containedLeft or containedRight );
 
@@ -708,27 +708,13 @@ SplitResult NODE_CLASS_TYPES::splitNode(
             } else if( not containedLeft and containedRight ) {
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     dataPoint;
-            } else if( left_node->cur_offset_ < right_node->cur_offset_ ) {
-                assert( containedLeft and containedRight );
-                left_node->entries.at( left_node->cur_offset_++ ) =
-                    dataPoint;
-            } else {
-                assert( containedLeft and containedRight );
-                right_node->entries.at( right_node->cur_offset_++ ) =
-                    dataPoint;
             }
         }
 
         // All points have been routed.
 
         IsotheticPolygon left_polygon( left_node->boundingBox() );
-        std::cout << "Left_node  (" << left_node->isLeaf() << ") Bounding Box: " <<
-            left_node->boundingBox() << std::endl;
         IsotheticPolygon right_polygon( right_node->boundingBox() );
-        std::cout << "Right_node (" << right_node->isLeaf() << ") Bounding Box: " <<
-            right_node->boundingBox() << std::endl;
-
-
         assert( left_polygon.disjoint( right_polygon ) );
 
         assert( left_polygon.basicRectangles.size() <=
@@ -742,8 +728,6 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         // are disjoint from each other now.
         if( parent ) {
             auto parent_node = treeRef->get_node( parent );
-            std::cout << "Parent " << parent << " bounding box: " <<
-                parent_node->boundingBox() << std::endl;
             if( not is_downsplit ) {
                 parent_node->make_disjoint_from_children( left_polygon,
                         self_handle_ );

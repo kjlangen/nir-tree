@@ -347,17 +347,21 @@ TEST_CASE("NIRTreeDisk: testFindLeaf")
             Point(13.5,13.5));
     leftNode->addEntryToNode(
         createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(8.0, 12.0, 10.0,
-                    14.0)), leftChild0 ) );
+            InlineBoundedIsotheticPolygon(Rectangle(8.0, 12.0,
+                    nextafter(10.0, DBL_MAX),
+                    nextafter(14.0, DBL_MAX))), leftChild0 ) );
     leftNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0, 12.0,
-                    15.0)), leftChild1 ) );
+            InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0,
+                    nextafter(12.0, DBL_MAX),
+                    nextafter(15.0, DBL_MAX))), leftChild1 ) );
     leftNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(12.0, 12.0, 14.0,
-                    14.0)), leftChild2 ) );
+            InlineBoundedIsotheticPolygon(Rectangle(12.0, 12.0,
+                    nextafter(14.0, DBL_MAX),
+                    nextafter(14.0, DBL_MAX))), leftChild2 ) );
     rootNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0, 14.0,
-                    15.0)), left ) );
+            InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0,
+                    nextafter(14.0, DBL_MAX),
+                    nextafter(15.0, DBL_MAX))), left ) );
 
     tree_node_handle rightChild0 = createFullLeafNode(tree,right,
             Point(7.0, 3.0) );
@@ -366,17 +370,21 @@ TEST_CASE("NIRTreeDisk: testFindLeaf")
     tree_node_handle rightChild2 = createFullLeafNode(tree,right);
     rightNode->parent = root;
     rightNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(7.0, 1.0, 12.0,
-                    5.0)), rightChild0 ));
+            InlineBoundedIsotheticPolygon(Rectangle(7.0, 1.0,
+                    nextafter(12.0, DBL_MAX),
+                    nextafter(5.0, DBL_MAX))), rightChild0 ));
     rightNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(12.0, -4.0, 16.0,
-                    -2.0)), rightChild1 ));
+            InlineBoundedIsotheticPolygon(Rectangle(12.0, -4.0,
+                    nextafter(16.0, DBL_MAX),
+                    nextafter(-2.0, DBL_MAX))), rightChild1 ));
     rightNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(8.0, -6.0, 10.0,
-                    -4.0)), rightChild2 ));
+            InlineBoundedIsotheticPolygon(Rectangle(8.0, -6.0,
+                    nextafter(10.0, DBL_MAX),
+                    nextafter(-4.0, DBL_MAX))), rightChild2 ));
     rootNode->addEntryToNode( createBranchEntry<DefaultNodeType::NodeEntry,nirtreedisk::Branch>(
-            InlineBoundedIsotheticPolygon(Rectangle(7.0, -6.0, 16.0,
-                    5.0)), right ));
+            InlineBoundedIsotheticPolygon(Rectangle(7.0, -6.0,
+                    nextafter(16.0, DBL_MAX),
+                    nextafter(5.0, DBL_MAX))), right ));
 
 	// Test that we get the correct child for the given point
 	REQUIRE(rightChild1 == rootNode->findLeaf(Point(13.0, -3.0)));
@@ -716,7 +724,7 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
         auto rootNode = tree.get_node( tree.root );
 
         for( unsigned i = 0; i < maxBranchFactor + 1; i++) {
-            tree_node_handle root = rootNode->insert(Point(0.0, 0.0));
+            tree_node_handle root = rootNode->insert(Point(i,i));
             rootNode = tree.get_node( root );
         }
 
@@ -751,39 +759,6 @@ TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
 
         for( unsigned i = 0; i < insertion_count; i++) {
             REQUIRE( tree.search( Point(i,i) ).size() == 1 );
-        }
-
-        REQUIRE( root_node->cur_offset_ == 3 );
-        nirtreedisk::Branch bLeft = std::get<nirtreedisk::Branch>(root_node->entries[0]);
-        nirtreedisk::Branch bRight = std::get<nirtreedisk::Branch>(root_node->entries[1]);
-
-        auto left = tree.get_node( bLeft.child );
-        auto right = tree.get_node( bRight.child );
-
-        REQUIRE(left->cur_offset_ == 4);
-        REQUIRE(right->cur_offset_ == 4);
-    }
-    unlink( "nirdiskbacked.txt" );
-}
-
-TEST_CASE("NIRTreeDisk: grow tree branch all same point")
-{
-    unlink( "nirdiskbacked.txt" );
-    {
-        unsigned max_branch_factor = 7;
-        unsigned insertion_count = max_branch_factor*max_branch_factor + 1;
-
-        MeanBalancedTreeType tree(4096*10, "nirdiskbacked.txt");
-        for( unsigned i = 0; i < insertion_count; i++) {
-            tree.insert(Point(0,0));
-        }
-
-        auto root = tree.root;
-        auto root_node = tree.get_node( root );
-
-        for( unsigned i = 0; i < insertion_count; i++) {
-            REQUIRE( tree.search( Point(0,0) ).size() ==
-                    max_branch_factor*max_branch_factor+1 );
         }
 
         REQUIRE( root_node->cur_offset_ == 3 );
