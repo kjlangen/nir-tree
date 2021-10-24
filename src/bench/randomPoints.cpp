@@ -458,15 +458,17 @@ static bool is_already_loaded(
 ) {
     if( configU["tree"] == NIR_TREE ) {
         
-        nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::LineMinimizeDistanceFromMean>
-            *tree = (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::LineMinimizeDistanceFromMean> *) spatial_index;
+        nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>
+            *tree =
+            (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy> *) spatial_index;
 
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
     } else if( configU["tree"] == R_STAR_TREE ) {
-        rstartreedisk::RStarTreeDisk<3,7> *tree = (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
+        rstartreedisk::RStarTreeDisk<3,7> *tree =
+            (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
@@ -514,7 +516,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
 		//spatialIndex = new nirtree::NIRTree(3,7);
 		spatialIndex = new
-            nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::LineMinimizeDistanceFromMean>(
+            nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>(
                 4096*10*13000, "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)

@@ -819,6 +819,7 @@ SplitResult NODE_CLASS_TYPES::splitNode(
             bool is_contained_right =
                 summary_rectangle.lowerLeft[p.dimension]
                 >= p.location;
+            assert( not(is_contained_left and is_contained_right) );
 
             // Entirely contained in the left polygon
             if( is_contained_left and not is_contained_right) {
