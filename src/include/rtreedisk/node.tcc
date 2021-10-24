@@ -1,10 +1,10 @@
 template <int min_branch_factor, int max_branch_factor>
 Node<min_branch_factor, max_branch_factor>::Node(RTreeDisk<min_branch_factor, max_branch_factor> *treeRef, tree_node_handle self_handle)
 {
-    this->parent = tree_node_handle( nullptr );
+    this->parent = tree_node_handle(nullptr);
     this->self_handle_ = self_handle;
-    this->treeRef =  treeRef;
-    this->cur_offset_  = 0;
+    this->treeRef = treeRef;
+    this->cur_offset_ = 0;
     this->cur_offset_data_ = 0;
 }
 
@@ -13,8 +13,8 @@ Node<min_branch_factor, max_branch_factor>::Node(RTreeDisk<min_branch_factor, ma
 {
     this->parent = parent;
     this->self_handle_ = self_handle;
-    this->treeRef =  treeRef;
-    this->cur_offset_  = 0;
+    this->treeRef = treeRef;
+    this->cur_offset_ = 0;
     this->cur_offset_data_ = 0;
 }
 
@@ -110,12 +110,13 @@ void Node<min_branch_factor, max_branch_factor>::removeData(unsigned idx)
     cur_offset_data_--;
 }
 
-
 template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor, max_branch_factor>::removeData(Point givenPoint)
 {
-    for (unsigned i = 0; i < cur_offset_data_; ++i) {
-        if (data[i] == givenPoint) {
+    for (unsigned i = 0; i < cur_offset_data_; ++i)
+    {
+        if (data[i] == givenPoint)
+        {
             removeData(i);
             return;
         }
@@ -147,7 +148,7 @@ void Node<min_branch_factor, max_branch_factor>::exhaustiveSearch(Point &request
         {
             // Recurse
             tree_node_handle child_handle = children.at(i);
-            pinned_node_ptr<NodeType> child = allocator->get_tree_node<NodeType>( child_handle );
+            pinned_node_ptr<NodeType> child = allocator->get_tree_node<NodeType>(child_handle);
             child->exhaustiveSearch(requestedPoint, accumulator);
         }
     }
@@ -164,7 +165,7 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(Point &req
     std::stack<pinned_node_ptr<NodeType>> context;
     context.push(self_node);
 
-    for (;!context.empty();)
+    for (; !context.empty();)
     {
         pinned_node_ptr<NodeType> currentContext = context.top();
         context.pop();
@@ -201,7 +202,7 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(Point &req
     }
 
 #ifdef STAT
-		treeRef.stats.resetSearchTracker<false>();
+    treeRef.stats.resetSearchTracker<false>();
 #endif
 
     return matchingPoints;
@@ -345,7 +346,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(Point give
     std::stack<pinned_node_ptr<NodeType>> context;
     context.push(node);
 
-    for (;!context.empty();)
+    for (; !context.empty();)
     {
         pinned_node_ptr<NodeType> currentContext = context.top();
         context.pop();
@@ -369,12 +370,12 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(Point give
                 if (currentContext->boundingBoxes[i].containsPoint(givenPoint))
                 {
                     // Add the child to the nodes we will consider
-                    context.push(allocator->get_tree_node<NodeType>( currentContext->children[i] ));
+                    context.push(allocator->get_tree_node<NodeType>(currentContext->children[i]));
                 }
             }
         }
     }
-    return tree_node_handle( nullptr );
+    return tree_node_handle(nullptr);
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -559,7 +560,8 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
         //groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
         //groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
 
-        for (unsigned i = 0; i < cur_offset_; ++i) {
+        for (unsigned i = 0; i < cur_offset_; ++i)
+        {
             groupABoundingBoxes.emplace_back(boundingBoxes[i]);
             groupAChildren.emplace_back(children[i]);
         }
@@ -569,7 +571,8 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
         //groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
         //groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
 
-        for (unsigned i = 0; i < cur_offset_; ++i) {
+        for (unsigned i = 0; i < cur_offset_; ++i)
+        {
             groupBBoundingBoxes.emplace_back(boundingBoxes[i]);
             groupBChildren.emplace_back(children[i]);
         }
@@ -733,14 +736,16 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
     // opposite group
     if (groupAData.size() + cur_offset_data_ == min_branch_factor)
     {
-        for (unsigned i = 0; i < cur_offset_data_; ++i) {
+        for (unsigned i = 0; i < cur_offset_data_; ++i)
+        {
             groupAData.emplace_back(data[i]);
         }
         //groupAData.insert(groupAData.end(), data.begin(), data.end());
     }
     else if (groupBData.size() + cur_offset_data_ == min_branch_factor)
     {
-        for (unsigned i = 0; i < cur_offset_data_; ++i) {
+        for (unsigned i = 0; i < cur_offset_data_; ++i)
+        {
             groupBData.emplace_back(data[i]);
         }
         //groupBData.insert(groupBData.end(), data.begin(), data.end());
@@ -755,7 +760,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
     auto alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle siblingHandle = alloc_data.second;
     auto newSibling = alloc_data.first;
-    new (&(*newSibling)) NodeType( treeRef, siblingHandle, parent );
+    new (&(*newSibling)) NodeType(treeRef, siblingHandle, parent);
 
     // Fill us with groupA and the new node with groupB
     moveData(groupAData);
@@ -966,7 +971,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::condenseTree()
 
             // CT5 [Move up one level in the tree]
             // Move up a level without deleting ourselves
-            node = allocator->get_tree_node<NodeType>( node->parent );
+            node = allocator->get_tree_node<NodeType>(node->parent);
             nodeHandle = node->self_handle_;
             level++;
         }

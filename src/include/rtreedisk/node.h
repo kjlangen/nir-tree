@@ -83,12 +83,17 @@ namespace rtreedisk
         void moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<tree_node_handle> &toChildren);
         void moveData(std::vector<Point> &fromData);
         void moveChildren(std::vector<tree_node_handle> &fromChildren, std::vector<Rectangle> &fromBoxes);
-        void addEntryToNode(Rectangle box, tree_node_handle child) {
+        void addEntryToNode(Rectangle box, tree_node_handle child)
+        {
+            using NodeType = Node<min_branch_factor, max_branch_factor>;
+            tree_node_allocator *allocator = get_node_allocator(treeRef);
+            allocator->get_tree_node<NodeType>(child)->parent = self_handle_;
             children[cur_offset_] = child;
             boundingBoxes[cur_offset_] = box;
             cur_offset_++;
         }
-        void addEntryToNode(Point p) {
+        void addEntryToNode(Point p)
+        {
             data[cur_offset_data_] = p;
             cur_offset_data_++;
         }
