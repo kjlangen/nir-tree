@@ -525,3 +525,171 @@ TEST_CASE("RTreeDisk: testSplitNonLeafNode")
     unlink( "rdiskbacked.txt" );
 }
 
+
+TEST_CASE("RTreeDisk:ExhaustiveSearch")
+{
+
+    unlink( "rdiskbacked.txt" );
+    {
+        unsigned maxBranchFactor = 6;
+        TreeType tree(4096*5, "rdiskbacked.txt");
+
+        for( unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
+                i++) {
+            tree.insert(Point(i, i));
+        }
+
+        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
+                i++) {
+            Point p(i, i);
+            REQUIRE(tree.exhaustiveSearch(p).size() == 1);
+        }
+    }
+}
+
+TEST_CASE("RTreeDisk: testFindLeaf2 ON DISK")
+{
+	// Setup the tree
+
+	// Cluster 4, n = 7
+	// (-10, -2), (-12, -3), (-11, -3), (-10, -3), (-9, -3), (-7, -3), (-10, -5)
+	// Organized into two rtree::Nodes
+    unlink( "rdiskbacked.txt" );
+    tree_node_handle root;
+    tree_node_handle cluster4a;
+    tree_node_handle cluster4b;
+    tree_node_handle cluster4;
+    tree_node_handle cluster5a;
+    tree_node_handle cluster5b;
+    tree_node_handle cluster5c;
+    tree_node_handle cluster5d;
+    tree_node_handle cluster5;
+
+    {
+        TreeType tree( 4096 * 10, "nirdiskbacked.txt" );
+        root = tree.root;
+        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
+                );
+
+        auto alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster4aNode = alloc_data.first;
+        cluster4a = alloc_data.second;
+        new (&(*cluster4aNode)) NodeType( &tree, tree_node_handle(nullptr), cluster4a );
+        cluster4aNode->addEntryToNode( Point(-10.0, -2.0) );
+        cluster4aNode->addEntryToNode( Point(-12.0, -3.0) );
+        cluster4aNode->addEntryToNode( Point(-11.0, -3.0) );
+        cluster4aNode->addEntryToNode( Point(-10.0, -3.0) );
+        
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster4bNode = alloc_data.first;
+        cluster4b = alloc_data.second;
+        new (&(*cluster4bNode)) NodeType( &tree, tree_node_handle(nullptr), cluster4b );
+
+        cluster4bNode->addEntryToNode( Point(-9.0, -3.0) );
+        cluster4bNode->addEntryToNode( Point(-7.0, -3.0) );
+        cluster4bNode->addEntryToNode( Point(-10.0, -5.0) );
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster4Node = alloc_data.first;
+        cluster4 = alloc_data.second;
+
+        new (&(*cluster4Node)) NodeType( &tree, root, cluster4);
+        cluster4aNode->parent = cluster4;
+        cluster4Node->addEntryToNode( cluster4aNode->boundingBox(), cluster4a );
+        cluster4bNode->parent = cluster4;
+        cluster4Node->addEntryToNode( cluster4bNode->boundingBox(), cluster4b);
+
+        // Cluster 5, n = 16
+        // (-14.5, -13), (-14, -13), (-13.5, -13.5), (-15, -14), (-14, -14), (-13, -14), (-12, -14),
+        // (-13.5, -16), (-15, -14.5), (-14, -14.5), (-12.5, -14.5), (-13.5, -15.5), (-15, -15),
+        // (-14, -15), (-13, -15), (-12, -15)
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster5aNode = alloc_data.first;
+        cluster5a = alloc_data.second;
+        new (&(*cluster5aNode)) NodeType( &tree, cluster5a,
+                    tree_node_handle(nullptr) );
+        cluster5aNode->addEntryToNode( Point(-14.5, -13.0) );
+        cluster5aNode->addEntryToNode( Point(-14.0, -13.0) );
+        cluster5aNode->addEntryToNode( Point(-13.5, -13.5) );
+        cluster5aNode->addEntryToNode( Point(-15.0, -14.0) );
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster5bNode = alloc_data.first;
+        cluster5b = alloc_data.second;
+        new (&(*cluster5bNode)) NodeType( &tree, tree_node_handle(), cluster5b );
+        cluster5bNode->addEntryToNode( Point(-14.0, -14.0) );
+        cluster5bNode->addEntryToNode( Point(-13.0, -14.0) );
+        cluster5bNode->addEntryToNode( Point(-12.0, -14.0) );
+        cluster5bNode->addEntryToNode( Point(-13.5, -16.0) );
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster5cNode = alloc_data.first;
+        cluster5c = alloc_data.second;
+        new (&(*cluster5cNode)) NodeType( &tree,
+                    tree_node_handle(nullptr), cluster5c );
+
+        cluster5cNode->addEntryToNode( Point(-15.0, -14.5) );
+        cluster5cNode->addEntryToNode( Point(-14.0, -14.5) );
+        cluster5cNode->addEntryToNode( Point(-12.5, -14.5) );
+        cluster5cNode->addEntryToNode( Point(-13.5, -15.5) );
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster5dNode = alloc_data.first;
+        cluster5d = alloc_data.second;
+        new (&(*cluster5dNode)) NodeType( &tree, tree_node_handle( nullptr
+                    ), cluster5d );
+        cluster5dNode->addEntryToNode( Point(-15.0, -15.0));
+        cluster5dNode->addEntryToNode( Point(-14.0, -15.0));
+        cluster5dNode->addEntryToNode( Point(-13.0, -15.0));
+        cluster5dNode->addEntryToNode( Point(-12.0, -15.0));
+        cluster5dNode->addEntryToNode( Point(-15.0, -15.0));
+
+        alloc_data =
+            tree.node_allocator_.create_new_tree_node<NodeType>();
+        auto cluster5Node = alloc_data.first;
+        cluster5 = alloc_data.second;
+        new (&(*cluster5Node)) NodeType( &tree, root, cluster5 );
+
+        cluster5aNode->parent = cluster5;
+        cluster5Node->addEntryToNode( cluster5aNode->boundingBox(),cluster5a);
+        cluster5bNode->parent = cluster5;
+        cluster5Node->addEntryToNode( cluster5bNode->boundingBox(), cluster5b);
+
+
+        cluster5cNode->parent = cluster5;
+        cluster5Node->addEntryToNode( cluster5cNode->boundingBox(), cluster5c);
+
+        cluster5dNode->parent = cluster5;
+        cluster5Node->addEntryToNode( cluster5dNode->boundingBox(), cluster5d );
+
+        // Root
+        rootNode->addEntryToNode( cluster4Node->boundingBox(), cluster4);
+        rootNode->addEntryToNode( cluster5Node->boundingBox(), cluster5);
+
+        // Destroy tree
+    }
+
+    // Read existing tree from disk
+    TreeType tree( 4096 * 5, "nirdiskbacked.txt" );
+    auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( tree.root
+            );
+
+	// Test finding leaves
+	REQUIRE(rootNode->findLeaf(Point(-11.0, -3.0)) == cluster4a);
+	REQUIRE(rootNode->findLeaf(Point(-9.0, -3.0)) == cluster4b);
+	REQUIRE(rootNode->findLeaf(Point(-13.5, -13.5)) == cluster5a);
+	REQUIRE(rootNode->findLeaf(Point(-12.0, -14.0)) == cluster5b);
+	REQUIRE(rootNode->findLeaf(Point(-12.5, -14.5)) == cluster5c);
+	REQUIRE(rootNode->findLeaf(Point(-13.0, -15.0)) == cluster5d);
+
+
+    unlink( "nirdiskbacked.txt" );
+}
