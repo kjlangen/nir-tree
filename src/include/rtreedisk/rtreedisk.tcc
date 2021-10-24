@@ -138,7 +138,10 @@ void RTreeDisk<min_branch_factor,max_branch_factor>::print()
 template <int min_branch_factor, int max_branch_factor>
 bool RTreeDisk<min_branch_factor,max_branch_factor>::validate()
 {
-    return true;
+    using NodeType = Node<min_branch_factor,max_branch_factor>;
+    pinned_node_ptr<NodeType> root_ptr =
+        node_allocator_.get_tree_node<NodeType>( root );
+    return root_ptr->validate( tree_node_handle( nullptr ), 0);
 }
 
 

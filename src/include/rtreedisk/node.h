@@ -83,6 +83,15 @@ namespace rtreedisk
         void moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<tree_node_handle> &toChildren);
         void moveData(std::vector<Point> &fromData);
         void moveChildren(std::vector<tree_node_handle> &fromChildren, std::vector<Rectangle> &fromBoxes);
+        void addEntryToNode(Rectangle box, tree_node_handle child) {
+            children[cur_offset_] = child;
+            boundingBoxes[cur_offset_] = box;
+            cur_offset_++;
+        }
+        void addEntryToNode(Point p) {
+            data[cur_offset_data_] = p;
+            cur_offset_data_++;
+        }
         tree_node_handle splitNode(tree_node_handle newChildHandle);
         tree_node_handle splitNode(Point newData);
         tree_node_handle adjustTree(tree_node_handle siblingLeaf);
@@ -101,6 +110,8 @@ namespace rtreedisk
         bool validate(tree_node_handle expectedParent, unsigned index);
         void print(unsigned n = 0);
         void printTree(unsigned n = 0);
+        void printErr(unsigned n = 0);
+        void printTreeErr(unsigned n = 0);
         unsigned height();
         void stat();
     };

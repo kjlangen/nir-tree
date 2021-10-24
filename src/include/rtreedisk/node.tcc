@@ -29,7 +29,7 @@ void Node<min_branch_factor, max_branch_factor>::deleteSubtrees()
     for (unsigned i = 0; i < cur_offset_; i++)
     {
         tree_node_handle child_handle = children.at(i);
-        assert(!child_handle);
+        assert(child_handle != nullptr);
 
         pinned_node_ptr<NodeType> child =
             allocator->get_tree_node<NodeType>(child_handle);
@@ -70,7 +70,7 @@ void Node<min_branch_factor, max_branch_factor>::updateBoundingBox(tree_node_han
         if (children.at(i) == child)
         {
             boundingBoxes.at(i) = updatedBoundingBox;
-            break;
+            return;
         }
     }
 #ifndef NDEBUG
@@ -82,29 +82,16 @@ void Node<min_branch_factor, max_branch_factor>::updateBoundingBox(tree_node_han
 template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor, max_branch_factor>::removeChild(tree_node_handle child)
 {
-    auto box_iter = boundingBoxes.begin();
-    auto child_iter = children.begin();
-
     for (unsigned i = 0; i < cur_offset_; i++)
     {
 
-        if (*child_iter == child)
+        if (children[i] == child)
         {
-            break;
+            removeChild(i);
+            return;
         }
-
-        box_iter++;
-        child_iter++;
     }
-
-    Rectangle target_box = *box_iter;
-
-    auto iter = std::remove_if(boundingBoxes.begin(), boundingBoxes.begin() + cur_offset_, [&target_box](Rectangle &box)
-        { return box == target_box; });
-    cur_offset_ = (iter - boundingBoxes.begin());
-
-    std::remove_if(children.begin(), children.begin() + cur_offset_, [&child](tree_node_handle &ch)
-                   { return ch == child; });
+    assert(false);
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -127,9 +114,13 @@ void Node<min_branch_factor, max_branch_factor>::removeData(unsigned idx)
 template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor, max_branch_factor>::removeData(Point givenPoint)
 {
-    auto iter = std::remove_if(data.begin(), data.begin() + cur_offset_data_, [&givenPoint](Point &p)
-        { return p == givenPoint; });
-    cur_offset_data_ = (iter - data.begin());
+    for (unsigned i = 0; i < cur_offset_data_; ++i) {
+        if (data[i] == givenPoint) {
+            removeData(i);
+            return;
+        }
+    }
+    assert(false);
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -167,24 +158,25 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(Point &req
 {
     using NodeType = Node<min_branch_factor, max_branch_factor>;
     tree_node_allocator *allocator = get_node_allocator(treeRef);
+    std::vector<Point> matchingPoints;
+
     pinned_node_ptr<NodeType> self_node = allocator->get_tree_node<NodeType>(self_handle_);
     std::stack<pinned_node_ptr<NodeType>> context;
-    std::vector<Point> matchingPoints;
     context.push(self_node);
 
-    while (!context.empty())
+    for (;!context.empty();)
     {
-        pinned_node_ptr<NodeType> curNode = context.top();
+        pinned_node_ptr<NodeType> currentContext = context.top();
         context.pop();
 
-        if (curNode->isLeafNode())
+        if (currentContext->isLeafNode())
         {
             // Leaf
-            for (unsigned i = 0; i < cur_offset_data_; ++i)
+            for (unsigned i = 0; i < currentContext->cur_offset_data_; ++i)
             {
-                if (requestedPoint == curNode->data[i])
+                if (requestedPoint == currentContext->data[i])
                 {
-                    matchingPoints.push_back(curNode->data[i]);
+                    matchingPoints.push_back(currentContext->data[i]);
                 }
             }
 #ifdef STAT
@@ -193,20 +185,24 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(Point &req
         }
         else
         {
-#ifdef STAT
-            treeRef->stats.markNonLeafNodeSearched();
-#endif
-            for (unsigned i = 0; i < curNode->cur_offset_; i++)
+            for (unsigned i = 0; i < currentContext->cur_offset_; i++)
             {
-                if (curNode->boundingBoxes[i].containsPoint(requestedPoint))
+                if (currentContext->boundingBoxes[i].containsPoint(requestedPoint))
                 {
-                    tree_node_handle child_handle = curNode->children[i];
+                    tree_node_handle child_handle = currentContext->children[i];
                     pinned_node_ptr<NodeType> child = allocator->get_tree_node<NodeType>(child_handle);
                     context.push(child);
                 }
             }
+#ifdef STAT
+            treeRef->stats.markNonLeafNodeSearched();
+#endif
         }
     }
+
+#ifdef STAT
+		treeRef.stats.resetSearchTracker<false>();
+#endif
 
     return matchingPoints;
 }
@@ -349,10 +345,11 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(Point give
     std::stack<pinned_node_ptr<NodeType>> context;
     context.push(node);
 
-    for (;;)
+    for (;!context.empty();)
     {
         pinned_node_ptr<NodeType> currentContext = context.top();
         context.pop();
+
         if (currentContext->isLeafNode())
         {
             // Leaf
@@ -408,6 +405,9 @@ void Node<min_branch_factor, max_branch_factor>::moveChildren(std::vector<tree_n
         children[i] = fromChildren.at(i);
         boundingBoxes[i] = fromBoxes.at(i);
     }
+
+    fromChildren.clear();
+    fromBoxes.clear();
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -556,13 +556,23 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     // opposite group
     if (groupABoundingBoxes.size() + cur_offset_ == min_branch_factor)
     {
-        groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
+        //groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+        //groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
+
+        for (unsigned i = 0; i < cur_offset_; ++i) {
+            groupABoundingBoxes.emplace_back(boundingBoxes[i]);
+            groupAChildren.emplace_back(children[i]);
+        }
     }
     else if (groupBBoundingBoxes.size() + cur_offset_ == min_branch_factor)
     {
-        groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
+        //groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
+        //groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
+
+        for (unsigned i = 0; i < cur_offset_; ++i) {
+            groupBBoundingBoxes.emplace_back(boundingBoxes[i]);
+            groupBChildren.emplace_back(children[i]);
+        }
     }
     else
     {
@@ -574,7 +584,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     auto alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle newSiblingHandle = alloc_data.second;
     auto newSibling = alloc_data.first;
-    new (&(*newSibling)) NodeType(treeRef, parent, newSiblingHandle);
+    new (&(*newSibling)) NodeType(treeRef, newSiblingHandle, parent);
 
     // Fill us with groupA and the new node with groupB
     moveChildren(groupAChildren, groupABoundingBoxes);
@@ -585,7 +595,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     }
 #endif
     newSibling->moveChildren(groupBChildren, groupBBoundingBoxes);
-    for (unsigned i = 0; i < cur_offset_; i++)
+    for (unsigned i = 0; i < newSibling->cur_offset_; i++)
     {
         allocator->get_tree_node<NodeType>(newSibling->children[i])->parent = newSiblingHandle;
     }
@@ -663,7 +673,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
     // Go through the remaining entries and add them to groupA or groupB
     double groupAAffinity, groupBAffinity;
     // QS2 [Check if done]
-    for (; cur_offset_data_ != 0 && (groupAData.size() + cur_offset_data_ > min_branch_factor) && (groupBData.size() + cur_offset_data_ > min_branch_factor);)
+    for (; cur_offset_data_ > 0 && (groupAData.size() + cur_offset_data_ > min_branch_factor) && (groupBData.size() + cur_offset_data_ > min_branch_factor);)
     {
         // PN1 [Determine the cost of putting each entry in each group]
         unsigned groupAIndex = 0;
@@ -721,13 +731,19 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
 
     // If we stopped because half the entries were assigned then great put the others in the
     // opposite group
-    if (groupAData.size() + cur_offset_ == min_branch_factor)
+    if (groupAData.size() + cur_offset_data_ == min_branch_factor)
     {
-        groupAData.insert(groupAData.end(), data.begin(), data.end());
+        for (unsigned i = 0; i < cur_offset_data_; ++i) {
+            groupAData.emplace_back(data[i]);
+        }
+        //groupAData.insert(groupAData.end(), data.begin(), data.end());
     }
-    else if (groupBData.size() + cur_offset_ == min_branch_factor)
+    else if (groupBData.size() + cur_offset_data_ == min_branch_factor)
     {
-        groupBData.insert(groupBData.end(), data.begin(), data.end());
+        for (unsigned i = 0; i < cur_offset_data_; ++i) {
+            groupBData.emplace_back(data[i]);
+        }
+        //groupBData.insert(groupBData.end(), data.begin(), data.end());
     }
     else
     {
@@ -739,7 +755,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
     auto alloc_data = allocator->create_new_tree_node<NodeType>();
     tree_node_handle siblingHandle = alloc_data.second;
     auto newSibling = alloc_data.first;
-    new (&(*newSibling)) NodeType( treeRef, parent, siblingHandle );
+    new (&(*newSibling)) NodeType( treeRef, siblingHandle, parent );
 
     // Fill us with groupA and the new node with groupB
     moveData(groupAData);
@@ -761,7 +777,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::adjustTree(tree_nod
     for (;;)
     {
         // AT2 [If node is the root, stop]
-        if (!node->parent)
+        if (node->parent == nullptr)
         {
             break;
         }
@@ -773,16 +789,16 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::adjustTree(tree_nod
             parentNode->updateBoundingBox(node->self_handle_, node->boundingBox());
 
             // If we have a split then deal with it otherwise move up the tree
-            if (siblingHandle)
+            if (siblingHandle != nullptr)
             {
                 pinned_node_ptr<NodeType> siblingNode = allocator->get_tree_node<NodeType>(siblingHandle);
                 // AT4 [Propagate the node split upwards]
                 if (parentNode->cur_offset_ < max_branch_factor)
                 {
+                    parentNode->children[parentNode->cur_offset_] = siblingNode->self_handle_;
                     parentNode->boundingBoxes[parentNode->cur_offset_] = siblingNode->boundingBox();
-                    parentNode->boundingBoxes[parentNode->cur_offset_] = siblingNode->self_handle_;
                     parentNode->cur_offset_++;
-                    siblingNode->parent = node->parent;
+                    siblingNode->parent = parentNode->self_handle_;
 
                     node = parentNode;
                     siblingHandle = tree_node_handle(nullptr);
@@ -832,7 +848,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert(Point givenP
     tree_node_handle siblingNodeHandle = leaf->adjustTree(siblingLeaf);
 
     // I4 [Grow tree taller]
-    if (siblingNodeHandle)
+    if (siblingNodeHandle != nullptr)
     {
         auto siblingNode = allocator->get_tree_node<NodeType>(siblingNodeHandle);
 
@@ -946,7 +962,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::condenseTree()
         // CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
         if (nodeBoundingBoxesSize >= min_branch_factor || nodeDataSize >= min_branch_factor)
         {
-            parentNode->updateBoundingBox(nodeHandle, node->boundingBox());
+            parentNode->updateBoundingBox(node->self_handle_, node->boundingBox());
 
             // CT5 [Move up one level in the tree]
             // Move up a level without deleting ourselves
@@ -1070,7 +1086,7 @@ bool Node<min_branch_factor, max_branch_factor>::validate(tree_node_handle expec
     bool valid = true;
     for (unsigned i = 0; i < children.size(); ++i)
     {
-        valid = valid && allocator->get_tree_node<NodeType>(children[i])->validate(this, i);
+        valid = valid && allocator->get_tree_node<NodeType>(children[i])->validate(this->self_handle_, i);
     }
 
     return valid;
@@ -1102,6 +1118,53 @@ void Node<min_branch_factor, max_branch_factor>::print(unsigned n)
     }
     std::cout << std::endl
               << indendtation << "}" << std::endl;
+}
+
+template <int min_branch_factor, int max_branch_factor>
+void Node<min_branch_factor, max_branch_factor>::printErr(unsigned n)
+{
+    std::string indendtation(n * 4, ' ');
+    std::cerr << indendtation << "Node " << this->self_handle_ << std::endl;
+    std::cerr << indendtation << "{" << std::endl;
+    std::cerr << indendtation << "    Parent: " << parent << std::endl;
+    std::cerr << indendtation << "    Bounding Boxes: " << std::endl;
+    for (unsigned i = 0; i < cur_offset_; ++i)
+    {
+        std::cerr << indendtation << "		" << boundingBoxes[i] << std::endl;
+    }
+    std::cerr << std::endl
+              << indendtation << "    Children: ";
+    for (unsigned i = 0; i < cur_offset_; ++i)
+    {
+        std::cerr << children[i] << ' ';
+    }
+    std::cerr << std::endl
+              << indendtation << "    Data: ";
+    for (unsigned i = 0; i < cur_offset_data_; ++i)
+    {
+        std::cerr << data[i];
+    }
+    std::cerr << std::endl
+              << indendtation << "}" << std::endl;
+}
+
+template <int min_branch_factor, int max_branch_factor>
+void Node<min_branch_factor, max_branch_factor>::printTreeErr(unsigned n)
+{
+    using NodeType = Node<min_branch_factor, max_branch_factor>;
+    tree_node_allocator *allocator = get_node_allocator(treeRef);
+    // Print this node first
+    printErr(n);
+
+    // Print any of our children with one more level of indentation
+    if (cur_offset_ > 0)
+    {
+        for (unsigned i = 0; i < cur_offset_; ++i)
+        {
+            // Recurse
+            allocator->get_tree_node<NodeType>(children[i])->printTreeErr(n + 1);
+        }
+    }
 }
 
 template <int min_branch_factor, int max_branch_factor>
