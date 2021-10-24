@@ -566,7 +566,7 @@ TEST_CASE("RTreeDisk: testFindLeaf2 ON DISK")
     tree_node_handle cluster5;
 
     {
-        TreeType tree( 4096 * 10, "nirdiskbacked.txt" );
+        TreeType tree( 4096 * 10, "rdiskbacked.txt" );
         root = tree.root;
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( root
                 );
@@ -580,7 +580,7 @@ TEST_CASE("RTreeDisk: testFindLeaf2 ON DISK")
         cluster4aNode->addEntryToNode( Point(-12.0, -3.0) );
         cluster4aNode->addEntryToNode( Point(-11.0, -3.0) );
         cluster4aNode->addEntryToNode( Point(-10.0, -3.0) );
-        
+
         alloc_data =
             tree.node_allocator_.create_new_tree_node<NodeType>();
         auto cluster4bNode = alloc_data.first;
@@ -678,9 +678,8 @@ TEST_CASE("RTreeDisk: testFindLeaf2 ON DISK")
     }
 
     // Read existing tree from disk
-    TreeType tree( 4096 * 5, "nirdiskbacked.txt" );
-    auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( tree.root
-            );
+    TreeType tree( 4096 * 5, "rdiskbacked.txt" );
+    auto rootNode = tree.node_allocator_.get_tree_node<NodeType>( tree.root );
 
 	// Test finding leaves
 	REQUIRE(rootNode->findLeaf(Point(-11.0, -3.0)) == cluster4a);
