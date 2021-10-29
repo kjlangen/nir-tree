@@ -389,6 +389,8 @@ SplitResult NODE_CLASS_TYPES::splitNode( Partition p ) {
             parent_ );
     auto right_handle = alloc_data.second;
     auto right_node = alloc_data.first;
+    std::cout << "Going to split: " << self_handle_ << " into nodes: "
+        << left_handle << " and " << right_handle << std::endl;
 
     if( isLeaf() ) {
         for( unsigned i = 0; i < cur_offset_; i++ ) {
@@ -489,11 +491,14 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
             break;
         }
 
+        std::cout << "Told to split!" << std::endl;
         // Otherwise, split node
         propagationSplit = current_node->splitNode();
 
         // Cleanup before ascending
         if( current_node->parent_ != nullptr ) {
+            std::cout << "Removed " << current_handle << " from parent "
+                << current_node->parent_ << std::endl;
             auto parent_node = treeRef->get_node( current_node->parent_ );
             parent_node->removeBranch( current_handle );
         }
@@ -502,6 +507,7 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
         auto left_split_node = treeRef->get_node(
                 propagationSplit.leftBranch.child );
         current_handle = left_split_node->parent_;
+        std::cout << "Recursing up: " << current_handle << std::endl;
     }
 
     return propagationSplit;
@@ -521,6 +527,7 @@ tree_node_handle NODE_CLASS_TYPES::insert( Point givenPoint ) {
 
     // Grow the tree taller if we need to
     if( finalSplit.leftBranch.child != nullptr and finalSplit.rightBranch.child != nullptr ) {
+        std::cout << "Need to grow the tree." << std::endl;
         tree_node_allocator *allocator = get_node_allocator( treeRef );
         auto alloc_data = allocator->create_new_tree_node<NodeType>();
         new (&(*(alloc_data.first))) NodeType( treeRef, alloc_data.second,
@@ -580,9 +587,12 @@ tree_node_handle NODE_CLASS_TYPES::remove( Point givenPoint ) {
 
     // D2 [Delete record]
     leaf_node->removePoint( givenPoint );
+    std::cout << "Remove done." << std::endl;
 
     // D3 [Propagate changes]
     leaf_node->condenseTree();
+
+    std::cout << "Condense done." << std::endl;
 
     // D4 [Shorten tree]
     if( not isLeaf() and cur_offset_ == 1 ) {

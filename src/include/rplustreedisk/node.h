@@ -46,6 +46,7 @@ namespace rplustreedisk
             child( child )
         {}
 
+        Branch &operator=( const Branch &other ) = default;
         bool operator==( const Branch &other ) const = default;
 
         Rectangle boundingBox;
