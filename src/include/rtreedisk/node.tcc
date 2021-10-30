@@ -165,7 +165,7 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(Point &req
     std::stack<pinned_node_ptr<NodeType>> context;
     context.push(self_node);
 
-    for (; !context.empty();)
+    while (!context.empty())
     {
         pinned_node_ptr<NodeType> currentContext = context.top();
         context.pop();
@@ -267,7 +267,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::chooseLeaf(Point gi
     tree_node_allocator *allocator = get_node_allocator(treeRef);
     pinned_node_ptr<NodeType> node = allocator->get_tree_node<NodeType>(self_handle_);
 
-    for (;;)
+    while (true)
     {
         if (node->isLeafNode())
         {
@@ -303,7 +303,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::chooseNode(Reinsert
     tree_node_allocator *allocator = get_node_allocator(treeRef);
     pinned_node_ptr<NodeType> node = allocator->get_tree_node<NodeType>(self_handle_);
 
-    for (;;)
+    while (true)
     {
         if (node->isLeafNode())
         {
@@ -346,7 +346,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(Point give
     std::stack<pinned_node_ptr<NodeType>> context;
     context.push(node);
 
-    for (; !context.empty();)
+    while (!context.empty())
     {
         pinned_node_ptr<NodeType> currentContext = context.top();
         context.pop();
@@ -497,7 +497,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     // Go through the remaining entries and add them to groupA or groupB
     double groupAAffinity, groupBAffinity;
     // QS2 [Check if done]
-    for (; !boundingBoxes.empty() && (groupABoundingBoxes.size() + cur_offset_ > min_branch_factor) && (groupBBoundingBoxes.size() + cur_offset_ > min_branch_factor);)
+    while (!boundingBoxes.empty() && (groupABoundingBoxes.size() + cur_offset_ > min_branch_factor) && (groupBBoundingBoxes.size() + cur_offset_ > min_branch_factor))
     {
         // PN1 [Determine the cost of putting each entry in each group]
         unsigned groupAIndex = 0;
@@ -557,9 +557,6 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     // opposite group
     if (groupABoundingBoxes.size() + cur_offset_ == min_branch_factor)
     {
-        //groupABoundingBoxes.insert(groupABoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        //groupAChildren.insert(groupAChildren.end(), children.begin(), children.end());
-
         for (unsigned i = 0; i < cur_offset_; ++i)
         {
             groupABoundingBoxes.emplace_back(boundingBoxes[i]);
@@ -568,9 +565,6 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     }
     else if (groupBBoundingBoxes.size() + cur_offset_ == min_branch_factor)
     {
-        //groupBBoundingBoxes.insert(groupBBoundingBoxes.end(), boundingBoxes.begin(), boundingBoxes.end());
-        //groupBChildren.insert(groupBChildren.end(), children.begin(), children.end());
-
         for (unsigned i = 0; i < cur_offset_; ++i)
         {
             groupBBoundingBoxes.emplace_back(boundingBoxes[i]);
@@ -676,7 +670,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
     // Go through the remaining entries and add them to groupA or groupB
     double groupAAffinity, groupBAffinity;
     // QS2 [Check if done]
-    for (; cur_offset_data_ > 0 && (groupAData.size() + cur_offset_data_ > min_branch_factor) && (groupBData.size() + cur_offset_data_ > min_branch_factor);)
+    while (cur_offset_data_ > 0 && (groupAData.size() + cur_offset_data_ > min_branch_factor) && (groupBData.size() + cur_offset_data_ > min_branch_factor))
     {
         // PN1 [Determine the cost of putting each entry in each group]
         unsigned groupAIndex = 0;
@@ -740,7 +734,6 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
         {
             groupAData.emplace_back(data[i]);
         }
-        //groupAData.insert(groupAData.end(), data.begin(), data.end());
     }
     else if (groupBData.size() + cur_offset_data_ == min_branch_factor)
     {
@@ -748,7 +741,6 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
         {
             groupBData.emplace_back(data[i]);
         }
-        //groupBData.insert(groupBData.end(), data.begin(), data.end());
     }
     else
     {
@@ -779,7 +771,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::adjustTree(tree_nod
     // AT1 [Initialize]
     auto node = allocator->get_tree_node<NodeType>(self_handle_);
 
-    for (;;)
+    while (true)
     {
         // AT2 [If node is the root, stop]
         if (node->parent == nullptr)
@@ -1229,7 +1221,7 @@ unsigned Node<min_branch_factor, max_branch_factor>::height()
     unsigned ret = 0;
     auto node = allocator->get_tree_node<NodeType>(self_handle_);
 
-    for (;;)
+    while (true)
     {
         ret++;
         if (node->cur_offset_ == 0)
@@ -1249,8 +1241,6 @@ void Node<min_branch_factor, max_branch_factor>::stat()
 #ifdef STAT
     using NodeType = Node<min_branch_factor, max_branch_factor>;
     tree_node_allocator *allocator = get_node_allocator(treeRef);
-    unsigned long childrenSize;
-    unsigned long dataSize;
     size_t memoryFootprint = 0;
     unsigned long totalNodes = 1;
     unsigned long singularBranches = 0;
@@ -1267,13 +1257,13 @@ void Node<min_branch_factor, max_branch_factor>::stat()
     context.push(self_handle_);
     pinned_node_ptr<NodeType> currentContext;
 
-    for (; !context.empty();)
+    while (!context.empty())
     {
         currentContext = allocator->get_tree_node<NodeType>(context.top());
         context.pop();
 
-        childrenSize = currentContext->cur_offset_;
-        dataSize = currentContext->cur_offset_data_;
+        unsigned long childrenSize = currentContext->cur_offset_;
+        unsigned long dataSize = currentContext->cur_offset_data_;
         unsigned fanout = childrenSize == 0 ? dataSize : childrenSize;
         if (unlikely(fanout >= histogramFanout.size()))
         {
