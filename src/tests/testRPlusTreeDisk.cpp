@@ -267,6 +267,7 @@ TEST_CASE("R+TreeDisk: testInsert")
 
 TEST_CASE("R+TreeDisk: testSimpleRemove")
 {
+    unlink( "rplustreedisk.txt" );
     TWO_THREE_TREE tree( 4096*10, "rplustreedisk.txt" );
 
     auto alloc_data = tree.node_allocator_.create_new_tree_node<TWO_THREE_NODE>();
@@ -308,21 +309,37 @@ TEST_CASE("R+TreeDisk: testSimpleRemove")
 	tree.remove( Point(7.0, 9.0) );
 	REQUIRE( root_node->cur_offset_ == 3 );
 	REQUIRE( cluster1c_node->cur_offset_ == 1 );
+
+    unlink( "rplustreedisk.txt" );
 }
 
-/*
-TEST_CASE("R+Tree: testChooseNode")
+TEST_CASE("R+TreeDisk: testChooseNode")
 {
+    unlink( "rplustreedisk.txt" );
 	Point p = Point(165.0, 181.0);
-	rplustree::RPlusTree tree(2, 3);
+    TWO_THREE_TREE tree( 4096*10, "rplustreedisk.txt" );
 
-	auto *child1 = new rplustree::Node(tree, 2, 3, tree.root);
-	auto *child2 = new rplustree::Node(tree, 2, 3, tree.root);
+    auto alloc_data =tree.node_allocator_.create_new_tree_node<TWO_THREE_NODE>();
+    new (&(*(alloc_data.first))) TWO_THREE_NODE( &tree,
+            alloc_data.second, tree.root_ );
+    auto child1_node = alloc_data.first;
+    auto child1_handle = alloc_data.second;
 
-	tree.root->branches.push_back({child1, Rectangle(123.0, 151.0, 146.0, 186.0)});
-	tree.root->branches.push_back({child2, Rectangle(150.0, 183.0, 152.0, 309.0)});
 
-	auto *n = tree.root->chooseNode(p);
-	REQUIRE(n == child1);
+    alloc_data =tree.node_allocator_.create_new_tree_node<TWO_THREE_NODE>();
+    new (&(*(alloc_data.first))) TWO_THREE_NODE( &tree,
+            alloc_data.second, tree.root_ );
+    auto child2_node = alloc_data.first;
+    auto child2_handle = alloc_data.second;
+
+    auto root_node = tree.get_node( tree.root_ );
+    root_node->entries.at( root_node->cur_offset_++ ) =
+        rplustreedisk::Branch({child1_handle, Rectangle(123.0, 151.0, 146.0, 186.0)});
+    root_node->entries.at( root_node->cur_offset_++ ) =
+        rplustreedisk::Branch({child2_handle,Rectangle(150.0, 183.0, 152.0, 309.0)});
+
+	tree_node_handle ret_handle = root_node->chooseNode( p );
+	REQUIRE( ret_handle == child1_handle );
+
+    unlink( "rplustreedisk.txt" );
 }
-*/
