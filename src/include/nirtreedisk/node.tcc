@@ -26,11 +26,12 @@ void NODE_CLASS_TYPES::deleteSubtrees()
     tree_node_allocator *allocator = get_node_allocator( treeRef );
     for( size_t i = 0; i < cur_offset_; i++ ) {
         NodeEntry &entry = entries.at(i);
-        tree_node_handle child_handle = std::get<Branch>( entry ).child;
-        auto child = treeRef->get_node( child_handle );
-        child->deleteSubtrees();
-        // FIXME: GC child
-
+        if( std::holds_alternative<Branch>( entry ) ) {
+            tree_node_handle child_handle = std::get<Branch>( entry ).child;
+            auto child = treeRef->get_node( child_handle );
+            child->deleteSubtrees();
+            allocator->free( child_handle, sizeof( NODE_CLASS_TYPES ) );
+        }
     }
 }
 
@@ -108,12 +109,16 @@ void NODE_CLASS_TYPES::removeEntry(
 ) {
     // Locate the child
     size_t childIndex;
-    for( childIndex = 0; entries.at( childIndex ) != entry &&
+    for( childIndex = 0; entries.at( childIndex ) != entry and
             childIndex < cur_offset_; childIndex++ ) { }
 
-    // Delete the child by deleting it and overwriting its branch
-    // FIXME GC child
-    // delete child;
+    // Delete the child and overwrite its branch point
+    if( std::holds_alternative<Branch>( entries.at( childIndex ) ) ) {
+        Branch &b = std::get<Branch>( entries.at( childIndex ) );
+        tree_node_allocator *allocator = get_node_allocator( treeRef );
+        allocator->free( b.child, sizeof( NODE_CLASS_TYPES ) );
+        b.child = tree_node_handle( nullptr );
+    }
 
     // Replace this index with whatever is in the last position
     if( childIndex != cur_offset_-1 ) {
@@ -426,7 +431,6 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                 if( b_child->isLeaf() and b_child->cur_offset_ > 0 ) {
                     b_child->entries.at( b_child->cur_offset_ ) = givenPoint;
                     b_child->cur_offset_++;
-                    // Is this legit?
                     shrink( node_poly, b_child->entries.begin(),
                             b_child->entries.begin() +
                             b_child->cur_offset_, allocator );
@@ -666,7 +670,10 @@ void NODE_CLASS_TYPES::make_disjoint_from_children(
     }
 }
 
-// Splitting a node will remove it from its parent node and its memory will be freed
+// We create two new nodes and free the old one.
+// The old one is freed in adjustTree using removeEntry
+// If we downsplit, then we won't call adjustTree for that split so we
+// need to delete the node ourselves.
 NODE_TEMPLATE_PARAMS
 SplitResult NODE_CLASS_TYPES::splitNode(
     Partition p,
@@ -863,30 +870,8 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                 auto child = treeRef->get_node( branch.child );
 
                 SplitResult downwardSplit = child->splitNode( p, true );
-                // This downsplit needs to construct polygons that are
-                // disjoint from the things in left node or right_node,
-                // respectively, not our parent 
 
-                // The problem, though, is that the split node we are
-                // building may not have all of the other entries we
-                // need to put in it. In this case, there are other
-                // things that we will need to be disjoint from later.
-                // Other nodes that are not downsplit will need to know
-                // about this polygon that likely differs from the
-                // originating polygon in our parent node.
-                // Beyond that, we might also add a polygon that other
-                // polygons will need to avoid later, which is not
-                // ideal.
-
-                // OK, well can we ignore disjointedness and just start
-                // adding stuff in , and then fix it before returning?
-                // Not clear. When we start fragmenting rectangles it
-                // needs to be known that the clipping rectangle does
-                // not hold any points of interest. If we just start
-                // shoving stuff in, we don't know that for sure when we
-                // fix it later.
-                // FIXME: GC branch.child
-                // delete branch.child;
+                allocator->free( branch.child, sizeof( NODE_CLASS_TYPES ) );
 
                 auto left_child = treeRef->get_node( downwardSplit.leftBranch.child );
                 if( left_child->cur_offset_ > 0 ) {
@@ -912,6 +897,9 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         // branch that needs a downward split. That downward split
         // results in a node added to the left and to the right,
         // resulting in an overfull left node.
+        // We have a heuristic that generally solves this problem, but
+        // provably does not work in all cases. Fix in the future, alert
+        // us if it happens
         // TODO: FIXME
 
         assert( left_node->cur_offset_ <= max_branch_factor and
@@ -921,11 +909,12 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         IsotheticPolygon right_polygon( right_node->boundingBox() );
         assert( left_polygon.disjoint( right_polygon ) );
 
-        // FIXME:
-        // I think a bug can happen here where we downsplit two nodes.
-        // We can make our polygon bigger than our parents, provided we
-        // don't intersect with our siblings. But they can do that too,
-        // and these expansions can intersect.
+        // When we downsplit two nodes we can make our polygon bigger
+        // than our parents, provided we don't intersect with our
+        // siblings. But they can do that too, and these expansions can
+        // intersect.
+        // So, if we downsplit, we actually need to intersect with our
+        // parents.
         if( parent ) {
             auto parent_node = treeRef->get_node( parent );
             if( not is_downsplit ) {
@@ -1175,8 +1164,8 @@ tree_node_handle NODE_CLASS_TYPES::insert( Point givenPoint ) {
         }
 
 
-        // FIXME: GC original root node
-        //delete this;
+        allocator->free( self_handle_, sizeof( NODE_CLASS_TYPES ) );
+        self_handle_ = tree_node_handle( nullptr );
 
         return new_root_handle;
     }
@@ -1229,8 +1218,8 @@ tree_node_handle NODE_CLASS_TYPES::remove( Point givenPoint ) {
                 ) ) {
         tree_node_handle new_root_handle = std::get<Branch>(
                 entries.at(0) ).child;
-        // FIXME GC ME 
-        //delete this;
+        tree_node_allocator *allocator = get_node_allocator( treeRef );
+        allocator->free( self_handle_, sizeof( NODE_CLASS_TYPES ) );
         auto new_root = treeRef->get_node( new_root_handle );
         new_root->parent = tree_node_handle( nullptr );
         return new_root_handle;
