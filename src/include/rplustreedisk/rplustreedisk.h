@@ -1,5 +1,4 @@
-#ifndef __RPLUSTREE__
-#define __RPLUSTREE__
+#pragma once
 
 #include <cassert>
 #include <vector>
@@ -84,8 +83,25 @@ namespace rplustreedisk
                 return ptr;
             }
 
+            void write_metadata() override {
+                // Step 1:
+                // Writeback everything to disk
+                node_allocator_.buffer_pool_.writeback_all_pages();
+
+                // Step 2:
+                // Write metadata file
+
+                auto root_node = get_node( root_ );
+                assert( root_node->self_handle_ == root_ );
+                std::string meta_fname = backing_file_ + ".meta";
+                int fd = open( meta_fname.c_str(), O_WRONLY |
+                        O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR );
+                assert( fd >= 0 );
+                // yes, yes, i should loop this whatever
+                int rc = write( fd, (char *) &root_, sizeof(root_) );
+                assert( rc == sizeof(root_) );
+                close( fd );
+            }
 	};
 #include "rplustreedisk.tcc"
 }
-
-#endif

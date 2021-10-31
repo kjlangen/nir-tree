@@ -1,5 +1,4 @@
-#ifndef __RPLUSNODE__
-#define __RPLUSNODE__
+#pragma once
 
 #include <cassert>
 #include <vector>
@@ -133,5 +132,3 @@ namespace rplustreedisk
 	};
 #include "node.tcc"
 }
-
-#endif

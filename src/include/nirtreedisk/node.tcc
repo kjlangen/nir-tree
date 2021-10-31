@@ -14,7 +14,6 @@
 
 // Shorthand so I don't have to write this a billion times
 #define NODE_TEMPLATE_PARAMS template <int min_branch_factor, int max_branch_factor, class strategy>
-
 #define NODE_CLASS_TYPES Node<min_branch_factor, max_branch_factor, strategy>
 
 NODE_TEMPLATE_PARAMS
@@ -395,7 +394,6 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                     smallestExpansionBranchIndex ) );
                 node_poly = b.materialize_polygon( allocator );
                 assert( node_poly.basicRectangles.size() > 0 );
-                assert( smallestExpansion.index >= 0);
 
                 IsotheticPolygon subsetPolygon(
                         node_poly.basicRectangles.at(smallestExpansion.index) );
@@ -1605,3 +1603,6 @@ void NODE_CLASS_TYPES::stat() {
 (void) 0;
 #endif
 }
+
+#undef NODE_TEMPLATE_PARAMS
+#undef NODE_CLASS_TYPES

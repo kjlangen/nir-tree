@@ -466,6 +466,13 @@ static bool is_already_loaded(
         if( existing_page_count > 0 ) {
             return true;
         }
+    } else if( configU["tree"] == R_PLUS_TREE ) {
+        rplustreedisk::RPlusTreeDisk<3,7> *tree =
+            (rplustreedisk::RPlusTreeDisk<3,7> *) spatial_index;
+        size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
+        if( existing_page_count > 0 ) {
+            return true;
+        }
     } else if( configU["tree"] == R_STAR_TREE ) {
         rstartreedisk::RStarTreeDisk<3,7> *tree =
             (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
@@ -503,7 +510,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	else if (configU["tree"] == R_PLUS_TREE)
 	{
-		spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
+        spatialIndex = new rplustreedisk::RPlusTreeDisk<3,7>(4096*10*13000,
+                "rplustreediskbacked_california.txt" );
+		//spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
 	}
 	else if (configU["tree"] == R_STAR_TREE)
 	{

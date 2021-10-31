@@ -343,3 +343,29 @@ TEST_CASE("R+TreeDisk: testChooseNode")
 
     unlink( "rplustreedisk.txt" );
 }
+
+TEST_CASE( "R+TreeDisk: Inserts and Read from Disk" ) {
+    unlink( "rplustreedisk.txt" );
+    {
+        TWO_THREE_TREE tree( 4096*100, "rplustreedisk.txt" );
+
+        for( unsigned i = 0; i < 1000; i++ ) {
+            tree.insert( Point(i,i) );
+        }
+
+        for( unsigned i = 0; i < 1000; i++ ) {
+            std::vector<Point> pt_vec = tree.search( Point(i,i) );
+            REQUIRE( pt_vec.size() == 1 );
+        }
+
+        tree.write_metadata();
+    }
+
+    TWO_THREE_TREE tree( 4096*100, "rplustreedisk.txt" );
+    for( unsigned i = 0; i < 1000; i++ ) {
+            std::vector<Point> pt_vec = tree.search( Point(i,i) );
+            REQUIRE( pt_vec.size() == 1 );
+    }
+
+    unlink( "rplustreedisk.txt" );
+}

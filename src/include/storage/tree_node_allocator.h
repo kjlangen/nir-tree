@@ -90,7 +90,7 @@ public:
         page_location_= std::nullopt;
     }
 
-    tree_node_handle( std::nullptr_t arg ) {
+    tree_node_handle( std::nullptr_t ) {
         page_location_= std::nullopt;
     }
 
@@ -108,14 +108,14 @@ public:
     }
 
 
-    bool operator==( const std::nullptr_t &arg ) const {
+    bool operator==( const std::nullptr_t ) const {
         return not page_location_.has_value();
     }
 
     tree_node_handle &operator=( const tree_node_handle &other ) =
         default;
 
-    tree_node_handle &operator=( const std::nullptr_t &arg ) { 
+    tree_node_handle &operator=( const std::nullptr_t ) { 
         page_location_.reset();
         return *this;
     }

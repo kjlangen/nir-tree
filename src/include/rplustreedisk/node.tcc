@@ -1,12 +1,11 @@
-#include <rplustree/node.h>
-#include <rplustree/rplustree.h>
+#include <rplustreedisk/node.h>
+#include <rplustreedisk/rplustreedisk.h>
 
 #define NODE_TEMPLATE_TYPES template <int min_branch_factor, int max_branch_factor>
 #define NODE_CLASS_TYPES Node<min_branch_factor,max_branch_factor>
 
 NODE_TEMPLATE_TYPES
 void NODE_CLASS_TYPES::deleteSubtrees() {
-
     // N.B., does not actually delete anything
     // FIXME
     if( not isLeaf() ) {
@@ -21,6 +20,9 @@ void NODE_CLASS_TYPES::deleteSubtrees() {
 NODE_TEMPLATE_TYPES
 Rectangle NODE_CLASS_TYPES::boundingBox() {
     if( isLeaf() ) {
+        if( cur_offset_ == 0 ) {
+            return Rectangle::atInfinity;
+        }
         Point &p = std::get<Point>( entries.at(0) );
         Rectangle bb = Rectangle( p, Point::closest_larger_point( p ) );
         for( unsigned i = 1; i < cur_offset_; i++ ) {
@@ -59,11 +61,12 @@ void NODE_CLASS_TYPES::removeBranch( tree_node_handle child_handle ) {
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = std::get<Branch>( entries.at(i) );
         if( b.child == child_handle ) {
-            entries.at(i) == entries.at(cur_offset_-1);
+            entries.at(i) = entries.at(cur_offset_-1);
             cur_offset_--;
-            break;
+            return;
         }
     }
+    assert( false );
 }
 
 NODE_TEMPLATE_TYPES
@@ -329,7 +332,8 @@ Partition NODE_CLASS_TYPES::partitionNode()
             // Compare cost
             if( duplicateCount < costMetric ) {
                 defaultPartition.dimension = d;
-                defaultPartition.location = location;
+                // Set the partition location after the point.
+                defaultPartition.location = nextafter(location, DBL_MAX);
                 costMetric = duplicateCount;
             }
         }
@@ -349,25 +353,110 @@ Partition NODE_CLASS_TYPES::partitionNode()
         std::sort( sortableBoundingBoxes.begin(), sortableBoundingBoxes.end(),
                 [d](Rectangle a, Rectangle b){ return a.upperRight[d] < b.upperRight[d]; } );
 
-        // Pick at least half of the rectangles
+
+        // By picking a line based on the upper bounding point, we
+        // guaranteed that at least some of the entries will go to the
+        // left. But we can't guarantee that *all* entries won't go to the
+        // left, because we might have to downsplit the remaining
+        // entries in the array (R+ nodes are not guaranteed to be disjoint).
+        // This would result in a split not actually reducing the number
+        // of entries in our new split nodes, which defeats the whole
+        // point.
+        // I'm not sure we can even guarantee that a line partitions the
+        // data in a way such that we DONT overflow --- presumably every
+        // box isn't on top of each other but you I'm not sure that's a
+        // property you rely on.
+        // But even if we could guarantee that, we still can't check
+        // every cut point to figure it out because that would be N^2
+        // and this is D N LOG N.
+
+
         location = sortableBoundingBoxes[sortableBoundingBoxes.size() / 2 - 1].upperRight[d];
 
         // Compute cost, # of splits if d is chosen
         unsigned currentInducedSplits = 0;
+        unsigned left_count = 0;
+        unsigned right_count = 0;
         for( unsigned i = 0; i < sortableBoundingBoxes.size(); i++ ) {
-            if( sortableBoundingBoxes[i].lowerLeft[d] < location and
-                    location < sortableBoundingBoxes[i].upperRight[d] ) {
+            bool is_contained_left =
+                sortableBoundingBoxes[i].upperRight[d] <= location;
+            bool is_contained_right =
+                sortableBoundingBoxes[i].lowerLeft[d] >= location;
+
+            if( is_contained_left ) {
+                left_count++;
+            } else if( is_contained_right ) {
+                right_count++;
+            } else if( sortableBoundingBoxes[i].lowerLeft[d] <= location and
+                    location <= sortableBoundingBoxes[i].upperRight[d] ) {
                 currentInducedSplits++;
+                left_count++;
+                right_count++;
             }
         }
 
         // Compare cost
-        if( currentInducedSplits < costMetric ) {
+        if( left_count <= max_branch_factor and right_count <=
+                max_branch_factor and currentInducedSplits < costMetric ) {
             defaultPartition.dimension = d;
             defaultPartition.location = location;
             costMetric = currentInducedSplits;
         }
     }
+
+    // If there was a default split point that didnt' overflow children,
+    // use that
+    if( costMetric < std::numeric_limits<unsigned>::max() ) {
+        return defaultPartition;
+    }
+    
+    // It's time to get fancy
+    for( unsigned d = 0; d < dimensions; d++ ) {
+        for( unsigned i = 0; i < sortableBoundingBoxes.size(); i++ ) {
+            unsigned left_count = 0;
+            unsigned right_count = 0;
+            double partition_candidate =
+                sortableBoundingBoxes[i].upperRight[d];
+            unsigned cost = 0;
+            for( unsigned j = 0; j < sortableBoundingBoxes.size(); j++ ) {
+                Rectangle &bounding_rect = sortableBoundingBoxes[j];
+                bool greater_than_left = bounding_rect.lowerLeft[d] <
+                    partition_candidate;
+                bool less_than_right = bounding_rect.upperRight[d] >
+                    partition_candidate;
+                bool requires_split = greater_than_left and
+                    less_than_right;
+                bool should_go_left = bounding_rect.upperRight[d] <=
+                    partition_candidate;
+                bool should_go_right = bounding_rect.lowerLeft[d] >=
+                    partition_candidate;
+
+                if( requires_split ) {
+                    left_count++;
+                    right_count++;
+                    cost++;
+                } else if( should_go_left ) {
+                    left_count++;
+                } else if( should_go_right ) {
+                    right_count++;
+                } else {
+                    assert( false );
+                }
+            } //j
+
+            if( left_count <= max_branch_factor and right_count <=
+                    max_branch_factor and left_count > 0 and right_count
+                    > 0 ) {
+                if( cost < costMetric ) {
+                    defaultPartition.dimension = d;
+                    defaultPartition.location = partition_candidate;
+                    costMetric = cost;
+                }
+            }
+        } // i
+    } // d
+
+    assert( costMetric < std::numeric_limits<unsigned>::max() );
 
     return defaultPartition;
 }
@@ -393,7 +482,7 @@ SplitResult NODE_CLASS_TYPES::splitNode( Partition p ) {
     if( isLeaf() ) {
         for( unsigned i = 0; i < cur_offset_; i++ ) {
             Point &data_point = std::get<Point>( entries.at(i) );
-            if( data_point[p.dimension] <= p.location and
+            if( data_point[p.dimension] < p.location and
                     left_node->cur_offset_ < max_branch_factor ) {
                 left_node->entries.at( left_node->cur_offset_++ ) =
                     data_point;
@@ -401,15 +490,30 @@ SplitResult NODE_CLASS_TYPES::splitNode( Partition p ) {
                 right_node->entries.at( right_node->cur_offset_++ ) =
                     data_point;
             }
+            assert( left_node->cur_offset_ <= max_branch_factor );
+            assert( right_node->cur_offset_ <= max_branch_factor );
         }
     } else {
+        assert( left_node->cur_offset_ == 0 );
+        assert( right_node->cur_offset_ == 0 );
+        // This is partitioning on a point that either shoves everything
+        // left or cuts enough stuff that left gets everything.
+        // Very confusing...
         for( unsigned i = 0; i < cur_offset_; i++ ) {
             Branch &b = std::get<Branch>( entries.at(i) );
-            if( b.boundingBox.upperRight[p.dimension] <= p.location ) {
+            
+            bool is_contained_left =
+                b.boundingBox.upperRight[p.dimension]
+                <= p.location;
+            bool is_contained_right =
+                b.boundingBox.lowerLeft[p.dimension]
+                >= p.location;
+            assert( not(is_contained_left and is_contained_right) );
+            if( is_contained_left ) {
                 auto child_node = treeRef->get_node( b.child );
                 child_node->parent_ = left_handle;
                 left_node->entries.at( left_node->cur_offset_++ ) = b;
-            } else if( b.boundingBox.lowerLeft[p.dimension] >= p.location ) {
+            } else if( is_contained_right ) {
                 auto child_node = treeRef->get_node( b.child );
                 child_node->parent_ = right_handle;
                 right_node->entries.at( right_node->cur_offset_++ ) = b;
@@ -432,6 +536,8 @@ SplitResult NODE_CLASS_TYPES::splitNode( Partition p ) {
                 }
             }
         }
+        assert( left_node->cur_offset_ <= max_branch_factor );
+        assert( right_node->cur_offset_ <= max_branch_factor );
     }
 
     return {{left_handle, left_node->boundingBox()}, {right_handle,
@@ -457,28 +563,30 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
         {tree_node_handle(nullptr), Rectangle()}
     };
 
-    while( current_handle != nullptr ) {
+    do {
 
         auto current_node = treeRef->get_node( current_handle );
         // If there was a split we were supposed to propagate then propagate it
         if( propagationSplit.leftBranch.child != nullptr and
                 propagationSplit.rightBranch.child != nullptr ) {
+            if( current_node->cur_offset_ >= max_branch_factor ) {
+                assert( false );
+            }
             auto left_node = treeRef->get_node( propagationSplit.leftBranch.child
                     );
             if( left_node->cur_offset_ > 0 ) {
-                current_node->entries.at( current_node->cur_offset_ ) =
+                current_node->entries.at( current_node->cur_offset_++ ) =
                     propagationSplit.leftBranch;
-                current_node->cur_offset_++;
             }
 
             auto right_node = treeRef->get_node(
                     propagationSplit.rightBranch.child );
             if( right_node->cur_offset_ > 0 ) {
-                current_node->entries.at( current_node->cur_offset_ ) =
+                current_node->entries.at( current_node->cur_offset_++ ) =
                     propagationSplit.rightBranch;
-                current_node->cur_offset_++;
             }
         }
+
 
         // Early exit if this node does not overflow
         if( current_node->cur_offset_ <= max_branch_factor ) {
@@ -489,20 +597,25 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
             break;
         }
 
+
         // Otherwise, split node
         propagationSplit = current_node->splitNode();
 
         // Cleanup before ascending
         if( current_node->parent_ != nullptr ) {
             auto parent_node = treeRef->get_node( current_node->parent_ );
+            assert( parent_node->cur_offset_ <= max_branch_factor );
             parent_node->removeBranch( current_handle );
+            assert( parent_node->cur_offset_ <=max_branch_factor-1 );
         }
 
         // Ascend, propagating splits
         auto left_split_node = treeRef->get_node(
                 propagationSplit.leftBranch.child );
+        assert( left_split_node->parent_ == current_node->parent_ );
         current_handle = left_split_node->parent_;
-    }
+        assert( current_handle == current_node->parent_ );
+    } while( current_handle != nullptr );
 
     return propagationSplit;
 }
@@ -515,6 +628,7 @@ tree_node_handle NODE_CLASS_TYPES::insert( Point givenPoint ) {
     // Find the appropriate position for the new point
     tree_node_handle adjustContext = chooseNode(givenPoint);
     auto adjust_node = treeRef->get_node( adjustContext );
+    assert( adjust_node->isLeaf() );
     adjust_node->entries.at( adjust_node->cur_offset_++ ) = givenPoint;
 
     auto finalSplit = adjust_node->adjustTree();
@@ -728,8 +842,8 @@ unsigned NODE_CLASS_TYPES::height()
 NODE_TEMPLATE_TYPES
 void NODE_CLASS_TYPES::stat()
 {
-    using NodeType = NODE_CLASS_TYPES;
 #ifdef STAT
+    using NodeType = NODE_CLASS_TYPES;
 
     // Initialize our context stack
     std::stack<tree_node_handle> context;
@@ -817,3 +931,6 @@ void NODE_CLASS_TYPES::stat()
     (void) 0;
 #endif
 }
+
+#undef NODE_TEMPLATE_TYPES
+#undef NODE_CLASS_TYPES

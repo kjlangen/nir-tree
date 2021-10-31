@@ -125,10 +125,12 @@ double &Point::operator[](unsigned index)
 	return values[index];
 }
 
-const double Point::operator[](unsigned index) const
+double Point::operator[](unsigned index) const
 {
 	return values[index];
 }
+
+
 
 Point &Point::operator<<(const Point &p)
 {
@@ -1005,11 +1007,12 @@ void IsotheticPolygon::refine()
 	if( basicRectangles.size() <= 1 ) {
 		return;
 	}
-	assert( basicRectangles.size() > 0 );
 
     //FIXME: remove
     recomputeBoundingBox();
+#ifndef NDEBUG
     Rectangle boundingBefore = boundingBox;
+#endif
 
 	unsigned rIndex;
 	std::vector<Rectangle> rectangleSetRefined;
@@ -1063,7 +1066,6 @@ void IsotheticPolygon::refine()
 
 void IsotheticPolygon::recomputeBoundingBox()
 {
-    assert( basicRectangles.size() >= 0 );
 	if (basicRectangles.size() == 0)
 	{
 		boundingBox = Rectangle::atInfinity;

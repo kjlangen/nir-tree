@@ -11,6 +11,7 @@
 #include <index/index.h>
 #include <rtree/rtree.h>
 #include <rplustree/rplustree.h>
+#include <rplustreedisk/rplustreedisk.h>
 #include <rstartree/rstartree.h>
 #include <rstartreedisk/rstartreedisk.h>
 #include <nirtree/nirtree.h>

@@ -44,6 +44,10 @@ class Point
             Point local_point( existing_point );
             for( unsigned d = 0; d < dimensions; d++ ) {
                 local_point[d] = nextafter( local_point[d], DBL_MAX );
+                if( not (local_point[d] > existing_point[d] ) ) {
+                    std::cout << "existing point: " << existing_point[d]
+                        << std::endl;
+                }
                 assert( local_point[d] > existing_point[d] );
             }
             return local_point;
@@ -73,7 +77,7 @@ class Point
 		Point &operator*=(double scalar);
 		Point &operator*=(const Point &rhs);
 		double &operator[](unsigned index);
-		const double operator[](unsigned index) const;
+		double operator[](unsigned index) const;
 		Point &operator<<(const Point &p);
 		Point &operator>>(const Point &p);
 
@@ -229,6 +233,7 @@ class IsotheticPolygon
 
 		friend bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 		friend bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
+        IsotheticPolygon &operator=(const IsotheticPolygon &other) = default;
 		friend std::ostream& operator<<(std::ostream &os, const IsotheticPolygon &polygon);
 };
 
