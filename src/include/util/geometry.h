@@ -1,3 +1,4 @@
+
 // Copyright 2021 Kyle Langendoen
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+
+#define MAX_RECTANGLE_COUNT 5 
 
 #include <iostream>
 #include <algorithm>
@@ -30,6 +33,7 @@
 #include <variant>
 #include <cstddef>
 #include <storage/tree_node_allocator.h>
+
 
 class Point
 {
@@ -240,7 +244,6 @@ class IsotheticPolygon
 bool operator==(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs);
 
-#define MAX_RECTANGLE_COUNT 5 
 class InlineBoundedIsotheticPolygon {
 	public:
 
@@ -675,5 +678,10 @@ protected:
 
 };
 
+constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ) { 
+    return sizeof(InlineUnboundedIsotheticPolygon) +
+        (num_rects-1)*sizeof(Rectangle);
+}
 
-unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ); 
+static_assert( compute_sizeof_inline_unbounded_polygon(
+            MAX_RECTANGLE_COUNT + 1 ) == 272 );

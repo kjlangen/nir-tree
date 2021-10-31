@@ -45,7 +45,7 @@ TEST_CASE("R+TreeDisk: testPartition")
 
 	// Test partition
 	REQUIRE(part.dimension == 0);
-	REQUIRE(part.location == 4.0);
+	REQUIRE(part.location == nextafter(4.0, DBL_MAX) );
 
     unlink( "rplustreedisk.txt" );
 }

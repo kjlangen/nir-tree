@@ -6,6 +6,7 @@
 #include <optional>
 #include <iostream>
 #include <string>
+#include <list>
 
 template <typename T>
 class pinned_node_ptr {
@@ -180,6 +181,43 @@ public:
     std::pair<pinned_node_ptr<T>, tree_node_handle>
     create_new_tree_node( size_t node_size ) {
         assert( node_size <= PAGE_DATA_SIZE );
+
+        for( auto iter = free_list_.begin(); iter != free_list_.end();
+                iter++ ) {
+            auto &alloc_location = *iter;
+            if( alloc_location.second < node_size ) {
+                continue;
+            }
+
+            size_t remainder = alloc_location.second - node_size;
+            free_list_.erase( iter );
+            page *page_ptr = buffer_pool_.get_page(
+                alloc_location.first.get_page_id() );
+            T *obj_ptr = (T *) (page_ptr->data_ +
+                    alloc_location.first.get_offset() );
+
+            // sizeof inline unbounded polygon with
+            // MAX_RECTANGLE_COUNT+1
+            // Can't use that symbol here because it would be recursive
+            // includes. So instead I static assert it in that file and
+            // use the constant here.
+            if( remainder >= 272 ) {
+                size_t new_offset = alloc_location.first.get_offset() +
+                    node_size;
+                tree_node_handle split_handle(
+                        alloc_location.first.get_page_id(), new_offset
+                        );
+                free_list_.push_back( std::make_pair( split_handle,
+                            remainder ) );
+            }
+
+            return std::make_pair( pinned_node_ptr( buffer_pool_,
+                        obj_ptr, page_ptr ), alloc_location.first );
+
+
+        }
+
+        // Fall through, need new location
         page *page_ptr = get_page_to_alloc_on( node_size );
         if( page_ptr == nullptr ) {
             return std::make_pair( pinned_node_ptr( buffer_pool_,
@@ -198,6 +236,10 @@ public:
                     page_ptr ), std::move(meta_ptr) );
     }
 
+    void free( tree_node_handle handle, size_t alloc_size ) {
+        free_list_.push_back( std::make_pair( handle, alloc_size ) );
+    }
+
     template <typename T>
     pinned_node_ptr<T> get_tree_node( tree_node_handle node_ptr ) {
         page *page_ptr = buffer_pool_.get_page( node_ptr.get_page_id() );
@@ -213,6 +255,5 @@ protected:
 
     size_t space_left_in_cur_page_;
     size_t cur_page_;
+    std::list<std::pair<tree_node_handle,size_t>> free_list_;
 };
-
-

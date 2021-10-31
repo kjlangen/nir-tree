@@ -1200,11 +1200,6 @@ std::ostream& operator<<(std::ostream &os, const IsotheticPolygon &polygon)
 	return os;
 }
 
-unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects ) {
-    return sizeof(InlineUnboundedIsotheticPolygon) +
-        (num_rects-1)*sizeof(Rectangle);
-}
-
 bool operator==(const InlineBoundedIsotheticPolygon &lhs, const
         InlineBoundedIsotheticPolygon &rhs) {
     return lhs.rectangle_count_ == rhs.rectangle_count_ and
