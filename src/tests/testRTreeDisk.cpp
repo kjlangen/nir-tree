@@ -347,64 +347,6 @@ TEST_CASE("RTreeDisk: testSearch")
 }
 
 /*
-TEST_CASE("RTreeDisk: RemoveLeafNode")
-{
-
-    unlink( "rdiskbacked.txt" );
-    {
-        unsigned maxBranchFactor = 6;
-        unsigned minBranchFactor = 3;
-        TreeType tree(4096*5, "rdiskbacked.txt");
-
-        for( unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
-                i++) {
-            tree.insert(Point(i, i));
-        }
-
-        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
-                i++) {
-            Point p(i, i);
-            REQUIRE(tree.search(p).size() == 1);
-        }
-
-        //Find a leaf
-        auto root = tree.root;
-        auto node = tree.node_allocator_.get_tree_node<NodeType>(
-                root );
-        while( std::holds_alternative<NodeType::Branch>(node->entries[0])) {
-            const NodeType::Branch &b = std::get<NodeType::Branch>(node->entries[0]);
-            node = tree.node_allocator_.get_tree_node<NodeType>( b.child
-                    );
-        }
-
-        REQUIRE( std::holds_alternative<Point>(node->entries[0]) );
-        size_t cnt = node->cur_offset_;
-        std::vector<NodeType::NodeEntry> nodesToRemove( node->entries.begin(), node->entries.begin() + (cnt-minBranchFactor + 1));
-        for (const auto &entry : nodesToRemove)
-        {
-            const Point &p = std::get<Point>(entry);
-            tree.remove(p);
-        }
-
-        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1; ++i)
-        {
-            Point p(i, i);
-            NodeType::NodeEntry ne = p;
-            if (std::find(nodesToRemove.begin(), nodesToRemove.end(), ne) == nodesToRemove.end())
-            {
-                REQUIRE(tree.search(p).size() == 1);
-            }
-            else
-            {
-                REQUIRE(tree.search(p).size() == 0);
-            }
-        }
-    }
-
-    unlink( "rstardiskbacked.txt" );
-}*/
-
-/*
 TEST_CASE("RTreeDisk:RemoveLeafNode")
 {
 
@@ -418,12 +360,17 @@ TEST_CASE("RTreeDisk:RemoveLeafNode")
              i++)
         {
             tree.insert(Point(i, i));
+            tree.node_allocator_.get_tree_node<NodeType>(tree.root)->printTreeErr();
+            std::cerr << "\n\n\n\n\n\n\n\n\n\n" << std::endl;
         }
+
+        //tree.validate();
 
         for (unsigned i = 0; i < maxBranchFactor * maxBranchFactor + 1;
              i++)
         {
             Point p(i, i);
+            std::cerr << p << std::endl;
             REQUIRE(tree.search(p).size() == 1);
         }
 
@@ -607,7 +554,6 @@ TEST_CASE("RTreeDisk:ExhaustiveSearch")
              i++)
         {
             tree.insert(Point(i, i));
-            //rootNode->printTreeErr();
         }
 
         for (unsigned i = 0; i < maxBranchFactor * maxBranchFactor + 1;

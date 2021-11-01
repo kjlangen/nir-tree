@@ -854,7 +854,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert(Point givenP
     tree_node_handle siblingLeaf = tree_node_handle(nullptr);
 
     // I2 [Add record to leaf node]
-    if (isLeafNode() && leaf->cur_offset_ < max_branch_factor)
+    if (leaf->isLeafNode() && leaf->cur_offset_ < max_branch_factor)
     {
         leaf->addEntryToNode(givenPoint);
     }
@@ -966,8 +966,8 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::condenseTree()
     unsigned nodeBoundingBoxesSize, nodeDataSize;
     while (node->parent != nullptr)
     {
-        nodeBoundingBoxesSize = (isLeafNode()) ? 0 : node->cur_offset_;
-        nodeDataSize = (isLeafNode()) ? node->cur_offset_ : 0;
+        nodeBoundingBoxesSize = (node->isLeafNode()) ? 0 : node->cur_offset_;
+        nodeDataSize = (node->isLeafNode()) ? node->cur_offset_ : 0;
         auto parentNode = allocator->get_tree_node<NodeType>(node->parent);
         // CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
         if (nodeBoundingBoxesSize >= min_branch_factor || nodeDataSize >= min_branch_factor)
@@ -1049,7 +1049,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::remove(Point givenP
     auto root = allocator->get_tree_node<NodeType>(leaf->condenseTree());
 
     // D4 [Shorten tree]
-    if (!isLeafNode() && root->cur_offset_ == 1)
+    if (!root->isLeafNode() && root->cur_offset_ == 1)
     {
         auto firstChild = allocator->get_tree_node<NodeType>(std::get<Branch>( root->entries[0] ).child);
         firstChild->parent = tree_node_handle(nullptr);
@@ -1275,8 +1275,8 @@ void Node<min_branch_factor, max_branch_factor>::stat()
         currentContext = allocator->get_tree_node<NodeType>(context.top());
         context.pop();
 
-        unsigned long childrenSize = (!isLeafNode()) ? currentContext->cur_offset_ : 0;
-        unsigned long dataSize = (isLeafNode()) ? currentContext->cur_offset_ : 0;
+        unsigned long childrenSize = (!currentContext->isLeafNode()) ? currentContext->cur_offset_ : 0;
+        unsigned long dataSize = (currentContext->isLeafNode()) ? currentContext->cur_offset_ : 0;
         unsigned fanout = childrenSize == 0 ? dataSize : childrenSize;
         if (unlikely(fanout >= histogramFanout.size()))
         {
@@ -1285,7 +1285,7 @@ void Node<min_branch_factor, max_branch_factor>::stat()
         ++histogramFanout[fanout];
 
         // Compute the overlap and coverage of our children
-        for (unsigned i = 0; i < currentContext->cur_offset_ && !isLeafNode(); ++i)
+        for (unsigned i = 0; i < currentContext->cur_offset_ && !currentContext->isLeafNode(); ++i)
         {
             Rectangle box_i = std::get<Branch>(currentContext->entries[i]).boundingBox;
             coverage += box_i.area();
@@ -1310,7 +1310,7 @@ void Node<min_branch_factor, max_branch_factor>::stat()
             totalNodes += childrenSize;
             memoryFootprint += sizeof(Node) + childrenSize * sizeof(Node *) + currentContext->cur_offset * sizeof(Rectangle);
             // Determine which branches we need to follow
-            for (unsigned i = 0; i < currentContext->cur_offset_ && !isLeafNode(); ++i)
+            for (unsigned i = 0; i < currentContext->cur_offset_ && !currentContext->isLeafNode(); ++i)
             {
                 auto child = allocator->get_tree_node<NodeType>(std::get<Branch>( currentContext->entries[i] ).child);
                 if (child->cur_offset_ == 1)
