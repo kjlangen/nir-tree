@@ -572,7 +572,6 @@ class InlineUnboundedIsotheticPolygon {
                 return;
             }
 
-            std::cout << "We overflowed our polygon." << std::endl;
             assert( copy_count == max_rectangle_count_on_first_page_ );
 
             tree_node_handle next_poly_handle = poly_data_.next_;
@@ -585,8 +584,6 @@ class InlineUnboundedIsotheticPolygon {
                     auto alloc_data =
                         allocator_->create_new_tree_node<PageableIsotheticPolygon>(
                                 PAGE_DATA_SIZE );
-                    std::cout << "We alloc'd a new page for our overfull polygon " <<
-                        alloc_data.second << std::endl;
                     new (&(*(alloc_data.first)))
                         PageableIsotheticPolygon();
                     if( poly_pin == nullptr ) {
@@ -597,8 +594,6 @@ class InlineUnboundedIsotheticPolygon {
                     poly_pin = alloc_data.first;
                     cur_overflow_pages_++;
                 } else {
-                    std::cout << "We had an existing page" <<
-                        next_poly_handle << std::endl;
                     poly_pin = allocator_->get_tree_node<PageableIsotheticPolygon>(
                             next_poly_handle );
                     next_poly_handle = poly_pin->next_;
@@ -685,6 +680,13 @@ class InlineUnboundedIsotheticPolygon {
             );
             poly_pin->allocator_ = allocator;
             return poly_pin;
+        }
+
+        static constexpr size_t maximum_possible_rectangles_on_first_page() {
+            size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+                    sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+                + 1;
+            return max_rects_on_first_page;
         }
 
 protected:

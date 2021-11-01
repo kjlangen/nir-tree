@@ -539,9 +539,45 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                     auto node_pin =
                         InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
                                 allocator, poly_handle );
-                    node_pin->push_polygon_to_disk( node_poly );
-                }
+                    // If we can fit this into the existing space on the
+                    // first page OR we can't fit it into the first page
+                    // no matter how hard we try, then don't bother
+                    // reallocating here.
+                    if( node_pin->get_max_rectangle_count_on_first_page()
+                        >= node_poly.basicRectangles.size() or 
+                        node_poly.basicRectangles.size() > 
+                        InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page() ) {
+                        // If it fits, push the new rectangle data into
+                        // the page
+                        node_pin->push_polygon_to_disk( node_poly );
+                    } else {
+                        // Reallocate to make space on first page to
+                        // avoid pointer chasing
 
+                        // Free existing crap
+                        node_pin->free_subpages( allocator );
+                        allocator->free( poly_handle,
+                            compute_sizeof_inline_unbounded_polygon(
+                                node_pin->get_max_rectangle_count_on_first_page()
+                                )
+                        );
+
+                        // Alloc new crap
+                        unsigned overfull_rect_count = (unsigned) (2 *
+                                node_poly.basicRectangles.size() );
+                        auto poly_alloc_data =
+                            allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                                    compute_sizeof_inline_unbounded_polygon(
+                                        overfull_rect_count ) );
+                        new (&(*poly_alloc_data.first))
+                            InlineUnboundedIsotheticPolygon( allocator,
+                                    overfull_rect_count );
+                        b.boundingPoly = poly_alloc_data.second;
+                        poly_alloc_data.first->push_polygon_to_disk(
+                                node_poly );
+
+                    }
+                }
             }
 
             // Descend
