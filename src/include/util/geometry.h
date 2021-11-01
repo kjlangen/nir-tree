@@ -368,12 +368,12 @@ struct PageableIsotheticPolygon {
     // Flexible array member
     Rectangle basicRectangles[1];
 
-    static size_t get_max_rectangle_count_per_page() {
+    static constexpr size_t get_max_rectangle_count_per_page() {
         return ((PAGE_DATA_SIZE -
                 sizeof(PageableIsotheticPolygon))/sizeof(Rectangle))+1;
     }
 
-    static size_t compute_node_size( unsigned rect_count ) {
+    static constexpr size_t compute_node_size( unsigned rect_count ) {
         return sizeof(PageableIsotheticPolygon) + (rect_count-1) *
             sizeof(Rectangle);
     }
@@ -468,7 +468,7 @@ class InlineUnboundedIsotheticPolygon {
                 poly_pin_ =
                     allocator_->get_tree_node<PageableIsotheticPolygon>(
                             poly_pin_->next_ );
-                cur_poly_offset_++;
+                cur_poly_depth_++;
                 cur_poly_offset_ = 0;
 
                 return *this;
@@ -508,12 +508,17 @@ class InlineUnboundedIsotheticPolygon {
         };
 
 
-        InlineUnboundedIsotheticPolygon( tree_node_allocator *allocator ) {
+        InlineUnboundedIsotheticPolygon(
+                tree_node_allocator *allocator,
+                unsigned max_rectangle_count_on_first_page ) :
+            max_rectangle_count_on_first_page_(
+                    max_rectangle_count_on_first_page ),
+            total_rectangle_count_( 0 ),
+            cur_overflow_pages_( 0 ),
+            allocator_( allocator )
+        {
             poly_data_.next_ = tree_node_handle( nullptr );
             poly_data_.rectangle_count_ = 0;
-            total_rectangle_count_ = 0;
-            cur_overflow_pages_ = 0;
-            allocator_ = allocator;
         }
 
         Iterator begin() {
@@ -545,23 +550,17 @@ class InlineUnboundedIsotheticPolygon {
             return polygon;
         }
 
-        void push_polygon_to_disk( const IsotheticPolygon &in_memory_polygon ) {
-
-            size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
-                    sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
-                + 1;
-
+        void push_polygon_to_disk(
+                const IsotheticPolygon &in_memory_polygon ) {
             size_t max_rectangles_per_page =
                 PageableIsotheticPolygon::get_max_rectangle_count_per_page();
 
             summary_rectangle_ = in_memory_polygon.boundingBox;
 
-
-            // We are always at least one page.
             unsigned new_rectangle_count =
                 in_memory_polygon.basicRectangles.size();
             unsigned copy_count = std::min( new_rectangle_count,
-                    (unsigned) max_rects_on_first_page);
+                     max_rectangle_count_on_first_page_ );
             std::copy( in_memory_polygon.basicRectangles.begin(),
                     in_memory_polygon.basicRectangles.begin() + copy_count,
                     std::begin( poly_data_.basicRectangles ) );
@@ -573,6 +572,9 @@ class InlineUnboundedIsotheticPolygon {
                 return;
             }
 
+            std::cout << "We overflowed our polygon." << std::endl;
+            assert( copy_count == max_rectangle_count_on_first_page_ );
+
             tree_node_handle next_poly_handle = poly_data_.next_;
             pinned_node_ptr<PageableIsotheticPolygon> poly_pin(
                     allocator_->buffer_pool_, nullptr, nullptr );
@@ -583,36 +585,55 @@ class InlineUnboundedIsotheticPolygon {
                     auto alloc_data =
                         allocator_->create_new_tree_node<PageableIsotheticPolygon>(
                                 PAGE_DATA_SIZE );
+                    std::cout << "We alloc'd a new page for our overfull polygon " <<
+                        alloc_data.second << std::endl;
                     new (&(*(alloc_data.first)))
                         PageableIsotheticPolygon();
-                    next_poly_handle = alloc_data.second;
                     if( poly_pin == nullptr ) {
-                        poly_data_.next_ = next_poly_handle;
+                        poly_data_.next_ = alloc_data.second;
                     } else {
-                        poly_pin->next_ = next_poly_handle;
+                        poly_pin->next_ = alloc_data.second;
                     }
                     poly_pin = alloc_data.first;
-                    next_poly_handle = tree_node_handle(nullptr);
+                    cur_overflow_pages_++;
                 } else {
+                    std::cout << "We had an existing page" <<
+                        next_poly_handle << std::endl;
                     poly_pin = allocator_->get_tree_node<PageableIsotheticPolygon>(
                             next_poly_handle );
-                    cur_overflow_pages_++;
                     next_poly_handle = poly_pin->next_;
                 }
 
                 unsigned entries_to_copy = std::min( new_rectangle_count
                         - copy_count, (unsigned) max_rectangles_per_page );
-                std::copy( in_memory_polygon.basicRectangles.begin() + copy_count,
-                        in_memory_polygon.basicRectangles.begin() + copy_count +
-                        entries_to_copy, std::begin(
-                            poly_pin->basicRectangles ) );
+                auto copy_loc =
+                    in_memory_polygon.basicRectangles.begin() +
+                    copy_count;
+                for( unsigned i = 0; i < entries_to_copy; i++ ) {
+                    poly_pin->basicRectangles[i] = *copy_loc;
+                    copy_loc++;
+                }
                 copy_count += entries_to_copy;
                 poly_pin->rectangle_count_ = entries_to_copy;
             }
 
             poly_pin->next_ = tree_node_handle( nullptr );
             total_rectangle_count_ = new_rectangle_count;
+            assert( copy_count == total_rectangle_count_ );
+        }
 
+        void free_subpages( tree_node_allocator *allocator ) {
+            /*
+            tree_node_handle next_ptr = poly_data_.next_;
+            while( next_ptr != nullptr ) {
+                // Crab to get next ptr.
+                auto next_pin =
+                    allocator->get_tree_node<PageableIsotheticPolygon>( next_ptr );
+                auto tmp_ptr = next_pin->next_;
+                allocator->free( next_ptr, PAGE_DATA_SIZE );
+                next_ptr = tmp_ptr;
+            }
+            */
         }
 
         unsigned get_total_rectangle_count() const {
@@ -621,6 +642,10 @@ class InlineUnboundedIsotheticPolygon {
 
         unsigned get_cur_overflow_pages() const {
             return cur_overflow_pages_;
+        }
+
+        unsigned get_max_rectangle_count_on_first_page() const {
+            return max_rectangle_count_on_first_page_;
         }
 
         Rectangle &get_summary_rectangle() {
@@ -664,6 +689,7 @@ class InlineUnboundedIsotheticPolygon {
 
 protected:
         // Total rectangle count across all of the polygons
+        unsigned max_rectangle_count_on_first_page_;
         unsigned total_rectangle_count_;
         unsigned cur_overflow_pages_;
         tree_node_allocator *allocator_;
@@ -683,5 +709,7 @@ constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects )
         (num_rects-1)*sizeof(Rectangle);
 }
 
+// If this changes, then you need to change the remaining count in
+// tree_node_allocator to match.
 static_assert( compute_sizeof_inline_unbounded_polygon(
-            MAX_RECTANGLE_COUNT + 1 ) == 272 );
+            MAX_RECTANGLE_COUNT + 1 ) == 280 );

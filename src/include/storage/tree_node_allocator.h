@@ -145,9 +145,9 @@ public:
             tree_node_handle &handle ) {
         if( handle.page_location_.has_value() ) {
             os << "{ PageID: " << handle.page_location_.value().page_id_
-                << ", Offset: " << handle.page_location_.value().offset_ << "}" << std::endl;
+                << ", Offset: " << handle.page_location_.value().offset_ << "}";
         } else {
-            os << "{ nullptr }" << std::endl;
+            os << "{ nullptr }";
         }
         return os;
     }
@@ -184,7 +184,7 @@ public:
 
         for( auto iter = free_list_.begin(); iter != free_list_.end();
                 iter++ ) {
-            auto &alloc_location = *iter;
+            auto alloc_location = *iter;
             if( alloc_location.second < node_size ) {
                 continue;
             }
@@ -196,12 +196,13 @@ public:
             T *obj_ptr = (T *) (page_ptr->data_ +
                     alloc_location.first.get_offset() );
 
+
             // sizeof inline unbounded polygon with
             // MAX_RECTANGLE_COUNT+1
             // Can't use that symbol here because it would be recursive
             // includes. So instead I static assert it in that file and
             // use the constant here.
-            if( remainder >= 272 ) {
+            if( remainder >= 280 ) {
                 size_t new_offset = alloc_location.first.get_offset() +
                     node_size;
                 tree_node_handle split_handle(
@@ -242,6 +243,15 @@ public:
 
     template <typename T>
     pinned_node_ptr<T> get_tree_node( tree_node_handle node_ptr ) {
+#ifndef NDEBUG
+        for( const auto &entry : free_list_ ) {
+            if( entry.first == node_ptr ) {
+                std::cout << "Using freed pointer: " << node_ptr <<
+                    std::endl;
+            }
+            assert( entry.first != node_ptr );
+        }
+#endif
         page *page_ptr = buffer_pool_.get_page( node_ptr.get_page_id() );
         assert( page_ptr != nullptr );
         T *obj_ptr = (T *) (page_ptr->data_ + node_ptr.get_offset() );

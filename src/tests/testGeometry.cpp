@@ -1764,8 +1764,11 @@ TEST_CASE( "Geometry: InlineBoundedIsotheticPolygon push to disk" ) {
 
 class TestInlineUnboundedIsotheticPolygon : public InlineUnboundedIsotheticPolygon {
 public:
-    TestInlineUnboundedIsotheticPolygon( tree_node_allocator *allocator
-            ) : InlineUnboundedIsotheticPolygon( allocator ) {}
+    TestInlineUnboundedIsotheticPolygon(
+            tree_node_allocator *allocator,
+            unsigned max_rectangle_count_on_first_page
+            ) : InlineUnboundedIsotheticPolygon( allocator,
+                max_rectangle_count_on_first_page ) {}
 
     PageableIsotheticPolygon &get_poly_data() {
         return poly_data_;
@@ -1787,16 +1790,17 @@ TEST_CASE( "Geometry: Materialize single page big poly" ) {
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(TestInlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
     auto alloc_data =
         allocator.create_new_tree_node<TestInlineUnboundedIsotheticPolygon>(
                 PAGE_DATA_SIZE );
     new (&(*(alloc_data.first))) TestInlineUnboundedIsotheticPolygon(
-            &allocator );
+            &allocator, max_rects_on_first_page );
     pinned_node_ptr<TestInlineUnboundedIsotheticPolygon> inline_poly = alloc_data.first;
 
-    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
-            sizeof(TestInlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
-        + 1;
 
     REQUIRE( sizeof(TestInlineUnboundedIsotheticPolygon) +
             (sizeof(Rectangle) * (max_rects_on_first_page)) +
@@ -1846,16 +1850,16 @@ TEST_CASE( "Geometry: Materialize multi-page big poly" ) {
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(TestInlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
     auto alloc_data =
         allocator.create_new_tree_node<TestInlineUnboundedIsotheticPolygon>(
                 PAGE_DATA_SIZE );
     new (&(*(alloc_data.first))) TestInlineUnboundedIsotheticPolygon(
-            &allocator );
+            &allocator, max_rects_on_first_page );
     pinned_node_ptr<TestInlineUnboundedIsotheticPolygon> inline_poly = alloc_data.first;
-
-    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
-            sizeof(TestInlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
-        + 1;
 
     size_t max_rectangles_per_page =
         PageableIsotheticPolygon::get_max_rectangle_count_per_page();
@@ -1943,7 +1947,7 @@ TEST_CASE( "Write single_page big poly to disk" ) {
             PAGE_DATA_SIZE );
 
     new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
-            &allocator );
+            &allocator, max_rects_on_first_page );
 
     auto inline_poly = alloc_data.first;
 
@@ -1989,7 +1993,7 @@ TEST_CASE( "Write multi-page big poly to disk" ) {
             PAGE_DATA_SIZE );
 
     new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
-            &allocator );
+            &allocator, max_rects_on_first_page );
 
     auto inline_poly = alloc_data.first;
 
@@ -2106,12 +2110,7 @@ TEST_CASE( "Test simplify real poly" ) {
     polygon.recomputeBoundingBox();
 
     IsotheticPolygon polygon2( polygon );
-    // This is super reducable, should fix
-    // FIXME:
     polygon.refine();
-    polygon.recomputeBoundingBox();
-    std::cout << polygon2.basicRectangles.size() << std::endl;
-    std::cout << polygon.basicRectangles.size() << std::endl;
     REQUIRE( polygon.basicRectangles.size() <
             polygon2.basicRectangles.size() );
     REQUIRE( polygon.boundingBox == polygon2.boundingBox );

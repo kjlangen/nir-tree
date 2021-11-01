@@ -136,7 +136,7 @@ std::vector<Point> NODE_CLASS_TYPES::search(
             }
 
 #ifdef STAT
-            treeRef.stats.markLeafSearched();
+            treeRef->stats.markLeafSearched();
 #endif
         } else {
             // Determine which branches we need to follow
@@ -149,13 +149,13 @@ std::vector<Point> NODE_CLASS_TYPES::search(
             }
 
 #ifdef STAT
-            treeRef.stats.markNonLeafNodeSearched();
+            treeRef->stats.markNonLeafNodeSearched();
 #endif
         }
     }
 
 #ifdef STAT
-    treeRef.stats.resetSearchTracker<false>();
+    treeRef->stats.resetSearchTracker( false );
 #endif
 
     return matchingPoints;
@@ -186,7 +186,7 @@ std::vector<Point> NODE_CLASS_TYPES::search(
             }
 
 #ifdef STAT
-            treeRef.stats.markLeafSearched();
+            treeRef->stats.markLeafSearched();
 #endif
         } else {
 
@@ -199,13 +199,13 @@ std::vector<Point> NODE_CLASS_TYPES::search(
                 }
             }
 #ifdef STAT
-            treeRef.stats.markNonLeafNodeSearched();
+            treeRef->stats.markNonLeafNodeSearched();
 #endif
         }
     }
 
 #ifdef STAT
-    treeRef.stats.resetSearchTracker<true>();
+    treeRef->stats.resetSearchTracker( true );
 #endif
 
     return matchingPoints;
@@ -926,7 +926,7 @@ void NODE_CLASS_TYPES::stat()
             STATHIST( i, histogramFanout[i] );
         }
     }
-    std::cout << treeRef.stats;
+    std::cout << treeRef->stats;
 #else
     (void) 0;
 #endif

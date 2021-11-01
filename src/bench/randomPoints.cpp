@@ -701,10 +701,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
 	// Gather statistics
-#ifdef STAT
 	spatialIndex->stat();
 	std::cout << "Statistics OK." << std::endl;
-#endif
 
 	// Validate checksum
     /*

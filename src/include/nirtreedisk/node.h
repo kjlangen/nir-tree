@@ -146,6 +146,7 @@ namespace nirtreedisk
                 self_handle_( self_handle ) {
             }
 			void deleteSubtrees();
+            void free();
 
 			// Helper functions
 			bool isLeaf();

@@ -26,13 +26,33 @@ void NODE_CLASS_TYPES::deleteSubtrees()
     tree_node_allocator *allocator = get_node_allocator( treeRef );
     for( size_t i = 0; i < cur_offset_; i++ ) {
         NodeEntry &entry = entries.at(i);
-        if( std::holds_alternative<Branch>( entry ) ) {
-            tree_node_handle child_handle = std::get<Branch>( entry ).child;
-            auto child = treeRef->get_node( child_handle );
-            child->deleteSubtrees();
-            allocator->free( child_handle, sizeof( NODE_CLASS_TYPES ) );
+        tree_node_handle child_handle = std::get<Branch>( entry ).child;
+        auto child = treeRef->get_node( child_handle );
+        child->deleteSubtrees();
+        allocator->free( child_handle, sizeof( NODE_CLASS_TYPES ) );
+    }
+}
+
+NODE_TEMPLATE_PARAMS
+void NODE_CLASS_TYPES::free() {
+    //tree_node_allocator *allocator = get_node_allocator( treeRef );
+    /*
+    if( !isLeaf() ) {
+        for( size_t i = 0; i < cur_offset_; i++ ) {
+           Branch &b = std::get<Branch>( entries.at(i) );
+           if( std::holds_alternative<tree_node_handle>( b.boundingPoly ) ) {
+               auto poly_handle = std::get<tree_node_handle>(
+                       b.boundingPoly );
+               auto poly_pin =
+                   InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
+                           allocator, poly_handle ); 
+               poly_pin->free_subpages( allocator );
+               allocator->free( poly_handle, PAGE_DATA_SIZE );
+           }
         }
     }
+    */
+    //allocator->free( self_handle_, sizeof( NODE_CLASS_TYPES ) );
 }
 
 NODE_TEMPLATE_PARAMS
@@ -85,6 +105,9 @@ void NODE_CLASS_TYPES::updateBranch(
     std::get<Branch>( entries.at( childIndex ) ).boundingPoly = boundingPoly;
 }
 
+// Removes a child logical pointer from a parent node, freeing that
+// child's memory and the memory of the associated polygon (if external
+// to the node).
 NODE_TEMPLATE_PARAMS
 void NODE_CLASS_TYPES::removeEntry(
     const tree_node_handle &entry
@@ -99,9 +122,35 @@ void NODE_CLASS_TYPES::removeEntry(
         }
         found_index++;
     }
+    assert( std::get<Branch>( entries.at( found_index ) ).child == 
+            entry );
+    Branch &b = std::get<Branch>( entries.at( found_index ) );
+    tree_node_allocator *allocator = get_node_allocator( treeRef );
+
+    if( std::holds_alternative<tree_node_handle>( b.boundingPoly ) ) {
+        tree_node_handle free_poly_handle = std::get<tree_node_handle>(
+                b.boundingPoly );
+        auto poly_pin =
+            InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
+                    allocator, free_poly_handle );
+        poly_pin->free_subpages( allocator );
+        size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
+                poly_pin->get_max_rectangle_count_on_first_page() );
+        allocator->free( free_poly_handle, alloc_size );
+    }
+
+    allocator->free( b.child, sizeof( NODE_CLASS_TYPES ) );
+    b.child = tree_node_handle( nullptr );
+
     entries.at( found_index ) = entries.at( cur_offset_-1 );
     cur_offset_--;
 }
+
+// If Branch:
+// Removes a child logical pointer from a parent node, freeing that
+// child's memory and the memory of the associated polygon (if external
+// to the node).
+// If Point: removes the point from the node
 
 NODE_TEMPLATE_PARAMS
 void NODE_CLASS_TYPES::removeEntry(
@@ -111,19 +160,31 @@ void NODE_CLASS_TYPES::removeEntry(
     size_t childIndex;
     for( childIndex = 0; entries.at( childIndex ) != entry and
             childIndex < cur_offset_; childIndex++ ) { }
+    assert( entries.at( childIndex ) == entry );
 
     // Delete the child and overwrite its branch point
     if( std::holds_alternative<Branch>( entries.at( childIndex ) ) ) {
         Branch &b = std::get<Branch>( entries.at( childIndex ) );
         tree_node_allocator *allocator = get_node_allocator( treeRef );
+
+        if( std::holds_alternative<tree_node_handle>( b.boundingPoly ) ) {
+            tree_node_handle free_poly_handle =
+                std::get<tree_node_handle>( b.boundingPoly );
+            auto poly_pin =
+                InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
+                        allocator, free_poly_handle );
+            poly_pin->free_subpages( allocator );
+            size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
+                poly_pin->get_max_rectangle_count_on_first_page() );
+            allocator->free( free_poly_handle, alloc_size );
+        }
         allocator->free( b.child, sizeof( NODE_CLASS_TYPES ) );
         b.child = tree_node_handle( nullptr );
     }
 
     // Replace this index with whatever is in the last position
-    if( childIndex != cur_offset_-1 ) {
-        entries.at(childIndex) = entries.at( cur_offset_-1 );
-    }
+    entries.at(childIndex) = entries.at( cur_offset_-1 );
+
     // Truncate array size
     cur_offset_--;
 }
@@ -208,7 +269,7 @@ std::vector<Point> NODE_CLASS_TYPES::search(
     }
 
 #ifdef STAT
-    treeRef->stats.resetSearchTracker<false>();
+    treeRef->stats.resetSearchTracker( false );
 #endif
 
     return accumulator;
@@ -273,7 +334,7 @@ std::vector<Point> NODE_CLASS_TYPES::search(
         }
     }
 #ifdef STAT
-    treeRef->stats.resetSearchTracker<true>();
+    treeRef->stats.resetSearchTracker( true );
 #endif
 
     return accumulator;
@@ -457,11 +518,16 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                                     b.boundingPoly));
                         inline_poly->push_polygon_to_disk( node_poly );
                     } else {
+                        unsigned overfull_rect_count = (unsigned) (2 *
+                                node_poly.basicRectangles.size() );
+
                         auto alloc_data =
                             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                                    PAGE_DATA_SIZE );
+                                    compute_sizeof_inline_unbounded_polygon(
+                                        overfull_rect_count ) );
                         new (&(*alloc_data.first))
-                            InlineUnboundedIsotheticPolygon( allocator );
+                            InlineUnboundedIsotheticPolygon( allocator,
+                                    overfull_rect_count );
                         alloc_data.first->push_polygon_to_disk(
                                 node_poly );
                         // Point to the newly created polygon location
@@ -779,11 +845,15 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                     split.leftBranch.boundingPoly
             ).push_polygon_to_disk( left_polygon );
         } else {
+            unsigned overfull_rect_count = (unsigned) (2 *
+                    left_polygon.basicRectangles.size() );
             auto poly_alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        PAGE_DATA_SIZE );
+                        compute_sizeof_inline_unbounded_polygon(
+                            overfull_rect_count ) );
             new (&(*poly_alloc_data.first))
-                InlineUnboundedIsotheticPolygon( allocator );
+                InlineUnboundedIsotheticPolygon( allocator,
+                        overfull_rect_count );
             split.leftBranch.boundingPoly = poly_alloc_data.second;
             poly_alloc_data.first->push_polygon_to_disk( left_polygon );
         }
@@ -796,11 +866,15 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                     split.rightBranch.boundingPoly
             ).push_polygon_to_disk( right_polygon );
         } else {
+            unsigned overfull_rect_count = (unsigned) (2 *
+                    right_polygon.basicRectangles.size() );
             auto poly_alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        PAGE_DATA_SIZE );
+                        compute_sizeof_inline_unbounded_polygon(
+                            overfull_rect_count ) );
             new (&(*poly_alloc_data.first))
-                InlineUnboundedIsotheticPolygon( allocator );
+                InlineUnboundedIsotheticPolygon( allocator,
+                        overfull_rect_count );
             split.rightBranch.boundingPoly = poly_alloc_data.second;
             poly_alloc_data.first->push_polygon_to_disk( right_polygon );
 
@@ -808,6 +882,7 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         return split;
     } else {
 
+        // So we are going to split this branch node.
         for( size_t i = 0; i < cur_offset_; i++ ) {
             Branch &branch = std::get<Branch>( entries.at(i) );
 
@@ -828,7 +903,6 @@ SplitResult NODE_CLASS_TYPES::splitNode(
 
             // Entirely contained in the left polygon
             if( is_contained_left and not is_contained_right) {
-                //std::cout << "Entry goes left." << std::endl;
                 auto child = treeRef->get_node(  branch.child );
                 child->parent = split.leftBranch.child;
                 assert( split.leftBranch.child == left_handle );
@@ -836,7 +910,6 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                     branch;
             // Entirely contained in the right polygon
             } else if( is_contained_right and not is_contained_left ) {
-                //std::cout << "Entry goes right." << std::endl;
                 auto child = treeRef->get_node( branch.child );
                 child->parent = split.rightBranch.child;
                 assert( split.rightBranch.child == right_handle );
@@ -845,17 +918,14 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                     summary_rectangle.lowerLeft[p.dimension] and
                     summary_rectangle.lowerLeft[p.dimension] ==
                     p.location ) {
-                //std::cout << "Entry is contested." << std::endl;
                 // These go left or right situationally
                 auto child = treeRef->get_node( branch.child );
                 if( left_node->cur_offset_ <= right_node->cur_offset_ ) {
-                    //std::cout << "but goes left." << std::endl;
                     child->parent = split.leftBranch.child;
                     assert( split.leftBranch.child == left_handle );
                     left_node->entries.at( left_node->cur_offset_++ ) =
                         branch;
                 } else {
-                    //std::cout << "but goes right." << std::endl;
                     child->parent = split.rightBranch.child;
                     assert( split.rightBranch.child == right_handle );
                     right_node->entries.at( right_node->cur_offset_++ ) =
@@ -863,15 +933,28 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                 }
             // Partially spanned by both nodes, need to downsplit
             } else {
-                //std::cout << "Entry is downsplit, goes both." <<
-                //    std::endl;
-
-
                 auto child = treeRef->get_node( branch.child );
 
                 SplitResult downwardSplit = child->splitNode( p, true );
+                allocator->free( branch.child, sizeof( NODE_CLASS_TYPES )  );
 
+                // This branch is dead, along with its polygon
+                /*
                 allocator->free( branch.child, sizeof( NODE_CLASS_TYPES ) );
+                if( std::holds_alternative<tree_node_handle>(
+                            branch.boundingPoly ) ) {
+                    // We can free this
+                    tree_node_handle free_poly_handle = std::get<tree_node_handle>(
+                                branch.boundingPoly );
+                    auto free_poly_pin = InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
+                            allocator, free_poly_handle );
+                    free_poly_pin->free_subpages( allocator );
+                    size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
+                        free_poly_pin->get_outer_rect_count() );
+
+                    allocator->free( free_poly_handle, alloc_size );
+                }
+                */
 
                 auto left_child = treeRef->get_node( downwardSplit.leftBranch.child );
                 if( left_child->cur_offset_ > 0 ) {
@@ -948,12 +1031,16 @@ SplitResult NODE_CLASS_TYPES::splitNode(
 
         // Writeback our polygons
         if( left_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
-            //FIXME: we actually realloc this, even if we don't have to.
+            unsigned overfull_rect_count = (unsigned) (2 *
+                    left_polygon.basicRectangles.size() );
+
             auto alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        PAGE_DATA_SIZE );
+                        compute_sizeof_inline_unbounded_polygon(
+                            overfull_rect_count ) );
             new (&(*alloc_data.first))
-                InlineUnboundedIsotheticPolygon( allocator );
+                InlineUnboundedIsotheticPolygon( allocator,
+                        overfull_rect_count  );
             split.leftBranch.boundingPoly = alloc_data.second;
             alloc_data.first->push_polygon_to_disk( left_polygon );
         } else {
@@ -967,12 +1054,16 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                     left_polygon.boundingBox );
         }
         if( right_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
-            //FIXME: we actually realloc this, even if we don't have to.
+            unsigned overfull_rect_count = (unsigned) (2 *
+                    right_polygon.basicRectangles.size() );
+
             auto alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        PAGE_DATA_SIZE );
+                        compute_sizeof_inline_unbounded_polygon(
+                            overfull_rect_count ) );
             new (&(*alloc_data.first))
-                InlineUnboundedIsotheticPolygon( allocator );
+                InlineUnboundedIsotheticPolygon( allocator,
+                        overfull_rect_count );
             split.rightBranch.boundingPoly = alloc_data.second;
             alloc_data.first->push_polygon_to_disk( right_polygon );
         } else {
@@ -999,6 +1090,16 @@ SplitResult NODE_CLASS_TYPES::splitNode()
 NODE_TEMPLATE_PARAMS
 SplitResult NODE_CLASS_TYPES::adjustTree()
 {
+    // N.B., as we walk up the tree, we may perform a bunch of splits,
+    // which is liable to destroy nodes that are downsplit. These
+    // downsplit nodes' memory can then be re-used for other things,
+    // like polygons. If we try to use treeRef (or other outside
+    // pointers) from that node, it can be clobbered leading to amazing
+    // segfaults. It is important that any variables we reference are
+    // those we know are alive --- don't just rely on whatever the 
+    // leaf node class member to have reasonable things after split is
+    // called!
+
     tree_node_handle current_handle = self_handle_;
 
     SplitResult propagationSplit = {
@@ -1006,14 +1107,17 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
         {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)}
     };
 
+    NIRTreeDisk<min_branch_factor,max_branch_factor, strategy> *tree_ref_backup =
+        treeRef;
+
     // Loop from the bottom to the very top
     while( current_handle != nullptr ) {
-        auto current_node = treeRef->get_node( current_handle );
+        auto current_node = tree_ref_backup->get_node( current_handle );
 
         // If there was a split we were supposed to propagate then propagate it
         if( propagationSplit.leftBranch.child != nullptr and propagationSplit.rightBranch.child != nullptr ) {
             {
-                auto left_node = treeRef->get_node( propagationSplit.leftBranch.child );
+                auto left_node = tree_ref_backup->get_node( propagationSplit.leftBranch.child );
                 if( left_node->cur_offset_ > 0 ) {
                     current_node->entries.at(
                             current_node->cur_offset_++ ) =
@@ -1022,7 +1126,7 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
             }
 
             {
-                auto right_node = treeRef->get_node( propagationSplit.rightBranch.child );
+                auto right_node = tree_ref_backup->get_node( propagationSplit.rightBranch.child );
 
                 if( right_node->cur_offset_  > 0 ) {
 
@@ -1039,54 +1143,6 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
             }
         }
 
-        // If we have a parent, they need to know about the recomputed
-        // bounding boxes we have
-        /*
-        if( current_node->parent != nullptr and
-                current_node->cur_offset_ <= max_branch_factor ) {
-            std::cout << "Fixing up parent entries for my node." <<
-                std::endl;
-
-            std::cout << "Parent: " << current_node->parent <<
-                std::endl;
-            std::cout << "Me: " << current_node->self_handle_ <<
-                std::endl;
-
-            auto parent_node = allocator->get_tree_node<NodeType>(
-                    current_node->parent );
-            Branch my_branch = parent_node->locateBranch(
-                    current_node->self_handle_ );
-
-            pinned_node_ptr<InlineUnboundedIsotheticPolygon>
-                poly_pin( allocator->buffer_pool_, nullptr, nullptr );
-
-            // Get whatever polygon they currently have for us, and
-            // shrink it.
-            IsotheticPolygon branch_poly =
-                my_branch.materialize_polygon( allocator );
-
-            shrink( branch_poly, parent_node->entries.begin(),
-                    parent_node->entries.end(), allocator );
-
-            if( branch_poly.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-                my_branch.boundingPoly =
-                    InlineBoundedIsotheticPolygon();
-                std::get<InlineBoundedIsotheticPolygon>(
-                        my_branch.boundingPoly
-                        ).push_polygon_to_disk( branch_poly );
-            } else {
-                auto alloc_data =
-                    allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                            PAGE_DATA_SIZE );
-                new (&(*alloc_data.first))
-                    InlineUnboundedIsotheticPolygon( allocator );
-                my_branch.boundingPoly = alloc_data.second;
-                alloc_data.first->push_polygon_to_disk( branch_poly
-                        );
-            }
-        }
-        */
-
         // If this node does not require splitting, that's great, let's
         // keep adjusting bounding boxes all the way to the top
         if( current_node->cur_offset_ <= max_branch_factor ) {
@@ -1100,14 +1156,19 @@ SplitResult NODE_CLASS_TYPES::adjustTree()
 
         // Otherwise, split node
         propagationSplit = current_node->splitNode();
+
+        auto left_node = tree_ref_backup->get_node( propagationSplit.leftBranch.child );
+
         // Cleanup before ascending
         if( current_node->parent != nullptr ) {
-            auto parent_node = treeRef->get_node( current_node->parent );
+            // This will probably destroy current_node, so if we need
+            // current node for anything, need to do it before the
+            // removeEntry call.
+            auto parent_node = tree_ref_backup->get_node( current_node->parent );
             parent_node->removeEntry( current_handle );
         }
 
         // Ascend, propagating splits
-        auto left_node = treeRef->get_node( propagationSplit.leftBranch.child );
         current_handle = left_node->parent;
     }
 
@@ -1477,9 +1538,6 @@ unsigned NODE_CLASS_TYPES::height()
 
 NODE_TEMPLATE_PARAMS
 void NODE_CLASS_TYPES::stat() {
-#ifdef STAT
-    using NodeType = NODE_CLASS_TYPES;
-
     std::stack<tree_node_handle> context;
 
     // Initialize our context stack
@@ -1525,15 +1583,17 @@ void NODE_CLASS_TYPES::stat() {
             memoryFootprint += sizeof(Node) + current_node->cur_offset_ * sizeof(Point);
         } else {
 
+
             // Compute the overlap and coverage of our children
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 Branch &b = std::get<Branch>( current_node->entries.at(i)
                         );
-                coverage += b.boundingPoly.area();
+                IsotheticPolygon polygon = b.materialize_polygon( allocator );
+                coverage += polygon.area();
             }
 
             totalNodes += current_node->cur_offset_;
-            memoryFootprint += sizeof(Node) + current_node->cur_offset_ * sizeof(Node::Branch);
+            memoryFootprint += sizeof(Node) + current_node->cur_offset_ * sizeof(Branch);
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 Branch &b = std::get<Branch>( current_node->entries.at(i)
                         );
@@ -1541,13 +1601,15 @@ void NODE_CLASS_TYPES::stat() {
                 if( child->cur_offset_ == 1 ) {
                     singularBranches++;
                 }
+                IsotheticPolygon polygon = b.materialize_polygon(
+                        allocator );
 
-                polygonSize = b.boundingPoly.basicRectangles.size();
+                polygonSize = polygon.basicRectangles.size();
                 assert( polygonSize < histogramPolygon.size() );
                 histogramPolygon[polygonSize]++;
                 totalPolygonSize += polygonSize;
 
-                for( Rectangle r : b.boundingPoly.basicRectangles) {
+                for( Rectangle r : polygon.basicRectangles) {
                     if( r.area() == 0.0 ) {
                         totalLines++;
                     }
@@ -1588,9 +1650,6 @@ void NODE_CLASS_TYPES::stat() {
     std::cout << treeRef->stats;
 
     STATEXEC(std::cout << "### ### ### ###" << std::endl);
-#else
-(void) 0;
-#endif
 }
 
 #undef NODE_TEMPLATE_PARAMS

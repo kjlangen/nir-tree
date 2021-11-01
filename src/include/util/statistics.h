@@ -21,8 +21,7 @@ class Statistics {
 			leavesSearched = 0;
 		}
 
-		template <bool isRange>
-		inline void resetSearchTracker()
+		inline void resetSearchTracker( bool isRange )
 		{
 			// Store stuff in the array
 			if (isRange)
