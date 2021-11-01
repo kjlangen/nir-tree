@@ -54,15 +54,39 @@ namespace rtreedisk
         RTreeDisk<min_branch_factor, max_branch_factor> *treeRef;
 
     public:
+        class Branch
+        {
+            public:
+                Rectangle boundingBox;
+                tree_node_handle child;
+
+                Branch(Rectangle boundingBox, tree_node_handle
+                        child_handle ) : boundingBox(boundingBox),
+                        child(child_handle) {}
+                Branch(const Branch &other) : boundingBox(other.boundingBox), child(other.child) {}
+
+                bool operator==(const
+                        Node<min_branch_factor,max_branch_factor>::Branch &o) const
+                {
+                    return child == o.child && boundingBox == o.boundingBox;
+                }
+        };
+        typedef std::variant<Point, Branch> NodeEntry;
+
         tree_node_handle parent;
         tree_node_handle self_handle_;
 
-        unsigned cur_offset_ = 0;      // For children + boxes
-        unsigned cur_offset_data_ = 0; // For data (leaf)
-        inline bool isLeafNode() const { return cur_offset_ == 0; }
-        typename std::array<Rectangle, max_branch_factor + 1> boundingBoxes;
-        typename std::array<tree_node_handle, max_branch_factor + 1> children;
-        typename std::array<Point, max_branch_factor + 1> data;
+        typename std::array<NodeEntry, max_branch_factor+1> entries;
+        unsigned cur_offset_ = 0;
+
+        inline bool isLeafNode() const {
+            return cur_offset_ == 0 || std::holds_alternative<Point>( entries.at(0) );
+        }
+
+        void addEntryToNode( const NodeEntry &entry ) {
+            entries.at( cur_offset_ ) = entry;
+            cur_offset_++;
+        }
 
         // Constructors and destructors
         Node(RTreeDisk<min_branch_factor, max_branch_factor> *treeRef, tree_node_handle self_handle);
@@ -83,20 +107,6 @@ namespace rtreedisk
         void moveChild(unsigned fromIndex, std::vector<Rectangle> &toRectangles, std::vector<tree_node_handle> &toChildren);
         void moveData(std::vector<Point> &fromData);
         void moveChildren(std::vector<tree_node_handle> &fromChildren, std::vector<Rectangle> &fromBoxes);
-        void addEntryToNode(Rectangle box, tree_node_handle child)
-        {
-            using NodeType = Node<min_branch_factor, max_branch_factor>;
-            tree_node_allocator *allocator = get_node_allocator(treeRef);
-            allocator->get_tree_node<NodeType>(child)->parent = self_handle_;
-            children[cur_offset_] = child;
-            boundingBoxes[cur_offset_] = box;
-            cur_offset_++;
-        }
-        void addEntryToNode(Point p)
-        {
-            data[cur_offset_data_] = p;
-            cur_offset_data_++;
-        }
         tree_node_handle splitNode(tree_node_handle newChildHandle);
         tree_node_handle splitNode(Point newData);
         tree_node_handle adjustTree(tree_node_handle siblingLeaf);

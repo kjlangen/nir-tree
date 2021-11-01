@@ -7,6 +7,15 @@
 
 using NodeType = rtreedisk::Node<3, 6>;
 using TreeType = rtreedisk::RTreeDisk<3, 6>;
+using BranchType = NodeType::Branch;
+
+template <class NE, class B>
+static NE createBranchEntry(const Rectangle
+            &boundingBox,
+            tree_node_handle child ) {
+	B b(boundingBox, child);
+	return b;
+}
 
 static tree_node_handle
 createFullLeafNode(TreeType &tree, tree_node_handle parent, Point p = Point::atOrigin)
@@ -48,7 +57,7 @@ TEST_CASE("RTreeDisk: testRemoveData")
     parentNode->removeData(Point(13.0, 13.0));
 
     // Test the removal
-    REQUIRE(parentNode->cur_offset_data_ == 3);
+    REQUIRE(parentNode->cur_offset_ == 3);
 
     unlink("rdiskbacked.txt");
 }
@@ -68,19 +77,19 @@ TEST_CASE("RTreeDisk:testBoundingBox")
             tree.node_allocator_.create_new_tree_node<rtreedisk::Node<3, 6>>();
         tree_node_handle child0 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType(&tree, child0, root);
-        rootNode->addEntryToNode(Rectangle(8.0, 1.0, 12.0, 5.0), child0);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(Rectangle(8.0, 1.0, 12.0, 5.0), child0));
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<rtreedisk::Node<3, 6>>();
         tree_node_handle child1 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType(&tree, child1, root);
-        rootNode->addEntryToNode(Rectangle(12.0, -4.0, 16.0, -2.0), child1);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(Rectangle(12.0, -4.0, 16.0, -2.0), child1));
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<rtreedisk::Node<3, 6>>();
         tree_node_handle child2 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType(&tree, child2, root);
-        rootNode->addEntryToNode(Rectangle(8.0, -6.0, 10.0, -4.0), child2);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(Rectangle(8.0, -6.0, 10.0, -4.0), child2));
 
         REQUIRE(rootNode->cur_offset_ == 3);
         REQUIRE(rootNode->boundingBox() == Rectangle(8.0, -6.0, 16.0, 5.0));
@@ -99,19 +108,19 @@ TEST_CASE("RTreeDisk:testBoundingBox")
             tree.node_allocator_.create_new_tree_node<rtreedisk::Node<3, 6>>();
         tree_node_handle child0 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType(&tree, child0, root);
-        rootNode->addEntryToNode(Rectangle(8.0, 12.0, 10.0, 14.0), child0);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(Rectangle(8.0, 12.0, 10.0, 14.0), child0));
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<rtreedisk::Node<3, 6>>();
         tree_node_handle child1 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType(&tree, child1, root);
-        rootNode->addEntryToNode(Rectangle(10.0, 12.0, 12.0, 14.0), child1);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(Rectangle(10.0, 12.0, 12.0, 14.0), child1));
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<rtreedisk::Node<3, 6>>();
         tree_node_handle child2 = alloc_data.second;
         new (&(*alloc_data.first)) NodeType(&tree, child2, root);
-        rootNode->addEntryToNode(Rectangle(12.0, 12.0, 14.0, 14.0), child2);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(Rectangle(12.0, 12.0, 14.0, 14.0), child2));
 
         REQUIRE(rootNode->cur_offset_ == 3);
 
@@ -211,17 +220,17 @@ TEST_CASE("RTreeDisk: testSearch")
         auto left_handle = alloc_data.second;
         auto left = alloc_data.first;
         cluster1a->parent = left_handle;
-        left->addEntryToNode(cluster1a->boundingBox(),
-                             cluster1a_handle);
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster1a->boundingBox(),
+                             cluster1a_handle));
         cluster1b->parent = left_handle;
-        left->addEntryToNode(cluster1b->boundingBox(),
-                             cluster1b_handle);
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster1b->boundingBox(),
+                             cluster1b_handle));
         cluster2a->parent = left_handle;
-        left->addEntryToNode(cluster2a->boundingBox(),
-                             cluster2a_handle);
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster2a->boundingBox(),
+                             cluster2a_handle));
         cluster2b->parent = left_handle;
-        left->addEntryToNode(cluster2b->boundingBox(),
-                             cluster2b_handle);
+        left->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster2b->boundingBox(),
+                             cluster2b_handle));
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<NodeType>();
@@ -230,18 +239,18 @@ TEST_CASE("RTreeDisk: testSearch")
         auto right_handle = alloc_data.second;
         auto right = alloc_data.first;
         cluster3a->parent = right_handle;
-        right->addEntryToNode(cluster3a->boundingBox(),
-                              cluster3a_handle);
+        right->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster3a->boundingBox(),
+                              cluster3a_handle));
         cluster3b->parent = right_handle;
-        right->addEntryToNode(cluster3b->boundingBox(),
-                              cluster3b_handle);
+        right->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster3b->boundingBox(),
+                              cluster3b_handle));
 
         left->parent = root;
-        rootNode->addEntryToNode(left->boundingBox(),
-                                 left_handle);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(left->boundingBox(),
+                                 left_handle));
         right->parent = root;
-        rootNode->addEntryToNode(right->boundingBox(),
-                                 right_handle);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(right->boundingBox(),
+                                 right_handle));
 
         // Test search
 
@@ -337,6 +346,65 @@ TEST_CASE("RTreeDisk: testSearch")
     unlink("rdiskbacked.txt");
 }
 
+/*
+TEST_CASE("RTreeDisk: RemoveLeafNode")
+{
+
+    unlink( "rdiskbacked.txt" );
+    {
+        unsigned maxBranchFactor = 6;
+        unsigned minBranchFactor = 3;
+        TreeType tree(4096*5, "rdiskbacked.txt");
+
+        for( unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
+                i++) {
+            tree.insert(Point(i, i));
+        }
+
+        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1;
+                i++) {
+            Point p(i, i);
+            REQUIRE(tree.search(p).size() == 1);
+        }
+
+        //Find a leaf
+        auto root = tree.root;
+        auto node = tree.node_allocator_.get_tree_node<NodeType>(
+                root );
+        while( std::holds_alternative<NodeType::Branch>(node->entries[0])) {
+            const NodeType::Branch &b = std::get<NodeType::Branch>(node->entries[0]);
+            node = tree.node_allocator_.get_tree_node<NodeType>( b.child
+                    );
+        }
+
+        REQUIRE( std::holds_alternative<Point>(node->entries[0]) );
+        size_t cnt = node->cur_offset_;
+        std::vector<NodeType::NodeEntry> nodesToRemove( node->entries.begin(), node->entries.begin() + (cnt-minBranchFactor + 1));
+        for (const auto &entry : nodesToRemove)
+        {
+            const Point &p = std::get<Point>(entry);
+            tree.remove(p);
+        }
+
+        for (unsigned i = 0; i < maxBranchFactor*maxBranchFactor + 1; ++i)
+        {
+            Point p(i, i);
+            NodeType::NodeEntry ne = p;
+            if (std::find(nodesToRemove.begin(), nodesToRemove.end(), ne) == nodesToRemove.end())
+            {
+                REQUIRE(tree.search(p).size() == 1);
+            }
+            else
+            {
+                REQUIRE(tree.search(p).size() == 0);
+            }
+        }
+    }
+
+    unlink( "rstardiskbacked.txt" );
+}*/
+
+/*
 TEST_CASE("RTreeDisk:RemoveLeafNode")
 {
 
@@ -362,25 +430,27 @@ TEST_CASE("RTreeDisk:RemoveLeafNode")
         auto root = tree.root;
         auto node = tree.node_allocator_.get_tree_node<NodeType>(root);
 
-        while (node->cur_offset_ > 0)
+        while (std::holds_alternative<NodeType::Branch>(node->entries[0]))
         {
-            auto child = node->children[0];
+            auto child = std::get<BranchType>( node->entries[0] ).child;
             node = tree.node_allocator_.get_tree_node<NodeType>(child);
         }
 
-        REQUIRE(node->cur_offset_data_ > 0);
-        size_t cnt = node->cur_offset_data_;
-        std::vector<Point> nodesToRemove(node->data.begin(), node->data.begin() + (cnt - minBranchFactor + 1));
+        REQUIRE( std::holds_alternative<Point>(node->entries[0]) );
+        REQUIRE(node->cur_offset_ > 0);
+        size_t cnt = node->cur_offset_;
+        std::vector<NodeType::NodeEntry> nodesToRemove(node->entries.begin(), node->entries.begin() + (cnt - minBranchFactor + 1));
         for (const auto &entry : nodesToRemove)
         {
-            const Point &p = entry;
+            const Point &p = std::get<Point>(entry);
             tree.remove(p);
         }
 
         for (unsigned i = 0; i < maxBranchFactor * maxBranchFactor + 1; ++i)
         {
             Point p(i, i);
-            if (std::find(nodesToRemove.begin(), nodesToRemove.end(), p) == nodesToRemove.end())
+            NodeType::NodeEntry ne = p;
+            if (std::find(nodesToRemove.begin(), nodesToRemove.end(), ne) == nodesToRemove.end())
             {
                 REQUIRE(tree.search(p).size() == 1);
             }
@@ -392,7 +462,7 @@ TEST_CASE("RTreeDisk:RemoveLeafNode")
     }
 
     unlink("rdiskbacked.txt");
-}
+}*/
 
 TEST_CASE("RTreeDisk:testChooseLeaf")
 {
@@ -421,27 +491,27 @@ TEST_CASE("RTreeDisk:testChooseLeaf")
     tree_node_handle leftChild0 = createFullLeafNode(tree, left);
     tree_node_handle leftChild1 = createFullLeafNode(tree, left);
     tree_node_handle leftChild2 = createFullLeafNode(tree, left);
-    leftNode->addEntryToNode(
-        Rectangle(8.0, 12.0, 10.0, 14.0), leftChild0);
-    leftNode->addEntryToNode(
-        Rectangle(10.0, 12.0, 12.0, 14.0), leftChild1);
-    leftNode->addEntryToNode(
-        Rectangle(12.0, 12.0, 14.0, 14.0), leftChild2);
-    rootNode->addEntryToNode(
-        Rectangle(8.0, 12.0, 14.0, 14.0), left);
+    leftNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(8.0, 12.0, 10.0, 14.0), leftChild0));
+    leftNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(10.0, 12.0, 12.0, 14.0), leftChild1));
+    leftNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(12.0, 12.0, 14.0, 14.0), leftChild2));
+    rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(8.0, 12.0, 14.0, 14.0), left));
 
     tree_node_handle rightChild0 = createFullLeafNode(tree, right);
     tree_node_handle rightChild1 = createFullLeafNode(tree, right);
     tree_node_handle rightChild2 = createFullLeafNode(tree, right);
     rightNode->parent = root;
-    rightNode->addEntryToNode(
-        Rectangle(8.0, 1.0, 12.0, 5.0), rightChild0);
-    rightNode->addEntryToNode(
-        Rectangle(12.0, -4.0, 16.0, -2.0), rightChild1);
-    rightNode->addEntryToNode(
-        Rectangle(8.0, -6.0, 10.0, -4.0), rightChild2);
-    rootNode->addEntryToNode(
-        Rectangle(8.0, -6.0, 16.0, 5.0), right);
+    rightNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(8.0, 1.0, 12.0, 5.0), rightChild0));
+    rightNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(12.0, -4.0, 16.0, -2.0), rightChild1));
+    rightNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(8.0, -6.0, 10.0, -4.0), rightChild2));
+    rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(
+        Rectangle(8.0, -6.0, 16.0, 5.0), right));
 
     // Test that we get the correct child for the given point
     REQUIRE(rightChild1 == rootNode->chooseLeaf(Point(13.0, -3.0)));
@@ -469,7 +539,7 @@ TEST_CASE("RTreeDisk: testSplitNonLeafNode")
             auto child_handle = createFullLeafNode(tree, tree.root);
             auto childNode = tree.node_allocator_.get_tree_node<NodeType>(
                 child_handle);
-            rootNode->addEntryToNode(childNode->boundingBox(), child_handle);
+            rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(childNode->boundingBox(), child_handle));
         }
 
         std::vector<Point> accumulator = tree.search(Point::atOrigin);
@@ -485,8 +555,8 @@ TEST_CASE("RTreeDisk: testSplitNonLeafNode")
 
         // Confirm tree structure
         REQUIRE(newRootNode->cur_offset_ == 2);
-        const auto bLeft = newRootNode->children[0];
-        const auto bRight = newRootNode->children[1];
+        const auto bLeft = std::get<BranchType>( newRootNode->entries[0] ).child;
+        const auto bRight = std::get<BranchType>( newRootNode->entries[1] ).child;
         auto left = tree.node_allocator_.get_tree_node<NodeType>(
             bLeft);
         auto right = tree.node_allocator_.get_tree_node<NodeType>(
@@ -498,18 +568,18 @@ TEST_CASE("RTreeDisk: testSplitNonLeafNode")
         for (size_t i = 0; i < left->cur_offset_; i++)
         {
 
-            auto child_handle = left->children.at(i);
+            auto child_handle = std::get<BranchType>( left->entries.at(i) ).child;
             auto childNode =
                 tree.node_allocator_.get_tree_node<NodeType>(
                     child_handle);
 
             // These are all leaves
-            REQUIRE(childNode->cur_offset_data_ > 0);
+            REQUIRE(childNode->cur_offset_ > 0);
         }
 
         for (size_t i = 0; i < right->cur_offset_; i++)
         {
-            auto child_handle = right->children.at(i);
+            auto child_handle = std::get<BranchType>( right->entries.at(i) ).child;
             auto childNode =
                 tree.node_allocator_.get_tree_node<NodeType>(
                     child_handle);
@@ -530,11 +600,14 @@ TEST_CASE("RTreeDisk:ExhaustiveSearch")
     {
         unsigned maxBranchFactor = 6;
         TreeType tree(4096 * 5, "rdiskbacked.txt");
+        tree_node_handle root = tree.root;
+        auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(root);
 
         for (unsigned i = 0; i < maxBranchFactor * maxBranchFactor + 1;
              i++)
         {
             tree.insert(Point(i, i));
+            //rootNode->printTreeErr();
         }
 
         for (unsigned i = 0; i < maxBranchFactor * maxBranchFactor + 1;
@@ -560,7 +633,7 @@ TEST_CASE("RTreeDisk: testFindLeaf")
     auto cluster4aNode = alloc_data.first;
     tree_node_handle cluster4a = alloc_data.second;
     new (&(*cluster4aNode)) NodeType(&tree, cluster4a,
-                                     tree_node_handle() /*nullptr for now*/);
+                                     tree_node_handle());
     cluster4aNode->addEntryToNode(Point(-10.0, -2.0));
     cluster4aNode->addEntryToNode(Point(-12.0, -3.0));
     cluster4aNode->addEntryToNode(Point(-11.0, -3.0));
@@ -571,7 +644,7 @@ TEST_CASE("RTreeDisk: testFindLeaf")
     auto cluster4bNode = alloc_data.first;
     tree_node_handle cluster4b = alloc_data.second;
     new (&(*cluster4bNode)) NodeType(&tree, cluster4b,
-                                     tree_node_handle() /*nullptr for now*/);
+                                     tree_node_handle());
 
     cluster4bNode->addEntryToNode(Point(-9.0, -3.0));
     cluster4bNode->addEntryToNode(Point(-7.0, -3.0));
@@ -584,9 +657,9 @@ TEST_CASE("RTreeDisk: testFindLeaf")
 
     new (&(*cluster4Node)) NodeType(&tree, cluster4, root);
     cluster4aNode->parent = cluster4;
-    cluster4Node->addEntryToNode(cluster4aNode->boundingBox(), cluster4a);
+    cluster4Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster4aNode->boundingBox(), cluster4a));
     cluster4bNode->parent = cluster4;
-    cluster4Node->addEntryToNode(cluster4bNode->boundingBox(), cluster4b);
+    cluster4Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster4bNode->boundingBox(), cluster4b));
 
     alloc_data =
         tree.node_allocator_.create_new_tree_node<NodeType>();
@@ -641,19 +714,19 @@ TEST_CASE("RTreeDisk: testFindLeaf")
     new (&(*cluster5Node)) NodeType(&tree, cluster5, root);
 
     cluster5aNode->parent = cluster5;
-    cluster5Node->addEntryToNode(cluster5aNode->boundingBox(), cluster5a);
+    cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5aNode->boundingBox(), cluster5a));
     cluster5bNode->parent = cluster5;
-    cluster5Node->addEntryToNode(cluster5bNode->boundingBox(), cluster5b);
+    cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5bNode->boundingBox(), cluster5b));
 
     cluster5cNode->parent = cluster5;
-    cluster5Node->addEntryToNode(cluster5cNode->boundingBox(), cluster5c);
+    cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5cNode->boundingBox(), cluster5c));
 
     cluster5dNode->parent = cluster5;
-    cluster5Node->addEntryToNode(cluster5dNode->boundingBox(), cluster5d);
+    cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5dNode->boundingBox(), cluster5d));
 
     // Root
-    rootNode->addEntryToNode(cluster4Node->boundingBox(), cluster4);
-    rootNode->addEntryToNode(cluster5Node->boundingBox(), cluster5);
+    rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster4Node->boundingBox(), cluster4));
+    rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5Node->boundingBox(), cluster5));
 
     // Test finding leaves
     REQUIRE(rootNode->findLeaf(Point(-11.0, -3.0)) == cluster4a);
@@ -719,9 +792,9 @@ TEST_CASE("RTreeDisk: testFindLeaf ON DISK")
 
         new (&(*cluster4Node)) NodeType(&tree, cluster4, root);
         cluster4aNode->parent = cluster4;
-        cluster4Node->addEntryToNode(cluster4aNode->boundingBox(), cluster4a);
+        cluster4Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster4aNode->boundingBox(), cluster4a));
         cluster4bNode->parent = cluster4;
-        cluster4Node->addEntryToNode(cluster4bNode->boundingBox(), cluster4b);
+        cluster4Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster4bNode->boundingBox(), cluster4b));
 
         alloc_data =
             tree.node_allocator_.create_new_tree_node<NodeType>();
@@ -776,19 +849,19 @@ TEST_CASE("RTreeDisk: testFindLeaf ON DISK")
         new (&(*cluster5Node)) NodeType(&tree, cluster5, root);
 
         cluster5aNode->parent = cluster5;
-        cluster5Node->addEntryToNode(cluster5aNode->boundingBox(), cluster5a);
+        cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5aNode->boundingBox(), cluster5a));
         cluster5bNode->parent = cluster5;
-        cluster5Node->addEntryToNode(cluster5bNode->boundingBox(), cluster5b);
+        cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5bNode->boundingBox(), cluster5b));
 
         cluster5cNode->parent = cluster5;
-        cluster5Node->addEntryToNode(cluster5cNode->boundingBox(), cluster5c);
+        cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5cNode->boundingBox(), cluster5c));
 
         cluster5dNode->parent = cluster5;
-        cluster5Node->addEntryToNode(cluster5dNode->boundingBox(), cluster5d);
+        cluster5Node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5dNode->boundingBox(), cluster5d));
 
         // Root
-        rootNode->addEntryToNode(cluster4Node->boundingBox(), cluster4);
-        rootNode->addEntryToNode(cluster5Node->boundingBox(), cluster5);
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster4Node->boundingBox(), cluster4));
+        rootNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(cluster5Node->boundingBox(), cluster5));
     }
 
     TreeType tree(4096 * 5, "rdiskbacked.txt");
