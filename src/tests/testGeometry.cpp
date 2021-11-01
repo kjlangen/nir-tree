@@ -2114,4 +2114,7 @@ TEST_CASE( "Test simplify real poly" ) {
     REQUIRE( polygon.basicRectangles.size() <
             polygon2.basicRectangles.size() );
     REQUIRE( polygon.boundingBox == polygon2.boundingBox );
+
+    std::cout << compute_sizeof_inline_unbounded_polygon(
+            MAX_RECTANGLE_COUNT + 1 ) << std::endl;
 }

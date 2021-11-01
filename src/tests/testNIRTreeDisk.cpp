@@ -799,6 +799,12 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
             REQUIRE( tree.search( Point(i,i) ).size() == 1);
         }
     }
+
+    std::cout << "NODE SIZE: " <<
+        sizeof(
+                nirtreedisk::Node<7,15,nirtreedisk::LineMinimizeDistanceFromMean>
+                )
+        << std::endl;
     unlink( "nirdiskbacked.txt" );
 
 }

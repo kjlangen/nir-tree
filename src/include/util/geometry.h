@@ -14,7 +14,7 @@
 // limitations under the License.
 #pragma once
 
-#define MAX_RECTANGLE_COUNT 5 
+#define MAX_RECTANGLE_COUNT 5
 
 #include <iostream>
 #include <algorithm>
@@ -713,5 +713,7 @@ constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects )
 
 // If this changes, then you need to change the remaining count in
 // tree_node_allocator to match.
+// 216 for 3
+// 280 for 5
 static_assert( compute_sizeof_inline_unbounded_polygon(
             MAX_RECTANGLE_COUNT + 1 ) == 280 );

@@ -474,8 +474,8 @@ static bool is_already_loaded(
             return true;
         }
     } else if( configU["tree"] == R_STAR_TREE ) {
-        rstartreedisk::RStarTreeDisk<3,7> *tree =
-            (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
+        rstartreedisk::RStarTreeDisk<7,15> *tree =
+            (rstartreedisk::RStarTreeDisk<7,15> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
@@ -510,15 +510,15 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	else if (configU["tree"] == R_PLUS_TREE)
 	{
-        spatialIndex = new rplustreedisk::RPlusTreeDisk<3,7>(4096*10*13000,
+        spatialIndex = new
+            rplustreedisk::RPlusTreeDisk<3,7>(4096*10*13000 /4,
                 "rplustreediskbacked_california.txt" );
 		//spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
 	}
 	else if (configU["tree"] == R_STAR_TREE)
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rstartreedisk::RStarTreeDisk<3,7>( 4096 *10
-                *13000, "rstardiskbacked_california.txt" );
+		spatialIndex = new rstartreedisk::RStarTreeDisk<7,15>( 4096 * 10 * 13000/8, "rstardiskbacked_california.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
@@ -526,7 +526,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(3,7);
 		spatialIndex = new
             nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>(
-                4096*10*13000, "nirdiskbacked_california.txt");
+                4096*10*13000/2, "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -701,8 +701,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
 	// Gather statistics
-	//spatialIndex->stat();
-	//std::cout << "Statistics OK." << std::endl;
+	spatialIndex->stat();
+	std::cout << "Statistics OK." << std::endl;
 
 	// Validate checksum
     /*
@@ -743,8 +743,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Avg time to delete: " << totalTimeDeletes / (double) totalDeletes << "s" << std::endl;
 
     spatialIndex->write_metadata();
+
+    std::cout << "Metadata written." << std::endl;
 	// Cleanup
-	delete spatialIndex;
+	//delete spatialIndex;
 	delete [] searchRectangles;
 }
 

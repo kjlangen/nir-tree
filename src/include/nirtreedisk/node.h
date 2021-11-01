@@ -144,6 +144,9 @@ namespace nirtreedisk
                 parent( parent ),
                 cur_offset_( 0 ),
                 self_handle_( self_handle ) {
+                    static_assert( sizeof(
+                                Node<min_branch_factor,max_branch_factor,strategy>)
+                            <= PAGE_DATA_SIZE );
             }
 			void deleteSubtrees();
             void free();

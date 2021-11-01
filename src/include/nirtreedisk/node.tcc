@@ -520,6 +520,12 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                     } else {
                         unsigned overfull_rect_count = (unsigned) (2 *
                                 node_poly.basicRectangles.size() );
+                        overfull_rect_count =
+                            std::min(overfull_rect_count,
+                                (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
+                                );
+
+
 
                         auto alloc_data =
                             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
@@ -565,6 +571,11 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                         // Alloc new crap
                         unsigned overfull_rect_count = (unsigned) (2 *
                                 node_poly.basicRectangles.size() );
+
+                        overfull_rect_count =
+                            std::min(overfull_rect_count,
+                                    (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
+                                    );
                         auto poly_alloc_data =
                             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                                     compute_sizeof_inline_unbounded_polygon(
@@ -883,6 +894,11 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         } else {
             unsigned overfull_rect_count = (unsigned) (2 *
                     left_polygon.basicRectangles.size() );
+            overfull_rect_count =
+                std::min(overfull_rect_count,
+                    (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
+                    );
+
             auto poly_alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                         compute_sizeof_inline_unbounded_polygon(
@@ -904,6 +920,11 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         } else {
             unsigned overfull_rect_count = (unsigned) (2 *
                     right_polygon.basicRectangles.size() );
+            overfull_rect_count =
+                std::min(overfull_rect_count,
+                    (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
+                    );
+
             auto poly_alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                         compute_sizeof_inline_unbounded_polygon(
@@ -972,11 +993,9 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                 auto child = treeRef->get_node( branch.child );
 
                 SplitResult downwardSplit = child->splitNode( p, true );
+                // This branch is dead, along with its polygon
                 allocator->free( branch.child, sizeof( NODE_CLASS_TYPES )  );
 
-                // This branch is dead, along with its polygon
-                /*
-                allocator->free( branch.child, sizeof( NODE_CLASS_TYPES ) );
                 if( std::holds_alternative<tree_node_handle>(
                             branch.boundingPoly ) ) {
                     // We can free this
@@ -986,11 +1005,10 @@ SplitResult NODE_CLASS_TYPES::splitNode(
                             allocator, free_poly_handle );
                     free_poly_pin->free_subpages( allocator );
                     size_t alloc_size = compute_sizeof_inline_unbounded_polygon(
-                        free_poly_pin->get_outer_rect_count() );
+                        free_poly_pin->get_max_rectangle_count_on_first_page() );
 
                     allocator->free( free_poly_handle, alloc_size );
                 }
-                */
 
                 auto left_child = treeRef->get_node( downwardSplit.leftBranch.child );
                 if( left_child->cur_offset_ > 0 ) {
@@ -1070,6 +1088,11 @@ SplitResult NODE_CLASS_TYPES::splitNode(
             unsigned overfull_rect_count = (unsigned) (2 *
                     left_polygon.basicRectangles.size() );
 
+            overfull_rect_count =
+                std::min(overfull_rect_count,
+                    (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
+                    );
+
             auto alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                         compute_sizeof_inline_unbounded_polygon(
@@ -1092,6 +1115,11 @@ SplitResult NODE_CLASS_TYPES::splitNode(
         if( right_polygon.basicRectangles.size() > MAX_RECTANGLE_COUNT ) {
             unsigned overfull_rect_count = (unsigned) (2 *
                     right_polygon.basicRectangles.size() );
+
+            overfull_rect_count =
+                std::min(overfull_rect_count,
+                    (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
+                    );
 
             auto alloc_data =
                 allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
