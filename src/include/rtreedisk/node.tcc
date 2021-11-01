@@ -77,12 +77,14 @@ Rectangle Node<min_branch_factor, max_branch_factor>::boundingBox()
 template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor, max_branch_factor>::updateBoundingBox(tree_node_handle child, Rectangle updatedBoundingBox)
 {
+    using NodeType = Node<min_branch_factor, max_branch_factor>;
+    using BranchType = NodeType::Branch;
     for (unsigned i = 0; i < cur_offset_; i++)
     {
         Branch b = std::get<Branch>( entries.at(i) );
         if (b.child == child)
         {
-            b.boundingBox = updatedBoundingBox;
+            entries[i] = createBranchEntry_local<NodeType::NodeEntry, BranchType>(updatedBoundingBox, b.child);
             return;
         }
     }
@@ -814,7 +816,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::adjustTree(tree_nod
             {
                 pinned_node_ptr<NodeType> siblingNode = allocator->get_tree_node<NodeType>(siblingHandle);
                 // AT4 [Propagate the node split upwards]
-                if (parentNode->cur_offset_ < max_branch_factor)
+                if (!parentNode->isLeafNode() && parentNode->cur_offset_ < max_branch_factor)
                 {
                     parentNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>( siblingNode->boundingBox(), siblingNode->self_handle_ ));
                     siblingNode->parent = parentNode->self_handle_;
@@ -1073,7 +1075,7 @@ bool Node<min_branch_factor, max_branch_factor>::validate(tree_node_handle expec
         std::cout << "parent = " << parent << " expectedParent = " << expectedParent << std::endl;
         std::cout << "max_branch_factor = " << max_branch_factor << std::endl;
         std::cout << "cur_offset_ = " << cur_offset_ << std::endl;
-        assert(allocator->get_tree_node<NodeType>(parent) == allocator->get_tree_node<NodeType>(expectedParent));
+        assert(parent == expectedParent);
     }
 
     if (expectedParent != nullptr)
@@ -1083,7 +1085,7 @@ bool Node<min_branch_factor, max_branch_factor>::validate(tree_node_handle expec
         {
             Point &dataPoint = std::get<Point>( entries[i] );
 
-            Rectangle parentBox = std::get<Branch>( entries[index] ).boundingBox;
+            Rectangle parentBox = std::get<Branch>( allocator->get_tree_node<NodeType>(parent)->entries[index] ).boundingBox;
             if (!parentBox.containsPoint(dataPoint))
             {
                 auto parentPtr = allocator->get_tree_node<NodeType>(parent);
@@ -1094,7 +1096,7 @@ bool Node<min_branch_factor, max_branch_factor>::validate(tree_node_handle expec
     }
 
     bool valid = true;
-    for (unsigned i = 0; i < entries.size(); ++i)
+    for (unsigned i = 0; i < entries.size() && !isLeafNode(); ++i)
     {
         valid = valid && allocator->get_tree_node<NodeType>(std::get<Branch>(entries[i]).child)->validate(this->self_handle_, i);
     }

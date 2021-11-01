@@ -346,7 +346,7 @@ TEST_CASE("RTreeDisk: testSearch")
     unlink("rdiskbacked.txt");
 }
 
-/*
+
 TEST_CASE("RTreeDisk:RemoveLeafNode")
 {
 
@@ -360,17 +360,12 @@ TEST_CASE("RTreeDisk:RemoveLeafNode")
              i++)
         {
             tree.insert(Point(i, i));
-            tree.node_allocator_.get_tree_node<NodeType>(tree.root)->printTreeErr();
-            std::cerr << "\n\n\n\n\n\n\n\n\n\n" << std::endl;
         }
-
-        //tree.validate();
 
         for (unsigned i = 0; i < maxBranchFactor * maxBranchFactor + 1;
              i++)
         {
             Point p(i, i);
-            std::cerr << p << std::endl;
             REQUIRE(tree.search(p).size() == 1);
         }
 
@@ -409,7 +404,7 @@ TEST_CASE("RTreeDisk:RemoveLeafNode")
     }
 
     unlink("rdiskbacked.txt");
-}*/
+}
 
 TEST_CASE("RTreeDisk:testChooseLeaf")
 {
