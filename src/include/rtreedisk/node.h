@@ -131,5 +131,13 @@ namespace rtreedisk
         void stat();
     };
 
+    template <class NE, class B>
+    NE createBranchEntry(const Rectangle
+                &boundingBox,
+                tree_node_handle child ) {
+        B b(boundingBox, child);
+        return b;
+    }
+
 #include "node.tcc"
 }
