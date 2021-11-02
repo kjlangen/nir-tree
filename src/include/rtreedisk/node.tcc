@@ -426,7 +426,7 @@ void Node<min_branch_factor, max_branch_factor>::moveChildren(std::vector<tree_n
     cur_offset_ = fromChildren.size();
     for (unsigned i = 0; i < cur_offset_; i++)
     {
-        entries[i] = createBranchEntry<NodeType::NodeEntry, BranchType>( fromBoxes.at(i) , fromChildren.at(i) );
+        entries[i] = createBranchEntry_local<NodeType::NodeEntry, BranchType>( fromBoxes.at(i) , fromChildren.at(i) );
     }
 
     fromChildren.clear();
@@ -452,7 +452,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     tree_node_allocator *allocator = get_node_allocator(treeRef);
     pinned_node_ptr<NodeType> newChild = allocator->get_tree_node<NodeType>(newChildHandle);
 
-    addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>( newChild->boundingBox(), newChildHandle ));
+    addEntryToNode(createBranchEntry_local<NodeType::NodeEntry, BranchType>( newChild->boundingBox(), newChildHandle ));
     newChild->parent = self_handle_;
     unsigned boundingBoxesSize = (isLeafNode()) ? 0 : cur_offset_;
 
@@ -818,7 +818,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::adjustTree(tree_nod
                 // AT4 [Propagate the node split upwards]
                 if (!parentNode->isLeafNode() && parentNode->cur_offset_ < max_branch_factor)
                 {
-                    parentNode->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>( siblingNode->boundingBox(), siblingNode->self_handle_ ));
+                    parentNode->addEntryToNode(createBranchEntry_local<NodeType::NodeEntry, BranchType>( siblingNode->boundingBox(), siblingNode->self_handle_ ));
                     siblingNode->parent = parentNode->self_handle_;
 
                     node = parentNode;
@@ -879,10 +879,10 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert(Point givenP
         new (&(*newRoot)) NodeType(treeRef, root_handle);
 
         parent = root_handle;
-        newRoot->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>( this->boundingBox(), self_handle_ ));
+        newRoot->addEntryToNode(createBranchEntry_local<NodeType::NodeEntry, BranchType>( this->boundingBox(), self_handle_ ));
 
         siblingNode->parent = newRoot->self_handle_;
-        newRoot->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>( siblingNode->boundingBox(), siblingNode->self_handle_ ));
+        newRoot->addEntryToNode(createBranchEntry_local<NodeType::NodeEntry, BranchType>( siblingNode->boundingBox(), siblingNode->self_handle_ ));
 
         return newRoot->self_handle_;
     }
@@ -915,7 +915,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert(ReinsertionE
     if (node->cur_offset_ < max_branch_factor)
     {
         allocator->get_tree_node<NodeType>(e.child)->parent = nodeHandle;
-        node->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>(e.boundingBox, e.child));
+        node->addEntryToNode(createBranchEntry_local<NodeType::NodeEntry, BranchType>(e.boundingBox, e.child));
     }
     else
     {
@@ -935,12 +935,12 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::insert(ReinsertionE
 
         this->parent = root_handle;
 
-        newRoot->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>( boundingBox(), self_handle_ ));
+        newRoot->addEntryToNode(createBranchEntry_local<NodeType::NodeEntry, BranchType>( boundingBox(), self_handle_ ));
 
         auto siblingPtr = allocator->get_tree_node<NodeType>(siblingNode);
         siblingPtr->parent = newRoot->self_handle_;
 
-        siblingPtr->addEntryToNode(createBranchEntry<NodeType::NodeEntry, BranchType>( siblingPtr->boundingBox(), siblingNode ));
+        siblingPtr->addEntryToNode(createBranchEntry_local<NodeType::NodeEntry, BranchType>( siblingPtr->boundingBox(), siblingNode ));
 
         return newRoot->self_handle_;
     }

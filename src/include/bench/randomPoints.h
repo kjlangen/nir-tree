@@ -10,6 +10,7 @@
 #include <fstream>
 #include <index/index.h>
 #include <rtree/rtree.h>
+#include <rtreedisk/rtreedisk.h>
 #include <rplustree/rplustree.h>
 #include <rstartree/rstartree.h>
 #include <rstartreedisk/rstartreedisk.h>
