@@ -1616,6 +1616,7 @@ void NODE_CLASS_TYPES::stat() {
     unsigned long totalNodes = 1;
     unsigned long singularBranches = 0;
     unsigned long totalLeaves = 0;
+    size_t deadSpace = 0;
 
     std::vector<unsigned long> histogramPolygon;
     histogramPolygon.resize(10000, 0);
@@ -1645,6 +1646,10 @@ void NODE_CLASS_TYPES::stat() {
         if( current_node->isLeaf() ) {
             totalLeaves++;
             memoryFootprint += sizeof(Node) + current_node->cur_offset_ * sizeof(Point);
+            deadSpace += current_node->cur_offset_ * (sizeof(Branch) - sizeof(Point));
+            deadSpace += (sizeof(Branch) *
+                    (max_branch_factor-current_node->cur_offset_) );
+
         } else {
 
 
@@ -1658,6 +1663,9 @@ void NODE_CLASS_TYPES::stat() {
 
             totalNodes += current_node->cur_offset_;
             memoryFootprint += sizeof(Node) + current_node->cur_offset_ * sizeof(Branch);
+            deadSpace += (sizeof(Branch) *
+                    (max_branch_factor-current_node->cur_offset_) );
+            
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 Branch &b = std::get<Branch>( current_node->entries.at(i)
                         );
@@ -1679,6 +1687,15 @@ void NODE_CLASS_TYPES::stat() {
                     }
                 }
 
+                if( polygonSize < MAX_RECTANGLE_COUNT ) {
+                    deadSpace += (MAX_RECTANGLE_COUNT-polygonSize) *
+                        sizeof(Rectangle);
+
+                } else if( polygonSize > MAX_RECTANGLE_COUNT ) {
+                    deadSpace += sizeof(Branch) -
+                        sizeof(tree_node_handle);
+                }
+
                 context.push(b.child);
             }
         }
@@ -1689,6 +1706,7 @@ void NODE_CLASS_TYPES::stat() {
     STATMEM(memoryFootprint);
     STATHEIGHT(height());
     STATSIZE(totalNodes);
+    STATEXEC(std::cout << "DeadSpace: " << deadSpace << std::endl);
     STATSINGULAR(singularBranches);
     STATLEAF(totalLeaves);
     STATBRANCH(totalNodes - 1);

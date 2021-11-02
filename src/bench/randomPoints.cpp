@@ -518,7 +518,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	else if (configU["tree"] == R_STAR_TREE)
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rstartreedisk::RStarTreeDisk<7,15>( 4096 * 10 * 13000/8, "rstardiskbacked_california.txt" );
+		spatialIndex = new rstartreedisk::RStarTreeDisk<7,15>( 4096 * 10 * 13000, "rstardiskbacked_california.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
