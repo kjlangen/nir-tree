@@ -1069,7 +1069,7 @@ bool Node<min_branch_factor, max_branch_factor>::validate(tree_node_handle expec
     using NodeType = Node<min_branch_factor, max_branch_factor>;
     tree_node_allocator *allocator = get_node_allocator(treeRef);
 
-    if (parent != expectedParent || (!isLeafNode() && cur_offset_ > max_branch_factor) || (isLeafNode() && cur_offset_ > max_branch_factor))
+    if (parent != expectedParent or cur_offset_ > max_branch_factor )
     {
         std::cout << "node = " << this->self_handle_ << std::endl;
         std::cout << "parent = " << parent << " expectedParent = " << expectedParent << std::endl;
@@ -1096,9 +1096,10 @@ bool Node<min_branch_factor, max_branch_factor>::validate(tree_node_handle expec
     }
 
     bool valid = true;
-    for (unsigned i = 0; i < entries.size() && !isLeafNode(); ++i)
-    {
-        valid = valid && allocator->get_tree_node<NodeType>(std::get<Branch>(entries[i]).child)->validate(this->self_handle_, i);
+    if( !isLeafNode() ) {
+        for (unsigned i = 0; i < cur_offset_; i++ ) {
+            valid = valid && allocator->get_tree_node<NodeType>(std::get<Branch>(entries[i]).child)->validate(this->self_handle_, i);
+        }
     }
 
     return valid;
