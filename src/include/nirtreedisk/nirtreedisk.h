@@ -58,9 +58,9 @@ namespace nirtreedisk
                 // If this is a fresh tree, we need a root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
-                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>();
+                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>(
+                                NodeHandleType(LEAF_NODE) );
                     root = alloc.second;
-                    root.set_type( LEAF_NODE );
                     new (&(*(alloc.first)))
                         LeafNode<min_branch_factor,max_branch_factor,strategy>( this,
                                 tree_node_handle(nullptr), root );

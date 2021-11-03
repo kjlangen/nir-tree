@@ -80,6 +80,17 @@ public:
 
 };
 
+// A wrapper around an int
+// The sole purpose of this struct is avoid footguns where you
+// accidentally specify a type as the size during allocations and cause
+// amazing memory problems
+struct NodeHandleType {
+    explicit NodeHandleType( uint16_t type ) :
+       type_( type ) { } 
+
+    uint16_t type_;
+};
+
 class tree_node_handle {
 public:
     struct page_location {
@@ -93,16 +104,17 @@ public:
         uint32_t page_id_;
         uint16_t offset_; // Only need 12 bits to index 4k pages
 
-         
         bool operator==( const page_location &other ) const {
             return page_id_ == other.page_id_ and offset_ ==
                 other.offset_;
         }
     };
 
-    tree_node_handle( uint32_t page_id, uint16_t offset ) :
+    tree_node_handle( uint32_t page_id, uint16_t offset, NodeHandleType
+            type ) :
         page_location_( std::in_place, page_id, offset ),
-        type_( 0 ) {}
+        type_( type.type_ ) {
+    }
 
     tree_node_handle() :
         page_location_( std::nullopt ),
@@ -123,7 +135,6 @@ public:
     bool operator!=( const tree_node_handle &other ) const {
         return !(*this == other);
     }
-
 
     bool operator==( const std::nullptr_t ) const {
         return not page_location_.has_value();
@@ -149,8 +160,8 @@ public:
         return type_;
     }
 
-    inline void set_type( uint16_t type ) {
-        type_ = type;
+    inline void set_type( NodeHandleType type ) {
+        type_ = type.type_;
     }
 
     friend std::ostream& operator<<(std::ostream &os, const
@@ -173,7 +184,7 @@ private:
 };
 
 template <typename T, typename U>
-pinned_node_ptr<U> reinterpret_handle_ptr( pinned_node_ptr<T> &ptr )
+pinned_node_ptr<U> reinterpret_handle_ptr( const pinned_node_ptr<T> &ptr )
 {
     return pinned_node_ptr( ptr.pool_, (U *) ptr.obj_ptr_, ptr.page_ptr_ );
 }
@@ -194,13 +205,14 @@ public:
     }
 
     template <typename T>
-    std::pair<pinned_node_ptr<T>, tree_node_handle> create_new_tree_node() {
-        return create_new_tree_node<T>( sizeof( T ) );
+    std::pair<pinned_node_ptr<T>, tree_node_handle>
+    create_new_tree_node( NodeHandleType type_code = NodeHandleType(0) ) {
+        return create_new_tree_node<T>( sizeof( T ), type_code );
     }
 
     template <typename T>
     std::pair<pinned_node_ptr<T>, tree_node_handle>
-    create_new_tree_node( uint16_t node_size ) {
+    create_new_tree_node( uint16_t node_size, NodeHandleType type_code ) {
         assert( node_size <= PAGE_DATA_SIZE );
 
         for( auto iter = free_list_.begin(); iter != free_list_.end();
@@ -210,9 +222,9 @@ public:
                 continue;
             }
 
+            alloc_location.first.set_type( type_code );
+
             size_t remainder = alloc_location.second - node_size;
-            std::cout << "Alloc'd from the freelist. Remaining: "
-                <<remainder << std::endl;
             free_list_.erase( iter );
             page *page_ptr = buffer_pool_.get_page(
                 alloc_location.first.get_page_id() );
@@ -229,8 +241,8 @@ public:
                 uint16_t new_offset = alloc_location.first.get_offset() +
                     node_size;
                 tree_node_handle split_handle(
-                        alloc_location.first.get_page_id(), new_offset
-                        );
+                        alloc_location.first.get_page_id(), new_offset,
+                        type_code );
                 free_list_.push_back( std::make_pair( split_handle,
                             remainder ) );
             }
@@ -252,11 +264,8 @@ public:
         uint16_t offset_into_page = (PAGE_DATA_SIZE - space_left_in_cur_page_);
         T *obj_ptr = (T *) (page_ptr->data_ + offset_into_page);
         space_left_in_cur_page_ -= node_size;
-        std::cout << "True space left in page: " <<
-            space_left_in_cur_page_ << std::endl;
-
         tree_node_handle meta_ptr( page_ptr->header_.page_id_,
-                offset_into_page );
+                offset_into_page, type_code );
         
         return std::make_pair( pinned_node_ptr( buffer_pool_, obj_ptr,
                     page_ptr ), std::move(meta_ptr) );
@@ -264,7 +273,6 @@ public:
 
     void free( tree_node_handle handle, uint16_t alloc_size ) {
         if( handle.get_type() == 1 ) {
-#warning Remember to measure the node sizes at the end!
             // Bigger to force error so we measure
             assert( alloc_size == 184 );
         } else if( handle.get_type() == 2 ) {

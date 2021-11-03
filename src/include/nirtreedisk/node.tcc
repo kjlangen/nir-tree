@@ -234,20 +234,22 @@ SplitResult LEAF_NODE_CLASS_TYPES::splitNode(
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
 
     auto alloc_data =
-        allocator->create_new_tree_node<LEAF_NODE_CLASS_TYPES>();
+        allocator->create_new_tree_node<LEAF_NODE_CLASS_TYPES>(
+                NodeHandleType( LEAF_NODE ) );
     tree_node_handle left_handle = alloc_data.second;
-    left_handle.set_type( LEAF_NODE );
     auto left_node = alloc_data.first; // take pin
     new (&(*left_node)) LEAF_NODE_CLASS_TYPES( this->treeRef,
             this->parent, left_handle );
     assert( left_node->self_handle_ == left_handle );
+    assert( left_handle.get_type() == LEAF_NODE );
 
-    alloc_data = allocator->create_new_tree_node<LEAF_NODE_CLASS_TYPES>();
+    alloc_data = allocator->create_new_tree_node<LEAF_NODE_CLASS_TYPES>(
+            NodeHandleType( LEAF_NODE ) );
     tree_node_handle right_handle = alloc_data.second;
-    right_handle.set_type( LEAF_NODE );
     auto right_node = alloc_data.first; // take pin
     new (&(*right_node)) LEAF_NODE_CLASS_TYPES( this->treeRef, this->parent, right_handle );
     assert( right_node->self_handle_ == right_handle );
+    assert( right_handle.get_type() == LEAF_NODE );
 
     SplitResult split = {
         { tree_node_handle(nullptr), left_handle }, 
@@ -347,11 +349,11 @@ SplitResult LEAF_NODE_CLASS_TYPES::splitNode(
         auto poly_alloc_data =
             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                     compute_sizeof_inline_unbounded_polygon(
-                        overfull_rect_count ) );
+                        overfull_rect_count ), NodeHandleType(
+                            BIG_POLYGON ) );
         new (&(*poly_alloc_data.first))
             InlineUnboundedIsotheticPolygon( allocator,
                     overfull_rect_count );
-        poly_alloc_data.second.set_type( BIG_POLYGON );
         split.leftBranch.boundingPoly = poly_alloc_data.second;
         poly_alloc_data.first->push_polygon_to_disk( left_polygon );
     }
@@ -374,11 +376,11 @@ SplitResult LEAF_NODE_CLASS_TYPES::splitNode(
         auto poly_alloc_data =
             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                     compute_sizeof_inline_unbounded_polygon(
-                        overfull_rect_count ) );
+                        overfull_rect_count ), NodeHandleType(
+                            BIG_POLYGON ) );
         new (&(*poly_alloc_data.first))
             InlineUnboundedIsotheticPolygon( allocator,
                     overfull_rect_count );
-        poly_alloc_data.second.set_type( BIG_POLYGON );
         split.rightBranch.boundingPoly = poly_alloc_data.second;
         poly_alloc_data.first->push_polygon_to_disk( right_polygon );
 
@@ -464,7 +466,7 @@ SplitResult LEAF_NODE_CLASS_TYPES::adjustTree()
         }
 
         // Otherwise, split node
-        current_node->splitNode();
+        propagationSplit = current_node->splitNode();
 
         auto left_node = tree_ref_backup->get_node(
                 propagationSplit.leftBranch.child );
@@ -485,7 +487,6 @@ SplitResult LEAF_NODE_CLASS_TYPES::adjustTree()
         // Ascend, propagating splits
         current_handle = left_node->parent;
     }
-
     return propagationSplit;
 }
 
@@ -496,17 +497,19 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::insert( Point givenPoint ) {
 
     // This is a leaf, so we are the ONLY node.
     entries.at( this->cur_offset_++ ) = givenPoint;
+
     SplitResult finalSplit = adjustTree();
 
     // Grow the tree taller if we need to
     if( finalSplit.leftBranch.child != nullptr and finalSplit.rightBranch.child != nullptr ) {
         tree_node_allocator *allocator = get_node_allocator( this->treeRef );
         auto alloc_data =
-            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
+            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                    NodeHandleType( BRANCH_NODE ));
         new (&(*alloc_data.first)) BRANCH_NODE_CLASS_TYPES( this->treeRef,
                 tree_node_handle(nullptr), alloc_data.second );
         auto new_root_handle = alloc_data.second;
-        new_root_handle.set_type( BRANCH_NODE );
+        assert( new_root_handle.get_type() == BRANCH_NODE );
         auto new_root_node = alloc_data.first;
 
 
@@ -524,6 +527,7 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::insert( Point givenPoint ) {
         allocator->free( this->self_handle_, sizeof( LEAF_NODE_CLASS_TYPES ) );
         this->self_handle_ = tree_node_handle( nullptr );
 
+        assert( new_root_handle.get_type() == BRANCH_NODE );
         return new_root_handle;
     }
 
@@ -1048,6 +1052,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseNode(Point givenPoint)
         if( cur_node_handle.get_type() == LEAF_NODE ) {
             return cur_node_handle;
         } else {
+            assert( cur_node_handle.get_type() == BRANCH_NODE );
+
             pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
                 cur_node_pre_cast = this->treeRef->get_node( cur_node_handle );
             auto cur_node =
@@ -1159,13 +1165,13 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                         auto alloc_data =
                             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                                     compute_sizeof_inline_unbounded_polygon(
-                                        overfull_rect_count ) );
+                                        overfull_rect_count ),
+                                    NodeHandleType( BIG_POLYGON ) );
                         new (&(*alloc_data.first))
                             InlineUnboundedIsotheticPolygon( allocator,
                                     overfull_rect_count );
                         alloc_data.first->push_polygon_to_disk(
                                 node_poly );
-                        alloc_data.second.set_type( BIG_POLYGON );
                         // Point to the newly created polygon location
                         b.boundingPoly = alloc_data.second;
                     }
@@ -1209,11 +1215,11 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                         auto poly_alloc_data =
                             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                                     compute_sizeof_inline_unbounded_polygon(
-                                        overfull_rect_count ) );
+                                        overfull_rect_count ),
+                                    NodeHandleType( BIG_POLYGON ) );
                         new (&(*poly_alloc_data.first))
                             InlineUnboundedIsotheticPolygon( allocator,
                                     overfull_rect_count );
-                        poly_alloc_data.second.set_type( BIG_POLYGON );
                         b.boundingPoly = poly_alloc_data.second;
                         poly_alloc_data.first->push_polygon_to_disk(
                                 node_poly );
@@ -1235,7 +1241,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::findLeaf(Point givenPoint)
 {
 
     // Initialize our context stack
-
     std::stack<tree_node_handle> context;
     context.push( this->self_handle_ );
     tree_node_handle current_node_handle;
@@ -1246,7 +1251,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::findLeaf(Point givenPoint)
         current_node_handle = context.top();
         context.pop();
 
-        if( current_node_handle == LEAF_NODE ) {
+        if( current_node_handle.get_type() == LEAF_NODE ) {
             pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> current_node_pre_cast =
                 this->treeRef->get_node( current_node_handle );
             auto current_node = 
@@ -1377,20 +1382,22 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
     Partition p,
     bool is_downsplit
 ) {
+    assert( this->self_handle_.get_type() == BRANCH_NODE );
     using NodeType = BRANCH_NODE_CLASS_TYPES;
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
 
     auto alloc_data =
-        allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
+        allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                NodeHandleType( BRANCH_NODE ) );
     tree_node_handle left_handle = alloc_data.second;
-    left_handle.set_type( BRANCH_NODE );
     auto left_node = alloc_data.first; // take pin
     new (&(*left_node)) NodeType( this->treeRef, this->parent, left_handle );
     assert( left_node->self_handle_ == left_handle );
 
-    alloc_data = allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
+    alloc_data =
+        allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                NodeHandleType( BRANCH_NODE ) );
     tree_node_handle right_handle = alloc_data.second;
-    right_handle.set_type( BRANCH_NODE );
     auto right_node = alloc_data.first; // take pin
     new (&(*right_node)) NodeType( this->treeRef, this->parent, right_handle );
     assert( right_node->self_handle_ == right_handle );
@@ -1566,11 +1573,11 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
         auto alloc_data =
             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                     compute_sizeof_inline_unbounded_polygon(
-                        overfull_rect_count ) );
+                        overfull_rect_count ), NodeHandleType(
+                            BIG_POLYGON ) );
         new (&(*alloc_data.first))
             InlineUnboundedIsotheticPolygon( allocator,
                     overfull_rect_count  );
-        alloc_data.second.set_type( BIG_POLYGON );
         split.leftBranch.boundingPoly = alloc_data.second;
         alloc_data.first->push_polygon_to_disk( left_polygon );
     } else {
@@ -1595,11 +1602,11 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
         auto alloc_data =
             allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                     compute_sizeof_inline_unbounded_polygon(
-                        overfull_rect_count ) );
+                        overfull_rect_count ), NodeHandleType(
+                            BIG_POLYGON ) );
         new (&(*alloc_data.first))
             InlineUnboundedIsotheticPolygon( allocator,
                     overfull_rect_count );
-        alloc_data.second.set_type( BIG_POLYGON );
         split.rightBranch.boundingPoly = alloc_data.second;
         alloc_data.first->push_polygon_to_disk( right_polygon );
     } else {
@@ -1624,6 +1631,7 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode()
 NODE_TEMPLATE_PARAMS
 tree_node_handle BRANCH_NODE_CLASS_TYPES::insert( Point givenPoint ) {
 
+    assert( this->self_handle_.get_type() == BRANCH_NODE );
     // Find the appropriate position for the new point
     tree_node_handle current_handle = chooseNode( givenPoint );
 
@@ -1644,10 +1652,10 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert( Point givenPoint ) {
     // Grow the tree taller if we need to
     if( finalSplit.leftBranch.child != nullptr and finalSplit.rightBranch.child != nullptr ) {
         auto alloc_data =
-            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
+            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                    NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data.first)) BRANCH_NODE_CLASS_TYPES( this->treeRef,
                 tree_node_handle(nullptr), alloc_data.second );
-        alloc_data.second.set_type( BRANCH_NODE );
         auto new_root_handle = alloc_data.second;
         auto new_root_node = alloc_data.first;
 

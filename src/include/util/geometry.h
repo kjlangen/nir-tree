@@ -583,7 +583,7 @@ class InlineUnboundedIsotheticPolygon {
                 if( next_poly_handle == nullptr ) {
                     auto alloc_data =
                         allocator_->create_new_tree_node<PageableIsotheticPolygon>(
-                                PAGE_DATA_SIZE );
+                                PAGE_DATA_SIZE, NodeHandleType(0) );
                     new (&(*(alloc_data.first)))
                         PageableIsotheticPolygon();
                     if( poly_pin == nullptr ) {

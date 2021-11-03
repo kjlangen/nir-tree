@@ -1796,7 +1796,7 @@ TEST_CASE( "Geometry: Materialize single page big poly" ) {
 
     auto alloc_data =
         allocator.create_new_tree_node<TestInlineUnboundedIsotheticPolygon>(
-                PAGE_DATA_SIZE );
+                PAGE_DATA_SIZE, NodeHandleType( 0 ) );
     new (&(*(alloc_data.first))) TestInlineUnboundedIsotheticPolygon(
             &allocator, max_rects_on_first_page );
     pinned_node_ptr<TestInlineUnboundedIsotheticPolygon> inline_poly = alloc_data.first;
@@ -1856,7 +1856,7 @@ TEST_CASE( "Geometry: Materialize multi-page big poly" ) {
 
     auto alloc_data =
         allocator.create_new_tree_node<TestInlineUnboundedIsotheticPolygon>(
-                PAGE_DATA_SIZE );
+                PAGE_DATA_SIZE, NodeHandleType( 0 ) );
     new (&(*(alloc_data.first))) TestInlineUnboundedIsotheticPolygon(
             &allocator, max_rects_on_first_page );
     pinned_node_ptr<TestInlineUnboundedIsotheticPolygon> inline_poly = alloc_data.first;
@@ -1879,7 +1879,7 @@ TEST_CASE( "Geometry: Materialize multi-page big poly" ) {
 
     auto poly_alloc_data =
         allocator.create_new_tree_node<PageableIsotheticPolygon>(
-                PAGE_DATA_SIZE );
+                PAGE_DATA_SIZE, NodeHandleType( 0 ) );
     pinned_node_ptr<PageableIsotheticPolygon> pageable_poly =
         poly_alloc_data.first;
     new (&(*(poly_alloc_data.first))) PageableIsotheticPolygon();
@@ -1893,7 +1893,7 @@ TEST_CASE( "Geometry: Materialize multi-page big poly" ) {
 
     poly_alloc_data =
         allocator.create_new_tree_node<PageableIsotheticPolygon>(
-                PAGE_DATA_SIZE );
+                PAGE_DATA_SIZE, NodeHandleType( 0 ) );
     new (&(*poly_alloc_data.first)) PageableIsotheticPolygon();
     pageable_poly->next_ = poly_alloc_data.second;
 
@@ -1944,7 +1944,7 @@ TEST_CASE( "Write single_page big poly to disk" ) {
     polygon.recomputeBoundingBox();
 
     auto alloc_data = allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-            PAGE_DATA_SIZE );
+            PAGE_DATA_SIZE, NodeHandleType( 0 ) );
 
     new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
             &allocator, max_rects_on_first_page );
@@ -1990,7 +1990,7 @@ TEST_CASE( "Write multi-page big poly to disk" ) {
     polygon.recomputeBoundingBox();
 
     auto alloc_data = allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-            PAGE_DATA_SIZE );
+            PAGE_DATA_SIZE, NodeHandleType( 0 ) );
 
     new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
             &allocator, max_rects_on_first_page );

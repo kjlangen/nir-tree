@@ -218,19 +218,17 @@ TEST_CASE( "Tree Node Allocator: Test freelist split allocs" ) {
     unsigned remaining_slots = (PAGE_DATA_SIZE % sizeof(NodeType))/poly_size + 
         sizeof(NodeType)/poly_size;
     REQUIRE( remaining_slots == 7 );
-    std::cout << "Space: " << compute_sizeof_inline_unbounded_polygon(
-                        MAX_RECTANGLE_COUNT+1) << std::endl;
     for( unsigned i = 0; i < remaining_slots; i++ ) {
         auto alloc_data2 =
             allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                     compute_sizeof_inline_unbounded_polygon(
-                        MAX_RECTANGLE_COUNT+1) );
+                        MAX_RECTANGLE_COUNT+1), NodeHandleType(0) );
         REQUIRE( allocator.get_cur_page() == 0 );
     }
     auto alloc_data2 =
             allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                     compute_sizeof_inline_unbounded_polygon(
-                        MAX_RECTANGLE_COUNT+1) );
+                        MAX_RECTANGLE_COUNT+1), NodeHandleType(0) );
     REQUIRE( allocator.get_cur_page() == 1 );
 
 }

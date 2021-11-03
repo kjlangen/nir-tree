@@ -797,7 +797,7 @@ namespace nirtreedisk
 			void stat();
 	};
 
-    enum NodeHandleType {
+    enum NodeHandleTypeCodes {
         UNASSIGNED = 0,
         LEAF_NODE = 1,
         BRANCH_NODE = 2,
