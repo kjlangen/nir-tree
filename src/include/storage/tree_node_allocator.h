@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <list>
+#include <cstdint>
 
 template <typename T>
 class pinned_node_ptr {
@@ -57,7 +58,6 @@ public:
         return !(obj_ptr_ == ptr); 
     }
 
-
     bool operator==( const pinned_node_ptr &other ) const {
         return obj_ptr_ == other.obj_ptr_;
     }
@@ -65,7 +65,6 @@ public:
     bool operator!=( const pinned_node_ptr &other ) const {
         return !(obj_ptr_ == other.obj_ptr_);
     }
-
 
     constexpr T& operator*() const {
         return *obj_ptr_;
@@ -75,7 +74,6 @@ public:
         return obj_ptr_;
     }
 
-private:
     buffer_pool &pool_;
     T *obj_ptr_;
     page *page_ptr_;
@@ -84,17 +82,35 @@ private:
 
 class tree_node_handle {
 public:
-    tree_node_handle( size_t page_id, size_t offset ) :
-        page_location_( std::in_place, page_id, offset ) {}
+    struct page_location {
+        page_location( unsigned page_id, unsigned offset ) :
+            page_id_( page_id ),
+            offset_( offset ) {}
 
-    tree_node_handle() {
-        page_location_= std::nullopt;
-    }
+        // Total size = 64 bytes. I could make this smaller, but
+        // I think x86 wants to access things in units of 64 bytes
+        // anyways
+        uint32_t page_id_;
+        uint16_t offset_; // Only need 12 bits to index 4k pages
 
-    tree_node_handle( std::nullptr_t ) {
-        page_location_= std::nullopt;
-    }
+         
+        bool operator==( const page_location &other ) const {
+            return page_id_ == other.page_id_ and offset_ ==
+                other.offset_;
+        }
+    };
 
+    tree_node_handle( uint32_t page_id, uint16_t offset ) :
+        page_location_( std::in_place, page_id, offset ),
+        type_( 0 ) {}
+
+    tree_node_handle() :
+        page_location_( std::nullopt ),
+        type_( 0 ) {}
+
+    tree_node_handle( std::nullptr_t ) :
+        page_location_( std::nullopt ),
+        type_( 0 ) {}
 
     operator bool() const {
         return page_location_.has_value();
@@ -121,24 +137,20 @@ public:
         return *this;
     }
 
-    struct page_location {
-        page_location( size_t page_id, size_t offset ) :
-            page_id_( page_id ),
-            offset_( offset ) {}
-        size_t page_id_;
-        size_t offset_;
-        bool operator==( const page_location &other ) const {
-            return page_id_ == other.page_id_ and offset_ ==
-                other.offset_;
-        }
-    };
-
-    inline size_t get_page_id() {
+    inline uint32_t get_page_id() {
         return page_location_.value().page_id_;
     }
 
-    inline size_t get_offset() {
+    inline uint16_t get_offset() {
         return page_location_.value().offset_;
+    }
+    
+    inline uint16_t get_type() {
+        return type_;
+    }
+
+    inline void set_type( uint16_t type ) {
+        type_ = type;
     }
 
     friend std::ostream& operator<<(std::ostream &os, const
@@ -153,9 +165,18 @@ public:
     }
 
 private:
-
     std::optional<page_location> page_location_;
+    // Special bits to indicate what type of node is on the other
+    // end of this handle.
+    uint16_t type_;
+
 };
+
+template <typename T, typename U>
+pinned_node_ptr<U> reinterpret_handle_ptr( pinned_node_ptr<T> &ptr )
+{
+    return pinned_node_ptr( ptr.pool_, (U *) ptr.obj_ptr_, ptr.page_ptr_ );
+}
 
 static_assert( std::is_trivially_copyable<tree_node_handle>::value );
 
@@ -179,7 +200,7 @@ public:
 
     template <typename T>
     std::pair<pinned_node_ptr<T>, tree_node_handle>
-    create_new_tree_node( size_t node_size ) {
+    create_new_tree_node( uint16_t node_size ) {
         assert( node_size <= PAGE_DATA_SIZE );
 
         for( auto iter = free_list_.begin(); iter != free_list_.end();
@@ -190,6 +211,8 @@ public:
             }
 
             size_t remainder = alloc_location.second - node_size;
+            std::cout << "Alloc'd from the freelist. Remaining: "
+                <<remainder << std::endl;
             free_list_.erase( iter );
             page *page_ptr = buffer_pool_.get_page(
                 alloc_location.first.get_page_id() );
@@ -202,8 +225,8 @@ public:
             // Can't use that symbol here because it would be recursive
             // includes. So instead I static assert it in that file and
             // use the constant here.
-            if( remainder >= 280 ) {
-                size_t new_offset = alloc_location.first.get_offset() +
+            if( remainder >= 272 ) {
+                uint16_t new_offset = alloc_location.first.get_offset() +
                     node_size;
                 tree_node_handle split_handle(
                         alloc_location.first.get_page_id(), new_offset
@@ -226,9 +249,11 @@ public:
                             nullptr ) ), tree_node_handle() );
         }
 
-        size_t offset_into_page = (PAGE_DATA_SIZE - space_left_in_cur_page_);
+        uint16_t offset_into_page = (PAGE_DATA_SIZE - space_left_in_cur_page_);
         T *obj_ptr = (T *) (page_ptr->data_ + offset_into_page);
         space_left_in_cur_page_ -= node_size;
+        std::cout << "True space left in page: " <<
+            space_left_in_cur_page_ << std::endl;
 
         tree_node_handle meta_ptr( page_ptr->header_.page_id_,
                 offset_into_page );
@@ -237,7 +262,15 @@ public:
                     page_ptr ), std::move(meta_ptr) );
     }
 
-    void free( tree_node_handle handle, size_t alloc_size ) {
+    void free( tree_node_handle handle, uint16_t alloc_size ) {
+        if( handle.get_type() == 1 ) {
+#warning Remember to measure the node sizes at the end!
+            // Bigger to force error so we measure
+            assert( alloc_size == 184 );
+        } else if( handle.get_type() == 2 ) {
+            // Bigger to force error so we measure
+            assert( alloc_size == 1848 );
+        }
         free_list_.push_back( std::make_pair( handle, alloc_size ) );
     }
 
@@ -261,9 +294,9 @@ public:
     buffer_pool buffer_pool_;
 
 protected:
-    page *get_page_to_alloc_on( size_t object_size );
+    page *get_page_to_alloc_on( uint16_t object_size );
 
-    size_t space_left_in_cur_page_;
-    size_t cur_page_;
-    std::list<std::pair<tree_node_handle,size_t>> free_list_;
+    uint16_t space_left_in_cur_page_;
+    uint32_t cur_page_;
+    std::list<std::pair<tree_node_handle,uint16_t>> free_list_;
 };

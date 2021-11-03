@@ -60,9 +60,12 @@ namespace nirtreedisk
 
     struct Branch
     {
+        Branch() = default;
+
         Branch( InlineBoundedIsotheticPolygon boundingPoly,
                 tree_node_handle child ) : boundingPoly( boundingPoly ),
         child( child ) {}
+
 
         Branch( tree_node_handle boundingPoly, tree_node_handle child )
             : boundingPoly( boundingPoly ), child( child ) {}
@@ -119,44 +122,137 @@ namespace nirtreedisk
              class strategy>
     requires (std::derived_from<strategy,BranchPartitionStrategy>)
     class Node {
-		private:
-			struct ReinsertionEntry
-			{
-				Rectangle boundingBox;
-				Point data;
-                tree_node_handle child;
-				unsigned level;
-			};
+    protected:
+        Node( NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>
+                *treeRef, tree_node_handle parent, size_t cur_offset,
+                tree_node_handle self_handle ) :
+            treeRef( treeRef ),
+            parent( parent ),
+            cur_offset_( cur_offset ),
+            self_handle_( self_handle ) {}
+    public:
+        NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
+        tree_node_handle parent;
+        size_t cur_offset_;
+        tree_node_handle self_handle_;
+
+        virtual void deleteSubtrees() = 0;
+        unsigned get_entry_count() const {
+            return (unsigned) cur_offset_;
+        }
+
+        virtual SplitResult splitNode() = 0;
+        virtual SplitResult splitNode( Partition p, bool is_down_split ) = 0;
+
+        // Data structure interface functions
+        virtual void exhaustiveSearch(Point &requestedPoint,
+                std::vector<Point> &accumulator) = 0;
+        virtual std::vector<Point> search(Point &requestedPoint) = 0;
+        virtual std::vector<Point> search(Rectangle &requestedRectangle)
+            = 0;
+        virtual tree_node_handle insert(Point givenPoint) = 0;
+        virtual tree_node_handle remove(Point givenPoint) = 0;
+
+        // Miscellaneous
+        virtual unsigned checksum() = 0;
+        virtual bool validate(tree_node_handle expectedParent, unsigned
+                index) = 0;
+        virtual std::vector<Point> bounding_box_validate() = 0;
+        virtual void print(unsigned n=0) = 0;
+        virtual void printTree(unsigned n=0) = 0;
+        virtual unsigned height() = 0;
+        virtual void stat() = 0;
+
+	};
+
+
+    template <int min_branch_factor, int max_branch_factor,
+             class strategy>
+    requires (std::derived_from<strategy,BranchPartitionStrategy>)
+    class LeafNode : public Node<min_branch_factor,max_branch_factor,strategy> {
 
 		public:
-			NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
-            typedef std::variant<Point, Branch> NodeEntry;
-
-            tree_node_handle parent;
-            std::array<NodeEntry, max_branch_factor+1> entries;
-            size_t cur_offset_;
-            tree_node_handle self_handle_;
+            std::array<Point, max_branch_factor+1> entries;
 
 			// Constructors and destructors
-			Node(NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef, tree_node_handle parent,
-                    tree_node_handle self_handle ) :
-                treeRef( treeRef ),
-                parent( parent ),
-                cur_offset_( 0 ),
-                self_handle_( self_handle ) {
+			LeafNode(
+                NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef,
+                tree_node_handle parent,
+                tree_node_handle self_handle
+            ) :
+                Node<min_branch_factor,max_branch_factor,strategy>(
+                        treeRef, parent, 0, self_handle ) {
                     static_assert( sizeof(
-                                Node<min_branch_factor,max_branch_factor,strategy>)
+                                LeafNode<min_branch_factor,max_branch_factor,strategy>)
                             <= PAGE_DATA_SIZE );
             }
 			void deleteSubtrees();
-            void free();
 
 			// Helper functions
-			bool isLeaf();
+			Rectangle boundingBox();
+
+            void removePoint( const Point &point );
+            void removeEntry( const tree_node_handle &handle );
+
+            void addPoint( const Point &point ) {
+                entries.at( this->cur_offset_++ ) = point;
+            }
+
+			tree_node_handle chooseNode(Point givenPoint);
+			tree_node_handle findLeaf(Point givenPoint);
+
+			Partition partitionNode();
+			Partition partitionLeafNode();
+
+            void make_disjoint_from_children( IsotheticPolygon &polygon,
+                    tree_node_handle handle_to_skip );
+			SplitResult splitNode(Partition p, bool is_downsplit);
+			SplitResult splitNode();
+			SplitResult adjustTree();
+			void condenseTree();
+
+			// Data structure interface functions
+			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
+			std::vector<Point> search(Point &requestedPoint);
+			std::vector<Point> search(Rectangle &requestedRectangle);
+			tree_node_handle insert(Point givenPoint);
+			tree_node_handle remove(Point givenPoint);
+
+			// Miscellaneous
+			unsigned checksum();
+			bool validate(tree_node_handle expectedParent, unsigned index);
+            std::vector<Point> bounding_box_validate();
+			void print(unsigned n=0);
+			void printTree(unsigned n=0);
+			unsigned height();
+			void stat();
+	};
+
+    template <int min_branch_factor, int max_branch_factor,
+             class strategy>
+    requires (std::derived_from<strategy,BranchPartitionStrategy>)
+    class BranchNode : public Node<min_branch_factor,max_branch_factor,strategy> {
+
+		public:
+
+            std::array<Branch, max_branch_factor+1> entries;
+
+			// Constructors and destructors
+			BranchNode(NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef, tree_node_handle parent,
+                    tree_node_handle self_handle ) :
+                Node<min_branch_factor,max_branch_factor,strategy>(
+                        treeRef, parent, 0, self_handle ) {
+                    static_assert( sizeof(
+                                BranchNode<min_branch_factor,max_branch_factor,strategy>)
+                            <= PAGE_DATA_SIZE );
+            }
+			void deleteSubtrees();
+
+			// Helper functions
 			Rectangle boundingBox();
 			Branch &locateBranch(tree_node_handle child) {
-                for( size_t i = 0; i < cur_offset_; i++ ) {
-                    Branch &b = std::get<Branch>( entries.at(i) );
+                for( size_t i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b = entries.at(i);
                     if (b.child == child)
                     {
                         return b;
@@ -167,17 +263,15 @@ namespace nirtreedisk
             };
 
 			void updateBranch(tree_node_handle child,  const InlineBoundedIsotheticPolygon &boundingPoly);
-            void removeEntry( const NodeEntry &entry );
-            void removeEntry( const tree_node_handle &handle );
+            void removeBranch( const tree_node_handle &handle );
 
-            void addEntryToNode( const NodeEntry &entry ) {
-                entries.at( cur_offset_++ ) = entry;
+            void addBranchToNode( const Branch &entry ) {
+                entries.at( this->cur_offset_++ ) = entry;
             }
 
 			tree_node_handle chooseNode(Point givenPoint);
 			tree_node_handle findLeaf(Point givenPoint);
 			Partition partitionNode();
-			Partition partitionLeafNode();
 
             template <class S = strategy>
             Partition partitionBranchNode( typename
@@ -185,10 +279,11 @@ namespace nirtreedisk
                     * = 0 ) {
                 Partition defaultPartition;
 
-                tree_node_allocator *allocator = get_node_allocator( treeRef );
+                tree_node_allocator *allocator = get_node_allocator(
+                        this->treeRef );
                 std::vector<Rectangle> all_branch_polys;
-                for( unsigned i = 0; i < cur_offset_; i++ ) {
-                    Branch &b_i = std::get<Branch>( entries.at(i) );
+                for( unsigned i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b_i = entries.at(i);
                     all_branch_polys.push_back( b_i.get_summary_rectangle(
                                 allocator ) );
                 }
@@ -272,10 +367,11 @@ namespace nirtreedisk
                     S>::type * = 0) {
                 Partition defaultPartition;
 
-                tree_node_allocator *allocator = get_node_allocator( treeRef );
+                tree_node_allocator *allocator = get_node_allocator(
+                        this->treeRef );
                 std::vector<Rectangle> all_branch_polys;
-                for( unsigned i = 0; i < cur_offset_; i++ ) {
-                    Branch &b_i = std::get<Branch>( entries.at(i) );
+                for( unsigned i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b_i = entries.at(i);
                     all_branch_polys.push_back( b_i.get_summary_rectangle(
                                 allocator ) );
                 }
@@ -387,10 +483,8 @@ namespace nirtreedisk
 
                 // Sort per the dimension we need
                 std::sort( entries.begin(), entries.begin() +
-                        cur_offset_,
-                        [this,allocator,best_dimension](NodeEntry &entry1, NodeEntry &entry2 ) {
-                            Branch &b1 = std::get<Branch>( entry1 );
-                            Branch &b2 = std::get<Branch>( entry2 );
+                        this->cur_offset_,
+                        [this,allocator,best_dimension]( Branch &b1, Branch &b2 ) {
                             Rectangle poly1 = b1.get_summary_rectangle(
                                     allocator );
                             Rectangle poly2 = b2.get_summary_rectangle(
@@ -493,10 +587,11 @@ namespace nirtreedisk
                     S>::type * = 0) {
                 Partition defaultPartition;
 
-                tree_node_allocator *allocator = get_node_allocator( treeRef );
+                tree_node_allocator *allocator = get_node_allocator(
+                        this->treeRef );
                 std::vector<Rectangle> all_branch_polys;
-                for( unsigned i = 0; i < cur_offset_; i++ ) {
-                    Branch &b_i = std::get<Branch>( entries.at(i) );
+                for( unsigned i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b_i = entries.at(i);
                     all_branch_polys.push_back( b_i.get_summary_rectangle(
                                 allocator ) );
                 }
@@ -651,10 +746,8 @@ namespace nirtreedisk
 
                 // Sort per the dimension we need
                 std::sort( entries.begin(), entries.begin() +
-                        cur_offset_,
-                        [this,allocator,best_dimension](NodeEntry &entry1, NodeEntry &entry2 ) {
-                            Branch &b1 = std::get<Branch>( entry1 );
-                            Branch &b2 = std::get<Branch>( entry2 );
+                        this->cur_offset_,
+                        [this,allocator,best_dimension]( Branch &b1, Branch &b2 ) {
                             Rectangle poly1 = b1.get_summary_rectangle(
                                     allocator );
                             Rectangle poly2 = b2.get_summary_rectangle(
@@ -704,5 +797,13 @@ namespace nirtreedisk
 			void stat();
 	};
 
+    enum NodeHandleType {
+        UNASSIGNED = 0,
+        LEAF_NODE = 1,
+        BRANCH_NODE = 2,
+        BIG_POLYGON = 3,
+        REPACKED_LEAF_NODE = 4,
+        REPACKED_BRANCH_NODE = 5
+    };
 #include "node.tcc"
 }

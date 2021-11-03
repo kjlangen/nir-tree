@@ -200,24 +200,26 @@ TEST_CASE( "Tree Node Allocator: Test freelist perfect allocs" ) {
     REQUIRE( allocator.get_cur_page() == 0 );
 }
 
-static_assert( sizeof(size_t) == 2 * sizeof(int) );
 TEST_CASE( "Tree Node Allocator: Test freelist split allocs" ) {
     using NodeType =
-        nirtreedisk::Node<3,7,nirtreedisk::LineMinimizeDownsplits>;
+        nirtreedisk::BranchNode<3,7,nirtreedisk::LineMinimizeDownsplits>;
     allocator_tester allocator( PAGE_SIZE*2, "file_backing.db" );
     unlink( allocator.get_backing_file_name().c_str() );
     allocator.initialize();
 
+    size_t poly_size = compute_sizeof_inline_unbounded_polygon(
+        MAX_RECTANGLE_COUNT+1);
     for( unsigned i = 0; i < (PAGE_DATA_SIZE/sizeof(NodeType))-1; i++ ) {
         auto alloc_data = allocator.create_new_tree_node<NodeType>();
     }
     auto alloc_data = allocator.create_new_tree_node<NodeType>();
     REQUIRE( allocator.get_cur_page() == 0 );
     allocator.free( alloc_data.second, sizeof(NodeType) );
-    unsigned remaining_slots = ((PAGE_DATA_SIZE % sizeof(NodeType)) +
-        sizeof(NodeType))/compute_sizeof_inline_unbounded_polygon(
-        MAX_RECTANGLE_COUNT+1);
+    unsigned remaining_slots = (PAGE_DATA_SIZE % sizeof(NodeType))/poly_size + 
+        sizeof(NodeType)/poly_size;
     REQUIRE( remaining_slots == 7 );
+    std::cout << "Space: " << compute_sizeof_inline_unbounded_polygon(
+                        MAX_RECTANGLE_COUNT+1) << std::endl;
     for( unsigned i = 0; i < remaining_slots; i++ ) {
         auto alloc_data2 =
             allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(

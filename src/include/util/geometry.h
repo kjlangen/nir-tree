@@ -715,5 +715,6 @@ constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects )
 // tree_node_allocator to match.
 // 216 for 3
 // 280 for 5
+//FIXME broken
 static_assert( compute_sizeof_inline_unbounded_polygon(
-            MAX_RECTANGLE_COUNT + 1 ) == 280 );
+            MAX_RECTANGLE_COUNT + 1 ) == 272 );

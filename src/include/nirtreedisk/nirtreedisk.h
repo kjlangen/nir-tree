@@ -58,10 +58,11 @@ namespace nirtreedisk
                 // If this is a fresh tree, we need a root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
-                        node_allocator_.create_new_tree_node<Node<min_branch_factor,max_branch_factor,strategy>>();
+                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>();
                     root = alloc.second;
+                    root.set_type( LEAF_NODE );
                     new (&(*(alloc.first)))
-                        Node<min_branch_factor,max_branch_factor,strategy>( this,
+                        LeafNode<min_branch_factor,max_branch_factor,strategy>( this,
                                 tree_node_handle(nullptr), root );
 
                     return;
@@ -96,10 +97,12 @@ namespace nirtreedisk
 			void print();
 			void visualize();
 
-            inline pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> get_node( tree_node_handle node_handle ) {
+            // We can downcast this Node Ptr as long as we do not
+            // support objects that span multiple pages.
+            inline
+                pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> get_node( tree_node_handle node_handle ) {
                 auto ptr =
-                    node_allocator_.get_tree_node<Node<min_branch_factor,max_branch_factor,strategy>>(
-                            node_handle );
+                    node_allocator_.get_tree_node<Node<min_branch_factor,max_branch_factor,strategy>>( node_handle );
                 ptr->treeRef = this;
                 return ptr;
             }
