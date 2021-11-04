@@ -8,6 +8,7 @@
 #include <string>
 #include <list>
 #include <cstdint>
+#include <limits>
 
 template <typename T>
 class pinned_node_ptr {
