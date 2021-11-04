@@ -183,6 +183,10 @@ namespace nirtreedisk
 			void printTree(unsigned n=0);
 			unsigned height();
 			void stat();
+
+            uint16_t compute_packed_size();
+
+            tree_node_handle repack( tree_node_allocator *allocator );
 	};
 
     template <int min_branch_factor, int max_branch_factor,
@@ -756,7 +760,13 @@ namespace nirtreedisk
 			void printTree(unsigned n=0);
 			unsigned height();
 			void stat();
+
 	};
+
+    struct packed_node {
+        char buffer_[1]; //dynamically sized
+    };
+
 
     enum NodeHandleTypeCodes {
         UNASSIGNED = 0,
