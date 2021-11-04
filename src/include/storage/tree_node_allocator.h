@@ -103,6 +103,7 @@ public:
         // anyways
         uint32_t page_id_;
         uint16_t offset_; // Only need 12 bits to index 4k pages
+        static_assert( PAGE_SIZE <= std::numeric_limits<uint16_t>::max() );
 
         bool operator==( const page_location &other ) const {
             return page_id_ == other.page_id_ and offset_ ==
