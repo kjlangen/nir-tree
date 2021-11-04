@@ -1072,7 +1072,7 @@ bool Node<min_branch_factor, max_branch_factor>::validate(tree_node_handle expec
     if (expectedParent != nullptr)
     {
         auto parentNode = allocator->get_tree_node<NodeType>(parent);
-        for (unsigned i; i < cur_offset_ && isLeafNode(); i++)
+        for (unsigned i = 0; i < cur_offset_ && isLeafNode(); i++)
         {
             Point &dataPoint = std::get<Point>( entries[i] );
 
