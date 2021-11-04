@@ -698,6 +698,7 @@ unsigned LEAF_NODE_CLASS_TYPES::height()
 
 NODE_TEMPLATE_PARAMS
 void LEAF_NODE_CLASS_TYPES::stat() {
+    /*
     std::stack<tree_node_handle> context;
 
     // Initialize our context stack
@@ -754,6 +755,7 @@ void LEAF_NODE_CLASS_TYPES::stat() {
     std::cout << this->treeRef->stats;
 
     STATEXEC(std::cout << "### ### ### ###" << std::endl);
+    */
 }
 
 NODE_TEMPLATE_PARAMS
@@ -2013,11 +2015,7 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
 
             totalLeaves++;
             memoryFootprint +=
-                sizeof(LeafNode<min_branch_factor,max_branch_factor,strategy>) +
-                current_node->cur_offset_ * sizeof(Point);
-            deadSpace += current_node->cur_offset_ * (sizeof(Branch) - sizeof(Point));
-            deadSpace += (sizeof(Branch) *
-                    (max_branch_factor-current_node->cur_offset_ ) );
+                sizeof(LeafNode<min_branch_factor,max_branch_factor,strategy>);
 
         } else {
             auto current_branch_node = treeRef->get_branch_node( currentContext
@@ -2038,8 +2036,9 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
 
             totalNodes += current_branch_node->cur_offset_;
             memoryFootprint +=
-                sizeof(BranchNode<min_branch_factor,max_branch_factor,strategy>) +
-                current_branch_node->cur_offset_ * sizeof(Branch);
+                sizeof(BranchNode<min_branch_factor,max_branch_factor,strategy>);// +
+                // other out of line polys
+
             deadSpace += (sizeof(Branch) *
                     (max_branch_factor-current_branch_node->cur_offset_ ) );
             
@@ -2086,7 +2085,7 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
     STATHEIGHT(height());
     STATSIZE(totalNodes);
     STATEXEC(std::cout << "DeadSpace: " << deadSpace << std::endl);
-    STATSINGULAR(singularBranches);
+    //STATSINGULAR(singularBranches);
     STATLEAF(totalLeaves);
     STATBRANCH(totalNodes - 1);
     STATCOVER(coverage);
