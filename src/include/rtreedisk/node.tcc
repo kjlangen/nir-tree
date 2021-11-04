@@ -56,7 +56,7 @@ Rectangle Node<min_branch_factor, max_branch_factor>::boundingBox()
     {
         {
             Point &p = std::get<Point>( entries[0] );
-            boundingBox = Rectangle( p, p );
+            boundingBox = Rectangle( p, Point::closest_larger_point(p) );
         }
         for (unsigned i = 0; i < cur_offset_; ++i)
         {

@@ -248,7 +248,8 @@ TEST_CASE("RTreeDisk: testSearch")
         // Test search
 
         // Test set one
-        Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+        Rectangle sr1 = Rectangle(-9.0, 9.5, nextafter(-5.0, DBL_MAX),
+                nextafter(12.5, DBL_MAX));
         std::vector<Point> v1 = rootNode->search(sr1);
         REQUIRE(v1.size() == 3);
         REQUIRE(std::find(v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
@@ -256,14 +257,16 @@ TEST_CASE("RTreeDisk: testSearch")
         REQUIRE(std::find(v1.begin(), v1.end(), Point(-5.0, 12.0)) != v1.end());
 
         // Test set two
-        Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+        Rectangle sr2 = Rectangle(-8.0, 4.0, nextafter(-5.0, DBL_MAX),
+                nextafter(8.0, DBL_MAX));
         std::vector<Point> v2 = rootNode->search(sr2);
         REQUIRE(v2.size() == 2);
         REQUIRE(std::find(v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
         REQUIRE(std::find(v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
 
         // Test set three
-        Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+        Rectangle sr3 = Rectangle(-8.0, 0.0, nextafter(-4.0, DBL_MAX),
+                nextafter(16.0, DBL_MAX));
         std::vector<Point> v3 = rootNode->search(sr3);
         REQUIRE(v3.size() == 12);
         REQUIRE(std::find(v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
@@ -280,14 +283,18 @@ TEST_CASE("RTreeDisk: testSearch")
         REQUIRE(std::find(v3.begin(), v3.end(), Point(-4.0, 13.0)) != v3.end());
 
         // Test set four
-        Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+        Rectangle sr4 = Rectangle(2.0, -4.0, nextafter(4.0, DBL_MAX),
+                nextafter(-2.0, DBL_MAX));
         std::vector<Point> v4 = rootNode->search(sr4);
         REQUIRE(v4.size() == 0);
 
         // Test set five
-        Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+        Rectangle sr5 = Rectangle(-3.5, 1.0, nextafter(-1.5, DBL_MAX),
+                nextafter(3.0, DBL_MAX));
         std::vector<Point> v5 = rootNode->search(sr5);
         REQUIRE(v5.size() == 0);
+
+        tree.write_metadata();
     }
     {
         // Re-read the tree from disk, doall the searches again
@@ -295,7 +302,8 @@ TEST_CASE("RTreeDisk: testSearch")
         auto rootNode = tree.node_allocator_.get_tree_node<NodeType>(
             tree.root);
         // Test set one
-        Rectangle sr1 = Rectangle(-9.0, 9.5, -5.0, 12.5);
+        Rectangle sr1 = Rectangle(-9.0, 9.5, nextafter(-5.0, DBL_MAX),
+                nextafter(12.5, DBL_MAX));
         std::vector<Point> v1 = rootNode->search(sr1);
         REQUIRE(v1.size() == 3);
         REQUIRE(std::find(v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
@@ -303,14 +311,16 @@ TEST_CASE("RTreeDisk: testSearch")
         REQUIRE(std::find(v1.begin(), v1.end(), Point(-5.0, 12.0)) != v1.end());
 
         // Test set two
-        Rectangle sr2 = Rectangle(-8.0, 4.0, -5.0, 8.0);
+        Rectangle sr2 = Rectangle(-8.0, 4.0, nextafter(-5.0, DBL_MAX),
+                nextafter(8.0, DBL_MAX));
         std::vector<Point> v2 = rootNode->search(sr2);
         REQUIRE(v2.size() == 2);
         REQUIRE(std::find(v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
         REQUIRE(std::find(v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
 
         // Test set three
-        Rectangle sr3 = Rectangle(-8.0, 0.0, -4.0, 16.0);
+        Rectangle sr3 = Rectangle(-8.0, 0.0, nextafter(-4.0, DBL_MAX),
+                nextafter(16.0, DBL_MAX));
         std::vector<Point> v3 = rootNode->search(sr3);
         REQUIRE(v3.size() == 12);
         REQUIRE(std::find(v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
@@ -327,12 +337,14 @@ TEST_CASE("RTreeDisk: testSearch")
         REQUIRE(std::find(v3.begin(), v3.end(), Point(-4.0, 13.0)) != v3.end());
 
         // Test set four
-        Rectangle sr4 = Rectangle(2.0, -4.0, 4.0, -2.0);
+        Rectangle sr4 = Rectangle(2.0, -4.0, nextafter(4.0, DBL_MAX),
+                nextafter(-2.0, DBL_MAX));
         std::vector<Point> v4 = rootNode->search(sr4);
         REQUIRE(v4.size() == 0);
 
         // Test set five
-        Rectangle sr5 = Rectangle(-3.5, 1.0, -1.5, 3.0);
+        Rectangle sr5 = Rectangle(-3.5, 1.0, nextafter(-1.5, DBL_MAX),
+                nextafter(3.0, DBL_MAX));
         std::vector<Point> v5 = rootNode->search(sr5);
         REQUIRE(v5.size() == 0);
     }
