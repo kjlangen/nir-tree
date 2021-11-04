@@ -178,6 +178,7 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Point &requested
 
     while (!context.empty())
     {
+
         pinned_node_ptr<NodeType> curNode = context.top();
         context.pop();
 
@@ -204,6 +205,7 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Point &requested
             for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
                 const Branch &b = std::get<Branch>( curNode->entries.at(
                             i ) );
+
 
                 if( b.boundingBox.containsPoint( requestedPoint ) ) {
                     tree_node_handle child_handle = b.child;
@@ -258,6 +260,7 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Rectangle &recta
 
                 if (b.boundingBox.intersectsRectangle(rectangle))
                 {
+
                     tree_node_handle child_handle = b.child;
                     pinned_node_ptr<NodeType> child = treeRef->get_node( child_handle );
                     context.push( child );
@@ -1208,7 +1211,6 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::remove(Point &givenP
     // D4 [Shorten tree]
     if (root->cur_offset_ == 1 and !root->isLeafNode())
     {
-        std::cout << "Removal should shorten tree!" << std::endl;
         // Slice the hasReinsertedOnLevel
         hasReinsertedOnLevel.pop_back();
 

@@ -84,8 +84,7 @@ namespace rtreedisk
         }
 
         void addEntryToNode( const NodeEntry &entry ) {
-            entries.at( cur_offset_ ) = entry;
-            cur_offset_++;
+            entries.at( cur_offset_++ ) = entry;
         }
 
         // Constructors and destructors

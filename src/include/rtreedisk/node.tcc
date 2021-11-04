@@ -54,11 +54,13 @@ Rectangle Node<min_branch_factor, max_branch_factor>::boundingBox()
     }
     else
     {
-        Point &p = std::get<Point>( entries[0] );
-        boundingBox = Rectangle( p, p );
+        {
+            Point &p = std::get<Point>( entries[0] );
+            boundingBox = Rectangle( p, p );
+        }
         for (unsigned i = 0; i < cur_offset_; ++i)
         {
-            p = std::get<Point>( entries[i] );
+            Point &p = std::get<Point>( entries[i] );
             boundingBox.expand( p );
         }
     }
@@ -237,9 +239,9 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(Rectangle 
         if (curNode->isLeafNode())
         {
             // Leaf
-            for (unsigned i = 0; i < curNode->cur_offset_; ++i)
+            for (unsigned i = 0; i < curNode->cur_offset_; i++)
             {
-                Point &p = std::get<Point>( curNode->entries[i] );
+                Point &p = std::get<Point>( curNode->entries.at(i) );
                 if (requestedRectangle.containsPoint(p))
                 {
                     matchingPoints.push_back(p);
@@ -256,6 +258,7 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(Rectangle 
 #endif
             for (unsigned i = 0; i < curNode->cur_offset_; i++)
             {
+
                 Branch &b = std::get<Branch>( curNode->entries[i] );
                 if (b.boundingBox.intersectsRectangle(requestedRectangle))
                 {

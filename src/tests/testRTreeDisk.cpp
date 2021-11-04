@@ -204,6 +204,7 @@ TEST_CASE("RTreeDisk: testSearch")
         cluster3b->addEntryToNode(Point(-4.0, 1.0));
         cluster3b->addEntryToNode(Point(-6.0, 2.0));
 
+
         // High level rtree::Nodes
         alloc_data =
             tree.node_allocator_.create_new_tree_node<NodeType>();
