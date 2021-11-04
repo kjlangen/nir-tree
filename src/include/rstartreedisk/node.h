@@ -46,8 +46,6 @@ namespace rstartreedisk
 	{
 		private:
 
-			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
-
 			void searchSub(const Point &requestedPoint,
                     std::vector<Point> &accumulator);
 			void searchSub(const Rectangle &rectangle,
@@ -70,6 +68,7 @@ namespace rstartreedisk
 			};
 			typedef std::variant<Point, Branch> NodeEntry;
 
+			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
 			tree_node_handle parent;
             tree_node_handle self_handle_;
 
@@ -160,9 +159,12 @@ namespace rstartreedisk
             const Rectangle &givenBox) {
         // We cannot be a leaf
         assert(els_to_consider > 0 );
+#if !defined( NDEBUG )
         bool is_branch = std::holds_alternative<B>(
                     entries[0] );
         assert( is_branch );
+#endif
+
         
         // 1. Make a test rectangle we will use to not modify the original
         const Rectangle &origRectangle =

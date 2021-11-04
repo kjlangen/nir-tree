@@ -639,6 +639,8 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
             createBranchEntry<NodeType::NodeEntry,
             NodeType::Branch>(cluster5Node->boundingBox(), cluster5));
         rootNode->level = 2;
+
+        tree.write_metadata();
     }
 
     TreeType tree( 4096 * 5, "rstardiskbacked.txt" );

@@ -156,6 +156,8 @@ private:
     std::optional<page_location> page_location_;
 };
 
+static_assert( std::is_trivially_copyable<tree_node_handle>::value );
+
 class tree_node_allocator {
 public:
     tree_node_allocator( size_t memory_budget,
@@ -195,7 +197,6 @@ public:
         return std::make_pair( pinned_node_ptr( buffer_pool_, obj_ptr,
                     page_ptr ), std::move(meta_ptr) );
     }
-
 
     template <typename T>
     pinned_node_ptr<T> get_tree_node( tree_node_handle node_ptr ) {

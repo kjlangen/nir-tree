@@ -1,5 +1,4 @@
-#include <storage/buffer_pool.h>
-#include <storage/page.h>
+#include <algorithm>
 #include <memory>
 #include <list>
 #include <cstring>
@@ -9,6 +8,10 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <storage/buffer_pool.h>
+#include <storage/page.h>
+
 
 buffer_pool::buffer_pool( size_t pool_size_bytes, std::string
         backing_file_name ) {
@@ -39,7 +42,6 @@ void buffer_pool::initialize() {
     assert( backing_file_fd_ != -1 );
 
     // Step 1: Read every data page we have, load 'em into memory
-    size_t existing_page_count = 0;
     size_t file_offset = 0;
     for( ;; ) {
         std::unique_ptr<page> page_ptr = std::make_unique<page>();
@@ -55,9 +57,9 @@ void buffer_pool::initialize() {
 
             // Increment offsets
             file_offset += PAGE_SIZE;
-            existing_page_count++;
+            existing_page_count_++;
 
-            if( existing_page_count == max_mem_pages_ ) {
+            if( existing_page_count_ == max_mem_pages_ ) {
                 // If we are out of memory to use, then the rest will need to be
                 // read later.
                 break;
@@ -68,14 +70,28 @@ void buffer_pool::initialize() {
         }
     }
 
+    struct stat stat_buffer;
+    int fstat_ret = fstat( backing_file_fd_, &stat_buffer );
+    assert( fstat_ret == 0 );
+    assert( stat_buffer.st_size % PAGE_SIZE == 0 );
+    if( stat_buffer.st_size > 0 ) {
+        existing_page_count_ = (stat_buffer.st_size / PAGE_SIZE ) - 1;
+    } else {
+        existing_page_count_ = 0;
+    }
+
+    // We have enough pages. Break.
+    if( existing_page_count_ >= max_mem_pages_ ) {
+        highest_allocated_page_id_ = existing_page_count_;
+        return;
+    }
 
     off_t rc = lseek( backing_file_fd_, file_offset, SEEK_SET );
     assert( rc == (off_t) file_offset );
 
 
-
     // Create any more backing file data that we need
-    for( size_t i = existing_page_count; i < max_mem_pages_; i++ ) { 
+    for( size_t i = existing_page_count_; i < max_mem_pages_; i++ ) { 
         std::unique_ptr<page> page_ptr = std::make_unique<page>();
         page_ptr->header_.page_id_ = OFFSET_TO_PAGE_ID( file_offset );
         page_ptr->header_.pin_count_ = 0;
@@ -89,13 +105,7 @@ void buffer_pool::initialize() {
         file_offset += PAGE_SIZE;
     }
 
-
-    struct stat stat_buffer;
-    int fstat_ret = fstat( backing_file_fd_, &stat_buffer );
-    assert( fstat_ret == 0 );
-    assert( stat_buffer.st_size % PAGE_SIZE == 0 );
-    highest_allocated_page_id_ = (stat_buffer.st_size / PAGE_SIZE ) - 1;
-    existing_page_count_ = existing_page_count;
+    highest_allocated_page_id_ = max_mem_pages_-1;
 }
 
 page *buffer_pool::get_page( size_t page_id ) {
@@ -230,4 +240,11 @@ page *buffer_pool::obtain_clean_page() {
 void buffer_pool::evict( std::unique_ptr<page> &page ) {
     writeback_page( page.get() );
     page_index_.erase( page->header_.page_id_ );
+}
+
+void buffer_pool::writeback_all_pages() {
+    for( auto entry : page_index_ ) {
+        page *page_ptr = entry.second;
+        writeback_page( page_ptr );
+    }
 }

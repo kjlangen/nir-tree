@@ -12,12 +12,7 @@ void treeWalker( RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef, tr
         currentContext = context.top();
         context.pop();
 
-        tree_node_allocator *allocator  =
-            get_node_allocator( treeRef );
-
-        pinned_node_ptr<NodeType> currentNode =
-           allocator->get_tree_node<NodeType>(
-                    currentContext);
+        pinned_node_ptr<NodeType> currentNode = treeRef->get_node( currentContext );
 
         
         // Apply the general function to this node
@@ -65,6 +60,7 @@ template<int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor, max_branch_factor>::deleteSubtrees()
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
+
     // FIXME : I don't think this actually destroys anything.
     if( cur_offset_ == 0 || !std::holds_alternative<Branch>(entries[0]))
     {
@@ -77,8 +73,7 @@ void Node<min_branch_factor, max_branch_factor>::deleteSubtrees()
         tree_node_handle child_handle = b.child;
         tree_node_allocator *allocator  =
             get_node_allocator( treeRef );
-        pinned_node_ptr<NodeType> child =
-            allocator->get_tree_node<NodeType>( child_handle );
+        pinned_node_ptr<NodeType> child = treeRef->get_node( child_handle );
         child->deleteSubtrees();
     }
 }
@@ -146,8 +141,7 @@ void Node<min_branch_factor, max_branch_factor>::removeData(const Point &givenPo
 template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor, max_branch_factor>::exhaustiveSearch(const Point &requestedPoint, std::vector<Point> &accumulator) const
 {
-
-    using NodeType = Node<min_branch_factor, max_branch_factor>;
+    using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     // Am I a leaf?
     bool isLeaf = isLeafNode();
@@ -165,11 +159,7 @@ void Node<min_branch_factor, max_branch_factor>::exhaustiveSearch(const Point &r
         for( unsigned i = 0; i < cur_offset_; i++ ) {
             tree_node_handle child_handle = std::get<Branch>(
                     entries.at(i) ).child;
-            tree_node_allocator *allocator = get_node_allocator( treeRef
-                    );
-            pinned_node_ptr<NodeType> child =
-                allocator->get_tree_node<NodeType>(
-                        child_handle );
+            pinned_node_ptr<NodeType> child = treeRef->get_node( child_handle );
             child->exhaustiveSearch( requestedPoint, accumulator );
         }
     }
@@ -183,9 +173,7 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Point &requested
     // operator on pinned_node_ptr
     std::stack<pinned_node_ptr<NodeType>> context;
 
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
-    pinned_node_ptr<NodeType> self_node =
-        allocator->get_tree_node<NodeType>( self_handle_ );
+    pinned_node_ptr<NodeType> self_node = treeRef->get_node( self_handle_ );
     context.push( self_node );
 
     while (!context.empty())
@@ -219,11 +207,7 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Point &requested
 
                 if( b.boundingBox.containsPoint( requestedPoint ) ) {
                     tree_node_handle child_handle = b.child;
-                    tree_node_allocator *allocator = get_node_allocator( treeRef );
-
-                    pinned_node_ptr<NodeType> child =
-                            allocator->get_tree_node<NodeType>(
-                                    child_handle );
+                    pinned_node_ptr<NodeType> child = treeRef->get_node( child_handle );
                     context.push( child );
                 }
             }
@@ -239,9 +223,7 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Rectangle &recta
 
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
-    pinned_node_ptr<NodeType> self_node =
-        allocator->get_tree_node<NodeType>( self_handle_ );
+    pinned_node_ptr<NodeType> self_node = treeRef->get_node( self_handle_ );
     std::stack<pinned_node_ptr<NodeType>> context;
     context.push(self_node);
 
@@ -277,10 +259,7 @@ void Node<min_branch_factor,max_branch_factor>::searchSub(const Rectangle &recta
                 if (b.boundingBox.intersectsRectangle(rectangle))
                 {
                     tree_node_handle child_handle = b.child;
-                    tree_node_allocator *allocator = get_node_allocator( treeRef );
-                    pinned_node_ptr<NodeType> child =
-                        allocator->get_tree_node<NodeType>(
-                                child_handle );
+                    pinned_node_ptr<NodeType> child = treeRef->get_node( child_handle );
                     context.push( child );
                 }
             }
@@ -337,23 +316,18 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
 
     unsigned stoppingLevel = 0;
     bool entryIsBranch = std::holds_alternative<Branch>(givenNodeEntry);
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
     if (entryIsBranch)
     {
         const Branch &b = std::get<Branch>(givenNodeEntry);
         tree_node_handle child_handle = b.child;
-        pinned_node_ptr<Node> child =
-            allocator->get_tree_node<Node>(
-                child_handle );
+        pinned_node_ptr<Node> child = treeRef->get_node( child_handle );
         stoppingLevel = child->level + 1;
     }
     Rectangle givenEntryBoundingBox = boxFromNodeEntry<min_branch_factor,max_branch_factor>(givenNodeEntry);
 
     for (;;)
     {
-        pinned_node_ptr<NodeType> node =
-            allocator->get_tree_node<NodeType>(
-                node_handle );
+        pinned_node_ptr<NodeType> node = treeRef->get_node( node_handle );
 
         if (node->level == stoppingLevel)
         {
@@ -366,16 +340,14 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::chooseSubtree(const 
 #ifndef NDEBUG
         const Branch &firstBranch = std::get<Branch>(node->entries[0]);
         {
-            pinned_node_ptr<NodeType> child =
-                allocator->get_tree_node<NodeType>( firstBranch.child );
+            pinned_node_ptr<NodeType> child = treeRef->get_node( firstBranch.child );
             assert( child->cur_offset_ > 0 );
         }
 #endif
 
         unsigned descentIndex = 0;
         
-        pinned_node_ptr<NodeType> child =
-                allocator->get_tree_node<NodeType>(
+        pinned_node_ptr<NodeType> child = treeRef->get_node(
                         std::get<Branch>(node->entries[0]).child );
 
         bool childrenAreLeaves =
@@ -495,10 +467,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::findLeaf(const Poin
         if (b.boundingBox.containsPoint(givenPoint))
         {
             tree_node_handle child_handle = b.child;
-            tree_node_allocator *allocator = get_node_allocator( treeRef );
-            pinned_node_ptr<NodeType> child =
-                allocator->get_tree_node<NodeType>(
-                    child_handle );
+            pinned_node_ptr<NodeType> child = treeRef->get_node( child_handle );
             tree_node_handle ret_handle = child->findLeaf( givenPoint );
 
             if( ret_handle ) {
@@ -824,8 +793,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::splitNode()
 
 #if !defined( NDEDBUG )
     if( parent ) {
-        pinned_node_ptr<NodeType> parent_ptr =
-            allocator->get_tree_node<NodeType>( parent );
+        pinned_node_ptr<NodeType> parent_ptr = treeRef->get_node( parent );
         assert( level + 1 == parent_ptr->level );
 
     }
@@ -842,9 +810,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::splitNode()
         for( unsigned i = 0; i < newSibling->cur_offset_; i++ ) {
             // Update parents
             Branch &b = std::get<Branch>( newSibling->entries.at(i) );
-            pinned_node_ptr<NodeType> child =
-                allocator->get_tree_node<NodeType>( b.child
-                        );
+            pinned_node_ptr<NodeType> child = treeRef->get_node( b.child );
             child->parent = sibling_handle;
 
             assert(level == child->level + 1);
@@ -869,15 +835,11 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::adjustTree(tree_node
     // AT1 [Initialize]
     tree_node_handle node_handle = self_handle_;
     tree_node_handle sibling_handle = sibling;
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
-
     for (;;)
     {
         assert( node_handle );
 
-        pinned_node_ptr<NodeType> node =
-            allocator->get_tree_node<NodeType>(
-                node_handle );
+        pinned_node_ptr<NodeType> node = treeRef->get_node( node_handle );
 
         // AT2 [If node is the root, stop]
         if (!node->parent)
@@ -888,18 +850,14 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::adjustTree(tree_node
         {
             // AT3 [Adjust covering rectangle in parent entry]
             tree_node_handle parent_handle = node->parent;
-            pinned_node_ptr<NodeType> parent_ptr =
-                allocator->get_tree_node<NodeType>(
-                        parent_handle );
+            pinned_node_ptr<NodeType> parent_ptr = treeRef->get_node( parent_handle );
             bool didUpdateBoundingBox =
                 parent_ptr->updateBoundingBox(node_handle, node->boundingBox());
 
             // If we have a split then deal with it otherwise move up the tree
             if (sibling_handle)
             {
-                pinned_node_ptr<NodeType> sibling_ptr =
-                    allocator->get_tree_node<NodeType>(
-                            sibling_handle );
+                pinned_node_ptr<NodeType> sibling_ptr = treeRef->get_node( sibling_handle );
                 assert(node->level + 1 == parent_ptr->level);
                 assert(sibling_ptr->level + 1 == parent_ptr->level);
 
@@ -912,10 +870,8 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::adjustTree(tree_node
                 for( unsigned i = 0; i < parent_ptr->cur_offset_; i++ ) {
                     assert( std::holds_alternative<Branch>(
                                 parent_ptr->entries.at( i ) ) );
-                    pinned_node_ptr<NodeType> child =
-                        allocator->get_tree_node<NodeType>(
-                                std::get<Branch>(
-                                    parent_ptr->entries.at(i) ).child );
+                    pinned_node_ptr<NodeType> child = treeRef->get_node(
+                                std::get<Branch>( parent_ptr->entries.at(i) ).child );
                     assert(child->level + 1 == parent_ptr->level);
                 }
 #endif
@@ -970,7 +926,6 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::reInsert(std::vector
 {
 
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
 
     // 1. RI1 Compute distance between each of the points and the bounding box containing them.
     // 2. RI2 Sort the entries by DECREASING index -> ok let's define an
@@ -1019,8 +974,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::reInsert(std::vector
     for( ;; ) {
 
         // Get the node and check if it has a parent
-        pinned_node_ptr<NodeType> root_node =
-            allocator->get_tree_node<NodeType>( root_handle );
+        pinned_node_ptr<NodeType> root_node = treeRef->get_node( root_handle );
 
         // If it does not, then we've found the root
         if( !root_node->parent ) {
@@ -1030,16 +984,13 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::reInsert(std::vector
         root_handle = root_node->parent;
     }
 
-    pinned_node_ptr<NodeType> root_node =
-        allocator->get_tree_node<NodeType>( root_handle );
-
+    pinned_node_ptr<NodeType> root_node = treeRef->get_node( root_handle );
 
     for( const NodeEntry &entry : entriesToReinsert ) {
         assert( !root_node->parent );
 
         root_handle = root_node->insert(entry, hasReinsertedOnLevel);
-        root_node = allocator->get_tree_node<NodeType>(
-                root_handle );
+        root_node = treeRef->get_node( root_handle );
     }
 
     return tree_node_handle( nullptr );
@@ -1072,9 +1023,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
 
     // I1 [Find position for new record]
     tree_node_handle insertion_point_handle = chooseSubtree(nodeEntry);
-    pinned_node_ptr<NodeType> insertion_point =
-        allocator->get_tree_node<NodeType>(
-                insertion_point_handle );
+    pinned_node_ptr<NodeType> insertion_point = treeRef->get_node( insertion_point_handle );
 
     tree_node_handle sibling_handle = tree_node_handle( nullptr );
 
@@ -1091,9 +1040,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
     if (!givenIsLeaf)
     {
         const Branch &b = std::get<Branch>(nodeEntry);
-        pinned_node_ptr<NodeType> child =
-            allocator->get_tree_node<NodeType>(
-                b.child );
+        pinned_node_ptr<NodeType> child = treeRef->get_node( b.child );
         assert(insertion_point->level == child->level + 1);
         child->parent = insertion_point_handle;
     }
@@ -1121,9 +1068,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
         pinned_node_ptr<NodeType> newRoot = alloc_data.first;
         tree_node_handle root_handle = alloc_data.second;
 
-        pinned_node_ptr<NodeType> sibling =
-            allocator->get_tree_node<NodeType>(
-                    sibling_handle );
+        pinned_node_ptr<NodeType> sibling = treeRef->get_node( sibling_handle );
 
         new (&(*(newRoot)))
             NodeType( treeRef, root_handle,
@@ -1159,9 +1104,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::insert(NodeEntry nod
         tree_node_handle root_handle = self_handle_; 
 
         for( ;; ) {
-            pinned_node_ptr<NodeType> node_data =
-                allocator->get_tree_node<NodeType>(
-                        root_handle );
+            pinned_node_ptr<NodeType> node_data = treeRef->get_node( root_handle );
             if( !node_data->parent ) {
                 return root_handle;
             }
@@ -1177,7 +1120,6 @@ template <int min_branch_factor, int max_branch_factor>
 tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::vector<bool> &hasReinsertedOnLevel)
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
     // CT1 [Initialize]
     tree_node_handle node_handle = self_handle_;
 
@@ -1190,9 +1132,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
     unsigned entriesSize;
 
     for( ;; ) {
-        pinned_node_ptr<NodeType> node =
-            allocator->get_tree_node<NodeType>(
-                node_handle );
+        pinned_node_ptr<NodeType> node = treeRef->get_node( node_handle );
 
         if( !node->parent ) {
             break;
@@ -1203,9 +1143,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
         // CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
         if (entriesSize >= min_branch_factor )
         {
-            pinned_node_ptr<NodeType> parent =
-                allocator->get_tree_node<NodeType>(
-                        node->parent );
+            pinned_node_ptr<NodeType> parent = treeRef->get_node( node->parent );
             parent->updateBoundingBox( node_handle, node->boundingBox());
 
             // CT5 [Move up one level in the tree]
@@ -1215,9 +1153,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
         else
         {
 
-            pinned_node_ptr<NodeType> parent =
-                allocator->get_tree_node<NodeType>(
-                        node->parent );
+            pinned_node_ptr<NodeType> parent = treeRef->get_node( node->parent );
             // Remove ourselves from our parent
             parent->removeChild( node_handle );
             assert( !node->entries.empty() );
@@ -1239,9 +1175,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::condenseTree(std::ve
     // CT6 [Re-insert oprhaned entries]
     for (const auto &entry : Q)
     {
-        pinned_node_ptr<NodeType> root =
-            allocator->get_tree_node<NodeType>(
-                node_handle );
+        pinned_node_ptr<NodeType> root = treeRef->get_node( node_handle );
         assert( !root->parent );
         node_handle = root->insert(entry, hasReinsertedOnLevel);
     }
@@ -1254,7 +1188,6 @@ template <int min_branch_factor, int max_branch_factor>
 tree_node_handle Node<min_branch_factor,max_branch_factor>::remove(Point &givenPoint, std::vector<bool> hasReinsertedOnLevel)
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
     assert( !parent );
 
     // D1 [Find node containing record]
@@ -1263,18 +1196,14 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::remove(Point &givenP
         return leaf_ptr; /*nullptr*/ 
     }
 
-    pinned_node_ptr<NodeType> leaf =
-        allocator->get_tree_node<NodeType>(
-            leaf_ptr );
+    pinned_node_ptr<NodeType> leaf = treeRef->get_node( leaf_ptr );
     // D2 [Delete record]
 
     leaf->removeData(givenPoint);
 
     // D3 [Propagate changes]
     tree_node_handle root_handle = leaf->condenseTree(hasReinsertedOnLevel);
-    pinned_node_ptr<NodeType> root =
-        allocator->get_tree_node<NodeType>(
-            root_handle );
+    pinned_node_ptr<NodeType> root = treeRef->get_node( root_handle );
 
     // D4 [Shorten tree]
     if (root->cur_offset_ == 1 and !root->isLeafNode())
@@ -1287,9 +1216,7 @@ tree_node_handle Node<min_branch_factor,max_branch_factor>::remove(Point &givenP
         Branch &b = std::get<Branch>(root->entries[0]);
 
         // Get rid of the old root
-        pinned_node_ptr<NodeType> child =
-            allocator->get_tree_node<NodeType>(
-                b.child );
+        pinned_node_ptr<NodeType> child = treeRef->get_node( b.child );
 
         // Garbage Collect Root
         // FIXME GC(root);
@@ -1310,13 +1237,9 @@ template <int min_branch_factor, int max_branch_factor>
 void Node<min_branch_factor,max_branch_factor>::print() const
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    tree_node_allocator *allocator = get_node_allocator( treeRef );
-
     tree_node_handle root_handle = get_root_handle( treeRef );
 
-    pinned_node_ptr<NodeType> root =
-        allocator->get_tree_node<NodeType>(
-                root_handle );
+    pinned_node_ptr<NodeType> root = treeRef->get_node( root_handle );
     unsigned max_level = root->level;
 
     std::string indentation((max_level - level) * 4, ' ');

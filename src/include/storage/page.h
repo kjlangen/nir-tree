@@ -5,7 +5,6 @@
 #define PAGE_ID_TO_OFFSET( page_id ) page_id * PAGE_SIZE
 #define OFFSET_TO_PAGE_ID( offset ) offset / PAGE_SIZE
 
-
 typedef struct page_header {
     // This offset should probably act as the page identifier as well
     // Should probably put the clock counter here
