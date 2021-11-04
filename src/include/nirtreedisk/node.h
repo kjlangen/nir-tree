@@ -121,57 +121,14 @@ namespace nirtreedisk
     template <int min_branch_factor, int max_branch_factor,
              class strategy>
     requires (std::derived_from<strategy,BranchPartitionStrategy>)
-    class Node {
-    protected:
-        Node( NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>
-                *treeRef, tree_node_handle parent, size_t cur_offset,
-                tree_node_handle self_handle ) :
-            treeRef( treeRef ),
-            parent( parent ),
-            cur_offset_( cur_offset ),
-            self_handle_( self_handle ) {}
-    public:
-        NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
-        tree_node_handle parent;
-        size_t cur_offset_;
-        tree_node_handle self_handle_;
-
-        virtual void deleteSubtrees() = 0;
-        unsigned get_entry_count() const {
-            return (unsigned) cur_offset_;
-        }
-
-        virtual SplitResult splitNode() = 0;
-        virtual SplitResult splitNode( Partition p, bool is_down_split ) = 0;
-
-        // Data structure interface functions
-        virtual void exhaustiveSearch(Point &requestedPoint,
-                std::vector<Point> &accumulator) = 0;
-        virtual std::vector<Point> search(Point &requestedPoint) = 0;
-        virtual std::vector<Point> search(Rectangle &requestedRectangle)
-            = 0;
-        virtual tree_node_handle insert(Point givenPoint) = 0;
-        virtual tree_node_handle remove(Point givenPoint) = 0;
-
-        // Miscellaneous
-        virtual unsigned checksum() = 0;
-        virtual bool validate(tree_node_handle expectedParent, unsigned
-                index) = 0;
-        virtual std::vector<Point> bounding_box_validate() = 0;
-        virtual void print(unsigned n=0) = 0;
-        virtual void printTree(unsigned n=0) = 0;
-        virtual unsigned height() = 0;
-        virtual void stat() = 0;
-
-	};
-
-
-    template <int min_branch_factor, int max_branch_factor,
-             class strategy>
-    requires (std::derived_from<strategy,BranchPartitionStrategy>)
-    class LeafNode : public Node<min_branch_factor,max_branch_factor,strategy> {
+    class LeafNode {
 
 		public:
+            NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
+            tree_node_handle parent;
+            size_t cur_offset_;
+            tree_node_handle self_handle_;
+
             std::array<Point, max_branch_factor+1> entries;
 
 			// Constructors and destructors
@@ -180,12 +137,12 @@ namespace nirtreedisk
                 tree_node_handle parent,
                 tree_node_handle self_handle
             ) :
-                Node<min_branch_factor,max_branch_factor,strategy>(
-                        treeRef, parent, 0, self_handle ) {
+                treeRef( treeRef ), parent( parent ), cur_offset_( 0 ),
+                self_handle_( self_handle ) {
                     static_assert( sizeof(
                                 LeafNode<min_branch_factor,max_branch_factor,strategy>)
                             <= PAGE_DATA_SIZE );
-            }
+                }
 			void deleteSubtrees();
 
 			// Helper functions
@@ -231,17 +188,21 @@ namespace nirtreedisk
     template <int min_branch_factor, int max_branch_factor,
              class strategy>
     requires (std::derived_from<strategy,BranchPartitionStrategy>)
-    class BranchNode : public Node<min_branch_factor,max_branch_factor,strategy> {
+    class BranchNode {
 
 		public:
+            NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
+            tree_node_handle parent;
+            size_t cur_offset_;
+            tree_node_handle self_handle_;
 
             std::array<Branch, max_branch_factor+1> entries;
 
 			// Constructors and destructors
 			BranchNode(NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef, tree_node_handle parent,
                     tree_node_handle self_handle ) :
-                Node<min_branch_factor,max_branch_factor,strategy>(
-                        treeRef, parent, 0, self_handle ) {
+                treeRef( treeRef ), parent( parent ), cur_offset_( 0 ),
+                self_handle_( self_handle ) {
                     static_assert( sizeof(
                                 BranchNode<min_branch_factor,max_branch_factor,strategy>)
                             <= PAGE_DATA_SIZE );

@@ -289,10 +289,7 @@ SplitResult LEAF_NODE_CLASS_TYPES::splitNode(
     // from our siblings since these arethe only two polys and they
     // are disjoint from each other now.
     if( this->parent ) {
-        pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-            pn = this->treeRef->get_node( this->parent );
-        auto parent_node =
-            reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>( pn );
+        auto parent_node = this->treeRef->get_branch_node( this->parent );
         if( not is_downsplit ) {
             parent_node->make_disjoint_from_children( left_polygon,
                     this->self_handle_ );
@@ -396,6 +393,37 @@ SplitResult LEAF_NODE_CLASS_TYPES::splitNode()
     return returnSplit;
 }
 
+template <class NT, class TR>
+std::pair<SplitResult, tree_node_handle> adjust_tree_bottom_half( NT
+        current_node,  TR *tree_ref_backup, int max_branch_factor ) {
+    if( current_node->cur_offset_ <= (unsigned) max_branch_factor ) {
+        SplitResult propagationSplit = {
+            {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)},
+            {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)}
+        };
+
+        return std::make_pair( propagationSplit,
+                tree_node_handle(nullptr) );
+    }
+
+    // Otherwise, split node
+    tree_node_handle parent = current_node->parent;
+    auto propagationSplit = current_node->splitNode();
+
+    // Cleanup before ascending
+    if( parent != nullptr ) {
+        // This will probably destroy current_node, so if we need
+        // current node for anything, need to do it before the
+        // removeEntry call.
+
+        auto parent_node = tree_ref_backup->get_branch_node( parent );
+        parent_node->removeBranch( current_node->self_handle_ );
+    }
+
+    // Ascend, propagating splits
+    return std::make_pair( propagationSplit, parent );
+}
+
 // This bottom-to-top sweep is only for splitting bounding boxes as necessary
 NODE_TEMPLATE_PARAMS
 SplitResult LEAF_NODE_CLASS_TYPES::adjustTree()
@@ -423,69 +451,68 @@ SplitResult LEAF_NODE_CLASS_TYPES::adjustTree()
     // Loop from the bottom to the very top
     while( current_handle != nullptr ) {
 
-        pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> current_node = tree_ref_backup->get_node( current_handle );
-
         // If there was a split we were supposed to propagate then propagate it
         if( propagationSplit.leftBranch.child != nullptr and propagationSplit.rightBranch.child != nullptr ) {
             // We are at least one level up, so have to be a branch
 
-            auto current_branch_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                        current_node );
+            auto current_branch_node = tree_ref_backup->get_branch_node(
+                    current_handle );
             {
-                auto left_node =
-                    tree_ref_backup->get_node( propagationSplit.leftBranch.child );
-                if( left_node->get_entry_count() > 0 ) {
-                    current_branch_node->entries.at(
-                            current_branch_node->cur_offset_++ ) =
-                        propagationSplit.leftBranch;
+                if( propagationSplit.leftBranch.child.get_type() ==
+                        LEAF_NODE ) {
+                    auto left_node =
+                        tree_ref_backup->get_leaf_node( propagationSplit.leftBranch.child );
+                    if( left_node->cur_offset_ > 0 ) {
+                        current_branch_node->addBranchToNode(
+                            propagationSplit.leftBranch );
+                    }
+                } else {
+                    auto left_node =
+                        tree_ref_backup->get_branch_node( propagationSplit.leftBranch.child );
+                    if( left_node->cur_offset_ > 0 ) {
+                        current_branch_node->addBranchToNode(
+                            propagationSplit.leftBranch );
+                    }
+                }
+            }
+            {
+
+                if( propagationSplit.rightBranch.child.get_type() ==
+                        LEAF_NODE ) {
+                    auto right_node = tree_ref_backup->get_leaf_node( propagationSplit.rightBranch.child );
+                    if( right_node->cur_offset_ > 0 ) {
+
+                        current_branch_node->addBranchToNode( propagationSplit.rightBranch );
+                    }
+                } else {
+                    auto right_node = tree_ref_backup->get_branch_node( propagationSplit.rightBranch.child );
+                    if( right_node->cur_offset_ > 0 ) {
+
+                        current_branch_node->addBranchToNode( propagationSplit.rightBranch );
+                    }
+
                 }
             }
 
-            {
-                auto right_node = tree_ref_backup->get_node( propagationSplit.rightBranch.child );
-
-                if( right_node->get_entry_count() > 0 ) {
-
-                    current_branch_node->entries.at( current_branch_node->cur_offset_++ ) =
-                        propagationSplit.rightBranch;
-                }
-            }
-
         }
 
-        // If this node does not require splitting, that's great, let's
-        // keep adjusting bounding boxes all the way to the top
-        if( current_node->get_entry_count() <= max_branch_factor ) {
-            propagationSplit = {
-                {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)},
-                {InlineBoundedIsotheticPolygon(), tree_node_handle(nullptr)}
-            };
-
-            break;
+        std::pair<SplitResult, tree_node_handle>
+            split_res_and_new_handle;
+        if( current_handle.get_type() == LEAF_NODE ) {
+            auto current_leaf_node = treeRef->get_leaf_node(
+                    current_handle );
+            split_res_and_new_handle = adjust_tree_bottom_half(
+                    current_leaf_node, tree_ref_backup, max_branch_factor );
+        } else {
+            auto current_branch_node = treeRef->get_branch_node(
+                    current_handle );
+            split_res_and_new_handle = adjust_tree_bottom_half(
+                    current_branch_node, tree_ref_backup,
+                    max_branch_factor );
         }
 
-        // Otherwise, split node
-        propagationSplit = current_node->splitNode();
-
-        auto left_node = tree_ref_backup->get_node(
-                propagationSplit.leftBranch.child );
-
-        // Cleanup before ascending
-        if( current_node->parent != nullptr ) {
-            // This will probably destroy current_node, so if we need
-            // current node for anything, need to do it before the
-            // removeEntry call.
-
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> pn = tree_ref_backup->get_node(
-                current_node->parent );
-            auto parent_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>( pn );
-            parent_node->removeBranch( current_handle );
-        }
-
-        // Ascend, propagating splits
-        current_handle = left_node->parent;
+        propagationSplit = split_res_and_new_handle.first;
+        current_handle = split_res_and_new_handle.second;
     }
     return propagationSplit;
 }
@@ -513,15 +540,13 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::insert( Point givenPoint ) {
         auto new_root_node = alloc_data.first;
 
 
-        auto left_node = this->treeRef->get_node( finalSplit.leftBranch.child );
+        auto left_node = this->treeRef->get_leaf_node( finalSplit.leftBranch.child );
         left_node->parent = new_root_handle;
-        new_root_node->entries.at( new_root_node->cur_offset_++ ) =
-            finalSplit.leftBranch;
+        new_root_node->addBranchToNode( finalSplit.leftBranch );
 
-        auto right_node = this->treeRef->get_node( finalSplit.rightBranch.child );
+        auto right_node = this->treeRef->get_leaf_node( finalSplit.rightBranch.child );
         right_node->parent = new_root_handle;
-        new_root_node->entries.at( new_root_node->cur_offset_++ ) =
-            finalSplit.rightBranch;
+        new_root_node->addBranchToNode( finalSplit.rightBranch );
 
         assert( this->self_handle_.get_type() == LEAF_NODE );
         allocator->free( this->self_handle_, sizeof( LEAF_NODE_CLASS_TYPES ) );
@@ -542,19 +567,29 @@ void LEAF_NODE_CLASS_TYPES::condenseTree()
     auto previous_node_handle = tree_node_handle( nullptr );
 
     while( current_node_handle != nullptr ) {
-        auto current_node = this->treeRef->get_node( current_node_handle );
-        current_node_handle = current_node->parent;
+        if( current_node_handle.get_type() == LEAF_NODE ) {
+            auto current_node = treeRef->get_leaf_node( current_node_handle );
+            current_node_handle = current_node->parent;
+        } else {
+            auto current_node = treeRef->get_branch_node( current_node_handle );
+            current_node_handle = current_node->parent;
+        }
         if( previous_node_handle != nullptr ) {
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-                cpn = this->treeRef->get_node( current_node_handle );
-            auto current_parent_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>( cpn );
-            auto previous_node = this->treeRef->get_node( previous_node_handle );
-            if( previous_node->get_entry_count() == 0 ) {
+            auto current_parent_node = this->treeRef->get_branch_node( current_node_handle );
+            size_t loc_cur_offset = 0;
+            if( previous_node_handle.get_type() == LEAF_NODE ) {
+                auto previous_node = treeRef->get_leaf_node(
+                        previous_node_handle );
+                loc_cur_offset = previous_node->cur_offset_;
+            } else {
+                auto previous_node = treeRef->get_branch_node(
+                        previous_node_handle );
+                loc_cur_offset = previous_node->cur_offset_;
+            }
+            if( loc_cur_offset == 0 ) {
                 current_parent_node->removeBranch( previous_node_handle );
             }
         }
-
         previous_node_handle = current_node_handle;
     }
 }
@@ -605,11 +640,7 @@ bool LEAF_NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigned 
     if( expectedParent != nullptr ) {
         tree_node_allocator *allocator = get_node_allocator( this->treeRef );
 
-        pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-            parent_node_pre_cast = this->treeRef->get_node( this->parent );
-        auto parent_node =
-            reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                    parent_node_pre_cast );
+        auto parent_node = treeRef->get_branch_node( parent );
         Branch &branch = parent_node->locateBranch( this->self_handle_ );
 
         IsotheticPolygon poly;
@@ -689,7 +720,7 @@ void LEAF_NODE_CLASS_TYPES::stat() {
 
     totalLeaves++;
     memoryFootprint +=
-        sizeof(Node<min_branch_factor,max_branch_factor,strategy>) + this->cur_offset_ * sizeof(Point);
+        sizeof(LeafNode<min_branch_factor,max_branch_factor,strategy>) + this->cur_offset_ * sizeof(Point);
     deadSpace += (sizeof(Point) *
             (max_branch_factor-this->cur_offset_) );
     // Print out what we have found
@@ -732,8 +763,6 @@ void BRANCH_NODE_CLASS_TYPES::deleteSubtrees()
     for( size_t i = 0; i < this->cur_offset_; i++ ) {
         Branch &b = entries.at(i);
         tree_node_handle child_handle = b.child;
-        auto child = this->treeRef->get_node( child_handle );
-        child->deleteSubtrees();
         
         if( child_handle.get_type() == LEAF_NODE ) {
             allocator->free(
@@ -741,6 +770,8 @@ void BRANCH_NODE_CLASS_TYPES::deleteSubtrees()
                 sizeof( LEAF_NODE_CLASS_TYPES )
             );
         } else if( child_handle.get_type() == BRANCH_NODE ) {
+            auto child = this->treeRef->get_branch_node( child_handle );
+            child->deleteSubtrees();
             allocator->free(
                 child_handle,
                 sizeof( BRANCH_NODE_CLASS_TYPES )
@@ -827,8 +858,14 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     // Follow all branches, this is exhaustive
     for( size_t i = 0; i < this->cur_offset_; i++ ) {
         Branch &b = entries.at(i);
-        auto child = this->treeRef->get_node( b.child );
-        child->exhaustiveSearch( requestedPoint, accumulator );
+        if( b.child.get_type() == LEAF_NODE ) {
+            auto child = this->treeRef->get_leaf_node( b.child );
+            child->exhaustiveSearch( requestedPoint, accumulator );
+        } else {
+            auto child = this->treeRef->get_branch_node( b.child );
+            child->exhaustiveSearch( requestedPoint, accumulator );
+
+        }
     }
 }
 
@@ -850,11 +887,7 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
         context.pop();
 
         if( current_handle.get_type() == LEAF_NODE ) {
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-                leaf_node_pre_cast = this->treeRef->get_node( current_handle );
-            auto current_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,LEAF_NODE_CLASS_TYPES>(
-                        leaf_node_pre_cast );
+            auto current_node = treeRef->get_leaf_node( current_handle );
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 // We are a leaf so add our data points when they are the search point
                 Point &p = current_node->entries.at(i);
@@ -866,12 +899,7 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
             this->treeRef->stats.markLeafSearched();
 #endif
         } else {
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> current_node_pre_cast =
-                this->treeRef->get_node( current_handle );
-            auto current_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                        current_node_pre_cast );
-
+            auto current_node = treeRef->get_branch_node( current_handle );
             // Determine which branches we need to follow
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 Branch &b = current_node->entries.at(i);
@@ -923,12 +951,8 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
         current_handle = context.top();
         context.pop();
         if( current_handle.get_type() == LEAF_NODE ) {
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-                current_node_pre_cast = this->treeRef->get_node(
-                    current_handle );
             auto current_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,LEAF_NODE_CLASS_TYPES>(
-                        current_node_pre_cast );
+                treeRef->get_leaf_node( current_handle );
 
             // We are a leaf so add our data points when they are within the search rectangle
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
@@ -942,11 +966,8 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
             this->treeRef->stats.markLeafSearched();
 #endif
         } else {
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> current_node_pre_cast =
-                this->treeRef->get_node( current_handle );
-            auto current_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                        current_node_pre_cast );
+            auto current_node = treeRef->get_branch_node( current_handle
+                    );
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
                 // Determine which branches we need to follow
                 Branch &b = current_node->entries.at(i);
@@ -1054,11 +1075,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseNode(Point givenPoint)
         } else {
             assert( cur_node_handle.get_type() == BRANCH_NODE );
 
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-                cur_node_pre_cast = this->treeRef->get_node( cur_node_handle );
-            auto cur_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                        cur_node_pre_cast );
+            auto cur_node = treeRef->get_branch_node( cur_node_handle );
             // Compute the smallest expansion
             assert( cur_node->cur_offset_ > 0 );
 
@@ -1109,36 +1126,29 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseNode(Point givenPoint)
                 }
 
                 if( cur_node->parent != nullptr ) {
-                    pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-                        parent_node_pre_cast = this->treeRef->get_node(
+                    auto parent_node = treeRef->get_branch_node(
                             cur_node->parent );
-                    auto parent_node =
-                        reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                                parent_node_pre_cast );
                     Branch &b_parent = parent_node->locateBranch(
                             cur_node->self_handle_ );
                     subsetPolygon.intersection(
                             b_parent.materialize_polygon( allocator ) );
                 }
 
-                auto b_child = this->treeRef->get_node( b.child );
-
                 assert( node_poly.basicRectangles.size() > 0 );
                 node_poly.remove( smallestExpansion.index );
                 node_poly.merge( subsetPolygon );
 
-                if( b.child.get_type() == LEAF_NODE and
-                        b_child->get_entry_count() > 0 ) {
-                    auto child_as_leaf =
-                        reinterpret_handle_ptr<NN_CLASS_TYPES,LEAF_NODE_CLASS_TYPES>(
-                                b_child );
-                    child_as_leaf->entries.at( b_child->cur_offset_ ) = givenPoint;
-                    child_as_leaf->cur_offset_++;
-                    // shrink_leaf
-                    shrink( node_poly, child_as_leaf->entries.begin(),
-                            child_as_leaf->entries.begin() +
-                            child_as_leaf->cur_offset_, allocator );
-                    child_as_leaf->cur_offset_--;
+                if( b.child.get_type() == LEAF_NODE ) {
+                    auto child_as_leaf = treeRef->get_leaf_node( b.child );
+                    if( child_as_leaf->cur_offset_ > 0 ) {
+                        child_as_leaf->entries.at( child_as_leaf->cur_offset_ ) = givenPoint;
+                        child_as_leaf->cur_offset_++;
+                        // shrink_leaf
+                        shrink( node_poly, child_as_leaf->entries.begin(),
+                                child_as_leaf->entries.begin() +
+                                child_as_leaf->cur_offset_, allocator );
+                        child_as_leaf->cur_offset_--;
+                    }
                 }
 
                 node_poly.refine();
@@ -1252,11 +1262,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::findLeaf(Point givenPoint)
         context.pop();
 
         if( current_node_handle.get_type() == LEAF_NODE ) {
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>> current_node_pre_cast =
-                this->treeRef->get_node( current_node_handle );
-            auto current_node = 
-                reinterpret_handle_ptr<NN_CLASS_TYPES,LEAF_NODE_CLASS_TYPES>(
-                        current_node_pre_cast );
+            auto current_node = treeRef->get_leaf_node(
+                    current_node_handle );
             // FL2 [Search leaf node for record]
             // Check each entry to see if it matches E
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
@@ -1266,11 +1273,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::findLeaf(Point givenPoint)
                 }
             }
         } else {
-            pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-                current_node_pre_cast = this->treeRef->get_node( current_node_handle );
-            auto current_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                        current_node_pre_cast );
+            auto current_node = treeRef->get_branch_node( current_node_handle );
             // FL1 [Search subtrees]
             // Determine which branches we need to follow
             for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
@@ -1427,44 +1430,65 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
 
         // Entirely contained in the left polygon
         if( is_contained_left and not is_contained_right) {
-            auto child = this->treeRef->get_node(  branch.child );
-            child->parent = split.leftBranch.child;
+            if( branch.child.get_type() == LEAF_NODE ) {
+                auto child = this->treeRef->get_leaf_node( branch.child );
+                child->parent = split.leftBranch.child;
+            } else {
+                auto child = this->treeRef->get_branch_node( branch.child );
+                child->parent = split.leftBranch.child;
+            }
+
             assert( split.leftBranch.child == left_handle );
-            left_node->entries.at( left_node->cur_offset_++ ) =
-                branch;
+            left_node->addBranchToNode( branch );
         // Entirely contained in the right polygon
         } else if( is_contained_right and not is_contained_left ) {
-            auto child = this->treeRef->get_node( branch.child );
-            child->parent = split.rightBranch.child;
+            if( branch.child.get_type() == LEAF_NODE ) {
+                auto child = this->treeRef->get_leaf_node( branch.child );
+                child->parent = split.rightBranch.child;
+            } else {
+                auto child = this->treeRef->get_branch_node( branch.child );
+                child->parent = split.rightBranch.child;
+            }
             assert( split.rightBranch.child == right_handle );
-            right_node->entries.at( right_node->cur_offset_++ ) = branch;
+            right_node->addBranchToNode( branch );
         } else if( summary_rectangle.upperRight[p.dimension] ==
                 summary_rectangle.lowerLeft[p.dimension] and
                 summary_rectangle.lowerLeft[p.dimension] ==
                 p.location ) {
             // These go left or right situationally
-            auto child = this->treeRef->get_node( branch.child );
             if( left_node->cur_offset_ <= right_node->cur_offset_ ) {
-                child->parent = split.leftBranch.child;
+                if( branch.child.get_type() == LEAF_NODE ) {
+                    auto child = this->treeRef->get_leaf_node( branch.child );
+                    child->parent = split.leftBranch.child;
+                } else {
+                    auto child = this->treeRef->get_branch_node( branch.child );
+                    child->parent = split.leftBranch.child;
+                }
                 assert( split.leftBranch.child == left_handle );
-                left_node->entries.at( left_node->cur_offset_++ ) =
-                    branch;
+                left_node->addBranchToNode( branch );
             } else {
-                child->parent = split.rightBranch.child;
+                if( branch.child.get_type() == LEAF_NODE ) {
+                    auto child = this->treeRef->get_leaf_node( branch.child );
+                    child->parent = split.rightBranch.child;
+                } else {
+                    auto child = this->treeRef->get_branch_node( branch.child );
+                    child->parent = split.rightBranch.child;
+                }
                 assert( split.rightBranch.child == right_handle );
-                right_node->entries.at( right_node->cur_offset_++ ) =
-                    branch;
+                right_node->addBranchToNode( branch );
             }
         // Partially spanned by both nodes, need to downsplit
         } else {
-            auto child = this->treeRef->get_node( branch.child );
+            SplitResult downwardSplit;
 
-            SplitResult downwardSplit = child->splitNode( p, true );
-            // This branch is dead, along with its polygon
             if( branch.child.get_type() == LEAF_NODE ) {
+                auto child = treeRef->get_leaf_node( branch.child );
+                downwardSplit = child->splitNode( p, true );
                 allocator->free( branch.child, sizeof(
                             LEAF_NODE_CLASS_TYPES )  );
             } else {
+                auto child = treeRef->get_branch_node( branch.child );
+                downwardSplit = child->splitNode( p, true );
                 allocator->free( branch.child, sizeof(
                             BRANCH_NODE_CLASS_TYPES )  );
             }
@@ -1483,23 +1507,40 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
                 allocator->free( free_poly_handle, alloc_size );
             }
 
-            auto left_child = this->treeRef->get_node( downwardSplit.leftBranch.child );
-            if( left_child->get_entry_count() > 0 ) {
-                left_child->parent = split.leftBranch.child;
-
-                left_node->entries.at( left_node->cur_offset_++ ) =
-                    downwardSplit.leftBranch;
+            if( downwardSplit.leftBranch.child.get_type() == LEAF_NODE ) {
+                auto left_child =
+                    treeRef->get_leaf_node(downwardSplit.leftBranch.child);
+                if( left_child->cur_offset_ > 0 ) {
+                    left_child->parent = split.leftBranch.child;
+                    left_node->addBranchToNode( downwardSplit.leftBranch );
+                }
+            } else {
+                auto left_child =
+                    treeRef->get_branch_node(downwardSplit.leftBranch.child);
+                if( left_child->cur_offset_ > 0 ) {
+                    left_child->parent = split.leftBranch.child;
+                    left_node->addBranchToNode( downwardSplit.leftBranch );
+                }
             }
-            auto right_child = this->treeRef->get_node( downwardSplit.rightBranch.child );
-            if( right_child->get_entry_count() > 0 ) {
-                right_child->parent = split.rightBranch.child;
 
-                right_node->entries.at( right_node->cur_offset_++ )
-                    = downwardSplit.rightBranch;
+            if( downwardSplit.rightBranch.child.get_type() == LEAF_NODE ) {
+                auto right_child =
+                    treeRef->get_leaf_node(downwardSplit.rightBranch.child);
+                if( right_child->cur_offset_ > 0 ) {
+                    right_child->parent = split.rightBranch.child;
+                    right_node->addBranchToNode( downwardSplit.rightBranch );
+                }
+
+            } else {
+                auto right_child =
+                    treeRef->get_branch_node(downwardSplit.rightBranch.child);
+                if( right_child->cur_offset_ > 0 ) {
+                    right_child->parent = split.rightBranch.child;
+                    right_node->addBranchToNode( downwardSplit.rightBranch );
+                }
             }
-        }
-
-    }
+        } //downsplit 
+    } //split
 
     // It is possible that after splitting on the geometric median,
     // we still end up with an overfull node. This can happen
@@ -1512,8 +1553,8 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
     // us if it happens
     // TODO: FIXME
 
-    assert( left_node->get_entry_count() <= max_branch_factor and
-            right_node->get_entry_count() <= max_branch_factor );
+    assert( left_node->cur_offset_ <= max_branch_factor and
+            right_node->cur_offset_ <= max_branch_factor );
 
     IsotheticPolygon left_polygon( left_node->boundingBox() );
     IsotheticPolygon right_polygon( right_node->boundingBox() );
@@ -1526,11 +1567,7 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
     // So, if we downsplit, we actually need to intersect with our
     // parents.
     if( this->parent ) {
-        pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-            parent_node_pre_cast = this->treeRef->get_node( this->parent );
-        auto parent_node =
-            reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                    parent_node_pre_cast );
+        auto parent_node = treeRef->get_branch_node( parent );
         if( not is_downsplit ) {
             parent_node->make_disjoint_from_children( left_polygon,
                     this->self_handle_ );
@@ -1638,14 +1675,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert( Point givenPoint ) {
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
     assert( current_handle.get_type() == LEAF_NODE );
 
-    pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-        current_node_pre_cast = this->treeRef->get_node( current_handle );
-    auto current_node =
-        reinterpret_handle_ptr<NN_CLASS_TYPES,LEAF_NODE_CLASS_TYPES>(
-                current_node_pre_cast );
-
-    current_node->entries.at( current_node->cur_offset_++ ) =
-        givenPoint;
+    auto current_node = treeRef->get_leaf_node( current_handle );
+    current_node->addPoint( givenPoint );
 
     SplitResult finalSplit = current_node->adjustTree();
 
@@ -1659,16 +1690,23 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert( Point givenPoint ) {
         auto new_root_handle = alloc_data.second;
         auto new_root_node = alloc_data.first;
 
-        auto left_node = this->treeRef->get_node( finalSplit.leftBranch.child );
-        left_node->parent = new_root_handle;
-        new_root_node->entries.at( new_root_node->cur_offset_++ ) =
-            finalSplit.leftBranch;
+        if( finalSplit.leftBranch.child.get_type() == LEAF_NODE ) {
+            auto left_node = treeRef->get_leaf_node( finalSplit.leftBranch.child );
+            left_node->parent = new_root_handle;
+        } else {
+            auto left_node = treeRef->get_branch_node( finalSplit.leftBranch.child );
+            left_node->parent = new_root_handle;
+        }
+        new_root_node->addBranchToNode( finalSplit.leftBranch );
 
-        auto right_node = this->treeRef->get_node( finalSplit.rightBranch.child );
-
-        right_node->parent = new_root_handle;
-        new_root_node->entries.at( new_root_node->cur_offset_++ ) =
-            finalSplit.rightBranch;
+        if( finalSplit.rightBranch.child.get_type() == LEAF_NODE ) {
+            auto right_node = treeRef->get_leaf_node( finalSplit.rightBranch.child );
+            right_node->parent = new_root_handle;
+        } else {
+            auto right_node = treeRef->get_branch_node( finalSplit.rightBranch.child );
+            right_node->parent = new_root_handle;
+        }
+        new_root_node->addBranchToNode( finalSplit.rightBranch );
 
         assert( this->self_handle_.get_type() == BRANCH_NODE );
         allocator->free( this->self_handle_, sizeof( BRANCH_NODE_CLASS_TYPES ) );
@@ -1692,10 +1730,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::remove( Point givenPoint ) {
     }
 
     // D2 [Delete record]
-    pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-        leaf_node_pre_cast = this->treeRef->get_node( leaf_handle );
-    auto leaf_node =
-        reinterpret_handle_ptr<NN_CLASS_TYPES,LEAF_NODE_CLASS_TYPES>( leaf_node_pre_cast );
+    auto leaf_node = treeRef->get_leaf_node( leaf_handle );
     leaf_node->removePoint( givenPoint );
 
     // D3 [Propagate changes]
@@ -1707,8 +1742,14 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::remove( Point givenPoint ) {
         tree_node_handle new_root_handle = entries.at(0).child;
         tree_node_allocator *allocator = get_node_allocator( this->treeRef );
         allocator->free( this->self_handle_, sizeof( BRANCH_NODE_CLASS_TYPES ) );
-        auto new_root = this->treeRef->get_node( new_root_handle );
-        new_root->parent = tree_node_handle( nullptr );
+        if( new_root_handle.get_type() == LEAF_NODE ) {
+            auto new_root = treeRef->get_leaf_node( new_root_handle );
+            new_root->parent = tree_node_handle( nullptr );
+        } else {
+            auto new_root = this->treeRef->get_branch_node( new_root_handle );
+            new_root->parent = tree_node_handle( nullptr );
+        }
+
         return new_root_handle;
     }
 
@@ -1722,8 +1763,13 @@ unsigned BRANCH_NODE_CLASS_TYPES::checksum() {
     for( size_t i = 0; i < this->cur_offset_; i++ ) {
         // Recurse
         Branch &branch = entries.at(i);
-        auto child = this->treeRef->get_node( branch.child );
-        sum += child->checksum();
+        if( branch.child.get_type() == LEAF_NODE ) {
+            auto child = this->treeRef->get_leaf_node( branch.child );
+            sum += child->checksum();
+        } else {
+            auto child = this->treeRef->get_branch_node( branch.child );
+            sum += child->checksum();
+        }
     }
 
     return sum;
@@ -1736,19 +1782,24 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::bounding_box_validate()
     std::vector<Point> all_child_points;
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         Branch &b_i = entries.at(i);
-        auto child_ptr = this->treeRef->get_node( b_i.child );
-        std::vector<Point> child_points =
-            child_ptr->bounding_box_validate();
-        for( Point &p : child_points ) {
-            all_child_points.push_back( p );
+        if( b_i.child.get_type() == LEAF_NODE ) {
+            auto child_ptr = this->treeRef->get_leaf_node( b_i.child );
+            std::vector<Point> child_points =
+                child_ptr->bounding_box_validate();
+            for( Point &p : child_points ) {
+                all_child_points.push_back( p );
+            }
+        } else {
+            auto child_ptr = this->treeRef->get_branch_node( b_i.child );
+            std::vector<Point> child_points =
+                child_ptr->bounding_box_validate();
+            for( Point &p : child_points ) {
+                all_child_points.push_back( p );
+            }
         }
     }
     if( this->parent != nullptr ) {
-        pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-            parent_node_pre_cast = this->treeRef->get_node( this->parent );
-        auto parent_node =
-            reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                    parent_node_pre_cast );
+        auto parent_node = treeRef->get_branch_node( parent );
         Branch &parent_branch = parent_node->locateBranch( this->self_handle_ );
         IsotheticPolygon parent_poly =
             parent_branch.materialize_polygon( allocator );
@@ -1848,8 +1899,13 @@ bool BRANCH_NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigne
     for( size_t i = 0; i < this->cur_offset_; i++ ) {
 
         Branch &b = entries.at(i);
-        auto child = this->treeRef->get_node( b.child );
-        valid = valid and child->validate( this->self_handle_, i );
+        if( b.child.get_type() == LEAF_NODE ) {
+            auto child = this->treeRef->get_leaf_node( b.child );
+            valid = valid and child->validate( this->self_handle_, i );
+        } else {
+            auto child = this->treeRef->get_branch_node( b.child );
+            valid = valid and child->validate( this->self_handle_, i );
+        }
     }
 
     return valid;
@@ -1883,10 +1939,18 @@ void BRANCH_NODE_CLASS_TYPES::printTree(unsigned n)
     std::string indendtation(n * 4, ' ');
     for( size_t i = 0; i < this->cur_offset_; i++ ) {
         Branch &branch = entries.at(i);
-        auto child = this->treeRef->get_node( branch.child );
+        if( branch.child.get_type() == LEAF_NODE ) {
+            auto child = this->treeRef->get_leaf_node( branch.child );
 
-        // Recurse
-        child->printTree(n + 1);
+            // Recurse
+            child->printTree(n + 1);
+        } else {
+            auto child = this->treeRef->get_branch_node( branch.child );
+
+            // Recurse
+            child->printTree(n + 1);
+
+        }
     }
     std::cout << std::endl;
 }
@@ -1903,11 +1967,7 @@ unsigned BRANCH_NODE_CLASS_TYPES::height()
             return ret;
         }
 
-        pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-            node_pre_cast = this->treeRef->get_node(
-                current_handle );
-        auto node = reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                node_pre_cast );
+        auto node = treeRef->get_branch_node( current_handle );
         current_handle = node->entries.at(0).child;
     }
 }
@@ -1924,7 +1984,6 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
     unsigned long totalLines = 0;
     size_t memoryFootprint = 0;
     unsigned long totalNodes = 1;
-    unsigned long singularBranches = 0;
     unsigned long totalLeaves = 0;
     size_t deadSpace = 0;
 
@@ -1941,49 +2000,57 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
         currentContext = context.top();
         context.pop();
 
-        pinned_node_ptr<Node<min_branch_factor,max_branch_factor,strategy>>
-            current_node = this->treeRef->get_node( currentContext );
-
-        unsigned fanout = current_node->get_entry_count();
-        if( fanout >= histogramFanout.size() ) {
-            histogramFanout.resize(2*fanout, 0);
-        }
-        histogramFanout[fanout]++;
 
         if( currentContext.get_type() == LEAF_NODE ) {
+
+            auto current_node = treeRef->get_leaf_node( currentContext );
+
+            unsigned fanout = current_node->cur_offset_;
+            if( fanout >= histogramFanout.size() ) {
+                histogramFanout.resize(2*fanout, 0);
+            }
+            histogramFanout[fanout]++;
+
             totalLeaves++;
             memoryFootprint +=
-                sizeof(Node<min_branch_factor,max_branch_factor,strategy>) +
-                current_node->get_entry_count() * sizeof(Point);
-            deadSpace += current_node->get_entry_count() * (sizeof(Branch) - sizeof(Point));
+                sizeof(LeafNode<min_branch_factor,max_branch_factor,strategy>) +
+                current_node->cur_offset_ * sizeof(Point);
+            deadSpace += current_node->cur_offset_ * (sizeof(Branch) - sizeof(Point));
             deadSpace += (sizeof(Branch) *
-                    (max_branch_factor-current_node->get_entry_count() ) );
+                    (max_branch_factor-current_node->cur_offset_ ) );
 
         } else {
-            auto current_branch_node =
-                reinterpret_handle_ptr<NN_CLASS_TYPES,BRANCH_NODE_CLASS_TYPES>(
-                        current_node );
+            auto current_branch_node = treeRef->get_branch_node( currentContext
+                    );
+
+            unsigned fanout = current_branch_node->cur_offset_;
+            if( fanout >= histogramFanout.size() ) {
+                histogramFanout.resize(2*fanout, 0);
+            }
+            histogramFanout[fanout]++;
 
             // Compute the overlap and coverage of our children
-            for( size_t i = 0; i < current_branch_node->get_entry_count(); i++ ) {
+            for( size_t i = 0; i < current_branch_node->cur_offset_; i++ ) {
                 Branch &b = current_branch_node->entries.at(i);
                 IsotheticPolygon polygon = b.materialize_polygon( allocator );
                 coverage += polygon.area();
             }
 
-            totalNodes += current_branch_node->get_entry_count();
+            totalNodes += current_branch_node->cur_offset_;
             memoryFootprint +=
-                sizeof(Node<min_branch_factor,max_branch_factor,strategy>) +
-                current_branch_node->get_entry_count() * sizeof(Branch);
+                sizeof(BranchNode<min_branch_factor,max_branch_factor,strategy>) +
+                current_branch_node->cur_offset_ * sizeof(Branch);
             deadSpace += (sizeof(Branch) *
-                    (max_branch_factor-current_branch_node->get_entry_count() ) );
+                    (max_branch_factor-current_branch_node->cur_offset_ ) );
             
             for( size_t i = 0; i < current_branch_node->cur_offset_; i++ ) {
                 Branch &b = current_branch_node->entries.at(i);
+                /*
                 auto child = this->treeRef->get_node( b.child );
                 if( child->get_entry_count() == 1 ) {
                     singularBranches++;
                 }
+                */
                 IsotheticPolygon polygon = b.materialize_polygon(
                         allocator );
 

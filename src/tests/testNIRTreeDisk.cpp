@@ -5,7 +5,6 @@
 #include <iostream>
 #include <unistd.h>
 
-#define DefaultNNType nirtreedisk::Node<3,7,nirtreedisk::LineMinimizeDownsplits>
 #define DefaultLeafNodeType nirtreedisk::LeafNode<3,7,nirtreedisk::LineMinimizeDownsplits>
 #define DefaultBranchNodeType nirtreedisk::BranchNode<3,7,nirtreedisk::LineMinimizeDownsplits>
 #define DefaulTreeType nirtreedisk::NIRTreeDisk<3,7, nirtreedisk::LineMinimizeDownsplits>
@@ -48,8 +47,6 @@ createFullLeafNode(DefaulTreeType &tree, tree_node_handle parent, Point p=Point:
 TEST_CASE("NIRTreeDisk: testBoundingBox")
 {
 	// Test set one
-    std::cout << sizeof( DefaultLeafNodeType ) << " vs " << sizeof(
-            DefaultBranchNodeType ) << std::endl;
 
     unlink( "nirdiskbacked.txt" );
     {
@@ -324,20 +321,19 @@ TEST_CASE("NIRTreeDisk: testRemoveData")
 	// Setup a rtree::Node with some data
 	DefaulTreeType tree( 4096, "nirdiskbacked.txt" );
 	tree_node_handle root = tree.root;
-    auto parentNode = reinterpret_handle_ptr<DefaultNNType, DefaultLeafNodeType>(
-            tree.get_node( root ) );
+    auto parentNode = tree.get_leaf_node( root );
 
     parentNode->addPoint( Point(9.0, -5.0) );
 	parentNode->addPoint( Point(14.0, -3.0) );
 	parentNode->addPoint( Point(11.0, 13.0) );
 	parentNode->addPoint( Point(13.0, 13.0) );
 
-	REQUIRE(parentNode->get_entry_count() == 4);
+	REQUIRE(parentNode->cur_offset_ == 4);
 	// Remove some of the data
 	parentNode->removePoint( Point(13.0, 13.0) );
 
 	// Test the removal
-	REQUIRE(parentNode->get_entry_count() == 3);
+	REQUIRE(parentNode->cur_offset_ == 3);
 
     unlink( "nirdiskbacked.txt" );
 }
@@ -751,8 +747,7 @@ TEST_CASE("NIRTreeDisk: testFindLeaf2 ON DISK")
 
     // Read existing tree from disk
     DefaulTreeType tree( 4096 * 5, "nirdiskbacked.txt" );
-    auto rootNode = reinterpret_handle_ptr<DefaultNNType,
-         DefaultBranchNodeType>( tree.get_node( tree.root ) );
+    auto rootNode = tree.get_branch_node( tree.root );
 
 	// Test finding leaves
 	REQUIRE(rootNode->findLeaf(Point(-11.0, -3.0)) == cluster4a);
@@ -788,10 +783,8 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
         REQUIRE( bLeft.child.get_type() ==  nirtreedisk::LEAF_NODE );
         REQUIRE( bRight.child.get_type() ==  nirtreedisk::LEAF_NODE );
 
-        auto left = reinterpret_handle_ptr<DefaultNNType,
-             DefaultLeafNodeType>( tree.get_node( bLeft.child ) );
-        auto right = reinterpret_handle_ptr<DefaultNNType,
-             DefaultLeafNodeType>( tree.get_node( bRight.child ) );
+        auto left = tree.get_leaf_node( bLeft.child );
+        auto right = tree.get_leaf_node( bRight.child );
 
         REQUIRE(left->cur_offset_ == 4);
         REQUIRE(right->cur_offset_ == 4);
@@ -812,35 +805,35 @@ TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
         }
 
         tree_node_handle root = tree.root;
-        auto root_node = reinterpret_handle_ptr<MeanBalancedNNType,
-             MeanBalancedBranchNodeType>( tree.get_node( root ) );
+        auto root_node = tree.get_branch_node( root );
 
         for( unsigned i = 0; i < insertion_count; i++) {
             REQUIRE( tree.search( Point(i,i) ).size() == 1 );
         }
 
-        REQUIRE( root_node->get_entry_count() == 3 );
+        REQUIRE( root_node->cur_offset_ == 3 );
 
         nirtreedisk::Branch bLeft = root_node->entries[0];
         nirtreedisk::Branch bRight = root_node->entries[1];
 
-        auto left = tree.get_node( bLeft.child );
-        auto right = tree.get_node( bRight.child );
+        auto left = tree.get_branch_node( bLeft.child );
+        auto right = tree.get_branch_node( bRight.child );
 
-        REQUIRE(left->get_entry_count() == 4);
-        REQUIRE(right->get_entry_count() == 4);
+        REQUIRE(left->cur_offset_ == 4);
+        REQUIRE(right->cur_offset_ == 4);
     }
     unlink( "nirdiskbacked.txt" );
+
 }
 
-#if 0
 TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
 {
     unlink( "nirdiskbacked.txt" );
     {
         unsigned max_branch_factor = 7;
+        // Guestimate way more nodes.
         size_t nodes_per_page = PAGE_DATA_SIZE / sizeof(
-                DefaultNodeType);
+                DefaultLeafNodeType);
 
         // We need a decent number of pages in memory because during
         // searches the whole path down to the leaf is pinned.
@@ -859,12 +852,6 @@ TEST_CASE( "NIRTreeDisk: grow well-beyond memory provisions" )
         }
     }
 
-    std::cout << "NODE SIZE: " <<
-        sizeof(
-                nirtreedisk::Node<7,15,nirtreedisk::LineMinimizeDistanceFromMean>
-                )
-        << std::endl;
     unlink( "nirdiskbacked.txt" );
 
 }
-#endif
