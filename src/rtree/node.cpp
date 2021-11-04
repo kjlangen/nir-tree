@@ -988,6 +988,47 @@ namespace rtree
 		std::cout << std::endl << indendtation << "}" << std::endl;
 	}
 
+	void Node::printErr(unsigned n)
+	{
+		std::string indendtation(n * 4, ' ');
+		std::cerr << indendtation << "Node " << (void *)this << std::endl;
+		std::cerr << indendtation << "{" << std::endl;
+		std::cerr << indendtation << "    Parent: " << (void *)parent << std::endl;
+		std::cerr << indendtation << "    Bounding Boxes: " << std::endl;
+		for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+		{
+			std::cerr << indendtation << "		" << boundingBoxes[i] << std::endl;
+		}
+		std::cerr << std::endl << indendtation << "    Children: ";
+		for (unsigned i = 0; i < children.size(); ++i)
+		{
+			std::cerr << (void *)children[i] << ' ';
+		}
+		std::cerr << std::endl << indendtation << "    Data: ";
+		for (unsigned i = 0; i < data.size(); ++i)
+		{
+			std::cerr << data[i];
+		}
+		std::cerr << std::endl << indendtation << "}" << std::endl;
+	}
+
+	void Node::printTreeErr(unsigned n)
+	{
+		// Print this node first
+		printErr(n);
+
+		// Print any of our children with one more level of indentation
+		if (children.size() > 0)
+		{
+			for (unsigned i = 0; i < boundingBoxes.size(); ++i)
+			{
+				// Recurse
+				children[i]->printTreeErr(n + 1);
+			}
+		}
+	}
+
+
 	void Node::printTree(unsigned n)
 	{
 		// Print this node first
