@@ -162,7 +162,7 @@ namespace revisedrstartree
 		}
 
 #ifdef STAT
-		treeRef.stats.resetSearchTracker<false>();
+		treeRef.stats.resetSearchTracker( false );
 #endif
 
 		return accumulator;
@@ -214,7 +214,7 @@ namespace revisedrstartree
 			}
 		}
 #ifdef STAT
-		treeRef.stats.resetSearchTracker<true>();
+		treeRef.stats.resetSearchTracker( true );
 #endif
 
 		return accumulator;

@@ -29,25 +29,6 @@ void treeWalker( RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef, tr
     }
 }
 
-template <int min_branch_factor, int max_branch_factor, typename functor>
-void adjustNodeLevels(Node<min_branch_factor, max_branch_factor> *root, functor f)
-{
-    struct bumpNodeLevels
-    {
-        bumpNodeLevels(functor f) : f(f) {}
-
-        void operator()( Node<min_branch_factor,max_branch_factor> *node )
-        {
-            node->level = f(node->level);
-        }
-
-        functor f;
-    };
-
-    bumpNodeLevels b(f);
-    treeWalker(root, b);
-}
-
 template <int min_branch_factor, int max_branch_factor>
 bool Node<min_branch_factor,
      max_branch_factor>::Branch::operator==(const
@@ -279,7 +260,7 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(const Poin
     searchSub(requestedPoint, accumulator);
 
 #ifdef STAT
-    treeRef->stats.resetSearchTracker<false>();
+    treeRef->stats.resetSearchTracker( false );
 #endif
     return accumulator;
 }
@@ -292,7 +273,7 @@ std::vector<Point> Node<min_branch_factor, max_branch_factor>::search(const Rect
     searchSub(requestedRectangle, matchingPoints);
 
 #ifdef STAT
-    treeRef->stats.resetSearchTracker<true>();
+    treeRef->stats.resetSearchTracker( true );
 #endif
     return matchingPoints;
 }
@@ -1338,7 +1319,7 @@ void Node<min_branch_factor,max_branch_factor>::stat() const
         double overlap;
         std::vector<unsigned long> histogramFanout;
 
-        StatWalker(unsigned long maxBranchFactor)
+        StatWalker()
         {
             memoryFootprint = 0;
             totalNodes = 0;
@@ -1346,11 +1327,11 @@ void Node<min_branch_factor,max_branch_factor>::stat() const
             totalLeaves = 0;
             coverage = 0.0;
             overlap = 0.0;
-            histogramFanout.resize(maxBranchFactor, 0);
+            histogramFanout.resize(max_branch_factor, 0);
         }
 
-        void operator()(Node<min_branch_factor,max_branch_factor> * const node)
-        {
+        void operator()(
+                pinned_node_ptr<Node<min_branch_factor,max_branch_factor>> node ) {
 
             unsigned entriesSize = node->cur_offset_;
 
@@ -1395,8 +1376,8 @@ void Node<min_branch_factor,max_branch_factor>::stat() const
         }
     };
 
-    StatWalker sw(max_branch_factor);
-    treeWalker(const_cast<Node * const>(this), sw);
+    StatWalker sw;
+    treeWalker( treeRef, treeRef->root, sw);
 
     // Print out what we have found
     STATMEM(sw.memoryFootprint);

@@ -43,6 +43,8 @@ namespace nirtreedisk
 
     struct LineMinimizeDistanceFromMean : BranchPartitionStrategy {};
 
+    struct ExperimentalStrategy : BranchPartitionStrategy {};
+
     template <int min_branch_factor, int max_branch_factor,
              class strategy>
     class NIRTreeDisk;
@@ -58,9 +60,12 @@ namespace nirtreedisk
 
     struct Branch
     {
+        Branch() = default;
+
         Branch( InlineBoundedIsotheticPolygon boundingPoly,
                 tree_node_handle child ) : boundingPoly( boundingPoly ),
         child( child ) {}
+
 
         Branch( tree_node_handle boundingPoly, tree_node_handle child )
             : boundingPoly( boundingPoly ), child( child ) {}
@@ -116,41 +121,99 @@ namespace nirtreedisk
     template <int min_branch_factor, int max_branch_factor,
              class strategy>
     requires (std::derived_from<strategy,BranchPartitionStrategy>)
-    class Node {
-		private:
-			struct ReinsertionEntry
-			{
-				Rectangle boundingBox;
-				Point data;
-                tree_node_handle child;
-				unsigned level;
-			};
+    class LeafNode {
 
 		public:
-			NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
-            typedef std::variant<Point, Branch> NodeEntry;
-
+            NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
             tree_node_handle parent;
-            std::array<NodeEntry, max_branch_factor+1> entries;
             size_t cur_offset_;
             tree_node_handle self_handle_;
 
+            std::array<Point, max_branch_factor+1> entries;
+
 			// Constructors and destructors
-			Node(NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef, tree_node_handle parent,
-                    tree_node_handle self_handle ) :
-                treeRef( treeRef ),
-                parent( parent ),
-                cur_offset_( 0 ),
+			LeafNode(
+                NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef,
+                tree_node_handle parent,
+                tree_node_handle self_handle
+            ) :
+                treeRef( treeRef ), parent( parent ), cur_offset_( 0 ),
                 self_handle_( self_handle ) {
+                    static_assert( sizeof(
+                                LeafNode<min_branch_factor,max_branch_factor,strategy>)
+                            <= PAGE_DATA_SIZE );
+                }
+			void deleteSubtrees();
+
+			// Helper functions
+			Rectangle boundingBox();
+
+            void removePoint( const Point &point );
+            void removeEntry( const tree_node_handle &handle );
+
+            void addPoint( const Point &point ) {
+                entries.at( this->cur_offset_++ ) = point;
+            }
+
+			tree_node_handle chooseNode(Point givenPoint);
+			tree_node_handle findLeaf(Point givenPoint);
+
+			Partition partitionNode();
+			Partition partitionLeafNode();
+
+            void make_disjoint_from_children( IsotheticPolygon &polygon,
+                    tree_node_handle handle_to_skip );
+			SplitResult splitNode(Partition p, bool is_downsplit);
+			SplitResult splitNode();
+			SplitResult adjustTree();
+			void condenseTree();
+
+			// Data structure interface functions
+			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
+			std::vector<Point> search(Point &requestedPoint);
+			std::vector<Point> search(Rectangle &requestedRectangle);
+			tree_node_handle insert(Point givenPoint);
+			tree_node_handle remove(Point givenPoint);
+
+			// Miscellaneous
+			unsigned checksum();
+			bool validate(tree_node_handle expectedParent, unsigned index);
+            std::vector<Point> bounding_box_validate();
+			void print(unsigned n=0);
+			void printTree(unsigned n=0);
+			unsigned height();
+			void stat();
+	};
+
+    template <int min_branch_factor, int max_branch_factor,
+             class strategy>
+    requires (std::derived_from<strategy,BranchPartitionStrategy>)
+    class BranchNode {
+
+		public:
+            NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
+            tree_node_handle parent;
+            size_t cur_offset_;
+            tree_node_handle self_handle_;
+
+            std::array<Branch, max_branch_factor+1> entries;
+
+			// Constructors and destructors
+			BranchNode(NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef, tree_node_handle parent,
+                    tree_node_handle self_handle ) :
+                treeRef( treeRef ), parent( parent ), cur_offset_( 0 ),
+                self_handle_( self_handle ) {
+                    static_assert( sizeof(
+                                BranchNode<min_branch_factor,max_branch_factor,strategy>)
+                            <= PAGE_DATA_SIZE );
             }
 			void deleteSubtrees();
 
 			// Helper functions
-			bool isLeaf();
 			Rectangle boundingBox();
 			Branch &locateBranch(tree_node_handle child) {
-                for( size_t i = 0; i < cur_offset_; i++ ) {
-                    Branch &b = std::get<Branch>( entries.at(i) );
+                for( size_t i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b = entries.at(i);
                     if (b.child == child)
                     {
                         return b;
@@ -161,17 +224,15 @@ namespace nirtreedisk
             };
 
 			void updateBranch(tree_node_handle child,  const InlineBoundedIsotheticPolygon &boundingPoly);
-            void removeEntry( const NodeEntry &entry );
-            void removeEntry( const tree_node_handle &handle );
+            void removeBranch( const tree_node_handle &handle );
 
-            void addEntryToNode( const NodeEntry &entry ) {
-                entries.at( cur_offset_++ ) = entry;
+            void addBranchToNode( const Branch &entry ) {
+                entries.at( this->cur_offset_++ ) = entry;
             }
 
 			tree_node_handle chooseNode(Point givenPoint);
 			tree_node_handle findLeaf(Point givenPoint);
 			Partition partitionNode();
-			Partition partitionLeafNode();
 
             template <class S = strategy>
             Partition partitionBranchNode( typename
@@ -179,10 +240,11 @@ namespace nirtreedisk
                     * = 0 ) {
                 Partition defaultPartition;
 
-                tree_node_allocator *allocator = get_node_allocator( treeRef );
+                tree_node_allocator *allocator = get_node_allocator(
+                        this->treeRef );
                 std::vector<Rectangle> all_branch_polys;
-                for( unsigned i = 0; i < cur_offset_; i++ ) {
-                    Branch &b_i = std::get<Branch>( entries.at(i) );
+                for( unsigned i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b_i = entries.at(i);
                     all_branch_polys.push_back( b_i.get_summary_rectangle(
                                 allocator ) );
                 }
@@ -266,10 +328,11 @@ namespace nirtreedisk
                     S>::type * = 0) {
                 Partition defaultPartition;
 
-                tree_node_allocator *allocator = get_node_allocator( treeRef );
+                tree_node_allocator *allocator = get_node_allocator(
+                        this->treeRef );
                 std::vector<Rectangle> all_branch_polys;
-                for( unsigned i = 0; i < cur_offset_; i++ ) {
-                    Branch &b_i = std::get<Branch>( entries.at(i) );
+                for( unsigned i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b_i = entries.at(i);
                     all_branch_polys.push_back( b_i.get_summary_rectangle(
                                 allocator ) );
                 }
@@ -331,6 +394,260 @@ namespace nirtreedisk
                                 poly_ref.upperRight[d];
 
                             if( requires_split ) {
+                                left_count++;
+                                right_count++;
+                                cost++;
+                            } else if( is_zero_area and
+                                    poly_ref.upperRight[d] ==
+                                    partition_candidate ) {
+                                // Partition on a zero-area thing, can
+                                // pick either side as convenient
+                                if( left_count <= right_count ) {
+                                    left_count++;
+                                } else {
+                                    right_count++;
+                                }
+                            } else if( should_go_left ) {
+                                left_count++;
+                            } else if( should_go_right ) {
+                                right_count++;
+                            } else {
+                                assert( false );
+                            }
+                        }
+
+                        // Cost function 2
+                        // If the split will not overflow our children
+                        if( left_count <= max_branch_factor
+                            and right_count <= max_branch_factor and
+                            left_count > 0 and right_count > 0 )
+                        {
+                            double mean_d_pt = running_total /
+                                (2*all_branch_polys.size());
+                            // Distance
+                            cost = (mean_d_pt-partition_candidate);
+                            cost = cost * cost;
+                            if( cost < min_cost ) {
+                                best_candidate = partition_candidate;
+                                best_dimension = d;
+                                min_cost = cost;
+                            }
+                        }
+
+                    }
+                }
+                // Degenerate case
+                assert( min_cost < std::numeric_limits<double>::max() );
+
+                defaultPartition.dimension = best_dimension;
+                defaultPartition.location = best_candidate;
+
+                // Sort per the dimension we need
+                std::sort( entries.begin(), entries.begin() +
+                        this->cur_offset_,
+                        [this,allocator,best_dimension]( Branch &b1, Branch &b2 ) {
+                            Rectangle poly1 = b1.get_summary_rectangle(
+                                    allocator );
+                            Rectangle poly2 = b2.get_summary_rectangle(
+                                    allocator );
+                            if( poly1.upperRight[best_dimension] ==
+                                    poly2.upperRight[best_dimension]  ) {
+                                for( unsigned i = 0; i < dimensions; i++ ) {
+                                    if( poly1.upperRight[i] ==
+                                            poly2.upperRight[i] ) {
+                                        continue;
+                                    }
+                                    return poly1.upperRight[i] <
+                                        poly2.upperRight[i];
+                                }
+                            }
+                            return poly1.upperRight[best_dimension] <
+                            poly2.upperRight[best_dimension];
+                        }
+                );
+
+                    
+                return defaultPartition;
+            }
+
+            std::pair<bool, Partition> try_cut_geo_mean(
+                    std::vector<Rectangle> &all_branch_polys
+            ) {
+                Partition defaultPartition;
+                Point mean_point = Point::atOrigin;
+
+                double mass = 0.0;
+                for( auto &branch_bounding_box : all_branch_polys ) {
+                    mean_point += branch_bounding_box.lowerLeft;
+                    mean_point += branch_bounding_box.upperRight;
+                    mass += 2.0;
+                }
+
+                mean_point /= mass;
+
+                unsigned best_cost =
+                    std::numeric_limits<unsigned>::max();
+
+                // Need to determine left and right count
+
+                for( unsigned d = 0; d < dimensions; d++ ) {
+                    // Is this a valid split?
+                    double location = mean_point[d];
+                    unsigned cost = 0;
+                    unsigned left_count = 0;
+                    unsigned right_count = 0;
+                    for( auto &branch_bounding_box : all_branch_polys ) {
+                        bool greater_than_left = branch_bounding_box.lowerLeft[d] <
+                            location;
+                        bool less_than_right = location <
+                            branch_bounding_box.upperRight[d];
+                        bool requires_split = greater_than_left and
+                            less_than_right;
+
+                        bool should_go_left = branch_bounding_box.upperRight[d]
+                            <= location;
+                        bool should_go_right = branch_bounding_box.lowerLeft[d]
+                            >= location;
+                        assert( not (should_go_left and should_go_right)
+                                );
+
+
+                        if( requires_split ) {
+                            left_count++;
+                            right_count++;
+                            cost++;
+                        } else if( should_go_left ) {
+                            left_count++;
+                        } else if( should_go_right ) {
+                            right_count++;
+                        } else {
+                            assert( false );
+                        }
+                    }
+
+                    if( left_count > 0 and right_count > 0 and
+                            left_count <= max_branch_factor and
+                            right_count <= max_branch_factor ) {
+                        if( cost < best_cost ) {
+                            best_cost = cost;
+                            defaultPartition.location = mean_point[d];
+                            defaultPartition.dimension = d;
+                        }
+                    }
+                }
+
+                if( best_cost < std::numeric_limits<unsigned>::max() ) {
+                    return std::make_pair( true, defaultPartition );
+                }
+                return std::make_pair( false, defaultPartition );
+            }
+
+            template <class S = strategy>
+            Partition partitionBranchNode(typename
+                    std::enable_if<std::is_same<S,ExperimentalStrategy>::value,
+                    S>::type * = 0) {
+                Partition defaultPartition;
+
+                tree_node_allocator *allocator = get_node_allocator(
+                        this->treeRef );
+                std::vector<Rectangle> all_branch_polys;
+                for( unsigned i = 0; i < this->cur_offset_; i++ ) {
+                    Branch &b_i = entries.at(i);
+                    all_branch_polys.push_back( b_i.get_summary_rectangle(
+                                allocator ) );
+                }
+
+                auto geo_cut = try_cut_geo_mean( all_branch_polys );
+                if( geo_cut.first ) {
+                    return geo_cut.second;
+                }
+                // Can we cut along the geometric mean in any dimension
+                // without overflowing our children?
+
+                // If that didn't work, we gotta try something else.
+                for( unsigned d = 0; d < dimensions; d++ ) {
+                    std::sort( all_branch_polys.begin(), all_branch_polys.end(),
+                            [d](Rectangle &poly1, Rectangle &poly2
+                                ) {
+                                if( poly1.upperRight[d] ==
+                                        poly2.upperRight[d]  ) {
+                                    for( unsigned i = 0; i < dimensions;
+                                            i++ ) {
+                                        if( poly1.upperRight[i] ==
+                                                poly2.upperRight[i] ) {
+                                            continue;
+                                        }
+                                        return poly1.upperRight[i] <
+                                            poly2.upperRight[i];
+                                    }
+                                }
+                                return poly1.upperRight[d] <
+                                poly2.upperRight[d];
+                            }
+                    );
+
+
+                }
+
+                double best_candidate = 0.0;
+                double min_cost = std::numeric_limits<double>::max();
+                unsigned best_dimension = 0;
+                // D * ( M LOG M + M ) ~> O( D M LOG M )
+                for( unsigned d = 0; d < dimensions; d++ ) {
+                    std::sort( all_branch_polys.begin(), all_branch_polys.end(),
+                            [d](Rectangle &poly1, Rectangle &poly2
+                                ) {
+                                if( poly1.upperRight[d] ==
+                                        poly2.upperRight[d]  ) {
+                                    for( unsigned i = 0; i < dimensions;
+                                            i++ ) {
+                                        if( poly1.upperRight[i] ==
+                                                poly2.upperRight[i] ) {
+                                            continue;
+                                        }
+                                        return poly1.upperRight[i] <
+                                            poly2.upperRight[i];
+                                    }
+                                }
+                                return poly1.upperRight[d] <
+                                poly2.upperRight[d];
+                            }
+                    );
+                    for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
+                        double cost = 0;
+                        // starts at 1 cause {i} goes left
+                        // Technically we should also walk the bottom bounds to
+                        // be sure, even in the non F, C case.
+                        unsigned left_count = 0;
+                        unsigned right_count = 0; 
+                        double partition_candidate =
+                            all_branch_polys.at(i).upperRight[d];
+                        double running_total = 0.0;
+                        // Existing metric wanted to avoid recursive splits
+                        // Let's try and do the same
+                        for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
+                            Rectangle &poly_ref = all_branch_polys.at(j);
+                            running_total += poly_ref.lowerLeft[d] +
+                                poly_ref.upperRight[d];
+
+                            bool greater_than_left = poly_ref.lowerLeft[d] <
+                                partition_candidate;
+                            bool less_than_right = partition_candidate <
+                                poly_ref.upperRight[d];
+                            bool requires_split = greater_than_left and
+                                less_than_right;
+
+                            bool should_go_left = poly_ref.upperRight[d]
+                                <= partition_candidate;
+                            bool should_go_right = poly_ref.lowerLeft[d]
+                                >= partition_candidate;
+                            assert( not( should_go_left and
+                                        should_go_right ) );
+                            bool is_zero_area =
+                                poly_ref.lowerLeft[d] ==
+                                poly_ref.upperRight[d];
+
+                            if( requires_split ) {
                                 //std::cout << "SIMUL: entry requires split." << std::endl;
                                 left_count++;
                                 right_count++;
@@ -338,6 +655,7 @@ namespace nirtreedisk
                             } else if( is_zero_area and
                                     poly_ref.upperRight[d] ==
                                     partition_candidate ) {
+                                assert( false );
                                 // Partition on a zero-area thing, can
                                 // pick either side as convenient
                                 if( left_count <= right_count ) {
@@ -389,10 +707,8 @@ namespace nirtreedisk
 
                 // Sort per the dimension we need
                 std::sort( entries.begin(), entries.begin() +
-                        cur_offset_,
-                        [this,allocator,best_dimension](NodeEntry &entry1, NodeEntry &entry2 ) {
-                            Branch &b1 = std::get<Branch>( entry1 );
-                            Branch &b2 = std::get<Branch>( entry2 );
+                        this->cur_offset_,
+                        [this,allocator,best_dimension]( Branch &b1, Branch &b2 ) {
                             Rectangle poly1 = b1.get_summary_rectangle(
                                     allocator );
                             Rectangle poly2 = b2.get_summary_rectangle(
@@ -417,7 +733,10 @@ namespace nirtreedisk
                 return defaultPartition;
             }
 
-			SplitResult splitNode(Partition p);
+
+            void make_disjoint_from_children( IsotheticPolygon &polygon,
+                    tree_node_handle handle_to_skip );
+			SplitResult splitNode(Partition p, bool is_downsplit);
 			SplitResult splitNode();
 			SplitResult adjustTree();
 			void condenseTree();
@@ -439,5 +758,13 @@ namespace nirtreedisk
 			void stat();
 	};
 
+    enum NodeHandleTypeCodes {
+        UNASSIGNED = 0,
+        LEAF_NODE = 1,
+        BRANCH_NODE = 2,
+        BIG_POLYGON = 3,
+        REPACKED_LEAF_NODE = 4,
+        REPACKED_BRANCH_NODE = 5
+    };
 #include "node.tcc"
 }

@@ -458,15 +458,24 @@ static bool is_already_loaded(
 ) {
     if( configU["tree"] == NIR_TREE ) {
         
-        nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::LineMinimizeDistanceFromMean>
-            *tree = (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::LineMinimizeDistanceFromMean> *) spatial_index;
+        nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>
+            *tree =
+            (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy> *) spatial_index;
 
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
+    } else if( configU["tree"] == R_PLUS_TREE ) {
+        rplustreedisk::RPlusTreeDisk<3,7> *tree =
+            (rplustreedisk::RPlusTreeDisk<3,7> *) spatial_index;
+        size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
+        if( existing_page_count > 0 ) {
+            return true;
+        }
     } else if( configU["tree"] == R_STAR_TREE ) {
-        rstartreedisk::RStarTreeDisk<3,7> *tree = (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
+        rstartreedisk::RStarTreeDisk<7,15> *tree =
+            (rstartreedisk::RStarTreeDisk<7,15> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
@@ -503,20 +512,22 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	else if (configU["tree"] == R_PLUS_TREE)
 	{
-		spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
+        spatialIndex = new
+            rplustreedisk::RPlusTreeDisk<3,7>(4096*10*13000 /4,
+                "rplustreediskbacked_california.txt" );
+		//spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
 	}
 	else if (configU["tree"] == R_STAR_TREE)
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rstartreedisk::RStarTreeDisk<3,7>( 4096 *10
-                *13000, "rstardiskbacked_california.txt" );
+		spatialIndex = new rstartreedisk::RStarTreeDisk<7,15>( 4096 * 10 * 13000, "rstardiskbacked_california.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
 		//spatialIndex = new nirtree::NIRTree(3,7);
 		spatialIndex = new
-            nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::LineMinimizeDistanceFromMean>(
+            nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>(
                 4096*10*13000, "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
@@ -610,23 +621,23 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         std::cout << "Insertion OK." << std::endl;
 
         // Validate checksum
+        /*
         if (spatialIndex->checksum() != directSum)
         {
             std::cout << "Bad Checksum!" << std::endl;
             exit(1);
         }
         std::cout << "Checksum OK." << std::endl;
+        */
 
         spatialIndex->write_metadata();
 
 
     }
 
-#ifndef NDEBUG
 	// Validate tree
-	//assert(spatialIndex->validate());
+	//spatialIndex->validate();
 	//std::cout << "Validation OK." << std::endl;
-#endif
 
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
@@ -635,31 +646,34 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	{
 		// Search
 		Point &p = nextPoint.value();
-		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-		if (spatialIndex->search(p)[0] != p)
-		{
-			exit(1);
-		}
-		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
-		totalTimeSearches += delta.count();
-		totalSearches += 1;
+        for( int i = 0; i < 1000; i++ ) {
+            std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+            if (spatialIndex->search(p)[0] != p)
+            {
+                exit(1);
+            }
+            std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+            totalTimeSearches += delta.count();
+            totalSearches += 1;
+        }
 
-        if( totalSearches > 10000 ) {
+        if( totalSearches > 100000 ) {
             break;
         }
 		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Search OK." << std::endl;
-    return;
 
 	// Validate checksum
+    /*
 	if (spatialIndex->checksum() != directSum)
 	{
 		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
+    */
 
 	// Search for rectangles
 	unsigned rangeSearchChecksum = 0;
@@ -689,18 +703,18 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
 	// Gather statistics
-#ifdef STAT
 	spatialIndex->stat();
 	std::cout << "Statistics OK." << std::endl;
-#endif
 
 	// Validate checksum
+    /*
 	if (spatialIndex->checksum() != directSum)
 	{
 		std::cout << "Bad Checksum!" << std::endl;
 		exit(1);
 	}
 	std::cout << "Checksum OK." << std::endl;
+    */
 
     /*
 	// Delete points and time their deletion
@@ -731,8 +745,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Avg time to delete: " << totalTimeDeletes / (double) totalDeletes << "s" << std::endl;
 
     spatialIndex->write_metadata();
+
+    std::cout << "Metadata written." << std::endl;
 	// Cleanup
-	delete spatialIndex;
+	//delete spatialIndex;
 	delete [] searchRectangles;
 }
 

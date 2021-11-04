@@ -261,7 +261,7 @@ namespace rstartree
 		searchSub(requestedPoint, accumulator);
 
 #ifdef STAT
-		treeRef.stats.resetSearchTracker<false>();
+		treeRef.stats.resetSearchTracker( false );
 #endif
 		return accumulator;
 	}
@@ -273,7 +273,7 @@ namespace rstartree
 		searchSub(requestedRectangle, matchingPoints);
 
 #ifdef STAT
-		treeRef.stats.resetSearchTracker<true>();
+		treeRef.stats.resetSearchTracker( true );
 #endif
 		return matchingPoints;
 	}
@@ -1313,6 +1313,6 @@ namespace rstartree
 		}
 
 		const Point &p = std::get<Point>(entry);
-		return Rectangle(p, p);
+		return Rectangle(p, Point::closest_larger_point(p) );
 	}
 }

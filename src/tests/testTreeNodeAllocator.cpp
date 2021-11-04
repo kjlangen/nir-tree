@@ -4,6 +4,8 @@
 #include <storage/tree_node_allocator.h>
 #include <storage/page.h>
 #include <unistd.h>
+#include <util/geometry.h>
+#include <nirtreedisk/nirtreedisk.h>
 
 TEST_CASE( "Tree Node Allocator: Single RStarTree Node" ) {
 
@@ -102,6 +104,13 @@ public:
     buffer_pool &get_buffer_pool() {
         return buffer_pool_;
     }
+
+    size_t get_cur_page() {
+        return cur_page_;
+    }
+    size_t get_space_left_in_cur_page() {
+        return space_left_in_cur_page_;
+    }
 };
 
 TEST_CASE( "Tree Node Allocator: Test pinned_node_ptr scope" ) {
@@ -174,4 +183,52 @@ TEST_CASE( "Tree Node Allocator: Test pinned_node_ptr scope" ) {
 
     REQUIRE( p1->header_.pin_count_ == 0 );
     REQUIRE( p2->header_.pin_count_ == 1 );
+}
+
+TEST_CASE( "Tree Node Allocator: Test freelist perfect allocs" ) {
+
+    allocator_tester allocator( PAGE_SIZE*2, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    for( unsigned i = 0; i < PAGE_DATA_SIZE/sizeof(size_t)+1; i++ ) {
+        auto alloc_data = allocator.create_new_tree_node<size_t>();
+        REQUIRE( allocator.get_space_left_in_cur_page() == PAGE_DATA_SIZE -
+                sizeof(size_t) );
+        allocator.free( alloc_data.second, sizeof(size_t) ); // perfect fit, reuse.
+    }
+    REQUIRE( allocator.get_cur_page() == 0 );
+}
+
+TEST_CASE( "Tree Node Allocator: Test freelist split allocs" ) {
+    using NodeType =
+        nirtreedisk::BranchNode<3,7,nirtreedisk::LineMinimizeDownsplits>;
+    allocator_tester allocator( PAGE_SIZE*2, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    size_t poly_size = compute_sizeof_inline_unbounded_polygon(
+        MAX_RECTANGLE_COUNT+1);
+    for( unsigned i = 0; i < (PAGE_DATA_SIZE/sizeof(NodeType))-1; i++ ) {
+        auto alloc_data = allocator.create_new_tree_node<NodeType>();
+    }
+    auto alloc_data = allocator.create_new_tree_node<NodeType>();
+    REQUIRE( allocator.get_cur_page() == 0 );
+    allocator.free( alloc_data.second, sizeof(NodeType) );
+    unsigned remaining_slots = (PAGE_DATA_SIZE % sizeof(NodeType))/poly_size + 
+        sizeof(NodeType)/poly_size;
+    REQUIRE( remaining_slots == 7 );
+    for( unsigned i = 0; i < remaining_slots; i++ ) {
+        auto alloc_data2 =
+            allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                    compute_sizeof_inline_unbounded_polygon(
+                        MAX_RECTANGLE_COUNT+1), NodeHandleType(0) );
+        REQUIRE( allocator.get_cur_page() == 0 );
+    }
+    auto alloc_data2 =
+            allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                    compute_sizeof_inline_unbounded_polygon(
+                        MAX_RECTANGLE_COUNT+1), NodeHandleType(0) );
+    REQUIRE( allocator.get_cur_page() == 1 );
+
 }
