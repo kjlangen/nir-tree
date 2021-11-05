@@ -75,6 +75,19 @@ void LEAF_NODE_CLASS_TYPES::exhaustiveSearch(
     }
 }
 
+#define point_search_leaf_node( current_node, accumulator, requestedPoint ) \
+    for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
+        Point &p = current_node->entries.at(i); \
+        if( requestedPoint == p ) { \
+            accumulator.push_back( p ); \
+        } \
+    }
+
+// Macros so that we don't have recursive function calls 
+#define point_search_leaf_handle( handle, accumulator, requestedPoint ) \
+    auto current_node = treeRef->get_leaf_node( handle ); \
+    point_search_leaf_node( current_node, accumulator, requestedPoint );
+    
 NODE_TEMPLATE_PARAMS
 std::vector<Point> LEAF_NODE_CLASS_TYPES::search(
     Point &requestedPoint
@@ -83,12 +96,7 @@ std::vector<Point> LEAF_NODE_CLASS_TYPES::search(
     // This only gets called when we have a single node (the root) in
     // the whole tree
 
-    for( size_t i = 0; i < this->cur_offset_; i++ ) {
-        // We are a leaf so add our data points when they are the search point
-        if( requestedPoint == entries.at(i) ) {
-            accumulator.push_back( requestedPoint );
-        }
-    }
+    point_search_leaf_node( this, accumulator, requestedPoint );
 #ifdef STAT
     this->treeRef->stats.markLeafSearched();
     treeRef->stats.resetSearchTracker( false );
@@ -934,6 +942,7 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     }
 }
 
+
 NODE_TEMPLATE_PARAMS
 std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
     Point &requestedPoint
@@ -952,17 +961,31 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
         context.pop();
 
         if( current_handle.get_type() == LEAF_NODE ) {
-            auto current_node = treeRef->get_leaf_node( current_handle );
-            for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
-                // We are a leaf so add our data points when they are the search point
-                Point &p = current_node->entries.at(i);
-                if( requestedPoint == p ) {
-                    accumulator.push_back( p );
+            point_search_leaf_handle( current_handle, accumulator,
+                    requestedPoint );
+#ifdef STAT
+            this->treeRef->stats.markLeafSearched();
+#endif
+        } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
+            auto packed_leaf =
+                allocator->get_tree_node<packed_node>(
+                        current_handle );
+            char *data = packed_leaf->buffer_;
+            size_t offset = sizeof(void *) + 2 *
+                sizeof(tree_node_handle);
+            size_t &point_count = * (size_t *) (data + offset);
+            offset += sizeof(size_t);
+            for( size_t i = 0; i < point_count; i++ ) {
+                Point *p = (Point *) (data + offset);
+                if( *p == requestedPoint ) {
+                    accumulator.push_back( requestedPoint );
                 }
+                offset += sizeof( Point );
             }
 #ifdef STAT
             this->treeRef->stats.markLeafSearched();
 #endif
+            
         } else {
             auto current_node = treeRef->get_branch_node( current_handle );
             // Determine which branches we need to follow
