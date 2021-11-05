@@ -821,6 +821,8 @@ namespace nirtreedisk
 
     struct packed_node {
         char buffer_[1]; //dynamically sized
+
+        inline std::vector<Point> search( Point &requestedPoint );
     };
 
 

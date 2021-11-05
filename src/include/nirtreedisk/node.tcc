@@ -942,6 +942,30 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     }
 }
 
+#define packed_leaf_search_node( packed_leaf, requestedPoint ) \
+    char *data = packed_leaf->buffer_; \
+    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    size_t &point_count = * (size_t *) (data + offset); \
+    offset += sizeof(size_t); \
+    for( size_t i = 0; i < point_count; i++ ) { \
+        Point *p = (Point *) (data + offset); \
+        if( *p == requestedPoint ) { \
+            accumulator.push_back( requestedPoint ); \
+        } \
+        offset += sizeof( Point ); \
+    }
+
+#define packed_leaf_search_handle( handle, requestedPoint ) \
+    auto packed_leaf = allocator->get_tree_node<packed_node>( current_handle ); \
+    packed_leaf_search_node( packed_leaf, requestedPoint );
+
+//min/max doesn't matter, we'll figure it out on the fly
+inline std::vector<Point> packed_node::search( Point &requestedPoint ) {
+    std::vector<Point> accumulator;
+    packed_leaf_search_node( this, requestedPoint );
+    return accumulator;
+}
+
 
 NODE_TEMPLATE_PARAMS
 std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
@@ -967,21 +991,7 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
             this->treeRef->stats.markLeafSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
-            auto packed_leaf =
-                allocator->get_tree_node<packed_node>(
-                        current_handle );
-            char *data = packed_leaf->buffer_;
-            size_t offset = sizeof(void *) + 2 *
-                sizeof(tree_node_handle);
-            size_t &point_count = * (size_t *) (data + offset);
-            offset += sizeof(size_t);
-            for( size_t i = 0; i < point_count; i++ ) {
-                Point *p = (Point *) (data + offset);
-                if( *p == requestedPoint ) {
-                    accumulator.push_back( requestedPoint );
-                }
-                offset += sizeof( Point );
-            }
+            packed_leaf_search_handle( current_handle, requestedPoint );
 #ifdef STAT
             this->treeRef->stats.markLeafSearched();
 #endif

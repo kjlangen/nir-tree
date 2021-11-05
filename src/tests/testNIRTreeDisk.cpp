@@ -1206,7 +1206,6 @@ TEST_CASE("NIRTreeDisk: Search packed leaf from branch." ) {
         tree.insert( Point(i,i) );
     }
 
-
     auto root_leaf_node = tree.get_leaf_node( tree.root );
     REQUIRE( root_leaf_node->cur_offset_ == 5 );
 
@@ -1240,6 +1239,43 @@ TEST_CASE("NIRTreeDisk: Search packed leaf from branch." ) {
     for( int i = 0; i < 7; i++ ) {
         Point p( i, i );
         auto vec = branch_node->search( p );
+        if( i < 5 ) {
+            REQUIRE( vec.size() == 1 );
+        } else {
+            REQUIRE( vec.size() == 0 );
+        }
+    }
+    unlink( "nirdiskbacked.txt");
+}
+
+TEST_CASE("NIRTreeDisk: Search packed leaf direct." ) {
+
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto root_leaf_node = tree.get_leaf_node( tree.root );
+    REQUIRE( root_leaf_node->cur_offset_ == 5 );
+
+    REQUIRE( root_leaf_node->compute_packed_size() <
+            sizeof(DefaultLeafNodeType) );
+    REQUIRE( root_leaf_node->compute_packed_size() ==
+            sizeof(void *) + sizeof(tree_node_handle)*2 +
+            sizeof(size_t) + sizeof(Point) * 5 );
+
+    tree_node_handle repacked_handle = root_leaf_node->repack(
+            &(tree.node_allocator_) );
+
+    REQUIRE( repacked_handle != nullptr );
+    auto packed_leaf =
+        tree.node_allocator_.get_tree_node<nirtreedisk::packed_node>(
+                repacked_handle );
+
+    for( int i = 0; i < 7; i++ ) {
+        Point p( i, i );
+        auto vec = packed_leaf->search( p );
         if( i < 5 ) {
             REQUIRE( vec.size() == 1 );
         } else {
