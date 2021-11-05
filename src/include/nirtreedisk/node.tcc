@@ -942,7 +942,7 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     }
 }
 
-#define packed_leaf_search_node( packed_leaf, requestedPoint ) \
+#define packed_leaf_search_node( packed_leaf, requestedPoint, accumulator ) \
     char *data = packed_leaf->buffer_; \
     size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
     size_t &point_count = * (size_t *) (data + offset); \
@@ -955,14 +955,15 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
         offset += sizeof( Point ); \
     }
 
-#define packed_leaf_search_handle( handle, requestedPoint ) \
+#define packed_leaf_search_handle( handle, requestedPoint, accumulator ) \
+    assert( handle.get_type() == REPACKED_LEAF_NODE ); \
     auto packed_leaf = allocator->get_tree_node<packed_node>( current_handle ); \
-    packed_leaf_search_node( packed_leaf, requestedPoint );
+    packed_leaf_search_node( packed_leaf, requestedPoint, accumulator );
 
 //min/max doesn't matter, we'll figure it out on the fly
-inline std::vector<Point> packed_node::search( Point &requestedPoint ) {
+inline std::vector<Point> packed_node::search_as_leaf( Point &requestedPoint ) {
     std::vector<Point> accumulator;
-    packed_leaf_search_node( this, requestedPoint );
+    packed_leaf_search_node( this, requestedPoint, accumulator );
     return accumulator;
 }
 
@@ -991,7 +992,8 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
             this->treeRef->stats.markLeafSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
-            packed_leaf_search_handle( current_handle, requestedPoint );
+            packed_leaf_search_handle( current_handle, requestedPoint,
+                    accumulator );
 #ifdef STAT
             this->treeRef->stats.markLeafSearched();
 #endif

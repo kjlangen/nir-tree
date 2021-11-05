@@ -1217,6 +1217,8 @@ TEST_CASE("NIRTreeDisk: Search packed leaf from branch." ) {
 
     tree_node_handle repacked_handle = root_leaf_node->repack(
             &(tree.node_allocator_) );
+    repacked_handle.set_type(
+            NodeHandleType(nirtreedisk::REPACKED_LEAF_NODE) );
 
     REQUIRE( repacked_handle != nullptr );
     auto packed_leaf =
@@ -1275,7 +1277,7 @@ TEST_CASE("NIRTreeDisk: Search packed leaf direct." ) {
 
     for( int i = 0; i < 7; i++ ) {
         Point p( i, i );
-        auto vec = packed_leaf->search( p );
+        auto vec = packed_leaf->search_as_leaf( p );
         if( i < 5 ) {
             REQUIRE( vec.size() == 1 );
         } else {
