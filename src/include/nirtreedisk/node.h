@@ -57,6 +57,18 @@ namespace nirtreedisk
         return &(treeRef->node_allocator_);
     }
 
+    template <typename T>
+    size_t write_data_to_buffer( char *buffer, T *data ) {
+        memcpy( buffer, data, sizeof(T));
+        return sizeof(T);
+    }
+
+    template <typename T>
+    inline T *read_pointer_from_buffer( char *buffer ) {
+        // Read whatever is at this address as a 64 bit int,
+        // which represents a pointer of type T.
+        return (T *) (* (uint64_t *) buffer );
+    }
 
     struct Branch
     {
@@ -96,6 +108,49 @@ namespace nirtreedisk
                 allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
                         poly_handle );
             return poly_pin->materialize_polygon();
+        }
+
+        inline size_t compute_packed_size() {
+            size_t sz = sizeof( child );
+            if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
+                sz += sizeof( Rectangle ); // summary rectangle
+                sz += sizeof( unsigned ); // magic rect count id
+                sz += sizeof( tree_node_handle );
+                return sz;
+            }
+            InlineBoundedIsotheticPolygon &poly =
+                std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
+            sz += sizeof(Rectangle); //boundingBox
+            unsigned rect_count = poly.get_rectangle_count();
+            sz += sizeof( rect_count );
+            sz  += rect_count * sizeof(Rectangle);
+            return sz;
+        }
+
+        size_t repack_into( char *buffer, tree_node_allocator *allocator ) {
+            size_t offset = write_data_to_buffer( buffer, &child );
+            if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
+                Rectangle rect = get_summary_rectangle( allocator );
+                offset += write_data_to_buffer( buffer + offset, &rect );
+                unsigned magic = std::numeric_limits<unsigned>::max();
+                offset += write_data_to_buffer( buffer + offset, &magic );
+                offset += write_data_to_buffer( buffer + offset,
+                        &(std::get<tree_node_handle>( boundingPoly )) );
+                // FIXME: need to also rewrite polygon into new file if
+                // it is different
+                return offset;
+            }
+            InlineBoundedIsotheticPolygon &poly =
+                std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
+            offset += write_data_to_buffer( buffer + offset,
+                    &(poly.get_summary_rectangle()) );
+            unsigned rect_count = poly.get_rectangle_count();
+            offset += write_data_to_buffer( buffer + offset, &rect_count );
+            for( auto iter = poly.begin(); iter != poly.end(); iter++ ) {
+                offset += write_data_to_buffer( buffer + offset,
+                        &(*iter) );
+            }
+            return offset;
         }
 
         std::variant<InlineBoundedIsotheticPolygon,tree_node_handle> boundingPoly;
@@ -185,7 +240,6 @@ namespace nirtreedisk
 			void stat();
 
             uint16_t compute_packed_size();
-
             tree_node_handle repack( tree_node_allocator *allocator );
 	};
 
@@ -761,6 +815,8 @@ namespace nirtreedisk
 			unsigned height();
 			void stat();
 
+            uint16_t compute_packed_size();
+            tree_node_handle repack( tree_node_allocator *allocator );
 	};
 
     struct packed_node {

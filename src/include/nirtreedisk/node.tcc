@@ -768,24 +768,17 @@ uint16_t LEAF_NODE_CLASS_TYPES::compute_packed_size() {
     return sz;
 }
 
-
-template <typename T>
-requires (not std::is_pointer_v<T>)
-size_t write_data_to_buffer( char *buffer, T *data ) {
-    *((T *) buffer) = *data;
-    return sizeof(T);
-}
-
-inline size_t write_pointer_to_buffer( char *buffer, void *data ) {
-    *((uint64_t *) buffer) = (uint64_t) data;
-    return sizeof(void *);
-}
-
-template <typename T>
-inline T *read_pointer_from_buffer( char *buffer ) {
-    // Read whatever is at this address as a 64 bit int,
-    // which represents a pointer of type T.
-    return (T *) (* (uint64_t *) buffer );
+NODE_TEMPLATE_PARAMS
+uint16_t BRANCH_NODE_CLASS_TYPES::compute_packed_size() {
+    uint16_t sz = 0;
+    sz += sizeof( treeRef );
+    sz += sizeof( self_handle_ );
+    sz += sizeof( parent );
+    sz += sizeof( cur_offset_ );
+    for( size_t i = 0; i < cur_offset_; i++ ) {
+        sz += entries.at(i).compute_packed_size();
+    }
+    return sz;
 }
 
 NODE_TEMPLATE_PARAMS
@@ -796,7 +789,7 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
             alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
 
     char *buffer = alloc_data.first->buffer_;
-    buffer += write_pointer_to_buffer( buffer, treeRef );
+    buffer += write_data_to_buffer( buffer, &treeRef );
     buffer += write_data_to_buffer( buffer, &self_handle_ );
     buffer += write_data_to_buffer( buffer, &parent );
     buffer += write_data_to_buffer( buffer, &cur_offset_ );
@@ -804,6 +797,27 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
         buffer += write_data_to_buffer( buffer, &(entries.at(i)) );
     }
     assert( buffer - alloc_data.first->buffer_ == alloc_size );
+    return alloc_data.second;
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator ) {
+    static_assert( sizeof( void * ) == sizeof(uint64_t) );
+    uint16_t alloc_size = compute_packed_size();
+    auto alloc_data = allocator->create_new_tree_node<packed_node>(
+            alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
+
+    char *buffer = alloc_data.first->buffer_;
+    buffer += write_data_to_buffer( buffer, &treeRef );
+    buffer += write_data_to_buffer( buffer, &self_handle_ );
+    buffer += write_data_to_buffer( buffer, &parent );
+    buffer += write_data_to_buffer( buffer, &cur_offset_ );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        Branch &b = entries.at(i);
+        buffer += b.repack_into( buffer, allocator );
+    }
+    size_t true_size = (buffer - alloc_data.first->buffer_);
+    assert( true_size == alloc_size );
     return alloc_data.second;
 }
 
