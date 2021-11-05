@@ -878,7 +878,23 @@ TEST_CASE("NIRTreeDisk: pack simple leaf node") {
         tree.node_allocator_.get_tree_node<nirtreedisk::packed_node>(
                 repacked_handle );
     REQUIRE( nirtreedisk::read_pointer_from_buffer<DefaulTreeType>( packed_leaf->buffer_ ) == &tree );
+    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
+                    *) ) ==
+        root_leaf_node->self_handle_ );
 
+    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
+                    *) + sizeof(tree_node_handle) ) ==
+        root_leaf_node->parent );
+
+    REQUIRE( * (size_t *) (packed_leaf->buffer_ + sizeof(void
+                    *) + sizeof(tree_node_handle)*2 ) ==
+        root_leaf_node->cur_offset_ );
+
+    Point *p = (Point *) (packed_leaf->buffer_ + sizeof(void *) +
+            sizeof(tree_node_handle)*2 + sizeof(size_t));
+    REQUIRE( *(p++) == root_leaf_node->entries.at(0) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(1) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(2) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(3) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(4) );
 }
-
-
