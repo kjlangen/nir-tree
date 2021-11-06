@@ -691,6 +691,7 @@ class InlineUnboundedIsotheticPolygon {
         }
 
         tree_node_handle repack( tree_node_allocator *new_allocator ) {
+
             // Doesn't need to be, but simplifies things for now
             assert( total_rectangle_count_ <=
                     maximum_possible_rectangles_on_first_page() );
@@ -698,6 +699,10 @@ class InlineUnboundedIsotheticPolygon {
                     (total_rectangle_count_-1)*sizeof(Rectangle);
             auto alloc_data = new_allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
                     precise_size_needed, NodeHandleType( 3 /* BIG POLYGON */ ) );
+
+            // N.B., our current polygon can actually be
+            // overprovisioned, so we use total_rectangle_count to count
+            // down size.
             new (&(*alloc_data.first)) InlineUnboundedIsotheticPolygon(
                     new_allocator, total_rectangle_count_ );
             IsotheticPolygon cur_poly = materialize_polygon();
