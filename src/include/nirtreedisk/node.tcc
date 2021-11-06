@@ -782,7 +782,7 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
 
     char *buffer = alloc_data.first->buffer_;
     buffer += write_data_to_buffer( buffer, &treeRef );
-    buffer += write_data_to_buffer( buffer, &self_handle_ );
+    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
     buffer += write_data_to_buffer( buffer, &parent );
     buffer += write_data_to_buffer( buffer, &cur_offset_ );
     for( unsigned i = 0; i < cur_offset_; i++ ) {
@@ -797,11 +797,11 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
     uint16_t alloc_size = compute_packed_size();
     auto alloc_data = allocator->create_new_tree_node<packed_node>(
-            alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
+            alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
 
     char *buffer = alloc_data.first->buffer_;
     buffer += write_data_to_buffer( buffer, &treeRef );
-    buffer += write_data_to_buffer( buffer, &self_handle_ );
+    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
     buffer += write_data_to_buffer( buffer, &parent );
     buffer += write_data_to_buffer( buffer, &cur_offset_ );
     for( unsigned i = 0; i < cur_offset_; i++ ) {
@@ -1009,8 +1009,47 @@ std::vector<Point> point_search(
             treeRef->stats.markNonLeafSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
-            assert( false );
+            auto packed_branch = allocator->get_tree_node<packed_node>( current_handle );
+            char *buffer = packed_branch->buffer_;
+            size_t offset = sizeof(void *) + 2*sizeof(tree_node_handle);
+            size_t entry_count =  * (size_t *) (buffer+offset);
+            offset += sizeof( entry_count );
+            for( size_t i = 0; i < entry_count; i++ ) {
+                tree_node_handle *child = (tree_node_handle *) (buffer
+                        + offset);
+                offset += sizeof( tree_node_handle );
+                Rectangle *summary_rectangle = (Rectangle *) (buffer +
+                        offset);
+                offset += sizeof( Rectangle );
+                unsigned rect_count = * (unsigned *) (buffer + offset);
+                offset += sizeof( unsigned );
+
+                // No match in summary rectangle, go next
+                if( not summary_rectangle->containsPoint( requestedPoint ) ) {
+                    if( rect_count ==
+                            std::numeric_limits<unsigned>::max() ) {
+                        offset += sizeof(tree_node_handle);
+                    } else {
+                        offset += rect_count * sizeof( Rectangle );
+                    }
+                    continue; //next entry
+                }
+
+                // Maybe a match... check the rectangles
+                for( unsigned r = 0; r < rect_count; r++ ) {
+                    Rectangle *rect = (Rectangle *) (buffer + offset);
+                    offset += sizeof(Rectangle);
+                    if( rect->containsPoint( requestedPoint ) ) {
+                        context.push( *child );
+                        offset += (rect_count-r-1) * sizeof(Rectangle);
+                        break; //break for loop, next entry
+
+                    }
+                }
+            }
+
 #ifdef STAT
+
             treeRef->stats.markNonLeafSearched();
 #endif
         } else {
@@ -1089,7 +1128,6 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
 #endif
 
     return accumulator;
-
 }
 
 template <typename iter>

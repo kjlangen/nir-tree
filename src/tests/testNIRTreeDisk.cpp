@@ -889,7 +889,7 @@ TEST_CASE("NIRTreeDisk: pack simple leaf node") {
     REQUIRE( nirtreedisk::read_pointer_from_buffer<DefaulTreeType>( packed_leaf->buffer_ ) == &tree );
     REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
                     *) ) ==
-        root_leaf_node->self_handle_ );
+        repacked_handle );
 
     REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
                     *) + sizeof(tree_node_handle) ) ==
@@ -962,7 +962,7 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
                 packed_branch->buffer_ ) == &tree );
     size_t offset = 8;
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-            branch_node->self_handle_ );
+            packed_handle );
     offset += sizeof(tree_node_handle);
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             branch_node->parent );
@@ -1088,7 +1088,7 @@ TEST_CASE("NIRTreeDisk: pack complex inline polygon") {
                 packed_branch->buffer_ ) == &tree );
     size_t offset = 8;
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-            branch_node->self_handle_ );
+            packed_handle );
     offset += sizeof(tree_node_handle);
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             branch_node->parent );
@@ -1173,7 +1173,7 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
                 packed_branch->buffer_ ) == &tree );
     size_t offset = 8;
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-            branch_node->self_handle_ );
+            packed_handle );
     offset += sizeof(tree_node_handle);
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             branch_node->parent );
@@ -1285,4 +1285,80 @@ TEST_CASE("NIRTreeDisk: Search packed leaf direct." ) {
         }
     }
     unlink( "nirdiskbacked.txt");
+}
+
+TEST_CASE( "NIRTreeDisk: Point search packed branch" ) {
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_.create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(nirtreedisk::BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_.create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(nirtreedisk::LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second );
+    auto leaf_node1 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_.create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(nirtreedisk::LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second );
+    auto leaf_node2 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_.create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(nirtreedisk::LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second );
+    auto leaf_node3 = alloc_leaf_data.first;
+
+    leaf_node1->addPoint( Point(1,1) );
+    leaf_node1->addPoint( Point(2,2) );
+    leaf_node1->addPoint( Point(3,3) );
+    leaf_node1->addPoint( Point(4,4) );
+    leaf_node1->addPoint( Point(5,5) );
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node1->boundingBox()),
+            leaf_node1->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    leaf_node2->addPoint( Point(6,6) );
+    leaf_node2->addPoint( Point(7,7) );
+    leaf_node2->addPoint( Point(8,8) );
+    leaf_node2->addPoint( Point(9,9) );
+    leaf_node2->addPoint( Point(10,10) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node2->boundingBox()),
+            leaf_node2->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    leaf_node3->addPoint( Point(11,11) );
+    leaf_node3->addPoint( Point(12,12) );
+    leaf_node3->addPoint( Point(13,13) );
+    leaf_node3->addPoint( Point(14,14) );
+    leaf_node3->addPoint( Point(15,15) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node3->boundingBox()),
+            leaf_node3->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    auto packed_branch_handle = branch_node->repack( &(tree.node_allocator_) );
+
+    for( unsigned i = 1; i < 20; i++ ) {
+        Point p(i,i);
+        if( i < 16 ) {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 1 );
+        } else {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 0 );
+        }
+    }
+
+    unlink( "nirdiskbacked.txt" );
 }
