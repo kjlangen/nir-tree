@@ -134,7 +134,6 @@ void shrink(
     polygon.recomputeBoundingBox();
 }
 
-
 // Always called on root, this = root
 // This top-to-bottom sweep is only for adjusting bounding boxes to contain the point and
 // choosing a particular leaf
@@ -234,19 +233,15 @@ SplitResult LEAF_NODE_CLASS_TYPES::splitNode(
 
     bool containedLeft, containedRight;
     for( size_t i = 0; i < this->cur_offset_; i++ ) {
-
-
         Point &dataPoint =  entries.at(i);
         containedLeft = dataPoint[ p.dimension ] < p.location; // Not inclusive
         containedRight = dataPoint[ p.dimension ] >= p.location;
         assert( containedLeft or containedRight );
 
         if( containedLeft and not containedRight ) {
-            left_node->entries.at( left_node->cur_offset_++ ) =
-                dataPoint;
+            left_node->addPoint( dataPoint );
         } else if( not containedLeft and containedRight ) {
-            right_node->entries.at( right_node->cur_offset_++ ) =
-                dataPoint;
+            right_node->addPoint( dataPoint );
         }
     }
 
@@ -500,7 +495,7 @@ NODE_TEMPLATE_PARAMS
 tree_node_handle LEAF_NODE_CLASS_TYPES::insert( Point givenPoint ) {
 
     // This is a leaf, so we are the ONLY node.
-    entries.at( this->cur_offset_++ ) = givenPoint;
+    addPoint( givenPoint );
 
     SplitResult finalSplit = adjustTree();
 
