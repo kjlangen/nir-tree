@@ -1035,15 +1035,28 @@ std::vector<Point> point_search(
                     continue; //next entry
                 }
 
-                // Maybe a match... check the rectangles
-                for( unsigned r = 0; r < rect_count; r++ ) {
-                    Rectangle *rect = (Rectangle *) (buffer + offset);
-                    offset += sizeof(Rectangle);
-                    if( rect->containsPoint( requestedPoint ) ) {
+                // Out of band, check pointer
+                if( rect_count == std::numeric_limits<unsigned>::max() ) {
+                    tree_node_handle *poly_handle = (tree_node_handle *)
+                        (buffer + offset );
+                    offset += sizeof( tree_node_handle );
+                    auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                            *poly_handle );
+                    if( poly_pin->containsPoint( requestedPoint ) ) {
                         context.push( *child );
-                        offset += (rect_count-r-1) * sizeof(Rectangle);
-                        break; //break for loop, next entry
+                    }
+                // In band, check all rectangles
+                } else {
+                    // Maybe a match... check the rectangles
+                    for( unsigned r = 0; r < rect_count; r++ ) {
+                        Rectangle *rect = (Rectangle *) (buffer + offset);
+                        offset += sizeof(Rectangle);
+                        if( rect->containsPoint( requestedPoint ) ) {
+                            context.push( *child );
+                            offset += (rect_count-r-1) * sizeof(Rectangle);
+                            break; //break for loop, next entry
 
+                        }
                     }
                 }
             }
