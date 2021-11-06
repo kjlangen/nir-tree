@@ -88,22 +88,6 @@ void LEAF_NODE_CLASS_TYPES::exhaustiveSearch(
     auto current_node = treeRef->get_leaf_node( handle ); \
     point_search_leaf_node( current_node, accumulator, requestedPoint );
     
-NODE_TEMPLATE_PARAMS
-std::vector<Point> LEAF_NODE_CLASS_TYPES::search(
-    Point &requestedPoint
-) {
-    std::vector<Point> accumulator;
-    // This only gets called when we have a single node (the root) in
-    // the whole tree
-
-    point_search_leaf_node( this, accumulator, requestedPoint );
-#ifdef STAT
-    this->treeRef->stats.markLeafSearched();
-    treeRef->stats.resetSearchTracker( false );
-#endif
-
-    return accumulator;
-}
 
 NODE_TEMPLATE_PARAMS
 std::vector<Point> LEAF_NODE_CLASS_TYPES::search(
@@ -960,6 +944,30 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     auto packed_leaf = allocator->get_tree_node<packed_node>( current_handle ); \
     packed_leaf_search_node( packed_leaf, requestedPoint, accumulator );
 
+#define point_search_branch_handle( handle, requestedPoint, context ) \
+    auto current_node = treeRef->get_branch_node( current_handle ); \
+    for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
+        Branch &b = current_node->entries.at(i); \
+        if( std::holds_alternative<InlineBoundedIsotheticPolygon>( \
+                    b.boundingPoly ) ) { \
+            InlineBoundedIsotheticPolygon &loc_poly =  \
+                std::get<InlineBoundedIsotheticPolygon>( \
+                        b.boundingPoly ); \
+            if( loc_poly.containsPoint( requestedPoint ) ) { \
+                context.push( b.child ); \
+            } \
+        } else { \
+            tree_node_handle poly_handle = \
+                std::get<tree_node_handle>( b.boundingPoly ); \
+            auto poly_pin = \
+                InlineUnboundedIsotheticPolygon::read_polygon_from_disk( \
+                        allocator, poly_handle ); \
+            if( poly_pin->containsPoint( requestedPoint ) ) { \
+                context.push( b.child ); \
+            } \
+        } \
+    } \
+
 //min/max doesn't matter, we'll figure it out on the fly
 inline std::vector<Point> packed_node::search_as_leaf( Point &requestedPoint ) {
     std::vector<Point> accumulator;
@@ -967,71 +975,51 @@ inline std::vector<Point> packed_node::search_as_leaf( Point &requestedPoint ) {
     return accumulator;
 }
 
-
-NODE_TEMPLATE_PARAMS
-std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
-    Point &requestedPoint
+template <int min_branch_factor, int max_branch_factor, class
+    strategy>
+std::vector<Point> point_search(
+    tree_node_handle start_point,
+    Point &requestedPoint,
+    NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef
 ) {
     std::vector<Point> accumulator;
-
-    // Initialize our context stack
     std::stack<tree_node_handle> context;
-    context.push( this->self_handle_ );
-    tree_node_handle current_handle;
+    context.push( start_point );
+    tree_node_allocator *allocator = &(treeRef->node_allocator_);
 
-    tree_node_allocator *allocator = get_node_allocator( this->treeRef );
-
-    while( !context.empty() ) {
-        current_handle = context.top();
+    while( not context.empty() ) {
+        tree_node_handle current_handle = context.top();
         context.pop();
-
         if( current_handle.get_type() == LEAF_NODE ) {
             point_search_leaf_handle( current_handle, accumulator,
                     requestedPoint );
 #ifdef STAT
-            this->treeRef->stats.markLeafSearched();
+            treeRef->stats.markLeafSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
-            packed_leaf_search_handle( current_handle, requestedPoint,
-                    accumulator );
+            packed_leaf_search_handle( current_handle,
+                    requestedPoint, accumulator );
 #ifdef STAT
-            this->treeRef->stats.markLeafSearched();
+            treeRef->stats.markLeafSearched();
 #endif
-            
+        } else if( current_handle.get_type() == BRANCH_NODE ) {
+            point_search_branch_handle( current_handle,
+                    requestedPoint, context );
+#ifdef STAT
+            treeRef->stats.markNonLeafSearched();
+#endif
+        } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
+            assert( false );
+#ifdef STAT
+            treeRef->stats.markNonLeafSearched();
+#endif
         } else {
-            auto current_node = treeRef->get_branch_node( current_handle );
-            // Determine which branches we need to follow
-            for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
-                Branch &b = current_node->entries.at(i);
-                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                            b.boundingPoly ) ) {
-                    InlineBoundedIsotheticPolygon &loc_poly = 
-                        std::get<InlineBoundedIsotheticPolygon>(
-                                b.boundingPoly );
-                    if( loc_poly.containsPoint( requestedPoint ) ) {
-                        context.push( b.child );
-                    }
-                } else {
-                    tree_node_handle poly_handle =
-                        std::get<tree_node_handle>( b.boundingPoly );
-                    auto poly_pin =
-                        InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                                allocator, poly_handle );
-                    if( poly_pin->containsPoint( requestedPoint ) ) {
-                        context.push( b.child );
-                    }
-                }
-            }
-#ifdef STAT
-            this->treeRef->stats.markNonLeafNodeSearched();
-#endif
+            assert( false );
         }
     }
-
 #ifdef STAT
-    this->treeRef->stats.resetSearchTracker( false );
+    treeRef->stats.resetSearchTracker( false );
 #endif
-
     return accumulator;
 }
 

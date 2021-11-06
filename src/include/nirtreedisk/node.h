@@ -225,7 +225,6 @@ namespace nirtreedisk
 
 			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
-			std::vector<Point> search(Point &requestedPoint);
 			std::vector<Point> search(Rectangle &requestedRectangle);
 			tree_node_handle insert(Point givenPoint);
 			tree_node_handle remove(Point givenPoint);
@@ -801,7 +800,6 @@ namespace nirtreedisk
 
 			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
-			std::vector<Point> search(Point &requestedPoint);
 			std::vector<Point> search(Rectangle &requestedRectangle);
 			tree_node_handle insert(Point givenPoint);
 			tree_node_handle remove(Point givenPoint);

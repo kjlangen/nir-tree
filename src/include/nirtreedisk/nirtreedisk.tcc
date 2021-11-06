@@ -29,15 +29,7 @@ std::vector<Point> NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::ex
 template <int min_branch_factor, int max_branch_factor, class strategy>
 std::vector<Point>
 NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::search( Point requestedPoint ) {
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_node = get_leaf_node( root );
-        assert( root_node->self_handle_ == root );
-        return root_node->search(requestedPoint);
-    } else {
-        auto root_node = get_branch_node( root );
-        assert( root_node->self_handle_ == root );
-        return root_node->search(requestedPoint);
-    }
+    return point_search( root, requestedPoint, this );
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
