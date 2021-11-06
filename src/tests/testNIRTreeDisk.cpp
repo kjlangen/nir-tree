@@ -1549,3 +1549,95 @@ TEST_CASE( "NIRTreeDisk: Point search packed branch out of band poly" ) {
 
     unlink( "nirdiskbacked.txt" );
 }
+
+TEST_CASE( "NIRTreeDisk: Repack subtree" ) {
+
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_.create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(nirtreedisk::BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_.create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(nirtreedisk::LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second );
+    auto leaf_node1 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_.create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(nirtreedisk::LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second );
+    auto leaf_node2 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_.create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(nirtreedisk::LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second );
+    auto leaf_node3 = alloc_leaf_data.first;
+
+    leaf_node1->addPoint( Point(1,1) );
+    leaf_node1->addPoint( Point(2,2) );
+    leaf_node1->addPoint( Point(3,3) );
+    leaf_node1->addPoint( Point(4,4) );
+    leaf_node1->addPoint( Point(5,5) );
+
+    Rectangle rect1(1,1,nextafter(1,DBL_MAX),nextafter(5, DBL_MAX));
+    Rectangle rect2(7,1,nextafter(20, DBL_MAX),nextafter(1,DBL_MAX));
+    Rectangle rect3(-100,-100, -20, -20);
+    Rectangle rect4(1,1,nextafter(5,DBL_MAX),nextafter(5,DBL_MAX));
+    IsotheticPolygon polygon( rect1 );
+    polygon.basicRectangles.push_back( rect2 );
+    polygon.basicRectangles.push_back( rect3 );
+    polygon.basicRectangles.push_back( rect4 );
+    polygon.recomputeBoundingBox();
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node1->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( polygon );
+    branch_node->addBranchToNode( b );
+
+    leaf_node2->addPoint( Point(6,6) );
+    leaf_node2->addPoint( Point(7,7) );
+    leaf_node2->addPoint( Point(8,8) );
+    leaf_node2->addPoint( Point(9,9) );
+    leaf_node2->addPoint( Point(10,10) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node2->boundingBox()),
+            leaf_node2->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    leaf_node3->addPoint( Point(11,11) );
+    leaf_node3->addPoint( Point(12,12) );
+    leaf_node3->addPoint( Point(13,13) );
+    leaf_node3->addPoint( Point(14,14) );
+    leaf_node3->addPoint( Point(15,15) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node3->boundingBox()),
+            leaf_node3->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    auto packed_branch_handle =
+        nirtreedisk::repack_subtree<3,7,nirtreedisk::LineMinimizeDownsplits>( branch_handle,
+            &(tree.node_allocator_), &(tree.node_allocator_) );
+
+    for( unsigned i = 1; i < 20; i++ ) {
+        Point p(i,i);
+        if( i < 16 ) {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 1 );
+        } else {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 0 );
+        }
+    }
+
+    unlink( "nirdiskbacked.txt" );
+}

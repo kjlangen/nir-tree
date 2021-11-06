@@ -1128,6 +1128,44 @@ std::vector<Point> point_search(
 }
 
 NODE_TEMPLATE_PARAMS
+tree_node_handle repack_subtree(
+    tree_node_handle handle,
+    tree_node_allocator *existing_allocator,
+    tree_node_allocator *new_allocator
+) {
+    std::vector<tree_node_handle> repacked_handles;
+    switch( handle.get_type() ) {
+        case LEAF_NODE: {
+            auto leaf_node =
+                existing_allocator->get_tree_node<LEAF_NODE_CLASS_TYPES>( handle );
+            auto new_handle = leaf_node->repack( new_allocator );
+            existing_allocator->free( handle, sizeof(
+                        LEAF_NODE_CLASS_TYPES ) );
+            return new_handle;
+        }
+        case BRANCH_NODE: {
+            auto branch_node =
+                existing_allocator->get_tree_node<BRANCH_NODE_CLASS_TYPES>( handle );
+            // Repack all my children, adjust my handles
+            for( size_t i = 0; i < branch_node->cur_offset_; i++ ) {
+                auto child_handle = branch_node->entries.at(i).child;
+                auto new_child_handle =
+                    repack_subtree<min_branch_factor,max_branch_factor,strategy>( child_handle,
+                        existing_allocator, new_allocator );
+                branch_node->entries.at(i).child = new_child_handle;
+            }
+            auto new_handle = branch_node->repack( new_allocator );
+            existing_allocator->free( handle, sizeof(
+                    BRANCH_NODE_CLASS_TYPES ) );
+            return new_handle;
+          }
+        default:
+            assert( false );
+            return tree_node_handle( nullptr );
+    }
+}
+
+NODE_TEMPLATE_PARAMS
 std::vector<Point> rectangle_search(
     tree_node_handle start_point,
     Rectangle &requestedRectangle,
