@@ -1277,7 +1277,7 @@ TEST_CASE("NIRTreeDisk: Search packed leaf direct." ) {
 
     for( int i = 0; i < 7; i++ ) {
         Point p( i, i );
-        auto vec = packed_leaf->search_as_leaf( p );
+        auto vec = point_search(repacked_handle, p, &tree );
         if( i < 5 ) {
             REQUIRE( vec.size() == 1 );
         } else {

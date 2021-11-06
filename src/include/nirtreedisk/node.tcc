@@ -75,7 +75,9 @@ void LEAF_NODE_CLASS_TYPES::exhaustiveSearch(
     }
 }
 
-#define point_search_leaf_node( current_node, accumulator, requestedPoint ) \
+// Macros so that we don't have recursive function calls 
+
+#define point_search_leaf_node( current_node, requestedPoint, accumulator ) \
     for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
         Point &p = current_node->entries.at(i); \
         if( requestedPoint == p ) { \
@@ -83,35 +85,18 @@ void LEAF_NODE_CLASS_TYPES::exhaustiveSearch(
         } \
     }
 
-// Macros so that we don't have recursive function calls 
-#define point_search_leaf_handle( handle, accumulator, requestedPoint ) \
+#define point_search_leaf_handle( handle, requestedPoint, accumulator ) \
     auto current_node = treeRef->get_leaf_node( handle ); \
-    point_search_leaf_node( current_node, accumulator, requestedPoint );
+    point_search_leaf_node( current_node, requestedPoint, accumulator );
     
 
-NODE_TEMPLATE_PARAMS
-std::vector<Point> LEAF_NODE_CLASS_TYPES::search(
-    Rectangle &requestedRectangle
-) {
-    std::vector<Point> accumulator;
-
-    // This only gets called when have a single node (the root) in the
-    // whole tree
-
-    // We are a leaf so add our data points when they are within the search rectangle
-    for( size_t i = 0; i < this->cur_offset_; i++ ) {
-        if( requestedRectangle.containsPoint( entries.at(i) ) ) {
-            accumulator.push_back( entries.at(i) );
-        }
+#define rectangle_search_leaf_handle( handle, requestedRectangle, accumulator ) \
+    auto current_node = treeRef->get_leaf_node( handle ); \
+    for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
+        if( requestedRectangle.containsPoint( current_node->entries.at(i) ) ) { \
+            accumulator.push_back( current_node->entries.at(i) ); \
+        } \
     }
-
-#ifdef STAT
-    this->treeRef->stats.markLeafSearched();
-    treeRef->stats.resetSearchTracker( true );
-#endif
-    return accumulator;
-
-}
 
 template <typename iter>
 void shrink(
@@ -926,7 +911,11 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     }
 }
 
-#define packed_leaf_search_node( packed_leaf, requestedPoint, accumulator ) \
+// Macros for sub-routines in search to guarantee that this code is
+// inlined into the main methods without a function call or the need for
+// recursive search calls. 
+
+#define point_search_packed_leaf_node( packed_leaf, requestedPoint, accumulator ) \
     char *data = packed_leaf->buffer_; \
     size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
     size_t &point_count = * (size_t *) (data + offset); \
@@ -939,13 +928,27 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
         offset += sizeof( Point ); \
     }
 
-#define packed_leaf_search_handle( handle, requestedPoint, accumulator ) \
+#define point_search_packed_leaf_handle( handle, requestedPoint, accumulator ) \
     assert( handle.get_type() == REPACKED_LEAF_NODE ); \
-    auto packed_leaf = allocator->get_tree_node<packed_node>( current_handle ); \
-    packed_leaf_search_node( packed_leaf, requestedPoint, accumulator );
+    auto packed_leaf = allocator->get_tree_node<packed_node>( handle ); \
+    point_search_packed_leaf_node( packed_leaf, requestedPoint, accumulator );
+
+#define rectangle_search_packed_leaf_handle( handle, requestedRectangle, accumulator ) \
+    auto packed_leaf = allocator->get_tree_node<packed_node>( handle ); \
+    char *data = packed_leaf->buffer_; \
+    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    size_t &point_count = * (size_t *) (data + offset); \
+    offset += sizeof(size_t); \
+    for( size_t i = 0; i < point_count; i++ ) { \
+        Point *p = (Point *) (data + offset); \
+        if( requestedRectangle.containsPoint( *p ) ) { \
+            accumulator.push_back( *p ); \
+        } \
+        offset += sizeof( Point ); \
+    }
 
 #define point_search_branch_handle( handle, requestedPoint, context ) \
-    auto current_node = treeRef->get_branch_node( current_handle ); \
+    auto current_node = treeRef->get_branch_node( handle ); \
     for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
         Branch &b = current_node->entries.at(i); \
         if( std::holds_alternative<InlineBoundedIsotheticPolygon>( \
@@ -966,14 +969,114 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
                 context.push( b.child ); \
             } \
         } \
-    } \
+    }
 
-//min/max doesn't matter, we'll figure it out on the fly
-inline std::vector<Point> packed_node::search_as_leaf( Point &requestedPoint ) {
-    std::vector<Point> accumulator;
-    packed_leaf_search_node( this, requestedPoint, accumulator );
-    return accumulator;
-}
+#define point_search_packed_branch_handle( handle , requestedPoint, context ) \
+    auto packed_branch = allocator->get_tree_node<packed_node>( handle ); \
+    char *buffer = packed_branch->buffer_; \
+    size_t offset = sizeof(void *) + 2*sizeof(tree_node_handle); \
+    size_t entry_count =  * (size_t *) (buffer+offset); \
+    offset += sizeof( entry_count ); \
+    for( size_t i = 0; i < entry_count; i++ ) { \
+        tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
+        offset += sizeof( tree_node_handle ); \
+        Rectangle *summary_rectangle = (Rectangle *) (buffer + offset); \
+        offset += sizeof( Rectangle ); \
+        unsigned rect_count = * (unsigned *) (buffer + offset); \
+        offset += sizeof( unsigned ); \
+        if( not summary_rectangle->containsPoint( requestedPoint ) ) { \
+            if( rect_count == std::numeric_limits<unsigned>::max() ) { \
+                offset += sizeof(tree_node_handle); \
+            } else { \
+                offset += rect_count * sizeof( Rectangle ); \
+            }\
+            continue; \
+        } \
+        if( rect_count == std::numeric_limits<unsigned>::max() ) { \
+            tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
+            offset += sizeof( tree_node_handle ); \
+            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
+            if( poly_pin->containsPoint( requestedPoint ) ) { \
+                context.push( *child ); \
+            } \
+        } else { \
+            for( unsigned r = 0; r < rect_count; r++ ) { \
+                Rectangle *rect = (Rectangle *) (buffer + offset); \
+                offset += sizeof(Rectangle); \
+                if( rect->containsPoint( requestedPoint ) ) { \
+                    context.push( *child ); \
+                    offset += (rect_count-r-1) * sizeof(Rectangle); \
+                    break; \
+                } \
+            } \
+        } \
+    }
+
+#define rectangle_search_branch_handle( handle, requestedRectangle, context ) \
+    auto current_node = treeRef->get_branch_node( handle ); \
+    for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
+        Branch &b = current_node->entries.at(i); \
+        if( std::holds_alternative<InlineBoundedIsotheticPolygon>( \
+                    b.boundingPoly ) ) { \
+            InlineBoundedIsotheticPolygon &loc_poly =  \
+                std::get<InlineBoundedIsotheticPolygon>( \
+                        b.boundingPoly ); \
+            if( loc_poly.intersectsRectangle( requestedRectangle) ) { \
+                context.push( b.child ); \
+            } \
+        } else { \
+            tree_node_handle poly_handle = \
+                std::get<tree_node_handle>( b.boundingPoly ); \
+            auto poly_pin = \
+                InlineUnboundedIsotheticPolygon::read_polygon_from_disk( \
+                        allocator, poly_handle ); \
+            if( poly_pin->intersectsRectangle( requestedRectangle ) ) { \
+                context.push( b.child ); \
+            } \
+        } \
+    }
+
+#define rectangle_search_packed_branch_handle( handle, requestedRectangle, context ) \
+    auto packed_branch = allocator->get_tree_node<packed_node>( handle ); \
+    char *buffer = packed_branch->buffer_; \
+    size_t offset = sizeof(void *) + 2*sizeof(tree_node_handle); \
+    size_t entry_count =  * (size_t *) (buffer+offset); \
+    offset += sizeof( entry_count ); \
+    for( size_t i = 0; i < entry_count; i++ ) { \
+        tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
+        offset += sizeof( tree_node_handle ); \
+        Rectangle *summary_rectangle = (Rectangle *) (buffer + offset); \
+        offset += sizeof( Rectangle ); \
+        unsigned rect_count = * (unsigned *) (buffer + offset); \
+        offset += sizeof( unsigned ); \
+        if( not summary_rectangle->intersectsRectangle( requestedRectangle ) ) { \
+            if( rect_count == std::numeric_limits<unsigned>::max() ) { \
+                offset += sizeof(tree_node_handle); \
+            } else { \
+                offset += rect_count * sizeof( Rectangle ); \
+            }\
+            continue; \
+        } \
+        if( rect_count == std::numeric_limits<unsigned>::max() ) { \
+            tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
+            offset += sizeof( tree_node_handle ); \
+            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
+            if( poly_pin->intersectsRectangle(requestedRectangle) ) { \
+                context.push( *child ); \
+            } \
+        } else { \
+            for( unsigned r = 0; r < rect_count; r++ ) { \
+                Rectangle *rect = (Rectangle *) (buffer + offset); \
+                offset += sizeof(Rectangle); \
+                if( rect->intersectsRectangle( requestedRectangle ) ) { \
+                    context.push( *child ); \
+                    offset += (rect_count-r-1) * sizeof(Rectangle); \
+                    break; \
+                } \
+            } \
+        } \
+    }
+
 
 template <int min_branch_factor, int max_branch_factor, class
     strategy>
@@ -991,13 +1094,12 @@ std::vector<Point> point_search(
         tree_node_handle current_handle = context.top();
         context.pop();
         if( current_handle.get_type() == LEAF_NODE ) {
-            point_search_leaf_handle( current_handle, accumulator,
-                    requestedPoint );
+            point_search_leaf_handle( current_handle, requestedPoint, accumulator );
 #ifdef STAT
             treeRef->stats.markLeafSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
-            packed_leaf_search_handle( current_handle,
+            point_search_packed_leaf_handle( current_handle,
                     requestedPoint, accumulator );
 #ifdef STAT
             treeRef->stats.markLeafSearched();
@@ -1009,58 +1111,8 @@ std::vector<Point> point_search(
             treeRef->stats.markNonLeafSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
-            auto packed_branch = allocator->get_tree_node<packed_node>( current_handle );
-            char *buffer = packed_branch->buffer_;
-            size_t offset = sizeof(void *) + 2*sizeof(tree_node_handle);
-            size_t entry_count =  * (size_t *) (buffer+offset);
-            offset += sizeof( entry_count );
-            for( size_t i = 0; i < entry_count; i++ ) {
-                tree_node_handle *child = (tree_node_handle *) (buffer
-                        + offset);
-                offset += sizeof( tree_node_handle );
-                Rectangle *summary_rectangle = (Rectangle *) (buffer +
-                        offset);
-                offset += sizeof( Rectangle );
-                unsigned rect_count = * (unsigned *) (buffer + offset);
-                offset += sizeof( unsigned );
-
-                // No match in summary rectangle, go next
-                if( not summary_rectangle->containsPoint( requestedPoint ) ) {
-                    if( rect_count ==
-                            std::numeric_limits<unsigned>::max() ) {
-                        offset += sizeof(tree_node_handle);
-                    } else {
-                        offset += rect_count * sizeof( Rectangle );
-                    }
-                    continue; //next entry
-                }
-
-                // Out of band, check pointer
-                if( rect_count == std::numeric_limits<unsigned>::max() ) {
-                    tree_node_handle *poly_handle = (tree_node_handle *)
-                        (buffer + offset );
-                    offset += sizeof( tree_node_handle );
-                    auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
-                            *poly_handle );
-                    if( poly_pin->containsPoint( requestedPoint ) ) {
-                        context.push( *child );
-                    }
-                // In band, check all rectangles
-                } else {
-                    // Maybe a match... check the rectangles
-                    for( unsigned r = 0; r < rect_count; r++ ) {
-                        Rectangle *rect = (Rectangle *) (buffer + offset);
-                        offset += sizeof(Rectangle);
-                        if( rect->containsPoint( requestedPoint ) ) {
-                            context.push( *child );
-                            offset += (rect_count-r-1) * sizeof(Rectangle);
-                            break; //break for loop, next entry
-
-                        }
-                    }
-                }
-            }
-
+            point_search_packed_branch_handle( current_handle,
+                    requestedPoint, context );
 #ifdef STAT
 
             treeRef->stats.markNonLeafSearched();
@@ -1076,123 +1128,53 @@ std::vector<Point> point_search(
 }
 
 NODE_TEMPLATE_PARAMS
-std::vector<Point> BRANCH_NODE_CLASS_TYPES::search(
-    Rectangle &requestedRectangle
-) {
+std::vector<Point> rectangle_search(
+    tree_node_handle start_point,
+    Rectangle &requestedRectangle,
+    NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef
+) {    
     std::vector<Point> accumulator;
 
-    // Initialize our context stack
     std::stack<tree_node_handle> context;
-    context.push(this->self_handle_);
-    tree_node_handle current_handle;
-    tree_node_allocator *allocator = get_node_allocator( this->treeRef );
+    tree_node_allocator *allocator = &(treeRef->node_allocator_);
+    context.push( start_point );
 
-    while( !context.empty() ) {
-        current_handle = context.top();
+    while( not context.empty() ) {
+        tree_node_handle current_handle = context.top();
         context.pop();
+
         if( current_handle.get_type() == LEAF_NODE ) {
-            auto current_node =
-                treeRef->get_leaf_node( current_handle );
-
-            // We are a leaf so add our data points when they are within the search rectangle
-            for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
-                Point &p = current_node->entries.at(i);
-                if( requestedRectangle.containsPoint(p) ) {
-                    accumulator.push_back( p );
-                }
-            }
-
+            rectangle_search_leaf_handle( current_handle, requestedRectangle, accumulator );
 #ifdef STAT
-            this->treeRef->stats.markLeafSearched();
+            treeRef->stats.markLeafSearched();
+#endif
+        } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
+            rectangle_search_packed_leaf_handle( current_handle,
+                    requestedRectangle, accumulator );
+#ifdef STAT
+            treeRef->stats.markLeafSearched();
+#endif
+        } else if( current_handle.get_type() == BRANCH_NODE ) {
+            rectangle_search_branch_handle( current_handle,
+                    requestedRectangle, context );
+#ifdef STAT
+            treeRef->stats.markNonLeafSearched();
+#endif
+        } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
+            rectangle_search_packed_branch_handle( current_handle,
+                    requestedRectangle, context );
+#ifdef STAT
+            treeRef->stats.markNonLeafSearched();
 #endif
         } else {
-            auto current_node = treeRef->get_branch_node( current_handle
-                    );
-            for( size_t i = 0; i < current_node->cur_offset_; i++ ) {
-                // Determine which branches we need to follow
-                Branch &b = current_node->entries.at(i);
-                if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                            b.boundingPoly ) ) {
-                    InlineBoundedIsotheticPolygon &loc_poly = 
-                        std::get<InlineBoundedIsotheticPolygon>(
-                                b.boundingPoly );
-
-                    if( loc_poly.intersectsRectangle( requestedRectangle ) ) {
-                        context.push( b.child );
-                    }
-                } else {
-                    tree_node_handle poly_handle =
-                        std::get<tree_node_handle>( b.boundingPoly );
-                    auto poly_pin =
-                        InlineUnboundedIsotheticPolygon::read_polygon_from_disk(
-                                allocator, poly_handle );
-                    if( poly_pin->intersectsRectangle( requestedRectangle ) ) {
-                        context.push( b.child );
-                    }
-                }
-            }
-#ifdef STAT
-            this->treeRef->stats.markNonLeafNodeSearched();
-#endif
+            assert(false);
         }
     }
 #ifdef STAT
-    this->treeRef->stats.resetSearchTracker( true );
+    treeRef->stats.resetSearchTracker( true);
 #endif
-
     return accumulator;
 }
-
-template <typename iter>
-void rect_shrink(
-    IsotheticPolygon &polygon,
-    iter begin,
-    iter end,
-    tree_node_allocator *allocator
-){
-    // Early exit
-    if( polygon.basicRectangles.size() == 0 or begin == end ) {
-        return;
-    }
-
-    std::vector<Rectangle> rectangleSetShrunk;
-    for (const Rectangle &basicRectangle : polygon.basicRectangles) {
-        bool addRectangle = false;
-        Rectangle shrunkRectangle = Rectangle(Point::atInfinity, Point::atNegInfinity);
-        for( auto cur_iter = begin; cur_iter != end; cur_iter++ ) {
-            Branch &b = std::get<Branch>( *cur_iter );
-            Rectangle bounding_box;
-            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
-                        b.boundingPoly ) ) {
-                bounding_box =
-                    std::get<InlineBoundedIsotheticPolygon>(
-                            b.boundingPoly).get_summary_rectangle();
-            } else {
-                tree_node_handle poly_handle =
-                    std::get<tree_node_handle>(
-                            b.boundingPoly );
-                auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
-                        poly_handle );
-                bounding_box = poly_pin->get_summary_rectangle();
-            }
-            if( basicRectangle.intersectsRectangle(
-                        bounding_box ) ) {
-                shrunkRectangle.expand( bounding_box );
-                addRectangle = true;
-            }
-        }
-
-        if( addRectangle ) {
-            rectangleSetShrunk.emplace_back( std::move(shrunkRectangle) );
-        }
-    }
-
-    assert(rectangleSetShrunk.size() > 0);
-
-    polygon.basicRectangles.swap(rectangleSetShrunk);
-    polygon.recomputeBoundingBox();
-}
-
 
 // Always called on root, this = root
 // This top-to-bottom sweep is only for adjusting bounding boxes to contain the point and

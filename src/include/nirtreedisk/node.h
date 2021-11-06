@@ -225,7 +225,6 @@ namespace nirtreedisk
 
 			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
-			std::vector<Point> search(Rectangle &requestedRectangle);
 			tree_node_handle insert(Point givenPoint);
 			tree_node_handle remove(Point givenPoint);
 
@@ -800,7 +799,6 @@ namespace nirtreedisk
 
 			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
-			std::vector<Point> search(Rectangle &requestedRectangle);
 			tree_node_handle insert(Point givenPoint);
 			tree_node_handle remove(Point givenPoint);
 
@@ -819,8 +817,6 @@ namespace nirtreedisk
 
     struct packed_node {
         char buffer_[1]; //dynamically sized
-
-        inline std::vector<Point> search_as_leaf( Point &requestedPoint );
     };
 
 

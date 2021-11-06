@@ -35,13 +35,7 @@ NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::search( Point request
 template <int min_branch_factor, int max_branch_factor, class strategy>
 std::vector<Point>
 NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::search( Rectangle requestedRectangle ) {
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_node = get_leaf_node( root );
-        return root_node->search( requestedRectangle );
-    } else {
-        auto root_node = get_branch_node( root );
-        return root_node->search( requestedRectangle );
-    }
+    return rectangle_search( root, requestedRectangle, this );
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
