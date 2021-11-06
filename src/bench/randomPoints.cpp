@@ -633,6 +633,20 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         spatialIndex->write_metadata();
 
 
+        std::cout << "Repacking..." << std::endl;
+        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+        auto tree_ptr = (nirtreedisk::NIRTreeDisk<3,7> *) spatialIndex;
+        auto repacked_handle = nirtreedisk::repack_subtree<3,7,nirtreedisk::ExperimentalStrategy>( tree_ptr->root, &(tree_ptr->node_allocator_),
+                &(tree_ptr->node_allocator_) );
+        tree_ptr->root = repacked_handle;
+
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+
+        std::cout << "Repacking done in: " << delta.count() << "s" <<
+            std::endl;
+
+
     }
 
 	// Validate tree
@@ -703,8 +717,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
 	// Gather statistics
-	spatialIndex->stat();
-	std::cout << "Statistics OK." << std::endl;
+	//spatialIndex->stat();
+	//std::cout << "Statistics OK." << std::endl;
 
 	// Validate checksum
     /*
