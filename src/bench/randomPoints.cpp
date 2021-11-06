@@ -630,9 +630,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         std::cout << "Checksum OK." << std::endl;
         */
 
-        spatialIndex->write_metadata();
-
-
         std::cout << "Repacking..." << std::endl;
         std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
         auto tree_ptr = (nirtreedisk::NIRTreeDisk<3,7> *) spatialIndex;
@@ -646,6 +643,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         std::cout << "Repacking done in: " << delta.count() << "s" <<
             std::endl;
 
+        spatialIndex->write_metadata();
 
     }
 
