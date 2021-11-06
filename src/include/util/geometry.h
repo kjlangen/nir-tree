@@ -380,6 +380,7 @@ struct PageableIsotheticPolygon {
 
 };
 
+
 // DO NOT MATERIALIZE ON THE STACK
 class InlineUnboundedIsotheticPolygon {
 	public:
@@ -687,6 +688,22 @@ class InlineUnboundedIsotheticPolygon {
                     sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
                 + 1;
             return max_rects_on_first_page;
+        }
+
+        tree_node_handle repack( tree_node_allocator *new_allocator ) {
+            // Doesn't need to be, but simplifies things for now
+            assert( total_rectangle_count_ <=
+                    maximum_possible_rectangles_on_first_page() );
+            size_t precise_size_needed = sizeof(InlineUnboundedIsotheticPolygon) +
+                    (total_rectangle_count_-1)*sizeof(Rectangle);
+            auto alloc_data = new_allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                    precise_size_needed, NodeHandleType( 3 /* BIG POLYGON */ ) );
+            new (&(*alloc_data.first)) InlineUnboundedIsotheticPolygon(
+                    new_allocator, total_rectangle_count_ );
+            IsotheticPolygon cur_poly = materialize_polygon();
+            alloc_data.first->push_polygon_to_disk( cur_poly );
+            return alloc_data.second;
+
         }
 
 protected:

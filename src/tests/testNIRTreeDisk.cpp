@@ -952,7 +952,7 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( branch_node->cur_offset_ == 5 );
 
     tree_node_handle packed_handle = branch_node->repack(
-            &(tree.node_allocator_) );
+            &(tree.node_allocator_), &(tree.node_allocator_)  );
     REQUIRE( packed_handle != nullptr );
 
     auto packed_branch= tree.node_allocator_.get_tree_node<nirtreedisk::packed_node>(
@@ -1079,7 +1079,8 @@ TEST_CASE("NIRTreeDisk: pack complex inline polygon") {
     std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk( polygon );
     branch_node->addBranchToNode( b );
 
-    tree_node_handle packed_handle = branch_node->repack( &(tree.node_allocator_) ); 
+    tree_node_handle packed_handle = branch_node->repack(
+            &(tree.node_allocator_), &(tree.node_allocator_) ); 
 
     auto packed_branch= tree.node_allocator_.get_tree_node<nirtreedisk::packed_node>(
             packed_handle );
@@ -1164,7 +1165,8 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
     nirtreedisk::Branch b = createBranchEntry( alloc_poly_data.second, leaf_handle );
     branch_node->addBranchToNode( b );
 
-    tree_node_handle packed_handle = branch_node->repack( &(tree.node_allocator_) ); 
+    tree_node_handle packed_handle = branch_node->repack(
+            &(tree.node_allocator_), &(tree.node_allocator_) ); 
 
     auto packed_branch= tree.node_allocator_.get_tree_node<nirtreedisk::packed_node>(
             packed_handle );
@@ -1192,8 +1194,11 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
            std::numeric_limits<unsigned>::max() );
     offset += sizeof(unsigned);
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) !=
            alloc_poly_data.second );
+    REQUIRE( ((tree_node_handle *) (packed_branch->buffer_ +
+                    offset))->get_type() == nirtreedisk::BIG_POLYGON );
+
 
     unlink("nirdiskbacked.txt");
 }
@@ -1349,7 +1354,8 @@ TEST_CASE( "NIRTreeDisk: Point search packed branch" ) {
             leaf_node3->self_handle_ );
     branch_node->addBranchToNode( b );
 
-    auto packed_branch_handle = branch_node->repack( &(tree.node_allocator_) );
+    auto packed_branch_handle = branch_node->repack(
+            &(tree.node_allocator_), &(tree.node_allocator_) );
 
     for( unsigned i = 1; i < 20; i++ ) {
         Point p(i,i);
@@ -1439,7 +1445,8 @@ TEST_CASE( "NIRTreeDisk: Point search packed branch multi-rect poly" ) {
             leaf_node3->self_handle_ );
     branch_node->addBranchToNode( b );
 
-    auto packed_branch_handle = branch_node->repack( &(tree.node_allocator_) );
+    auto packed_branch_handle = branch_node->repack(
+            &(tree.node_allocator_), &(tree.node_allocator_) );
 
     for( unsigned i = 1; i < 20; i++ ) {
         Point p(i,i);
@@ -1536,7 +1543,8 @@ TEST_CASE( "NIRTreeDisk: Point search packed branch out of band poly" ) {
             leaf_node3->self_handle_ );
     branch_node->addBranchToNode( b );
 
-    auto packed_branch_handle = branch_node->repack( &(tree.node_allocator_) );
+    auto packed_branch_handle = branch_node->repack(
+            &(tree.node_allocator_), &(tree.node_allocator_) );
 
     for( unsigned i = 1; i < 20; i++ ) {
         Point p(i,i);

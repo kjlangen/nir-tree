@@ -773,10 +773,11 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
 }
 
 NODE_TEMPLATE_PARAMS
-tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator ) {
+tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
+        *existing_allocator, tree_node_allocator *new_allocator ) {
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
     uint16_t alloc_size = compute_packed_size();
-    auto alloc_data = allocator->create_new_tree_node<packed_node>(
+    auto alloc_data = new_allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
 
     char *buffer = alloc_data.first->buffer_;
@@ -786,7 +787,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator
     buffer += write_data_to_buffer( buffer, &cur_offset_ );
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = entries.at(i);
-        buffer += b.repack_into( buffer, allocator );
+        buffer += b.repack_into( buffer, existing_allocator, new_allocator );
     }
     size_t true_size = (buffer - alloc_data.first->buffer_);
     assert( true_size == alloc_size );
@@ -1149,7 +1150,7 @@ tree_node_handle repack_subtree(
                         existing_allocator, new_allocator );
                 branch_node->entries.at(i).child = new_child_handle;
             }
-            auto new_handle = branch_node->repack( new_allocator );
+            auto new_handle = branch_node->repack( existing_allocator, new_allocator );
             existing_allocator->free( handle, sizeof(
                     BRANCH_NODE_CLASS_TYPES ) );
             return new_handle;
@@ -2263,8 +2264,6 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
 
     STATEXEC(std::cout << "### ### ### ###" << std::endl);
 }
-
-
 
 #undef NODE_TEMPLATE_PARAMS
 #undef LEAF_NODE_CLASS_TYPES 
