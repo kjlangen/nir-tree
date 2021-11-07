@@ -110,10 +110,47 @@ namespace nirtreedisk
             return poly_pin->materialize_polygon();
         }
 
-        inline size_t compute_packed_size() {
+        std::pair<bool,
+            pinned_node_ptr<InlineUnboundedIsotheticPolygon>> should_repack_big_poly(
+            tree_node_handle poly_handle,
+            tree_node_allocator *existing_allocator,
+            tree_node_allocator *new_allocator,
+            unsigned maximum_repacked_rect_size
+        ) {
+            auto poly_pin =
+                existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                        poly_handle );
+            if( poly_pin->get_total_rectangle_count() <=
+                    maximum_repacked_rect_size ) {
+                return std::make_pair( true, poly_pin );
+            }
+
+            return std::make_pair( false, poly_pin );
+
+        }
+
+        size_t compute_packed_size(
+            tree_node_allocator *existing_allocator,
+            tree_node_allocator *new_allocator,
+            unsigned maximum_repacked_rect_size
+        ) {
             size_t sz = sizeof( child );
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
                 sz += sizeof( Rectangle ); // summary rectangle
+
+                auto should_pack_and_pin = should_repack_big_poly(
+                    std::get<tree_node_handle>( boundingPoly ),
+                    existing_allocator,
+                    new_allocator,
+                    maximum_repacked_rect_size
+                );
+                if( should_pack_and_pin.first ) {
+                    auto poly_pin = should_pack_and_pin.second;
+                    sz += sizeof( unsigned ); // Rectangle count
+                    sz += poly_pin->get_total_rectangle_count() * sizeof(
+                            Rectangle ); //rectangles
+                    return sz;
+                }
                 sz += sizeof( unsigned ); // magic rect count id
                 sz += sizeof( tree_node_handle );
                 return sz;
@@ -127,30 +164,33 @@ namespace nirtreedisk
             return sz;
         }
 
-        size_t repack_into( char *buffer, tree_node_allocator
-                *existing_allocator, tree_node_allocator *new_allocator ) {
+        size_t repack_into(
+            char *buffer,
+            tree_node_allocator *existing_allocator,
+            tree_node_allocator *new_allocator,
+            unsigned cut_off_inline_rect_count
+        ) {
             size_t offset = write_data_to_buffer( buffer, &child );
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
                 Rectangle rect = get_summary_rectangle( existing_allocator );
                 offset += write_data_to_buffer( buffer + offset, &rect );
-                unsigned magic = std::numeric_limits<unsigned>::max();
-                offset += write_data_to_buffer( buffer + offset, &magic );
-                {
-                    auto poly_pin =
-                        existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
-                                std::get<tree_node_handle>( boundingPoly
-                                    ) );
-                    auto new_handle = poly_pin->repack( new_allocator );
-                    poly_pin->free_subpages( existing_allocator );
-                    existing_allocator->free(
-                            std::get<tree_node_handle>( boundingPoly ),
-                        compute_sizeof_inline_unbounded_polygon(
-                            poly_pin->get_max_rectangle_count_on_first_page()
-                            ) );
-                    offset += write_data_to_buffer( buffer + offset,
-                            &(new_handle) );
-                }
-                
+                auto poly_pin =
+                    existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                            std::get<tree_node_handle>( boundingPoly ) );
+
+
+                // This will write the polygon in direct, or allocate
+                // space for it elsewhere using new_allocator and then
+                // write that handle in.
+                offset += poly_pin->repack( buffer + offset, cut_off_inline_rect_count, new_allocator );
+
+                // Free the old polygon
+                poly_pin->free_subpages( existing_allocator );
+                existing_allocator->free(
+                        std::get<tree_node_handle>( boundingPoly ),
+                    compute_sizeof_inline_unbounded_polygon(
+                        poly_pin->get_max_rectangle_count_on_first_page()
+                        ) );
                 return offset;
             }
 
@@ -825,7 +865,9 @@ namespace nirtreedisk
 			unsigned height();
 			void stat();
 
-            uint16_t compute_packed_size();
+            uint16_t compute_packed_size( tree_node_allocator
+                    *existing_allocator, tree_node_allocator
+                    *new_allocator, unsigned &maximum_repacked_rect_size );
             tree_node_handle repack( tree_node_allocator
                     *existing_allocator, tree_node_allocator
                     *new_allocator );

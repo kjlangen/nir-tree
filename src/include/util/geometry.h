@@ -690,11 +690,33 @@ class InlineUnboundedIsotheticPolygon {
             return max_rects_on_first_page;
         }
 
-        tree_node_handle repack( tree_node_allocator *new_allocator ) {
-
+        size_t repack( char *buffer, unsigned cut_off_inline_rect_count, tree_node_allocator *new_allocator ) {
             // Doesn't need to be, but simplifies things for now
             assert( total_rectangle_count_ <=
                     maximum_possible_rectangles_on_first_page() );
+
+            // Inline oversize polygon into repacked node directly.
+            if( total_rectangle_count_ <= cut_off_inline_rect_count ) {
+                size_t sz = 0;
+                * (unsigned *) buffer = total_rectangle_count_;
+                sz += sizeof( total_rectangle_count_ );
+                for( auto iter = begin(); iter != end(); iter++ ) {
+                    * (Rectangle *) (buffer + sz) = (*iter);
+                    sz += sizeof( Rectangle );
+                }
+                return sz;
+            }
+
+            // Write polygon out of band. 
+
+            // Write magic to signify out of band polygon
+            size_t sz = 0;
+            * (unsigned *) buffer =
+                std::numeric_limits<unsigned>::max();
+            sz += sizeof( unsigned );
+
+            // Compute exact size needed to represent this out of band
+            // polygon, allocate it using the new allocator.
             size_t precise_size_needed = sizeof(InlineUnboundedIsotheticPolygon) +
                     (total_rectangle_count_-1)*sizeof(Rectangle);
             auto alloc_data = new_allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
@@ -707,8 +729,10 @@ class InlineUnboundedIsotheticPolygon {
                     new_allocator, total_rectangle_count_ );
             IsotheticPolygon cur_poly = materialize_polygon();
             alloc_data.first->push_polygon_to_disk( cur_poly );
-            return alloc_data.second;
 
+            * (tree_node_handle *) (buffer + sz) = alloc_data.second;
+            sz += sizeof(tree_node_handle);
+            return sz;
         }
 
 protected:

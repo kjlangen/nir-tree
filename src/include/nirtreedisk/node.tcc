@@ -741,14 +741,19 @@ uint16_t LEAF_NODE_CLASS_TYPES::compute_packed_size() {
 }
 
 NODE_TEMPLATE_PARAMS
-uint16_t BRANCH_NODE_CLASS_TYPES::compute_packed_size() {
+uint16_t BRANCH_NODE_CLASS_TYPES::compute_packed_size(
+    tree_node_allocator *existing_allocator,
+    tree_node_allocator *new_allocator,
+    unsigned &maximum_repacked_rect_size
+) {
     uint16_t sz = 0;
     sz += sizeof( treeRef );
     sz += sizeof( self_handle_ );
     sz += sizeof( parent );
     sz += sizeof( cur_offset_ );
     for( size_t i = 0; i < cur_offset_; i++ ) {
-        sz += entries.at(i).compute_packed_size();
+        sz += entries.at(i).compute_packed_size( existing_allocator,
+                new_allocator, maximum_repacked_rect_size );
     }
     return sz;
 }
@@ -776,7 +781,22 @@ NODE_TEMPLATE_PARAMS
 tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
         *existing_allocator, tree_node_allocator *new_allocator ) {
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
-    uint16_t alloc_size = compute_packed_size();
+    unsigned maximum_repacked_rect_size;
+    uint16_t alloc_size = 0;
+    for( maximum_repacked_rect_size = 25;
+            maximum_repacked_rect_size >= 5; maximum_repacked_rect_size
+            /= 2 ) {
+        alloc_size = compute_packed_size(
+            existing_allocator,
+            new_allocator,
+            maximum_repacked_rect_size
+        );
+        if( alloc_size <= PAGE_DATA_SIZE ) {
+            break;
+        }
+    }
+    assert( alloc_size <= PAGE_DATA_SIZE );
+    assert( maximum_repacked_rect_size >= 5 );
     auto alloc_data = new_allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
 
@@ -787,7 +807,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
     buffer += write_data_to_buffer( buffer, &cur_offset_ );
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = entries.at(i);
-        buffer += b.repack_into( buffer, existing_allocator, new_allocator );
+        buffer += b.repack_into( buffer, existing_allocator,
+                new_allocator, maximum_repacked_rect_size );
     }
     size_t true_size = (buffer - alloc_data.first->buffer_);
     assert( true_size == alloc_size );
@@ -1123,6 +1144,14 @@ std::vector<Point> point_search(
     return accumulator;
 }
 
+// Repack this subtree's data into the most compact representation
+// we can muster. This greatly increases query performance, but means
+// that we will need to convert it back if we ever need to shard a
+// rectangle during insertion. 
+//
+// N.B.: This code frees the old subtree and polygons as well.
+// You should not rely on any of the data in the old tree after you call
+// ths function!
 NODE_TEMPLATE_PARAMS
 tree_node_handle repack_subtree(
     tree_node_handle handle,
