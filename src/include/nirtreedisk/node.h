@@ -54,7 +54,7 @@ namespace nirtreedisk
     requires (std::derived_from<strategy,BranchPartitionStrategy>)
     tree_node_allocator *get_node_allocator(
             NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef ) {
-        return &(treeRef->node_allocator_);
+        return treeRef->node_allocator_.get();
     }
 
     template <typename T>

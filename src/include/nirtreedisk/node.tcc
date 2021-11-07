@@ -1084,7 +1084,7 @@ std::vector<Point> point_search(
     std::vector<Point> accumulator;
     std::stack<tree_node_handle> context;
     context.push( start_point );
-    tree_node_allocator *allocator = &(treeRef->node_allocator_);
+    tree_node_allocator *allocator = treeRef->node_allocator_.get();
 
     while( not context.empty() ) {
         tree_node_handle current_handle = context.top();
@@ -1170,7 +1170,7 @@ std::vector<Point> rectangle_search(
     std::vector<Point> accumulator;
 
     std::stack<tree_node_handle> context;
-    tree_node_allocator *allocator = &(treeRef->node_allocator_);
+    tree_node_allocator *allocator = treeRef->node_allocator_.get();
     context.push( start_point );
 
     while( not context.empty() ) {

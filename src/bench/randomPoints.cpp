@@ -462,7 +462,7 @@ static bool is_already_loaded(
             *tree =
             (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy> *) spatial_index;
 
-        size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
+        size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
@@ -474,8 +474,8 @@ static bool is_already_loaded(
             return true;
         }
     } else if( configU["tree"] == R_STAR_TREE ) {
-        rstartreedisk::RStarTreeDisk<7,15> *tree =
-            (rstartreedisk::RStarTreeDisk<7,15> *) spatial_index;
+        rstartreedisk::RStarTreeDisk<3,7> *tree =
+            (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
@@ -520,7 +520,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	else if (configU["tree"] == R_STAR_TREE)
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rstartreedisk::RStarTreeDisk<7,15>( 4096 * 10 * 13000, "rstardiskbacked_california.txt" );
+		spatialIndex = new rstartreedisk::RStarTreeDisk<3,7>( 4096 * 13000, "rstardiskbacked_california.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
@@ -528,7 +528,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(3,7);
 		spatialIndex = new
             nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>(
-                4096*13000, "nirdiskbacked_california.txt");
+                4096*13000*10, 
+                "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -631,21 +632,27 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         */
 
         std::cout << "Repacking..." << std::endl;
-        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
         auto tree_ptr = (nirtreedisk::NIRTreeDisk<3,7> *) spatialIndex;
 
-        tree_node_allocator new_file_allocator( 4096 * 10000,
+        auto new_file_allocator = std::make_unique<tree_node_allocator>(
+                4096 * 13000*10,
                 "repacked_nirtree.txt" );
-        new_file_allocator.initialize();
-        auto repacked_handle = nirtreedisk::repack_subtree<3,7,nirtreedisk::ExperimentalStrategy>( tree_ptr->root, &(tree_ptr->node_allocator_), &(new_file_allocator) );
+        new_file_allocator->initialize();
+        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+        auto repacked_handle =
+            nirtreedisk::repack_subtree<3,7,nirtreedisk::ExperimentalStrategy>(
+                    tree_ptr->root, tree_ptr->node_allocator_.get(),
+                    new_file_allocator.get() );
         tree_ptr->root = repacked_handle;
-        exit(0);
 
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 
         std::cout << "Repacking done in: " << delta.count() << "s" <<
             std::endl;
+
+        // This evicts all the old pages, which is painful.
+        tree_ptr->node_allocator_ = std::move( new_file_allocator );
 
         spatialIndex->write_metadata();
 

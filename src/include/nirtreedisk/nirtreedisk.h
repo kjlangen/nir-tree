@@ -21,6 +21,7 @@
 #include <string>
 #include <iostream>
 #include <utility>
+#include <memory>
 #include <util/geometry.h>
 #include <index/index.h>
 #include <storage/tree_node_allocator.h>
@@ -40,25 +41,24 @@ namespace nirtreedisk
 	{
 		public:
             tree_node_handle root;
-            tree_node_allocator node_allocator_;
-            std::string backing_file_;
+            std::unique_ptr<tree_node_allocator> node_allocator_;
 
 			Statistics stats;
 
 			// Constructors and destructors
 			NIRTreeDisk( size_t memory_budget, std::string backing_file  ) :
-                node_allocator_( memory_budget, backing_file ),
-                backing_file_( backing_file )
+                node_allocator_( std::make_unique<tree_node_allocator>(
+                            memory_budget, backing_file ) )
             {
-                node_allocator_.initialize();
+                node_allocator_->initialize();
 
                 size_t existing_page_count =
-                    node_allocator_.buffer_pool_.get_preexisting_page_count();
+                    node_allocator_->buffer_pool_.get_preexisting_page_count();
 
                 // If this is a fresh tree, we need a root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
-                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>(
+                        node_allocator_->create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>(
                                 NodeHandleType(LEAF_NODE) );
                     root = alloc.second;
                     new (&(*(alloc.first)))
@@ -68,7 +68,7 @@ namespace nirtreedisk
                     return;
                 }
 
-                std::string meta_file = backing_file_ + ".meta";
+                std::string meta_file = backing_file + ".meta";
                 int fd = open( meta_file.c_str(), O_RDONLY );
                 assert( fd >= 0 );
 
@@ -100,7 +100,7 @@ namespace nirtreedisk
                 get_leaf_node( tree_node_handle node_handle ) {
                     assert( node_handle.get_type() == LEAF_NODE );
                 auto ptr =
-                    node_allocator_.get_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>( node_handle );
+                    node_allocator_->get_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>( node_handle );
                 ptr->treeRef = this;
                 return ptr;
             }
@@ -109,7 +109,7 @@ namespace nirtreedisk
                 get_branch_node( tree_node_handle node_handle ) {
                     assert( node_handle.get_type() == BRANCH_NODE );
                 auto ptr =
-                    node_allocator_.get_tree_node<BranchNode<min_branch_factor,max_branch_factor,strategy>>( node_handle );
+                    node_allocator_->get_tree_node<BranchNode<min_branch_factor,max_branch_factor,strategy>>( node_handle );
                 ptr->treeRef = this;
                 return ptr;
             }
@@ -118,11 +118,12 @@ namespace nirtreedisk
             void write_metadata() override {
                 // Step 1:
                 // Writeback everything to disk
-                node_allocator_.buffer_pool_.writeback_all_pages();
+                node_allocator_->buffer_pool_.writeback_all_pages();
 
                 // Step 2:
                 // Write metadata file
-                std::string meta_fname = backing_file_ + ".meta";
+                std::string meta_fname =
+                    node_allocator_->get_backing_file_name() + ".meta";
                 int fd = open( meta_fname.c_str(), O_WRONLY |
                         O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR );
                 assert( fd >= 0 );
