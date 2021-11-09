@@ -48,6 +48,15 @@ namespace rtreedisk
         void print();
         void visualize();
 
+        inline pinned_node_ptr<Node<min_branch_factor,max_branch_factor>> get_node( tree_node_handle node_handle ) {
+            auto ptr =
+                node_allocator_.get_tree_node<Node<min_branch_factor,max_branch_factor>>(
+                        node_handle );
+            ptr->treeRef = this;
+            return ptr;
+        }
+
+
         void write_metadata() override {
             // Step 1:
             // Writeback everything to disk

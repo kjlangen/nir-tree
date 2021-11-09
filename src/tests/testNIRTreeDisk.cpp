@@ -1224,6 +1224,7 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     auto leaf_node = alloc_leaf_data.first;
     auto leaf_handle = alloc_leaf_data.second;
 
+    // This is small enough to fit
     IsotheticPolygon polygon( Rectangle(0.0, 0.0, 1.0, 1.0) );
     for( double i = 1.0; i < 20.0; i += 1.0 ) {
         polygon.basicRectangles.push_back( Rectangle( i, i, i+1.0,
@@ -1242,6 +1243,7 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     nirtreedisk::Branch b = createBranchEntry( alloc_poly_data.second, leaf_handle );
     branch_node->addBranchToNode( b );
 
+    // too big, should be out of line
     IsotheticPolygon polygon2( Rectangle(0.0, 0.0, 1.0, 1.0) );
     for( double i = 1.0; i < 30.0; i += 1.0 ) {
         polygon2.basicRectangles.push_back( Rectangle( i, i, i+1.0,

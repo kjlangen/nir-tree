@@ -4,7 +4,7 @@ RTreeDisk<min_branch_factor,max_branch_factor>::RTreeDisk(size_t memory_budget, 
     // Initialize buffer pool
     node_allocator_.initialize();
 
-    backing_file_ = backing_file_;
+    backing_file_ = backing_file;
 
     /* We need to figure out if there was already data, and read
         * that into memory if we have it. */
@@ -35,8 +35,7 @@ std::vector<Point> RTreeDisk<min_branch_factor,max_branch_factor>::exhaustiveSea
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
     std::vector<Point> v;
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     root_ptr->exhaustiveSearch( requestedPoint, v );
 
     return v;
@@ -47,8 +46,7 @@ std::vector<Point> RTreeDisk<min_branch_factor, max_branch_factor>::search( Poin
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     assert( !root_ptr->parent );
 
     return root_ptr->search( requestedPoint );
@@ -61,8 +59,7 @@ std::vector<Point> RTreeDisk<min_branch_factor,max_branch_factor>::search( Recta
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     assert( !root_ptr->parent );
     return root_ptr->search( requestedRectangle );
 }
@@ -72,8 +69,7 @@ void RTreeDisk<min_branch_factor, max_branch_factor>::insert( Point givenPoint )
 {
 
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     assert( !root_ptr->parent );
 
     root = root_ptr->insert( givenPoint );
@@ -84,14 +80,14 @@ void RTreeDisk<min_branch_factor, max_branch_factor>::remove( Point givenPoint )
 {
 
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
-
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     root = root_ptr->remove( givenPoint );
 
+#ifndef NDEBUG
     // Get new root
-    root_ptr = node_allocator_.get_tree_node<NodeType>( root );
+    root_ptr = get_node( root );
     assert( !root_ptr->parent );
+#endif
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -99,8 +95,7 @@ unsigned RTreeDisk<min_branch_factor,max_branch_factor>::checksum()
 {
 
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     return root_ptr->checksum();
 }
 
@@ -110,8 +105,7 @@ void RTreeDisk<min_branch_factor,max_branch_factor>::print()
 {
 
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     root_ptr->printTree();
 }
 
@@ -120,8 +114,7 @@ template <int min_branch_factor, int max_branch_factor>
 bool RTreeDisk<min_branch_factor,max_branch_factor>::validate()
 {
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     return root_ptr->validate( tree_node_handle( nullptr ), 0);
 }
 
@@ -131,8 +124,7 @@ void RTreeDisk<min_branch_factor,max_branch_factor>::stat()
 {
 
     using NodeType = Node<min_branch_factor,max_branch_factor>;
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
     root_ptr->stat();
 }
 
@@ -143,7 +135,6 @@ void RTreeDisk<min_branch_factor,max_branch_factor>::visualize()
     using NodeType = Node<min_branch_factor,max_branch_factor>;
 
     BMPPrinter p(1000, 1000);
-    pinned_node_ptr<NodeType> root_ptr =
-        node_allocator_.get_tree_node<NodeType>( root );
+    pinned_node_ptr<NodeType> root_ptr = get_node( root );
 }
 

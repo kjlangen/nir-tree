@@ -480,8 +480,14 @@ static bool is_already_loaded(
         if( existing_page_count > 0 ) {
             return true;
         }
+    } else if( configU["tree"] == R_TREE ) {
+        rtreedisk::RTreeDisk<3,6> *tree =
+            (rtreedisk::RTreeDisk<3,6> *) spatial_index;
+        size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
+        if( existing_page_count > 0 ) {
+            return true;
+        }
     }
-
     return false;
 }
 template <typename T>
@@ -507,20 +513,21 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	if (configU["tree"] == R_TREE)
 	{
 		//spatialIndex = new rtree::RTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rtreedisk::RTreeDisk<3,6>( 4096 * 10 * 13000,
+		spatialIndex = new rtreedisk::RTreeDisk<3,6>( 4096 * 13000,
                 "rtreediskbacked_california.txt" );
 	}
 	else if (configU["tree"] == R_PLUS_TREE)
 	{
         spatialIndex = new
-            rplustreedisk::RPlusTreeDisk<3,7>(4096*10*13000 /4,
+            rplustreedisk::RPlusTreeDisk<3,7>(4096*13000,
                 "rplustreediskbacked_california.txt" );
 		//spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
 	}
 	else if (configU["tree"] == R_STAR_TREE)
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rstartreedisk::RStarTreeDisk<3,7>( 4096 * 13000, "rstardiskbacked_california.txt" );
+		spatialIndex = new rstartreedisk::RStarTreeDisk<3,7>( 4096 *
+                13000, "rstardiskbacked_california.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
@@ -528,8 +535,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(3,7);
 		spatialIndex = new
             nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>(
-                4096*13000*10, 
-                "nirdiskbacked_california.txt");
+                4096*13000, 
+                "repacked_nirtree.txt"
+                /*"nirdiskbacked_california.txt"*/);
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -635,7 +643,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         auto tree_ptr = (nirtreedisk::NIRTreeDisk<3,7> *) spatialIndex;
 
         auto new_file_allocator = std::make_unique<tree_node_allocator>(
-                4096 * 13000*10,
+                4096 * 13000,
                 "repacked_nirtree.txt" );
         new_file_allocator->initialize();
         std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
@@ -669,21 +677,16 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	{
 		// Search
 		Point &p = nextPoint.value();
-        for( int i = 0; i < 1000; i++ ) {
-            std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-            if (spatialIndex->search(p)[0] != p)
-            {
-                exit(1);
-            }
-            std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
-            totalTimeSearches += delta.count();
-            totalSearches += 1;
+        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+        if (spatialIndex->search(p)[0] != p)
+        {
+            exit(1);
         }
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+        totalTimeSearches += delta.count();
+        totalSearches += 1;
 
-        if( totalSearches > 100000 ) {
-            break;
-        }
 		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
 	}
 	std::cout << "Search OK." << std::endl;
@@ -726,8 +729,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
 	// Gather statistics
-	//spatialIndex->stat();
-	//std::cout << "Statistics OK." << std::endl;
+#ifdef STAT
+	spatialIndex->stat();
+	std::cout << "Statistics OK." << std::endl;
+#endif
 
 	// Validate checksum
     /*

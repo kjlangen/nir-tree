@@ -51,9 +51,8 @@ namespace rtreedisk
             unsigned level;
         };
 
-        RTreeDisk<min_branch_factor, max_branch_factor> *treeRef;
-
     public:
+        RTreeDisk<min_branch_factor, max_branch_factor> *treeRef;
         class Branch
         {
             public:

@@ -932,12 +932,16 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
 // inlined into the main methods without a function call or the need for
 // recursive search calls. 
 
+// Sets size_t offset pointing to start of leaf entries and size_t count
+#define decode_entry_count_and_offset_packed_node( data ) \
+    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    size_t count = * (size_t *) (data+offset); \
+    offset += sizeof( size_t );
+
 #define point_search_packed_leaf_node( packed_leaf, requestedPoint, accumulator ) \
     char *data = packed_leaf->buffer_; \
-    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
-    size_t &point_count = * (size_t *) (data + offset); \
-    offset += sizeof(size_t); \
-    for( size_t i = 0; i < point_count; i++ ) { \
+    decode_entry_count_and_offset_packed_node( data ); \
+    for( size_t i = 0; i < count; i++ ) { \
         Point *p = (Point *) (data + offset); \
         if( *p == requestedPoint ) { \
             accumulator.push_back( requestedPoint ); \
@@ -953,10 +957,8 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
 #define rectangle_search_packed_leaf_handle( handle, requestedRectangle, accumulator ) \
     auto packed_leaf = allocator->get_tree_node<packed_node>( handle ); \
     char *data = packed_leaf->buffer_; \
-    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
-    size_t &point_count = * (size_t *) (data + offset); \
-    offset += sizeof(size_t); \
-    for( size_t i = 0; i < point_count; i++ ) { \
+    decode_entry_count_and_offset_packed_node( data ) \
+    for( size_t i = 0; i < count; i++ ) { \
         Point *p = (Point *) (data + offset); \
         if( requestedRectangle.containsPoint( *p ) ) { \
             accumulator.push_back( *p ); \
@@ -988,13 +990,11 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
         } \
     }
 
-#define point_search_packed_branch_handle( handle , requestedPoint, context ) \
+#define point_search_packed_branch_handle( handle, requestedPoint, context ) \
     auto packed_branch = allocator->get_tree_node<packed_node>( handle ); \
     char *buffer = packed_branch->buffer_; \
-    size_t offset = sizeof(void *) + 2*sizeof(tree_node_handle); \
-    size_t entry_count =  * (size_t *) (buffer+offset); \
-    offset += sizeof( entry_count ); \
-    for( size_t i = 0; i < entry_count; i++ ) { \
+    decode_entry_count_and_offset_packed_node( buffer ); \
+    for( size_t i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
         Rectangle *summary_rectangle = (Rectangle *) (buffer + offset); \
@@ -1056,10 +1056,8 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
 #define rectangle_search_packed_branch_handle( handle, requestedRectangle, context ) \
     auto packed_branch = allocator->get_tree_node<packed_node>( handle ); \
     char *buffer = packed_branch->buffer_; \
-    size_t offset = sizeof(void *) + 2*sizeof(tree_node_handle); \
-    size_t entry_count =  * (size_t *) (buffer+offset); \
-    offset += sizeof( entry_count ); \
-    for( size_t i = 0; i < entry_count; i++ ) { \
+    decode_entry_count_and_offset_packed_node( buffer ); \
+    for( size_t i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
         Rectangle *summary_rectangle = (Rectangle *) (buffer + offset); \
@@ -1125,14 +1123,14 @@ std::vector<Point> point_search(
             point_search_branch_handle( current_handle,
                     requestedPoint, context );
 #ifdef STAT
-            treeRef->stats.markNonLeafSearched();
+            treeRef->stats.markNonLeafNodeSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
             point_search_packed_branch_handle( current_handle,
                     requestedPoint, context );
 #ifdef STAT
 
-            treeRef->stats.markNonLeafSearched();
+            treeRef->stats.markNonLeafNodeSearched();
 #endif
         } else {
             assert( false );
@@ -1221,13 +1219,13 @@ std::vector<Point> rectangle_search(
             rectangle_search_branch_handle( current_handle,
                     requestedRectangle, context );
 #ifdef STAT
-            treeRef->stats.markNonLeafSearched();
+            treeRef->stats.markNonLeafNodeSearched();
 #endif
         } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
             rectangle_search_packed_branch_handle( current_handle,
                     requestedRectangle, context );
 #ifdef STAT
-            treeRef->stats.markNonLeafSearched();
+            treeRef->stats.markNonLeafNodeSearched();
 #endif
         } else {
             assert(false);
@@ -2162,7 +2160,6 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
 
     // Initialize our context stack
     context.push( this->self_handle_ );
-    tree_node_handle currentContext;
     unsigned long polygonSize;
     unsigned long totalPolygonSize = 0;
     unsigned long totalLines = 0;
@@ -2181,9 +2178,8 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
 
     while( !context.empty() ) {
-        currentContext = context.top();
+        auto currentContext = context.top();
         context.pop();
-
 
         if( currentContext.get_type() == LEAF_NODE ) {
 
@@ -2198,8 +2194,43 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
             totalLeaves++;
             memoryFootprint +=
                 sizeof(LeafNode<min_branch_factor,max_branch_factor,strategy>);
-
-        } else {
+        } else if( currentContext.get_type() == REPACKED_LEAF_NODE ) {
+            auto current_node = allocator->get_tree_node<packed_node>(
+                    currentContext );
+            
+            char *data = current_node->buffer_;
+            decode_entry_count_and_offset_packed_node( data );
+            totalLeaves++;
+            unsigned fanout = (unsigned) count;
+            if( fanout >= histogramFanout.size() ) {
+                histogramFanout.resize(2*fanout, 0);
+            }
+            histogramFanout[fanout]++;
+        } else if( currentContext.get_type() == REPACKED_BRANCH_NODE ) {
+            auto current_node = allocator->get_tree_node<packed_node>(
+                    currentContext );
+            
+            char *buffer = current_node->buffer_;
+            decode_entry_count_and_offset_packed_node( buffer );
+            unsigned fanout = (unsigned) count;
+            if( fanout >= histogramFanout.size() ) {
+                histogramFanout.resize(2*fanout, 0);
+            }
+            histogramFanout[fanout]++;
+            for( size_t i = 0; i < count; i++ ) {
+                tree_node_handle *child = (tree_node_handle *) (buffer + offset);
+                offset += sizeof( tree_node_handle );
+                offset += sizeof( Rectangle );
+                unsigned rect_count = * (unsigned *) (buffer + offset);
+                offset += sizeof( unsigned );
+                context.push( *child );
+                if( rect_count == std::numeric_limits<unsigned>::max() ) {
+                    offset += sizeof( tree_node_handle );
+                } else {
+                    offset += rect_count * sizeof( Rectangle );
+                }
+            }
+        } else if( currentContext.get_type() == BRANCH_NODE ) {
             auto current_branch_node = treeRef->get_branch_node( currentContext
                     );
 
@@ -2226,12 +2257,6 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
             
             for( size_t i = 0; i < current_branch_node->cur_offset_; i++ ) {
                 Branch &b = current_branch_node->entries.at(i);
-                /*
-                auto child = this->treeRef->get_node( b.child );
-                if( child->get_entry_count() == 1 ) {
-                    singularBranches++;
-                }
-                */
                 IsotheticPolygon polygon = b.materialize_polygon(
                         allocator );
 
@@ -2263,10 +2288,11 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
 
     // Print out what we have found
     STATEXEC(std::cout << "### Statistics ###" << std::endl);
-    STATMEM(memoryFootprint);
-    STATHEIGHT(height());
+    // Memory footprint is wrong!
+    //STATMEM(memoryFootprint);
+    //STATHEIGHT(height());
     STATSIZE(totalNodes);
-    STATEXEC(std::cout << "DeadSpace: " << deadSpace << std::endl);
+    //STATEXEC(std::cout << "DeadSpace: " << deadSpace << std::endl);
     //STATSINGULAR(singularBranches);
     STATLEAF(totalLeaves);
     STATBRANCH(totalNodes - 1);
