@@ -12,7 +12,7 @@ void treeWalker( RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef, tr
         currentContext = context.top();
         context.pop();
 
-        f( currentContext );
+        f( treeRef, currentContext );
 
         if( currentContext.get_type() == BRANCH_NODE ) {
             auto node = treeRef->get_branch_node( currentContext );
@@ -44,7 +44,7 @@ Rectangle LEAF_NODE_CLASS_TYPES::boundingBox() const
 }
 
 NODE_TEMPLATE_PARAMS
-void LEAF_NODE_CLASS_TYPES::removeData( const Point &givenPoint )
+void LEAF_NODE_CLASS_TYPES::removePoint( const Point &givenPoint )
 {
     unsigned i = 0;
     for( ; i < cur_offset_; i++ ) {
@@ -330,7 +330,7 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::splitNode()
 
 #if !defined( NDEDBUG )
     if( parent ) {
-        auto  parent_ptr = treeRef->get_node( parent );
+        auto parent_ptr = treeRef->get_branch_node( parent );
         assert( level + 1 == parent_ptr->level );
 
     }
@@ -341,7 +341,6 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::splitNode()
             newSibling->entries.begin() );
 
     newSibling->cur_offset_ = cur_offset_ - splitIndex;
-    assert( not newSibling->entries[0] );
 
     // Chop our node's data down
     cur_offset_ = splitIndex;
@@ -354,51 +353,48 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::splitNode()
 }
 
 template <class NT>
-void adjustTreeBottomHalf(
+std::pair<tree_node_handle,tree_node_handle> adjustTreeBottomHalf(
     NT node,
     NT sibling,
     std::vector<bool> &hasReinsertedOnLevel,
     int max_branch_factor
-
 ) {
 
     auto *tree_ref_backup = node->treeRef;
 
     tree_node_handle parent_handle = node->parent;
+    tree_node_handle node_handle = node->self_handle_;
+    tree_node_handle sibling_handle = sibling->self_handle_;
     auto parent_ptr = tree_ref_backup->get_branch_node( parent_handle );
 
     bool didUpdateBoundingBox = parent_ptr->updateBoundingBox( node_handle, node->boundingBox() );
 
     // If we have a split then deal with it otherwise move up the tree
     if( sibling_handle ) {
-        auto sibling_ptr = tree_ref_backup->get_node( sibling_handle );
-        assert(node->level + 1 == parent_ptr->level);
-        assert(sibling_ptr->level + 1 == parent_ptr->level);
-
+        Rectangle bb = sibling->boundingBox();
         // AT4 [Propogate the node split upwards]
-        Branch b( sibling_ptr->boundingBox(), sibling_handle );
+        Branch b( bb, sibling_handle );
         parent_ptr->addBranchToNode( b );
-        assert( parent_ptr->cur_offset_ <= max_branch_factor );
-        // FIXME check for overflow
+        assert( parent_ptr->cur_offset_ <= (unsigned) max_branch_factor );
 
         unsigned sz = parent_ptr->cur_offset_;
-        if( sz >= max_branch_factor ) {
+        if( sz >= (unsigned) max_branch_factor ) {
             tree_node_handle parent_before_handle = node->parent;
             tree_node_handle sibling_parent_handle = parent_ptr->overflowTreatment(hasReinsertedOnLevel);
 
             if( sibling_parent_handle ) {
                 // We split our parent, so now we have two (possible) parents
-                assert( parent == sibling_parent_handle||
-                        parent == parent_before_handle );
-                assert( sibling_ptr->parent ==
+                assert( node->parent == sibling_parent_handle||
+                        node->parent == parent_before_handle );
+                assert( sibling->parent ==
                         sibling_parent_handle ||
-                        sibling_ptr->parent ==
+                        sibling->parent ==
                         parent_before_handle );
 
                 // Need to keep traversing up
                 node_handle = parent_before_handle;
                 sibling_handle = sibling_parent_handle;
-                assert(node != sibling_ptr);
+                assert(node != sibling);
 
                 return std::make_pair( node_handle, sibling_handle );
             }
@@ -414,21 +410,21 @@ void adjustTreeBottomHalf(
         } else {
             // If we didn't update our bounding box and there was no split, no reason to keep
             // going.
-            return std::make_pair( tree_node_handle(nullptr), tree_node_handle( nullptr );
+            return std::make_pair( tree_node_handle(nullptr),
+                    tree_node_handle( nullptr ) );
         }
     }
     return std::make_pair( node_handle, sibling_handle );
 }
 
-NODE_TEMPLATE_PARAMS
-tree_node_handle LEAF_NODE_CLASS_TYPES::adjustTree(
-    tree_node_handle sibling,
-    std::vector<bool> &hasReinsertedOnLevel
+template <int min_branch_factor, int max_branch_factor>
+tree_node_handle adjustTreeSub(
+    tree_node_handle node_handle,
+    tree_node_handle sibling_handle,
+    std::vector<bool> &hasReinsertedOnLevel,
+    RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef
 ) {
-    using NodeType = Node<min_branch_factor,max_branch_factor>;
     // AT1 [Initialize]
-    tree_node_handle node_handle = self_handle_;
-    tree_node_handle sibling_handle = sibling;
     for( ;; ) {
         assert( node_handle );
 
@@ -437,10 +433,15 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::adjustTree(
             if( !node->parent ) {
                 break;
             }
-            assert( sibling.get_type() == LEAF_NODE );
-            auto sibling_node = treeRef->get_leaf_node( sibling );
+            assert( sibling_handle.get_type() == LEAF_NODE );
+            auto sibling_node = treeRef->get_leaf_node( sibling_handle );
 
-            auto ret_data = adjustTreeBottomHalf();
+            auto ret_data = adjustTreeBottomHalf(
+                node,
+                sibling_node,
+                hasReinsertedOnLevel,
+                max_branch_factor
+            );
             node_handle = ret_data.first;
             sibling_handle = ret_data.second;
         } else {
@@ -448,8 +449,13 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::adjustTree(
             if( !node->parent ) {
                 break;
             }
-            auto sibling_node = treeRef->get_leaf_node( sibling );
-            auto ret_data = adjustTreeBottomHalf();
+            auto sibling_node = treeRef->get_branch_node( sibling_handle );
+            auto ret_data = adjustTreeBottomHalf(
+                node,
+                sibling_node,
+                hasReinsertedOnLevel,
+                max_branch_factor
+            );
             node_handle = ret_data.first;
             sibling_handle = ret_data.second;
         }
@@ -459,6 +465,22 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::adjustTree(
     }
 
     return sibling_handle;
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle LEAF_NODE_CLASS_TYPES::adjustTree(
+    tree_node_handle sibling_handle,
+    std::vector<bool> &hasReinsertedOnLevel
+) {
+    return adjustTreeSub( self_handle_, sibling_handle, hasReinsertedOnLevel, treeRef );
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle BRANCH_NODE_CLASS_TYPES::adjustTree(
+    tree_node_handle sibling_handle,
+    std::vector<bool> &hasReinsertedOnLevel
+) {
+    return adjustTreeSub( self_handle_, sibling_handle, hasReinsertedOnLevel, treeRef );
 }
 
 NODE_TEMPLATE_PARAMS
@@ -595,16 +617,15 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::insert(
     if( sibling_handle ) {
 
         assert( !parent );
-        std::pair<pinned_node_ptr<NodeType>, tree_node_handle> alloc_data =
-            allocator->create_new_tree_node<NodeType>();
+        auto alloc_data =
+            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
         auto newRoot = alloc_data.first;
 
         tree_node_handle root_handle = alloc_data.second;
-
-        auto sibling = treeRef->get_node( sibling_handle );
+        auto sibling = treeRef->get_branch_node( sibling_handle );
 
         new (&(*(newRoot)))
-            NodeType( treeRef, root_handle,
+            BRANCH_NODE_CLASS_TYPES( treeRef, root_handle,
                 tree_node_handle( nullptr ), this->level+1 );
         
         this->parent = root_handle;
@@ -670,14 +691,17 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::condenseTree(std::vector<bool> &hasReins
     for( ;; ) {
 
         tree_node_handle parent_handle;
+        Rectangle bb;
         if( node_handle.get_type() == LEAF_NODE ) {
             auto node = treeRef->get_leaf_node( node_handle );
             parent_handle = node->parent;
             entriesSize = node->cur_offset_;
+            bb = node->boundingBox();
         } else {
             auto node = treeRef->get_branch_node( node_handle );
             parent_handle = node->parent;
             entriesSize = node->cur_offset_;
+            bb = node->boundingBox();
         }
 
         if( !parent_handle ) {
@@ -687,13 +711,13 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::condenseTree(std::vector<bool> &hasReins
         // CT3 & CT4 [Eliminate under-full node. & Adjust covering rectangle.]
         if( entriesSize >= min_branch_factor ) {
             auto parent = treeRef->get_branch_node( parent_handle );
-            parent->updateBoundingBox( node_handle, node->boundingBox());
+            parent->updateBoundingBox( node_handle, bb );
 
             // CT5 [Move up one level in the tree]
             // Move up a level without deleting ourselves
             node_handle = parent->self_handle_;
         } else {
-            auto parent = treeRef->get_branch_node( node->parent );
+            auto parent = treeRef->get_branch_node( parent_handle );
             // Remove ourselves from our parent
             parent->removeChild( node_handle );
 
@@ -719,12 +743,13 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::condenseTree(std::vector<bool> &hasReins
         }
     }
 
+
     // CT6 [Re-insert oprhaned entries]
     for( const auto &entry : Q ) {
         if( node_handle.get_type() == LEAF_NODE ) {
             auto root = treeRef->get_leaf_node( node_handle );
             assert( !root->parent );
-            node_handle = root->insert(entry, hasReinsertedOnLevel);
+            node_handle = root->insert(std::get<Point>(entry), hasReinsertedOnLevel);
         } else {
             auto root = treeRef->get_branch_node( node_handle );
             assert( !root->parent );
@@ -741,7 +766,7 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::remove(
     Point &givenPoint,
     std::vector<bool> hasReinsertedOnLevel
 ) {
-    removeData(givenPoint);
+    removePoint(givenPoint);
 
     // D3 [Propagate changes]
     tree_node_handle root_handle = condenseTree( hasReinsertedOnLevel );
@@ -749,7 +774,7 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::remove(
         return root_handle;
     }
 
-    auto root = tree->get_branch_node( root_handle );
+    auto root = treeRef->get_branch_node( root_handle );
 
     // D4 [Shorten tree]
     if (root->cur_offset_ == 1 ) {
@@ -776,13 +801,14 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::remove(
             return b.child;
         }
     }
+    return root_handle;
 }
 
 NODE_TEMPLATE_PARAMS
 void LEAF_NODE_CLASS_TYPES::print() const
 {
 
-    std::string indentation(, ' ');
+    std::string indentation(4, ' ');
     std::cout << indentation << "Node " << (void *)this << std::endl;
     std::cout << indentation << "{" << std::endl;
     std::cout << indentation << "    BoundingBox: " << boundingBox() << std::endl;
@@ -851,10 +877,10 @@ NODE_TEMPLATE_PARAMS
 Rectangle BRANCH_NODE_CLASS_TYPES::boundingBox() const
 {
     assert( cur_offset_ > 0 );
-    Rectangle boundingBox = entries.at(0);
+    Rectangle boundingBox = entries.at(0).boundingBox;
 
     for( unsigned i = 0; i < cur_offset_; i++ ) {
-        boundingBox.expand( entries.at(i) );
+        boundingBox.expand( entries.at(i).boundingBox );
     }
 
     return boundingBox;
@@ -1077,7 +1103,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
 
                 // Compute overlap
                 double testOverlapExpansionArea =
-                    computeOverlapGrowth<NodeType::NodeEntry,NodeType::Branch,max_branch_factor>(i, node->entries,
+                    computeOverlapGrowth<NodeEntry,Branch,max_branch_factor>(i, node->entries,
                             node->cur_offset_, givenEntryBoundingBox);
 
                 // Take largest overlap
@@ -1143,16 +1169,17 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::findLeaf( const Point &givenPoint ) {
     assert( cur_offset_ > 0 );
 
     for( unsigned i = 0; i < cur_offset_; i++ ) {
-        const Branch &b = std::get<Branch>( entries.at( i ) );
+        const Branch &b = entries.at( i );
 
         if( b.boundingBox.containsPoint( givenPoint ) ) {
+            tree_node_handle ret_handle(nullptr);
             tree_node_handle child_handle = b.child;
             if( child_handle.get_type() == LEAF_NODE ) {
                 auto child = treeRef->get_leaf_node( child_handle );
-                tree_node_handle ret_handle = child->findLeaf( givenPoint );
+                ret_handle = child->findLeaf( givenPoint );
             } else {
                 auto child = treeRef->get_branch_node( child_handle );
-                tree_node_handle ret_handle = child->findLeaf( givenPoint );
+                ret_handle = child->findLeaf( givenPoint );
             }
 
             if( ret_handle ) {
@@ -1391,7 +1418,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::splitNode()
 
 #if !defined( NDEDBUG )
     if( parent ) {
-        pinned_node_ptr<NodeType> parent_ptr = treeRef->get_node( parent );
+        auto parent_ptr = treeRef->get_branch_node( parent );
         assert( level + 1 == parent_ptr->level );
 
     }
@@ -1488,14 +1515,13 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::reInsert(
         if( !root_node->parent ) {
             break;
         }
-        }
 
         root_handle = root_node->parent;
     }
 
     auto root_node = treeRef->get_branch_node( root_handle );
 
-    for( const NodeEntry &entry : entriesToReinsert ) {
+    for( const Branch &entry : entriesToReinsert ) {
         assert( !root_node->parent );
 
         root_handle = root_node->insert(entry, hasReinsertedOnLevel);
@@ -1531,7 +1557,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
 
     // I1 [Find position for new record]
     tree_node_handle insertion_point_handle = chooseSubtree( nodeEntry );
-    auto insertion_point = treeRef->get_node( insertion_point_handle );
 
     tree_node_handle sibling_handle = tree_node_handle( nullptr );
 
@@ -1558,7 +1583,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
     } else {
         auto insertion_point = treeRef->get_branch_node( insertion_point_handle );
         const Branch &b = std::get<Branch>( nodeEntry );
-        insertion_point->addBranch( b );
+        insertion_point->addBranchToNode( b );
         auto child = treeRef->get_branch_node( b.child );
         assert( insertion_point->level == child->level + 1 );
         child->parent = insertion_point_handle;
@@ -1649,7 +1674,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::remove(
     auto leaf = treeRef->get_leaf_node( leaf_ptr );
     
     // D2 [Delete record]
-    leaf->removeData( givenPoint );
+    leaf->removePoint( givenPoint );
 
     // D3 [Propagate changes]
     auto root_handle = leaf->condenseTree( hasReinsertedOnLevel );
@@ -1704,12 +1729,15 @@ void BRANCH_NODE_CLASS_TYPES::printTree() const
     // Print this node first
     struct Printer
     {
-        void operator()( tree_node_handle node_handle ) {
+        void operator()(
+            RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef,
+            tree_node_handle node_handle
+        ) {
             if( node_handle.get_type() == LEAF_NODE ) {
-                auto node = treeRef->get_leaf_node();
+                auto node = treeRef->get_leaf_node( node_handle );
                 node->print();
             } else { 
-                auto node = treeRef->get_branch_node();
+                auto node = treeRef->get_branch_node( node_handle );
                 node->print();
             }
         }
@@ -1730,7 +1758,9 @@ unsigned BRANCH_NODE_CLASS_TYPES::checksum() const
             checksum = 0;
         }
 
-        void operator()( tree_node_handle node_handle ) {
+        void operator()(
+                RStarTreeDisk<min_branch_factor,max_branch_factor>
+                *treeRef, tree_node_handle node_handle ) {
             if( node_handle.get_type() == LEAF_NODE ) {
                 auto node = treeRef->get_leaf_node( node_handle );
                 for( unsigned i = 0; i < node->cur_offset_; i++ ) {

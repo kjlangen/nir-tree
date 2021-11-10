@@ -14,6 +14,7 @@
 #include <variant>
 #include <globals/globals.h>
 #include <util/geometry.h>
+#include <util/repacking.h>
 #include <util/statistics.h>
 #include <storage/tree_node_allocator.h>
 
@@ -43,15 +44,20 @@ namespace rstartreedisk
     class Branch
     {
         public:
-            Rectangle boundingBox;
-            tree_node_handle child;
 
             Branch(Rectangle boundingBox, tree_node_handle
                     child_handle ) : boundingBox(boundingBox),
                     child(child_handle) {}
+
+            Branch() = default;
+
             Branch(const Branch &other) : boundingBox(other.boundingBox), child(other.child) {}
 
             bool operator==(const Branch &o) const = default;
+
+            Rectangle boundingBox;
+            tree_node_handle child;
+
     };
 
     typedef std::variant<Branch,Point> NodeEntry;
@@ -59,13 +65,12 @@ namespace rstartreedisk
     template <int min_branch_factor, int max_branch_factor>
 	class LeafNode
 	{
-		private:
-
+        private:
 			void searchSub(const Point &requestedPoint,
                     std::vector<Point> &accumulator);
 			void searchSub(const Rectangle &rectangle,
                     std::vector<Point> &accumulator);
-
+        public:
 			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
 			tree_node_handle parent;
             tree_node_handle self_handle_;
@@ -119,7 +124,7 @@ namespace rstartreedisk
                     &requestedRectangle);
 
 			// These return the root of the tree.
-			tree_node_handle insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel);
+			tree_node_handle insert(Point nodeEntry, std::vector<bool> &hasReinsertedOnLevel);
 			tree_node_handle remove(Point &givenPoint, std::vector<bool> hasReinsertedOnLevel);
 
 			// Miscellaneous
@@ -130,7 +135,7 @@ namespace rstartreedisk
 			void stat() const;
 
 			// Operators
-			bool operator<(const Node &otherNode) const;
+			bool operator<(const LeafNode &otherNode) const;
 	};
 
     template <int min_branch_factor, int max_branch_factor>
@@ -144,8 +149,6 @@ namespace rstartreedisk
                     std::vector<Point> &accumulator);
 
 		public:
-			typedef std::variant<Point, Branch> NodeEntry;
-
 			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
 			tree_node_handle parent;
             tree_node_handle self_handle_;
@@ -185,7 +188,10 @@ namespace rstartreedisk
 			unsigned chooseSplitAxis();
 			unsigned chooseSplitIndex(unsigned axis);
 			tree_node_handle splitNode();
-			tree_node_handle adjustTree(tree_node_handle siblingLeaf, std::vector<bool> &hasReinsertedOnLevel);
+			tree_node_handle adjustTree(
+                    tree_node_handle siblingLeaf,
+                    std::vector<bool> &hasReinsertedOnLevel
+            );
 			tree_node_handle reInsert(std::vector<bool> &hasReinsertedOnLevel);
 			tree_node_handle overflowTreatment(std::vector<bool> &hasReinsertedOnLevel);
 			tree_node_handle condenseTree(std::vector<bool> &hasReinsertedOnLevel);
@@ -209,46 +215,22 @@ namespace rstartreedisk
 			void stat() const;
 
 			// Operators
-			bool operator<(const Node &otherNode) const;
+			bool operator<(const BranchNode &otherNode) const;
 	};
-
-
-    /*
-    template <int min_branch_factor, int max_branch_factor>
-	Rectangle boxFromNodeEntry(const typename Node<min_branch_factor,
-            max_branch_factor>::NodeEntry &entry) {
-        using NodeType = Node<min_branch_factor,max_branch_factor>;
-        using BranchType = typename NodeType::Branch;
-        if (std::holds_alternative<BranchType>(entry))
-        {
-            return std::get<BranchType>(entry).boundingBox;
-        }
-
-        const Point &p = std::get<Point>(entry);
-        return Rectangle(p, Point::closest_larger_point( p ));
-
-    }
-    */
 
     template <class NE, class B, int N>
 	double computeOverlapGrowth(unsigned index, const
-            std::array<NE, N+1> &entries,
+            std::array<B, N+1> &entries,
             unsigned els_to_consider,
             const Rectangle &givenBox) {
         // We cannot be a leaf
         assert(els_to_consider > 0 );
-#if !defined( NDEBUG )
-        bool is_branch = std::holds_alternative<B>(
-                    entries[0] );
-        assert( is_branch );
-#endif
-
         
         // 1. Make a test rectangle we will use to not modify the original
         const Rectangle &origRectangle =
-            std::get<B>(entries[index]).boundingBox;
+            entries[index].boundingBox;
         Rectangle newRectangle =
-            std::get<B>(entries[index]).boundingBox;
+            entries[index].boundingBox;
         
         // 2. Add the point to the copied Rectangle
         newRectangle.expand(givenBox);
@@ -265,8 +247,8 @@ namespace rstartreedisk
             }
 
             overlapDiff +=
-                (newRectangle.computeIntersectionArea(std::get<B>(entry).boundingBox)
-                - origRectangle.computeIntersectionArea(std::get<B>(entry).boundingBox));
+                (newRectangle.computeIntersectionArea(entry.boundingBox)
+                - origRectangle.computeIntersectionArea(entry.boundingBox));
         }
 
         return overlapDiff;

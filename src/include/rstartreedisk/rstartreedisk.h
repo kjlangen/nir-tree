@@ -45,8 +45,8 @@ namespace rstartreedisk
 
                 // If this is a fresh tree, then make a fresh root
                 if( existing_page_count == 0 ) { 
-                    std::pair<pinned_node_ptr<Node<min_branch_factor,max_branch_factor>>, tree_node_handle> alloc =
-                        node_allocator_.create_new_tree_node<Node<min_branch_factor,max_branch_factor>>();
+                    auto alloc =
+                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor>>();
                     root = alloc.second;
                     new (&(*(alloc.first))) LeafNode<min_branch_factor,max_branch_factor>( this, root, tree_node_handle() /*nullptr*/, 0
                             );
@@ -79,7 +79,7 @@ namespace rstartreedisk
 			void stat();
 			void visualize();
 
-            inline pinned_node_ptr<Node<min_branch_factor,max_branch_factor>> get_leaf_node( tree_node_handle node_handle ) {
+            inline pinned_node_ptr<LeafNode<min_branch_factor,max_branch_factor>> get_leaf_node( tree_node_handle node_handle ) {
                 assert( node_handle.get_type() == LEAF_NODE );
                 auto ptr =
                     node_allocator_.get_tree_node<LeafNode<min_branch_factor,max_branch_factor>>(
@@ -88,7 +88,7 @@ namespace rstartreedisk
                 return ptr;
             }
 
-            inline pinned_node_ptr<Node<min_branch_factor,max_branch_factor>> get_branch_node( tree_node_handle node_handle ) {
+            inline pinned_node_ptr<BranchNode<min_branch_factor,max_branch_factor>> get_branch_node( tree_node_handle node_handle ) {
                 assert( node_handle.get_type() == BRANCH_NODE );
                 auto ptr =
                     node_allocator_.get_tree_node<BranchNode<min_branch_factor,max_branch_factor>>(
