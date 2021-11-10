@@ -2,8 +2,13 @@ template <int min_branch_factor, int max_branch_factor>
 std::vector<Point> RStarTreeDisk<min_branch_factor,max_branch_factor>::exhaustiveSearch( Point requestedPoint )
 {
     std::vector<Point> v;
-    auto root_ptr = get_node( root );
-    root_ptr->exhaustiveSearch( requestedPoint, v );
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        root_ptr->exhaustiveSearch( requestedPoint, v );
+    } else {
+        auto root_ptr = get_branch_node( root );
+        root_ptr->exhaustiveSearch( requestedPoint, v );
+    }
 
     return v;
 }
@@ -11,9 +16,11 @@ std::vector<Point> RStarTreeDisk<min_branch_factor,max_branch_factor>::exhaustiv
 template <int min_branch_factor, int max_branch_factor>
 std::vector<Point> RStarTreeDisk<min_branch_factor, max_branch_factor>::search( Point requestedPoint )
 {
-    auto  root_ptr = get_node( root );
-    assert( !root_ptr->parent );
-
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        return root_ptr->search( requestedPoint );
+    }
+    auto root_ptr = get_branch_node( root );
     return root_ptr->search( requestedPoint );
 }
 
@@ -22,8 +29,11 @@ template <int min_branch_factor, int max_branch_factor>
 std::vector<Point> RStarTreeDisk<min_branch_factor,max_branch_factor>::search( Rectangle
         requestedRectangle )
 {
-    auto root_ptr = get_node( root );
-    assert( !root_ptr->parent );
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        return root_ptr->search( requestedRectangle );
+    }
+    auto root_ptr = get_branch_node( root );
     return root_ptr->search( requestedRectangle );
 }
 
@@ -31,9 +41,13 @@ std::vector<Point> RStarTreeDisk<min_branch_factor,max_branch_factor>::search( R
 template <int min_branch_factor, int max_branch_factor>
 void RStarTreeDisk<min_branch_factor, max_branch_factor>::insert( Point givenPoint )
 {
-    auto root_ptr = get_node( root );
-    assert( !root_ptr->parent );
-
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
+        root = root_ptr->insert( givenPoint, hasReinsertedOnLevel );
+        return;
+    }
+    auto root_ptr = get_branch_node( root );
     std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
     root = root_ptr->insert( givenPoint, hasReinsertedOnLevel );
 }
@@ -43,20 +57,24 @@ template <int min_branch_factor, int max_branch_factor>
 void RStarTreeDisk<min_branch_factor, max_branch_factor>::remove( Point givenPoint )
 {
     std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
-    auto root_ptr = get_node( root );
-
-    root = root_ptr->remove( givenPoint, hasReinsertedOnLevel );
-
-    // Get new root
-    root_ptr = get_node( root );
-    assert( !root_ptr->parent );
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        root = root_ptr->remove( givenPoint, hasReinsertedOnLevel );
+    } else {
+        auto root_ptr = get_branch_node( root );
+        root = root_ptr->remove( givenPoint, hasReinsertedOnLevel );
+    }
 }
 
 
 template <int min_branch_factor, int max_branch_factor>
 unsigned RStarTreeDisk<min_branch_factor,max_branch_factor>::checksum()
 {
-    auto root_ptr = get_node( root );
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        return root_ptr->checksum();
+    } 
+    auto root_ptr = get_branch_node( root );
     return root_ptr->checksum();
 }
 
@@ -64,7 +82,11 @@ unsigned RStarTreeDisk<min_branch_factor,max_branch_factor>::checksum()
 template <int min_branch_factor, int max_branch_factor>
 void RStarTreeDisk<min_branch_factor,max_branch_factor>::print()
 {
-    auto root_ptr = get_node( root );
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        root_ptr->printTree();
+    }
+    auto root_ptr = get_branch_node( root );
     root_ptr->printTree();
 }
 
@@ -79,7 +101,11 @@ bool RStarTreeDisk<min_branch_factor,max_branch_factor>::validate()
 template <int min_branch_factor, int max_branch_factor>
 void RStarTreeDisk<min_branch_factor,max_branch_factor>::stat()
 {
-    auto root_ptr = get_node( root );
+    if( root.get_type() == LEAF_NODE ) {
+        auto root_ptr = get_leaf_node( root );
+        root_ptr->stat();
+    }
+    auto root_ptr = get_branch_node( root );
     root_ptr->stat();
 }
 
@@ -87,6 +113,4 @@ void RStarTreeDisk<min_branch_factor,max_branch_factor>::stat()
 template <int min_branch_factor, int max_branch_factor>
 void RStarTreeDisk<min_branch_factor,max_branch_factor>::visualize()
 {
-    BMPPrinter p(1000, 1000);
-    auto root_ptr = get_node( root );
 }

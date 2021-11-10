@@ -19,10 +19,8 @@
 #define BRANCH_NODE_CLASS_TYPES BranchNode<min_branch_factor, max_branch_factor, strategy>
 
 NODE_TEMPLATE_PARAMS
-void LEAF_NODE_CLASS_TYPES::deleteSubtrees()
-{
+void LEAF_NODE_CLASS_TYPES::deleteSubtrees() {
     return;
-
 }
 
 NODE_TEMPLATE_PARAMS

@@ -19,7 +19,6 @@
 
 namespace rstartreedisk
 {
-
     template <int min_branch_factor, int max_branch_factor>
     class RStarTreeDisk;
 
@@ -41,8 +40,24 @@ namespace rstartreedisk
         return treeRef->root;
     }
 
+    class Branch
+    {
+        public:
+            Rectangle boundingBox;
+            tree_node_handle child;
+
+            Branch(Rectangle boundingBox, tree_node_handle
+                    child_handle ) : boundingBox(boundingBox),
+                    child(child_handle) {}
+            Branch(const Branch &other) : boundingBox(other.boundingBox), child(other.child) {}
+
+            bool operator==(const Branch &o) const = default;
+    };
+
+    typedef std::variant<Branch,Point> NodeEntry;
+
     template <int min_branch_factor, int max_branch_factor>
-	class Node
+	class LeafNode
 	{
 		private:
 
@@ -51,35 +66,18 @@ namespace rstartreedisk
 			void searchSub(const Rectangle &rectangle,
                     std::vector<Point> &accumulator);
 
-		public:
-			class Branch
-			{
-				public:
-					Rectangle boundingBox;
-					tree_node_handle child;
-
-					Branch(Rectangle boundingBox, tree_node_handle
-                            child_handle ) : boundingBox(boundingBox),
-                            child(child_handle) {}
-					Branch(const Branch &other) : boundingBox(other.boundingBox), child(other.child) {}
-
-					bool operator==(const
-                            Node<min_branch_factor,max_branch_factor>::Branch &o) const;
-			};
-			typedef std::variant<Point, Branch> NodeEntry;
-
 			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
 			tree_node_handle parent;
             tree_node_handle self_handle_;
-
-            // Obnoxiously, this needs to have a +1 so we can overflow
-            // by 1 entry and deal with it later.
-            typename std::array<NodeEntry, max_branch_factor+1> entries;
             unsigned cur_offset_;
 			unsigned level;
 
+            // Obnoxiously, this needs to have a +1 so we can overflow
+            // by 1 entry and deal with it later.
+            std::array<Point, max_branch_factor+1> entries;
+
 			// Constructors and destructors
-            Node(RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef,
+            LeafNode(RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef,
                     tree_node_handle self_handle,
                     tree_node_handle parent, unsigned level=0) :
                 treeRef(treeRef),
@@ -90,8 +88,8 @@ namespace rstartreedisk
                     cur_offset_ = 0;
                 }
 
-            void addEntryToNode( const NodeEntry &entry ) {
-                entries.at( cur_offset_ ) = entry;
+            void addPoint( const Point &p ) {
+                entries.at( cur_offset_++ ) = p; 
                 cur_offset_++;
             }
 
@@ -99,12 +97,10 @@ namespace rstartreedisk
 
 			// Helper functions
 			Rectangle boundingBox() const;
-			bool updateBoundingBox(tree_node_handle child, Rectangle updatedBoundingBox);
-			void removeChild(tree_node_handle child);
-			void removeData(const Point &givenPoint);
+			void removePoint(const Point &givenPoint);
+
 			tree_node_handle chooseSubtree(const NodeEntry &nodeEntry);
 			tree_node_handle findLeaf(const Point &givenPoint);
-			inline bool isLeafNode() const { return level == 0; }
 			unsigned chooseSplitLeafAxis();
 			unsigned chooseSplitNonLeafAxis();
 			unsigned chooseSplitAxis();
@@ -138,6 +134,87 @@ namespace rstartreedisk
 	};
 
     template <int min_branch_factor, int max_branch_factor>
+	class BranchNode
+	{
+		private:
+
+			void searchSub(const Point &requestedPoint,
+                    std::vector<Point> &accumulator);
+			void searchSub(const Rectangle &rectangle,
+                    std::vector<Point> &accumulator);
+
+		public:
+			typedef std::variant<Point, Branch> NodeEntry;
+
+			RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef;
+			tree_node_handle parent;
+            tree_node_handle self_handle_;
+
+            // Obnoxiously, this needs to have a +1 so we can overflow
+            // by 1 entry and deal with it later.
+            typename std::array<Branch, max_branch_factor+1> entries;
+            unsigned cur_offset_;
+			unsigned level;
+
+			// Constructors and destructors
+            BranchNode(RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef,
+                    tree_node_handle self_handle,
+                    tree_node_handle parent, unsigned level=0) :
+                treeRef(treeRef),
+                parent(parent),
+                self_handle_(self_handle),
+                level(level)
+                {
+                    cur_offset_ = 0;
+                }
+
+            void addBranchToNode( const Branch &b ) {
+                entries.at( cur_offset_++ ) = b;
+            }
+
+			void deleteSubtrees();
+
+			// Helper functions
+			Rectangle boundingBox() const;
+			bool updateBoundingBox(tree_node_handle child, Rectangle updatedBoundingBox);
+			void removeChild(tree_node_handle child);
+			tree_node_handle chooseSubtree(const NodeEntry &nodeEntry);
+			tree_node_handle findLeaf(const Point &givenPoint);
+			unsigned chooseSplitLeafAxis();
+			unsigned chooseSplitNonLeafAxis();
+			unsigned chooseSplitAxis();
+			unsigned chooseSplitIndex(unsigned axis);
+			tree_node_handle splitNode();
+			tree_node_handle adjustTree(tree_node_handle siblingLeaf, std::vector<bool> &hasReinsertedOnLevel);
+			tree_node_handle reInsert(std::vector<bool> &hasReinsertedOnLevel);
+			tree_node_handle overflowTreatment(std::vector<bool> &hasReinsertedOnLevel);
+			tree_node_handle condenseTree(std::vector<bool> &hasReinsertedOnLevel);
+
+			// Datastructure interface functions
+			void exhaustiveSearch(const Point &requestedPoint, std::vector<Point> &accumulator) const;
+
+			std::vector<Point> search(const Point &requestedPoint);
+			std::vector<Point> search(const Rectangle
+                    &requestedRectangle);
+
+			// These return the root of the tree.
+			tree_node_handle insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel);
+			tree_node_handle remove(Point &givenPoint, std::vector<bool> hasReinsertedOnLevel);
+
+			// Miscellaneous
+			unsigned checksum() const;
+			void print() const;
+			void printTree() const;
+			unsigned height() const;
+			void stat() const;
+
+			// Operators
+			bool operator<(const Node &otherNode) const;
+	};
+
+
+    /*
+    template <int min_branch_factor, int max_branch_factor>
 	Rectangle boxFromNodeEntry(const typename Node<min_branch_factor,
             max_branch_factor>::NodeEntry &entry) {
         using NodeType = Node<min_branch_factor,max_branch_factor>;
@@ -151,6 +228,7 @@ namespace rstartreedisk
         return Rectangle(p, Point::closest_larger_point( p ));
 
     }
+    */
 
     template <class NE, class B, int N>
 	double computeOverlapGrowth(unsigned index, const
