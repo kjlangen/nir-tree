@@ -95,7 +95,6 @@ namespace rstartreedisk
 
             void addPoint( const Point &p ) {
                 entries.at( cur_offset_++ ) = p; 
-                cur_offset_++;
             }
 
 			void deleteSubtrees();

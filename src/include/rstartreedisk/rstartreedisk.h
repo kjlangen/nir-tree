@@ -46,7 +46,8 @@ namespace rstartreedisk
                 // If this is a fresh tree, then make a fresh root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
-                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor>>();
+                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor>>(
+                                NodeHandleType( LEAF_NODE ) );
                     root = alloc.second;
                     new (&(*(alloc.first))) LeafNode<min_branch_factor,max_branch_factor>( this, root, tree_node_handle() /*nullptr*/, 0
                             );

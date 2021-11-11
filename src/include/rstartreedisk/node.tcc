@@ -37,7 +37,7 @@ Rectangle LEAF_NODE_CLASS_TYPES::boundingBox() const
                 entries[0] ) );
 
     for( unsigned i = 0; i < cur_offset_; i++ ) {
-        boundingBox.expand( Rectangle( entries.at(i), entries.at(i) ) );
+        boundingBox.expand( entries.at(i) );
     }
 
     return boundingBox;
@@ -315,7 +315,8 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::splitNode()
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
     auto alloc_data =
-        allocator->create_new_tree_node<NodeType>();
+        allocator->create_new_tree_node<NodeType>( NodeHandleType(
+                    LEAF_NODE ) );
 
     auto newSibling = alloc_data.first;
     tree_node_handle sibling_handle = alloc_data.second;
@@ -364,18 +365,17 @@ std::pair<tree_node_handle,tree_node_handle> adjustTreeBottomHalf(
 
     tree_node_handle parent_handle = node->parent;
     tree_node_handle node_handle = node->self_handle_;
-    tree_node_handle sibling_handle = sibling->self_handle_;
     auto parent_ptr = tree_ref_backup->get_branch_node( parent_handle );
 
     bool didUpdateBoundingBox = parent_ptr->updateBoundingBox( node_handle, node->boundingBox() );
 
     // If we have a split then deal with it otherwise move up the tree
-    if( sibling_handle ) {
+    if( sibling != nullptr ) {
+        tree_node_handle sibling_handle = sibling->self_handle_;
         Rectangle bb = sibling->boundingBox();
         // AT4 [Propogate the node split upwards]
         Branch b( bb, sibling_handle );
         parent_ptr->addBranchToNode( b );
-        assert( parent_ptr->cur_offset_ <= (unsigned) max_branch_factor );
 
         unsigned sz = parent_ptr->cur_offset_;
         if( sz >= (unsigned) max_branch_factor ) {
@@ -403,18 +403,19 @@ std::pair<tree_node_handle,tree_node_handle> adjustTreeBottomHalf(
         node_handle = parent_ptr->self_handle_;
         sibling_handle = tree_node_handle( nullptr );
 
-    } else {
-        // AT5 [Move up to next level]
-        if( didUpdateBoundingBox ) {
-            node_handle = parent_ptr->self_handle_;
-        } else {
-            // If we didn't update our bounding box and there was no split, no reason to keep
-            // going.
-            return std::make_pair( tree_node_handle(nullptr),
-                    tree_node_handle( nullptr ) );
-        }
+        return std::make_pair( node_handle, sibling_handle );
+
     }
-    return std::make_pair( node_handle, sibling_handle );
+    // AT5 [Move up to next level]
+    if( didUpdateBoundingBox ) {
+        node_handle = parent_ptr->self_handle_;
+    } else {
+        // If we didn't update our bounding box and there was no split, no reason to keep
+        // going.
+        return std::make_pair( tree_node_handle(nullptr),
+                tree_node_handle( nullptr ) );
+    }
+    return std::make_pair( node_handle, tree_node_handle( nullptr ) );
 }
 
 template <int min_branch_factor, int max_branch_factor>
@@ -433,8 +434,15 @@ tree_node_handle adjustTreeSub(
             if( !node->parent ) {
                 break;
             }
-            assert( sibling_handle.get_type() == LEAF_NODE );
-            auto sibling_node = treeRef->get_leaf_node( sibling_handle );
+
+            pinned_node_ptr<LEAF_NODE_CLASS_TYPES>
+                sibling_node( treeRef->node_allocator_.buffer_pool_, nullptr,
+                        nullptr );
+
+            if( sibling_handle ) {
+                assert( sibling_handle.get_type() == LEAF_NODE );
+                sibling_node = treeRef->get_leaf_node( sibling_handle );
+            }
 
             auto ret_data = adjustTreeBottomHalf(
                 node,
@@ -449,7 +457,15 @@ tree_node_handle adjustTreeSub(
             if( !node->parent ) {
                 break;
             }
-            auto sibling_node = treeRef->get_branch_node( sibling_handle );
+            pinned_node_ptr<BRANCH_NODE_CLASS_TYPES>
+                sibling_node( treeRef->node_allocator_.buffer_pool_, nullptr,
+                        nullptr );
+
+            if( sibling_handle ) {
+                assert( sibling_handle.get_type() == BRANCH_NODE );
+                sibling_node = treeRef->get_branch_node( sibling_handle );
+            }
+
             auto ret_data = adjustTreeBottomHalf(
                 node,
                 sibling_node,
@@ -618,11 +634,12 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::insert(
 
         assert( !parent );
         auto alloc_data =
-            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
+            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                    NodeHandleType( BRANCH_NODE ) );
         auto newRoot = alloc_data.first;
 
         tree_node_handle root_handle = alloc_data.second;
-        auto sibling = treeRef->get_branch_node( sibling_handle );
+        auto sibling = treeRef->get_leaf_node( sibling_handle );
 
         new (&(*(newRoot)))
             BRANCH_NODE_CLASS_TYPES( treeRef, root_handle,
@@ -1058,8 +1075,10 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
 
     unsigned stoppingLevel = 0;
     bool entryIsBranch = std::holds_alternative<Branch>(givenNodeEntry);
+    Rectangle givenEntryBoundingBox;
     if( entryIsBranch ) {
         const Branch &b = std::get<Branch>(givenNodeEntry);
+        givenEntryBoundingBox = b.boundingBox;
         tree_node_handle child_handle = b.child;
         if( child_handle.get_type() == LEAF_NODE ) {
             auto child = treeRef->get_leaf_node( child_handle );
@@ -1068,6 +1087,9 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
             auto child = treeRef->get_branch_node( child_handle );
             stoppingLevel = child->level + 1;
         }
+    } else {
+        const Point &p = std::get<Point>( givenNodeEntry );
+        givenEntryBoundingBox = Rectangle( p, Point::closest_larger_point( p ) );
     }
     for( ;; ) {
         if( node_handle.get_type() == LEAF_NODE ) {
@@ -1086,9 +1108,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
 
         unsigned descentIndex = 0;
 
-        Rectangle givenEntryBoundingBox =
-            std::get<Branch>(givenNodeEntry).boundingBox;
-        
         auto child_handle = node->entries.at(0).child;
         bool childrenAreLeaves = (child_handle.get_type() == LEAF_NODE);
         if( childrenAreLeaves ) {
@@ -1403,7 +1422,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::splitNode()
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
     auto alloc_data =
-        allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
+        allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                NodeHandleType( BRANCH_NODE ) );
 
     auto newSibling = alloc_data.first;
     tree_node_handle sibling_handle = alloc_data.second;
@@ -1562,7 +1582,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
 
     // I2 [Add record to leaf node]
     bool givenIsLeaf = std::holds_alternative<Point>(nodeEntry);
-    assert( givenIsLeaf and insertion_point_handle.get_type() == LEAF_NODE );
     if( givenIsLeaf ) {
         auto insertion_point = treeRef->get_leaf_node( insertion_point_handle );
         insertion_point->addPoint( std::get<Point>( nodeEntry ) );
@@ -1582,11 +1601,17 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
 
     } else {
         auto insertion_point = treeRef->get_branch_node( insertion_point_handle );
-        const Branch &b = std::get<Branch>( nodeEntry );
+        Branch &b = std::get<Branch>( nodeEntry );
         insertion_point->addBranchToNode( b );
-        auto child = treeRef->get_branch_node( b.child );
-        assert( insertion_point->level == child->level + 1 );
-        child->parent = insertion_point_handle;
+        if( b.child.get_type() == LEAF_NODE ) { 
+            auto child = treeRef->get_leaf_node( b.child );
+            assert( insertion_point->level == child->level + 1 );
+            child->parent = insertion_point_handle;
+        } else {
+            auto child = treeRef->get_branch_node( b.child );
+            assert( insertion_point->level == child->level + 1 );
+            child->parent = insertion_point_handle;
+        }
 
         unsigned num_els = insertion_point->cur_offset_;
 
@@ -1609,7 +1634,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
 
         assert( !parent );
         auto alloc_data =
-            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>();
+            allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                    NodeHandleType( BRANCH_NODE ) );
         auto  newRoot = alloc_data.first;
         tree_node_handle root_handle = alloc_data.second;
 
