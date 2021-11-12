@@ -625,10 +625,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
                 std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
             }
 
-            if( totalInserts == 10000 ) {
-                exit(0);
-            }
-
             // std::cout << "Point[" << totalInserts << "] inserted. " << delta.count() << "s" << std::endl;
         }
         std::cout << "Insertion OK." << std::endl;
@@ -708,7 +704,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
     */
 
 	// Search for rectangles
-    /*
 	unsigned rangeSearchChecksum = 0;
 	std::cout << "Beginning search for " << configU["rectanglescount"] << " rectangles..." << std::endl;
 	for (unsigned i = 0; i < configU["rectanglescount"]; ++i)
@@ -734,7 +729,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 #endif
 	}
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
-    */
 
 	// Gather statistics
 #ifdef STAT
