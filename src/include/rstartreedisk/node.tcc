@@ -652,6 +652,14 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::insert(
     // I2 [Add record to leaf node]
     addPoint( nodeEntry );
 
+    std::cout << "Inserted Point: " << nodeEntry <<
+        std::endl;
+    std::cout << "Insertion point now has points: { " << std::endl;
+    for( size_t i = 0; i < cur_offset_; i++ ) {
+        std::cout << entries.at(i) << std::endl;
+    }
+    std::cout << "}" << std::endl;
+
     // If we exceed treeRef->maxBranchFactor we need to do something about it
     if( cur_offset_ > max_branch_factor ) {
         // We call overflow treatment to determine how our sibling node is treated if we do a
@@ -941,9 +949,14 @@ bool BRANCH_NODE_CLASS_TYPES::updateBoundingBox(
     tree_node_handle child,
     Rectangle updatedBoundingBox
 ) {
+
+    std::cout << "Updating bounding box for " << child << " to " <<
+        updatedBoundingBox << std::endl;
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = entries.at(i);
         if( b.child == child ) {
+            std::cout << "Existing bounding box: " << b.boundingBox <<
+                std::endl;
             if( b.boundingBox != updatedBoundingBox ) {
                 b.boundingBox = updatedBoundingBox;
                 return true;
@@ -1594,6 +1607,14 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::reInsert(
     }
 
     auto root_node = treeRef->get_branch_node( root_handle );
+
+    std::cout << "Overflow treatment, need to reinsert nodes: {" <<
+        std::endl;
+    for( size_t i = 0; i < entriesToReinsert.size(); i++ ) {
+        std::cout << entriesToReinsert.at(i).boundingBox << std::endl;
+    }
+    std::cout << "}" << std::endl;
+
 
     for( const Branch &entry : entriesToReinsert ) {
         assert( !root_node->parent );
