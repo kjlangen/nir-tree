@@ -1837,7 +1837,9 @@ void BRANCH_NODE_CLASS_TYPES::stat() const
             histogramFanout.resize(max_branch_factor, 0);
         }
 
-        void operator()( tree_node_handle node_handle ) {
+        void operator()(
+                RStarTreeDisk<min_branch_factor,max_branch_factor>
+                * treeRef, tree_node_handle node_handle ) {
 
             totalNodes++;
             if( node_handle.get_type() == LEAF_NODE ) {
@@ -1849,7 +1851,7 @@ void BRANCH_NODE_CLASS_TYPES::stat() const
                     //Avoid reallocing
                     histogramFanout.resize(2*node->cur_offset_, 0);
                 }
-                histogramFanout[entriesSize]++;
+                histogramFanout[node->cur_offset_]++;
 
             } else {
                 auto node = treeRef->get_branch_node( node_handle );
@@ -1871,9 +1873,7 @@ void BRANCH_NODE_CLASS_TYPES::stat() const
                     //Avoid reallocing
                     histogramFanout.resize(2*node->cur_offset_, 0);
                 }
-                histogramFanout[entriesSize]++;
-
-
+                histogramFanout[node->cur_offset_]++;
             }
         }
     };

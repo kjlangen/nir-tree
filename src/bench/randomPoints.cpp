@@ -504,7 +504,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	double totalTimeRangeSearches = 0.0;
 	double totalTimeDeletes = 0.0;
 	unsigned totalInserts = 0;
-	double totalSearches = 0.0;
+	unsigned totalSearches = 0;
 	double totalRangeSearches = 0.0;
 	unsigned totalDeletes = 0.0;
 
@@ -630,15 +630,14 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         std::cout << "Insertion OK." << std::endl;
 
         // Validate checksum
-        /*
         if (spatialIndex->checksum() != directSum)
         {
             std::cout << "Bad Checksum!" << std::endl;
             exit(1);
         }
         std::cout << "Checksum OK." << std::endl;
-        */
 
+        /*
         std::cout << "Repacking..." << std::endl;
         auto tree_ptr = (nirtreedisk::NIRTreeDisk<3,7> *) spatialIndex;
 
@@ -661,6 +660,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 
         // This evicts all the old pages, which is painful.
         tree_ptr->node_allocator_ = std::move( new_file_allocator );
+        */
 
         spatialIndex->write_metadata();
 
@@ -687,7 +687,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         totalTimeSearches += delta.count();
         totalSearches += 1;
 
-		// std::cout << "Point[" << i << "] queried. " << delta.count() << " s" << std::endl;
+        if( totalSearches % 10000 == 0 ) {
+		    std::cout << "Point[" << totalSearches << "] queried. " << delta.count() << " s" << std::endl;
+        }
 	}
 	std::cout << "Search OK." << std::endl;
 
@@ -702,6 +704,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
     */
 
 	// Search for rectangles
+    /*
 	unsigned rangeSearchChecksum = 0;
 	std::cout << "Beginning search for " << configU["rectanglescount"] << " rectangles..." << std::endl;
 	for (unsigned i = 0; i < configU["rectanglescount"]; ++i)
@@ -727,6 +730,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 #endif
 	}
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
+    */
 
 	// Gather statistics
 #ifdef STAT
