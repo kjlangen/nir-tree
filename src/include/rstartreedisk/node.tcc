@@ -135,6 +135,8 @@ NODE_TEMPLATE_PARAMS
 tree_node_handle LEAF_NODE_CLASS_TYPES::chooseSubtree(
     const NodeEntry &givenNodeEntry
 ) {
+    std::cout << "ChooseSubTree for point: " << std::get<Point>(
+            givenNodeEntry ) << std::endl;
     return self_handle_;
 }
 
@@ -1124,6 +1126,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
     Rectangle givenEntryBoundingBox;
     if( entryIsBranch ) {
         const Branch &b = std::get<Branch>(givenNodeEntry);
+        std::cout << "ChooseSubTree for branch: " << b.boundingBox <<
+            std::endl;
         givenEntryBoundingBox = b.boundingBox;
         tree_node_handle child_handle = b.child;
         if( child_handle.get_type() == LEAF_NODE ) {
@@ -1135,6 +1139,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
         }
     } else {
         const Point &p = std::get<Point>( givenNodeEntry );
+        std::cout << "ChooseSubTree for point: " << p << std::endl;
         givenEntryBoundingBox = Rectangle( p, Point::closest_larger_point( p ) );
     }
     for( ;; ) {
@@ -1224,6 +1229,8 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
             }
         }
 
+        std::cout << "Proceeding down index " << descentIndex <<
+            std::endl;
         // Descend
         node_handle = node->entries[descentIndex].child;
     }
