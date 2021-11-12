@@ -313,6 +313,14 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::splitNode()
     unsigned splitAxis = chooseSplitAxis();
     unsigned splitIndex = chooseSplitIndex(splitAxis);
 
+    std::cout << "Split Leaf Node: {" <<  std::endl;
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        std::cout << entries.at(i) << std::endl;
+    }
+    std::cout << "}" << std::endl;
+    std::cout << "Split on axis" << splitAxis << ", index: " <<
+        splitIndex << std::endl;
+
     tree_node_allocator *allocator = get_node_allocator( treeRef );
     auto alloc_data =
         allocator->create_new_tree_node<NodeType>( NodeHandleType(
@@ -348,6 +356,18 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::splitNode()
 
     assert( cur_offset_ > 0 );
     assert( newSibling->cur_offset_ > 0 );
+
+    std::cout << "New Node1: {" <<  std::endl;
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        std::cout << entries.at(i) << std::endl;
+    }
+    std::cout << "}" << std::endl;
+
+    std::cout << "New Node2: {" <<  std::endl;
+    for( unsigned i = 0; i < newSibling->cur_offset_; i++ ) {
+        std::cout << newSibling->entries.at(i) << std::endl;
+    }
+    std::cout << "}" << std::endl;
 
     // Return our newly minted sibling
     return sibling_handle;
@@ -438,6 +458,7 @@ tree_node_handle adjustTreeSub(
             pinned_node_ptr<LEAF_NODE_CLASS_TYPES>
                 sibling_node( treeRef->node_allocator_.buffer_pool_, nullptr,
                         nullptr );
+            assert( sibling_node == nullptr );
 
             if( sibling_handle ) {
                 assert( sibling_handle.get_type() == LEAF_NODE );
@@ -460,6 +481,7 @@ tree_node_handle adjustTreeSub(
             pinned_node_ptr<BRANCH_NODE_CLASS_TYPES>
                 sibling_node( treeRef->node_allocator_.buffer_pool_, nullptr,
                         nullptr );
+            assert( sibling_node == nullptr );
 
             if( sibling_handle ) {
                 assert( sibling_handle.get_type() == BRANCH_NODE );
@@ -575,6 +597,13 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::reInsert(
         }
     }
 
+    std::cout << "Overflow treatment, need to reinsert nodes: {" <<
+        std::endl;
+    for( size_t i = 0; i < entriesToReinsert.size(); i++ ) {
+        std::cout << entriesToReinsert.at(i) << std::endl;
+    }
+    std::cout << "}" << std::endl;
+
     for( const Point &entry : entriesToReinsert ) {
         if( root_handle.get_type() == LEAF_NODE ) {
             auto root_node = treeRef->get_leaf_node( root_handle );
@@ -596,9 +625,13 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::overflowTreatment(
     assert( hasReinsertedOnLevel.size() > level );
 
     if( hasReinsertedOnLevel.at(level) ) {
+        std::cout << "Overflow treatment on leaf node, splitting." <<
+            std::endl;
         return splitNode();
     } else {
         hasReinsertedOnLevel.at(level) = true;
+        std::cout << "Overflow treatment on leaf node, reinserting." <<
+            std::endl;
         return reInsert( hasReinsertedOnLevel );
     }
 }
@@ -1420,6 +1453,14 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::splitNode()
     unsigned splitAxis = chooseSplitAxis();
     unsigned splitIndex = chooseSplitIndex( splitAxis );
 
+    std::cout << "Split Branch Node: {" <<  std::endl;
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        std::cout << entries.at(i).boundingBox << std::endl;
+    }
+    std::cout << "}" << std::endl;
+    std::cout << "Split on axis" << splitAxis << ", index: " <<
+        splitIndex << std::endl;
+
     tree_node_allocator *allocator = get_node_allocator( treeRef );
     auto alloc_data =
         allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
@@ -1471,6 +1512,19 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::splitNode()
 
     assert( cur_offset_ > 0 );
     assert( newSibling->cur_offset_ > 0 );
+
+    std::cout << "New Node1: {" <<  std::endl;
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        std::cout << entries.at(i).boundingBox << std::endl;
+    }
+    std::cout << "}" << std::endl;
+
+    std::cout << "New Node2: {" <<  std::endl;
+    for( unsigned i = 0; i < newSibling->cur_offset_; i++ ) {
+        std::cout << newSibling->entries.at(i).boundingBox << std::endl;
+    }
+    std::cout << "}" << std::endl;
+
 
     // Return our newly minted sibling
     return sibling_handle;
@@ -1559,9 +1613,13 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::overflowTreatment(
     assert( hasReinsertedOnLevel.size() > level );
 
     if( hasReinsertedOnLevel.at(level) ) {
+        std::cout << "Overflow treatment on branch node, splitting." <<
+            std::endl;
         return splitNode();
     } else {
         hasReinsertedOnLevel.at(level) = true;
+        std::cout << "Overflow treatment on branch node, reinserting." <<
+            std::endl;
         return reInsert( hasReinsertedOnLevel );
     }
 }
@@ -1586,6 +1644,14 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
         auto insertion_point = treeRef->get_leaf_node( insertion_point_handle );
         insertion_point->addPoint( std::get<Point>( nodeEntry ) );
 
+        std::cout << "Inserted Point: " << std::get<Point>( nodeEntry ) <<
+            std::endl;
+        std::cout << "Insertion point now has points: { " << std::endl;
+        for( size_t i = 0; i < insertion_point->cur_offset_; i++ ) {
+            std::cout << insertion_point->entries.at(i) << std::endl;
+        }
+        std::cout << "}" << std::endl;
+
         unsigned num_els = insertion_point->cur_offset_;
 
         // If we exceed treeRef->maxBranchFactor we need to do something about it
@@ -1603,6 +1669,15 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
         auto insertion_point = treeRef->get_branch_node( insertion_point_handle );
         Branch &b = std::get<Branch>( nodeEntry );
         insertion_point->addBranchToNode( b );
+        std::cout << "Inserted branch with bounding box: " <<
+            b.boundingBox << std::endl;
+        std::cout << "Insertion point now has boundingBoxes: {" <<
+            std::endl;
+        for( size_t i = 0; i < insertion_point->cur_offset_; i++ ) {
+            std::cout << insertion_point->entries.at(i).boundingBox <<
+                std::endl;
+        }
+        std::cout << "}" << std::endl;
         if( b.child.get_type() == LEAF_NODE ) { 
             auto child = treeRef->get_leaf_node( b.child );
             assert( insertion_point->level == child->level + 1 );

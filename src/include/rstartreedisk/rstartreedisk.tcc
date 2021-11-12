@@ -41,6 +41,7 @@ std::vector<Point> RStarTreeDisk<min_branch_factor,max_branch_factor>::search( R
 template <int min_branch_factor, int max_branch_factor>
 void RStarTreeDisk<min_branch_factor, max_branch_factor>::insert( Point givenPoint )
 {
+    std::cout << "Top level insert: " << givenPoint << std::endl;
     if( root.get_type() == LEAF_NODE ) {
         auto root_ptr = get_leaf_node( root );
         std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
