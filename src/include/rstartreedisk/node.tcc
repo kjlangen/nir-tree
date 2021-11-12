@@ -950,7 +950,7 @@ bool BRANCH_NODE_CLASS_TYPES::updateBoundingBox(
     Rectangle updatedBoundingBox
 ) {
 
-    std::cout << "Updating bounding box for " << child << " to " <<
+    std::cout << "Updating bounding box for to " <<
         updatedBoundingBox << std::endl;
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = entries.at(i);
