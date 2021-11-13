@@ -57,7 +57,6 @@ namespace rstartreedisk
 
             Rectangle boundingBox;
             tree_node_handle child;
-
     };
 
     typedef std::variant<Branch,Point> NodeEntry;
@@ -118,10 +117,6 @@ namespace rstartreedisk
 			// Datastructure interface functions
 			void exhaustiveSearch(const Point &requestedPoint, std::vector<Point> &accumulator) const;
 
-			std::vector<Point> search(const Point &requestedPoint);
-			std::vector<Point> search(const Rectangle
-                    &requestedRectangle);
-
 			// These return the root of the tree.
 			tree_node_handle insert(Point nodeEntry, std::vector<bool> &hasReinsertedOnLevel);
 			tree_node_handle remove(Point &givenPoint, std::vector<bool> hasReinsertedOnLevel);
@@ -132,6 +127,9 @@ namespace rstartreedisk
 			void printTree() const;
 			unsigned height() const;
 			void stat() const;
+
+            uint16_t compute_packed_size();
+            tree_node_handle repack( tree_node_allocator *allocator );
 
 			// Operators
 			bool operator<(const LeafNode &otherNode) const;
@@ -198,10 +196,6 @@ namespace rstartreedisk
 			// Datastructure interface functions
 			void exhaustiveSearch(const Point &requestedPoint, std::vector<Point> &accumulator) const;
 
-			std::vector<Point> search(const Point &requestedPoint);
-			std::vector<Point> search(const Rectangle
-                    &requestedRectangle);
-
 			// These return the root of the tree.
 			tree_node_handle insert(NodeEntry nodeEntry, std::vector<bool> &hasReinsertedOnLevel);
 			tree_node_handle remove(Point &givenPoint, std::vector<bool> hasReinsertedOnLevel);
@@ -212,6 +206,9 @@ namespace rstartreedisk
 			void printTree() const;
 			unsigned height() const;
 			void stat() const;
+
+            uint16_t compute_packed_size();
+            tree_node_handle repack( tree_node_allocator *allocator );
 
 			// Operators
 			bool operator<(const BranchNode &otherNode) const;

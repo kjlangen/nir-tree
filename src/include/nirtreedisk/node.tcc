@@ -1176,6 +1176,19 @@ tree_node_handle repack_subtree(
                 branch_node->entries.at(i).child = new_child_handle;
             }
             auto new_handle = branch_node->repack( existing_allocator, new_allocator );
+
+            // Children nodes want to know who their parent is, but
+            // we don't know that until we repack the branch node above.
+            // So, we re-walk the new children here and set up all their
+            // parents.
+            for( size_t i = 0; i < branch_node->cur_offset_; i++ ) {
+                auto new_child =
+                    new_allocator->get_tree_node<packed_node>(
+                            branch_node->entries.at(i).child );
+                * (tree_node_handle *) (new_child->buffer_ + sizeof(void*) +
+                    sizeof(tree_node_handle)) = new_handle;
+            }
+
             existing_allocator->free( handle, sizeof(
                     BRANCH_NODE_CLASS_TYPES ) );
             return new_handle;
@@ -2319,5 +2332,16 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
 }
 
 #undef NODE_TEMPLATE_PARAMS
-#undef LEAF_NODE_CLASS_TYPES 
+#undef LEAF_NODE_CLASS_TYPES
 #undef BRANCH_NODE_CLASS_TYPES
+#undef point_search_leaf_handle
+#undef point_search_leaf_node
+#undef point_search_packed_leaf_node
+#undef point_search_packed_branch_handle
+#undef point_search_branch_handle
+#undef rectangle_search_leaf_handle
+#undef rectangle_search_leaf_node
+#undef rectangle_search_packed_leaf_node
+#undef rectangle_search_packed_branch_handle
+#undef rectangle_search_branch_handle
+#undef decode_entry_count_and_offset_packed_node

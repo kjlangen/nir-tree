@@ -72,64 +72,6 @@ void LEAF_NODE_CLASS_TYPES::exhaustiveSearch(
     }
 }
 
-// Only gets called if the root is a leaf
-NODE_TEMPLATE_PARAMS
-void LEAF_NODE_CLASS_TYPES::searchSub(
-    const Point &requestedPoint,
-    std::vector<Point> &accumulator
-) {
-    for( unsigned i = 0; i < cur_offset_; i++ ) {
-        const Point &p = entries.at(i);
-
-        if( p == requestedPoint ) {
-            accumulator.push_back( p );
-        }
-    }
-}
-
-// Only gets called if the root is a leaf
-NODE_TEMPLATE_PARAMS
-void LEAF_NODE_CLASS_TYPES::searchSub(
-    const Rectangle &rectangle,
-    std::vector<Point> &accumulator
-) {
-    for( unsigned i = 0; i < cur_offset_; i++ ) {
-        const Point &p = entries.at(i);
-
-        if( rectangle.containsPoint( p ) ) {
-            accumulator.push_back( p );
-        }
-    }
-}
-
-// Only called if the root is a leaf
-NODE_TEMPLATE_PARAMS
-std::vector<Point> LEAF_NODE_CLASS_TYPES::search(
-    const Point &requestedPoint
-) {
-    std::vector<Point> accumulator;
-
-    searchSub( requestedPoint, accumulator );
-
-#ifdef STAT
-    treeRef->stats.resetSearchTracker( false );
-#endif
-    return accumulator;
-}
-
-NODE_TEMPLATE_PARAMS
-std::vector<Point> LEAF_NODE_CLASS_TYPES::search(
-    const Rectangle &requestedRectangle
-) {
-    std::vector<Point> matchingPoints;
-
-    searchSub( requestedRectangle, matchingPoints );
-
-#ifdef STAT
-    treeRef->stats.resetSearchTracker( true );
-#endif
-    return matchingPoints;
-}
 
 NODE_TEMPLATE_PARAMS
 tree_node_handle LEAF_NODE_CLASS_TYPES::chooseSubtree(
@@ -1008,106 +950,200 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(
     }
 }
 
-NODE_TEMPLATE_PARAMS
-void BRANCH_NODE_CLASS_TYPES::searchSub(
-    const Point &requestedPoint,
-    std::vector<Point> &accumulator
-) {
-    std::stack<tree_node_handle> context;
-    context.push( self_handle_ );
-
-    while( !context.empty() ) {
-        auto cur_handle = context.top();
-        context.pop();
-        if( cur_handle.get_type() == LEAF_NODE ) {
-#ifdef STAT
-            treeRef->stats.markLeafSearched();
-#endif
-            auto curNode = treeRef->get_leaf_node( cur_handle );
-            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
-                const Point &p = curNode->entries.at(i);
-                if( p == requestedPoint ) {
-                    accumulator.push_back( p );
-                }
-            }
-        } else {
-#ifdef STAT
-            treeRef->stats.markNonLeafNodeSearched();
-#endif
-            auto curNode = treeRef->get_branch_node( cur_handle );
-            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
-                const Branch &b = curNode->entries.at( i );
-
-                if( b.boundingBox.containsPoint( requestedPoint ) ) {
-                    context.push( b.child );
-                }
-            }
-        }
+#define point_search_leaf_node( current_node, requestedPoint, accumulator ) \
+    for( unsigned i = 0; i < current_node->cur_offset_; i++ ) { \
+        const Point &p = current_node->entries.at(i); \
+        if( p == requestedPoint ) { \
+            accumulator.push_back( p ); \
+        } \
     }
-}
 
-NODE_TEMPLATE_PARAMS
-void BRANCH_NODE_CLASS_TYPES::searchSub(
-    const Rectangle &rectangle,
-    std::vector<Point> &accumulator
-) {
-    std::stack<tree_node_handle> context;
-    context.push( self_handle_ );
+#define point_search_leaf_handle( handle, requestedPoint, accumulator ) \
+    auto current_node = treeRef->get_leaf_node( handle ); \
+    point_search_leaf_node( current_node, requestedPoint, accumulator );
 
-    while( !context.empty() ) {
-        auto cur_handle = context.top();
-        context.pop();
-        
-        if( cur_handle.get_type() == LEAF_NODE ) {
-#ifdef STAT
-            treeRef->stats.markLeafSearched();
-#endif
-            auto curNode = treeRef->get_leaf_node( cur_handle );
-            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
-                const Point &p = curNode->entries.at(i);
+#define decode_entry_count_and_offset_packed_node( data ) \
+    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    size_t count = * (unsigned *) (data+offset); \
+    offset += sizeof( unsigned );
 
-                if( rectangle.containsPoint( p ) ) {
-                    accumulator.push_back( p );
-                }
-            }
-        } else {
-#ifdef STAT
-            treeRef->stats.markNonLeafNodeSearched();
-#endif
-            auto curNode = treeRef->get_branch_node( cur_handle );
-            for( unsigned i = 0; i < curNode->cur_offset_; i++ ) {
-                const Branch &b = curNode->entries.at(i);
-
-                if( b.boundingBox.intersectsRectangle(rectangle) ) {
-                    context.push( b.child );
-                }
-            }
-        }
+#define point_search_packed_leaf_node( packed_leaf, requestedPoint, accumulator ) \
+    char *data = packed_leaf->buffer_; \
+    decode_entry_count_and_offset_packed_node( data ); \
+    for( size_t i = 0; i < count; i++ ) { \
+        Point *p = (Point *) (data + offset); \
+        if( *p == requestedPoint ) { \
+            accumulator.push_back( requestedPoint ); \
+        } \
+        offset += sizeof( Point ); \
     }
-}
 
-NODE_TEMPLATE_PARAMS
-std::vector<Point> BRANCH_NODE_CLASS_TYPES::search( const Point &requestedPoint ) {
+#define point_search_packed_leaf_handle( handle, requestedPoint, accumulator ) \
+    assert( handle.get_type() == REPACKED_LEAF_NODE ); \
+    auto packed_leaf = allocator->get_tree_node<packed_node>( handle ); \
+    point_search_packed_leaf_node( packed_leaf, requestedPoint, accumulator );
+
+#define point_search_branch_handle( handle, requestedPoint, context ) \
+    auto current_node = treeRef->get_branch_node( handle ); \
+    for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
+        Branch &b = current_node->entries.at(i); \
+        if( b.boundingBox.containsPoint( requestedPoint ) ) { \
+            context.push( b.child ); \
+        } \
+    }
+
+#define point_search_packed_branch_handle( handle, requestedPoint, context ) \
+    auto packed_branch = allocator->get_tree_node<packed_node>( handle ); \
+    char *buffer = packed_branch->buffer_; \
+    decode_entry_count_and_offset_packed_node( buffer ); \
+    for( size_t i = 0; i < count; i++ ) { \
+        tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
+        offset += sizeof( tree_node_handle ); \
+        Rectangle *rect = (Rectangle *) (buffer + offset); \
+        offset += sizeof( Rectangle ); \
+        if( rect->containsPoint( requestedPoint ) ) { \
+            context.push( *child ); \
+        } \
+    }
+
+template <int min_branch_factor, int max_branch_factor>
+std::vector<Point> point_search(
+    tree_node_handle start_point,
+    Point &requestedPoint,
+    RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef
+) {
     std::vector<Point> accumulator;
+    std::stack<tree_node_handle> context;
+    context.push( start_point );
+    tree_node_allocator *allocator = &(treeRef->node_allocator_);
 
-    searchSub( requestedPoint, accumulator );
+    while( !context.empty() ) {
+        tree_node_handle current_handle = context.top();
+        context.pop();
+        if( current_handle.get_type() == LEAF_NODE ) {
+            point_search_leaf_handle( current_handle, requestedPoint, accumulator );
+#ifdef STAT
+            treeRef->stats.markLeafSearched();
+#endif
+        } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
+            point_search_packed_leaf_handle( current_handle,
+                    requestedPoint, accumulator );
+#ifdef STAT
+            treeRef->stats.markLeafSearched();
+#endif
+        } else if( current_handle.get_type() == BRANCH_NODE ) {
+            point_search_branch_handle( current_handle,
+                    requestedPoint, context );
+#ifdef STAT
+            treeRef->stats.markNonLeafNodeSearched();
+#endif
+        } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
+            point_search_packed_branch_handle( current_handle,
+                    requestedPoint, context );
+#ifdef STAT
 
+            treeRef->stats.markNonLeafNodeSearched();
+#endif
+        } else {
+            assert( false );
+        }
+    }
 #ifdef STAT
     treeRef->stats.resetSearchTracker( false );
 #endif
     return accumulator;
 }
 
+#define rectangle_search_leaf_handle( handle, requestedRectangle, accumulator ) \
+    auto current_node = treeRef->get_leaf_node( handle ); \
+    for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
+        if( requestedRectangle.containsPoint( current_node->entries.at(i) ) ) { \
+            accumulator.push_back( current_node->entries.at(i) ); \
+        } \
+    }
+
+#define rectangle_search_packed_leaf_handle( handle, requestedRectangle, accumulator ) \
+    auto packed_leaf = allocator->get_tree_node<packed_node>( handle ); \
+    char *data = packed_leaf->buffer_; \
+    decode_entry_count_and_offset_packed_node( data ) \
+    for( size_t i = 0; i < count; i++ ) { \
+        Point *p = (Point *) (data + offset); \
+        if( requestedRectangle.containsPoint( *p ) ) { \
+            accumulator.push_back( *p ); \
+        } \
+        offset += sizeof( Point ); \
+    }
+
+#define rectangle_search_branch_handle( handle, requestedRectangle, context ) \
+    auto current_node = treeRef->get_branch_node( handle ); \
+    for( size_t i = 0; i < current_node->cur_offset_; i++ ) { \
+        Branch &b = current_node->entries.at(i); \
+        if( b.boundingBox.intersectsRectangle( requestedRectangle ) ) { \
+            context.push( b.child ); \
+        } \
+    }
+
+#define rectangle_search_packed_branch_handle( handle, requestedRectangle, context ) \
+    auto packed_branch = allocator->get_tree_node<packed_node>( handle ); \
+    char *buffer = packed_branch->buffer_; \
+    decode_entry_count_and_offset_packed_node( buffer ); \
+    for( size_t i = 0; i < count; i++ ) { \
+        tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
+        offset += sizeof( tree_node_handle ); \
+        Rectangle *rect = (Rectangle *) (buffer + offset); \
+        offset += sizeof( Rectangle ); \
+        if( not rect->intersectsRectangle( requestedRectangle ) ) { \
+            context.push( *child ); \
+        } \
+    }
+
 NODE_TEMPLATE_PARAMS
-std::vector<Point> BRANCH_NODE_CLASS_TYPES::search( const Rectangle &requestedRectangle ) {
-    std::vector<Point> matchingPoints;
+std::vector<Point> rectangle_search(
+    tree_node_handle start_point,
+    Rectangle &requestedRectangle,
+    RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef
+) {    
+    std::vector<Point> accumulator;
 
-    searchSub( requestedRectangle, matchingPoints );
+    std::stack<tree_node_handle> context;
+    tree_node_allocator *allocator = &(treeRef->node_allocator_);
+    context.push( start_point );
 
+    while( not context.empty() ) {
+        tree_node_handle current_handle = context.top();
+        context.pop();
+
+        if( current_handle.get_type() == LEAF_NODE ) {
+            rectangle_search_leaf_handle( current_handle, requestedRectangle, accumulator );
 #ifdef STAT
-    treeRef->stats.resetSearchTracker( true );
+            treeRef->stats.markLeafSearched();
 #endif
-    return matchingPoints;
+        } else if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
+            rectangle_search_packed_leaf_handle( current_handle,
+                    requestedRectangle, accumulator );
+#ifdef STAT
+            treeRef->stats.markLeafSearched();
+#endif
+        } else if( current_handle.get_type() == BRANCH_NODE ) {
+            rectangle_search_branch_handle( current_handle,
+                    requestedRectangle, context );
+#ifdef STAT
+            treeRef->stats.markNonLeafNodeSearched();
+#endif
+        } else if( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
+            rectangle_search_packed_branch_handle( current_handle,
+                    requestedRectangle, context );
+#ifdef STAT
+            treeRef->stats.markNonLeafNodeSearched();
+#endif
+        } else {
+            assert(false);
+        }
+    }
+#ifdef STAT
+    treeRef->stats.resetSearchTracker( true);
+#endif
+    return accumulator;
 }
 
 NODE_TEMPLATE_PARAMS
@@ -2027,7 +2063,129 @@ void BRANCH_NODE_CLASS_TYPES::stat() const
 #endif
 }
 
+NODE_TEMPLATE_PARAMS
+uint16_t LEAF_NODE_CLASS_TYPES::compute_packed_size() {
+    uint16_t sz = 0;
+    sz += sizeof( treeRef );
+    sz += sizeof( self_handle_ );
+    sz += sizeof( parent );
+    sz += sizeof( cur_offset_ );
+    sz += cur_offset_ * sizeof(Point);
+    return sz;
+}
+
+NODE_TEMPLATE_PARAMS
+uint16_t BRANCH_NODE_CLASS_TYPES::compute_packed_size() {
+    uint16_t sz = 0;
+    sz += sizeof( treeRef );
+    sz += sizeof( self_handle_ );
+    sz += sizeof( parent );
+    sz += sizeof( cur_offset_ );
+    sz += cur_offset_ * sizeof( Branch );
+    return sz;
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator ) {
+    static_assert( sizeof( void * ) == sizeof(uint64_t) );
+    uint16_t alloc_size = compute_packed_size();
+    auto alloc_data = allocator->create_new_tree_node<packed_node>(
+            alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
+
+    char *buffer = alloc_data.first->buffer_;
+    buffer += write_data_to_buffer( buffer, &treeRef );
+    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
+    buffer += write_data_to_buffer( buffer, &parent );
+    buffer += write_data_to_buffer( buffer, &cur_offset_ );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        buffer += write_data_to_buffer( buffer, &(entries.at(i)) );
+    }
+    assert( buffer - alloc_data.first->buffer_ == alloc_size );
+    return alloc_data.second;
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
+        *allocator ) {
+    uint16_t alloc_size = compute_packed_size();
+    auto alloc_data = allocator->create_new_tree_node<packed_node>(
+            alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
+
+    char *buffer = alloc_data.first->buffer_;
+    buffer += write_data_to_buffer( buffer, &treeRef );
+    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
+    buffer += write_data_to_buffer( buffer, &parent );
+    buffer += write_data_to_buffer( buffer, &cur_offset_ );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        Branch &b = entries.at(i);
+        buffer += write_data_to_buffer( buffer, &b );
+    }
+    size_t true_size = (buffer - alloc_data.first->buffer_);
+    assert( true_size == alloc_size );
+    return alloc_data.second;
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle repack_subtree(
+    tree_node_handle handle,
+    tree_node_allocator *existing_allocator,
+    tree_node_allocator *new_allocator
+) {
+    std::vector<tree_node_handle> repacked_handles;
+    switch( handle.get_type() ) {
+        case LEAF_NODE: {
+            auto leaf_node =
+                existing_allocator->get_tree_node<LEAF_NODE_CLASS_TYPES>( handle );
+            auto new_handle = leaf_node->repack( new_allocator );
+            existing_allocator->free( handle, sizeof(
+                        LEAF_NODE_CLASS_TYPES ) );
+            return new_handle;
+        }
+        case BRANCH_NODE: {
+            auto branch_node =
+                existing_allocator->get_tree_node<BRANCH_NODE_CLASS_TYPES>( handle );
+            // Repack all my children, adjust my handles
+            for( size_t i = 0; i < branch_node->cur_offset_; i++ ) {
+                auto child_handle = branch_node->entries.at(i).child;
+                auto new_child_handle =
+                    repack_subtree<min_branch_factor,max_branch_factor>( child_handle,
+                        existing_allocator, new_allocator );
+                branch_node->entries.at(i).child = new_child_handle;
+            }
+            auto new_handle = branch_node->repack( new_allocator );
+
+            // Children nodes want to know who their parent is, but
+            // we don't know that until we repack the branch node above.
+            // So, we re-walk the new children here and set up all their
+            // parents.
+            for( size_t i = 0; i < branch_node->cur_offset_; i++ ) {
+                auto new_child =
+                    new_allocator->get_tree_node<packed_node>(
+                            branch_node->entries.at(i).child );
+                * (tree_node_handle *) (new_child->buffer_ + sizeof(void*) +
+                    sizeof(tree_node_handle)) = new_handle;
+            }
+            existing_allocator->free( handle, sizeof(
+                    BRANCH_NODE_CLASS_TYPES ) );
+            return new_handle;
+          }
+        default:
+            assert( false );
+            return tree_node_handle( nullptr );
+    }
+}
+
 #undef NODE_TEMPLATE_PARAMS
 #undef LEAF_NODE_CLASS_TYPES
 #undef BRANCH_NODE_CLASS_TYPES
-
+#undef point_search_leaf_handle
+#undef point_search_leaf_node
+#undef point_search_packed_leaf_node
+#undef point_search_packed_branch_handle
+#undef point_search_branch_handle
+#undef rectangle_search_leaf_handle
+#undef rectangle_search_leaf_node
+#undef rectangle_search_packed_leaf_node
+#undef rectangle_search_packed_branch_handle
+#undef rectangle_search_branch_handle
+#undef decode_entry_count_and_offset_packed_node

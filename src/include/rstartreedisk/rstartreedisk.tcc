@@ -16,27 +16,15 @@ std::vector<Point> RStarTreeDisk<min_branch_factor,max_branch_factor>::exhaustiv
 template <int min_branch_factor, int max_branch_factor>
 std::vector<Point> RStarTreeDisk<min_branch_factor, max_branch_factor>::search( Point requestedPoint )
 {
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_ptr = get_leaf_node( root );
-        return root_ptr->search( requestedPoint );
-    }
-    auto root_ptr = get_branch_node( root );
-    return root_ptr->search( requestedPoint );
+    return point_search( root, requestedPoint, this );
 }
-
 
 template <int min_branch_factor, int max_branch_factor>
 std::vector<Point> RStarTreeDisk<min_branch_factor,max_branch_factor>::search( Rectangle
         requestedRectangle )
 {
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_ptr = get_leaf_node( root );
-        return root_ptr->search( requestedRectangle );
-    }
-    auto root_ptr = get_branch_node( root );
-    return root_ptr->search( requestedRectangle );
+    return rectangle_search( root, requestedRectangle, this );
 }
-
 
 template <int min_branch_factor, int max_branch_factor>
 void RStarTreeDisk<min_branch_factor, max_branch_factor>::insert( Point givenPoint )

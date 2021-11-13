@@ -1068,7 +1068,7 @@ TEST_CASE("R*TreeDisk: testSplitNonLeafNode")
         }
 
         // Count
-        accumulator = newRootNode->search( Point(0.0, 0.0) );
+        accumulator = tree.search( Point(0.0, 0.0) );
         REQUIRE(accumulator.size() == maxBranchFactor * maxBranchFactor + 1);
     }
     unlink( "rstardiskbacked.txt" );
@@ -1267,7 +1267,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set one
         Rectangle sr1 = Rectangle(-9.0, 9.5, nextafter(-5.0, DBL_MAX),
                 nextafter(12.5, DBL_MAX));
-        std::vector<Point> v1 = rootNode->search(sr1);
+        std::vector<Point> v1 = tree.search(sr1);
         REQUIRE(v1.size() == 3);
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-9.0, 10.0)) != v1.end());
@@ -1276,7 +1276,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set two
         Rectangle sr2 = Rectangle(-8.0, 4.0, nextafter(-5.0, DBL_MAX),
                 nextafter(8.0, DBL_MAX));
-        std::vector<Point> v2 = rootNode->search(sr2);
+        std::vector<Point> v2 = tree.search(sr2);
         REQUIRE(v2.size() == 2);
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
@@ -1284,7 +1284,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set three
         Rectangle sr3 = Rectangle(-8.0, 0.0, nextafter(-4.0, DBL_MAX),
                 nextafter(16.0, DBL_MAX));
-        std::vector<Point> v3 = rootNode->search(sr3);
+        std::vector<Point> v3 = tree.search(sr3);
         REQUIRE(v3.size() == 12);
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 3.0)) != v3.end());
@@ -1302,13 +1302,13 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set four
         Rectangle sr4 = Rectangle(2.0, -4.0, nextafter(4.0, DBL_MAX),
                 nextafter(-2.0, DBL_MAX));
-        std::vector<Point> v4 = rootNode->search(sr4);
+        std::vector<Point> v4 = tree.search(sr4);
         REQUIRE(v4.size() == 0);
 
         // Test set five
         Rectangle sr5 = Rectangle(-3.5, 1.0, nextafter(-1.5, DBL_MAX),
                 nextafter(3.0, DBL_MAX));
-        std::vector<Point> v5 = rootNode->search(sr5);
+        std::vector<Point> v5 = tree.search(sr5);
         REQUIRE(v5.size() == 0);
 
         tree.write_metadata();
@@ -1321,7 +1321,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set one
         Rectangle sr1 = Rectangle(-9.0, 9.5, nextafter(-5.0, DBL_MAX),
                 nextafter(12.5, DBL_MAX));
-        std::vector<Point> v1 = rootNode->search(sr1);
+        std::vector<Point> v1 = tree.search(sr1);
         REQUIRE(v1.size() == 3);
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-8.0, 10.0)) != v1.end());
         REQUIRE(std::find( v1.begin(), v1.end(), Point(-9.0, 10.0)) != v1.end());
@@ -1330,7 +1330,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set two
         Rectangle sr2 = Rectangle(-8.0, 4.0, nextafter(-5.0, DBL_MAX),
                 nextafter(8.0, DBL_MAX));
-        std::vector<Point> v2 = rootNode->search(sr2);
+        std::vector<Point> v2 = tree.search(sr2);
         REQUIRE(v2.size() == 2);
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-5.0, 4.0)) != v2.end());
         REQUIRE(std::find( v2.begin(), v2.end(), Point(-8.0, 8.0)) != v2.end());
@@ -1338,7 +1338,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set three
         Rectangle sr3 = Rectangle(-8.0, 0.0, nextafter(-4.0, DBL_MAX),
                 nextafter(16.0, DBL_MAX));
-        std::vector<Point> v3 = rootNode->search(sr3);
+        std::vector<Point> v3 = tree.search(sr3);
         REQUIRE(v3.size() == 12);
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-5.0, 4.0)) != v3.end());
         REQUIRE(std::find( v3.begin(), v3.end(), Point(-4.0, 3.0)) != v3.end());
@@ -1356,13 +1356,13 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Test set four
         Rectangle sr4 = Rectangle(2.0, -4.0, nextafter(4.0, DBL_MAX),
                 nextafter(-2.0, DBL_MAX));
-        std::vector<Point> v4 = rootNode->search(sr4);
+        std::vector<Point> v4 = tree.search(sr4);
         REQUIRE(v4.size() == 0);
 
         // Test set five
         Rectangle sr5 = Rectangle(-3.5, 1.0, nextafter(-1.5, DBL_MAX),
                 nextafter(3.0, DBL_MAX));
-        std::vector<Point> v5 = rootNode->search(sr5);
+        std::vector<Point> v5 = tree.search(sr5);
         REQUIRE(v5.size() == 0);
     }
     unlink( "rstardiskbacked.txt" );
@@ -1448,4 +1448,181 @@ TEST_CASE("R*TreeDisk: reInsertAccountsForNewTreeDepth")
         REQUIRE( newRootNode->level == 3 );
     }
     unlink("rstardiskbacked.txt" );
+}
+
+TEST_CASE("R*TreeDisk: pack simple leaf node") {
+    unlink( "rstardiskbacked.txt" );
+    TreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto root_leaf_node = tree.get_leaf_node( tree.root );
+    REQUIRE( root_leaf_node->cur_offset_ == 5 );
+
+    REQUIRE( root_leaf_node->compute_packed_size() <
+            sizeof(LeafNodeType) );
+    REQUIRE( root_leaf_node->compute_packed_size() ==
+            sizeof(void *) + sizeof(tree_node_handle)*2 +
+            sizeof(unsigned) + sizeof(Point) * 5 );
+
+    tree_node_handle repacked_handle = root_leaf_node->repack(
+            &(tree.node_allocator_) );
+
+    REQUIRE( repacked_handle != nullptr );
+    auto packed_leaf =
+        tree.node_allocator_.get_tree_node<packed_node>(
+                repacked_handle );
+    REQUIRE( read_pointer_from_buffer<TreeType>( packed_leaf->buffer_ ) == &tree );
+    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
+                    *) ) ==
+        repacked_handle );
+
+    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
+                    *) + sizeof(tree_node_handle) ) ==
+        root_leaf_node->parent );
+
+    REQUIRE( * (unsigned *) (packed_leaf->buffer_ + sizeof(unsigned
+                    *) + sizeof(tree_node_handle)*2 ) ==
+        root_leaf_node->cur_offset_ );
+
+    Point *p = (Point *) (packed_leaf->buffer_ + sizeof(void *) +
+            sizeof(tree_node_handle)*2 + sizeof(unsigned));
+    REQUIRE( *(p++) == root_leaf_node->entries.at(0) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(1) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(2) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(3) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(4) );
+    unlink( "rstardiskbacked.txt" );
+}
+
+TEST_CASE("R*TreeDisk: pack branch structure") {
+    unlink( "rstardiskbacked.txt" );
+    TreeType tree( 4096*5, "rstardiskbacked.txt" );
+
+    auto alloc_data_root = tree.node_allocator_.create_new_tree_node<BranchNodeType>();
+    new (&(*alloc_data_root.first)) BranchNodeType( &tree,
+            alloc_data_root.second, tree_node_handle(nullptr), 1 );
+    auto root_node = alloc_data_root.first;
+    auto root_handle = alloc_data_root.second;
+
+    tree_node_handle leaves[5];
+    for( unsigned i = 0; i < 5; i++ ) {
+        Point p(i,i);
+        leaves[i] = createFullLeafNode( tree, root_handle, Point(i,i));
+        Rectangle bb( p, Point::closest_larger_point( p ) );
+        root_node->addBranchToNode( createBranchEntry( bb, leaves[i] ) );
+    }
+
+    REQUIRE( root_node->compute_packed_size() <
+            sizeof(BranchNodeType) );
+    REQUIRE( root_node->compute_packed_size() ==
+            sizeof(void *) + sizeof(tree_node_handle)*2 +
+            sizeof(unsigned) + sizeof(Branch) * 5 );
+
+    auto repacked_handle = root_node->repack( &(tree.node_allocator_) );
+    REQUIRE( repacked_handle != nullptr );
+
+    auto repacked_node =
+        tree.node_allocator_.get_tree_node<packed_node>(
+                repacked_handle );
+
+    char *buffer = repacked_node->buffer_;
+    REQUIRE( read_pointer_from_buffer<TreeType>( buffer ) == &tree );
+    REQUIRE( * (tree_node_handle *) (buffer + sizeof(void*)) ==
+            repacked_handle );
+    REQUIRE( * (tree_node_handle *) (buffer + sizeof(void*) +
+                sizeof(tree_node_handle)) ==
+            tree_node_handle(nullptr) );
+
+    REQUIRE( * (unsigned *) (buffer + sizeof(void*) +
+                sizeof(tree_node_handle)*2 ) == root_node->cur_offset_ );
+
+    for( unsigned i = 0; i < 5; i++ ) {
+        Branch *b = (Branch *) (buffer + (sizeof(void*) +
+                sizeof(tree_node_handle)*2 + sizeof(unsigned)+ sizeof(Branch)*i));
+        REQUIRE( b->child == leaves[i] );
+        Point p = Point(i,i);
+        REQUIRE( b->boundingBox == Rectangle( p,
+                    Point::closest_larger_point( p ) ) );
+    }
+
+    unlink( "rstardiskbacked.txt" );
+}
+
+TEST_CASE("R*TreeDisk: pack branch subtree") {
+    unlink( "rstardiskbacked.txt" );
+    TreeType tree( 4096*5, "rstardiskbacked.txt" );
+
+    auto alloc_data_root =
+        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+                NodeHandleType( BRANCH_NODE ) );
+    new (&(*alloc_data_root.first)) BranchNodeType( &tree,
+            alloc_data_root.second, tree_node_handle(nullptr), 1 );
+    auto root_node = alloc_data_root.first;
+    auto root_handle = alloc_data_root.second;
+
+    tree_node_handle leaves[5];
+    for( unsigned i = 0; i < 5; i++ ) {
+        Point p(i,i);
+        leaves[i] = createFullLeafNode( tree, root_handle, Point(i,i));
+        Rectangle bb( p, Point::closest_larger_point( p ) );
+        root_node->addBranchToNode( createBranchEntry( bb, leaves[i] ) );
+    }
+
+    REQUIRE( root_node->compute_packed_size() <
+            sizeof(BranchNodeType) );
+    REQUIRE( root_node->compute_packed_size() ==
+            sizeof(void *) + sizeof(tree_node_handle)*2 +
+            sizeof(unsigned) + sizeof(Branch) * 5 );
+
+    auto repacked_handle = rstartreedisk::repack_subtree<3,7>(
+            root_handle, &(tree.node_allocator_),
+            &(tree.node_allocator_) );
+    REQUIRE( repacked_handle != nullptr );
+
+    auto repacked_node =
+        tree.node_allocator_.get_tree_node<packed_node>(
+                repacked_handle );
+
+    char *buffer = repacked_node->buffer_;
+    REQUIRE( read_pointer_from_buffer<TreeType>( buffer ) == &tree );
+    REQUIRE( * (tree_node_handle *) (buffer + sizeof(void*)) ==
+            repacked_handle );
+    REQUIRE( * (tree_node_handle *) (buffer + sizeof(void*) +
+                sizeof(tree_node_handle)) ==
+            tree_node_handle(nullptr) );
+
+    REQUIRE( * (unsigned *) (buffer + sizeof(void*) +
+                sizeof(tree_node_handle)*2 ) == root_node->cur_offset_ );
+
+    for( unsigned i = 0; i < 5; i++ ) {
+        Branch *b = (Branch *) (buffer + (sizeof(void*) +
+                sizeof(tree_node_handle)*2 + sizeof(unsigned)+ sizeof(Branch)*i));
+        REQUIRE( b->child != leaves[i] );
+        leaves[i] = b->child; // we will check this later.
+        Point p = Point(i,i);
+        REQUIRE( b->boundingBox == Rectangle( p,
+                    Point::closest_larger_point( p ) ) );
+    }
+
+    for( unsigned i = 0; i < 5; i++ ) {
+        auto leaf_node = tree.node_allocator_.get_tree_node<packed_node>( leaves[i] );
+        char *buffer = leaf_node->buffer_;
+        REQUIRE( read_pointer_from_buffer<TreeType>( buffer ) == &tree );
+        REQUIRE( * (tree_node_handle *) (buffer + sizeof(void*)) ==
+                leaves[i] );
+        REQUIRE( * (tree_node_handle *) (buffer + sizeof(void*) +
+                    sizeof(tree_node_handle)) ==
+                repacked_handle );
+        REQUIRE( * (unsigned *) (buffer + sizeof(void*) +
+                sizeof(tree_node_handle)*2) == 7 );
+        for( unsigned j = 0; j < 7; j++ ) {
+            REQUIRE( * (Point *) (buffer + sizeof(void*) +
+                sizeof(tree_node_handle)*2 + sizeof(unsigned)) ==
+                Point(i,i));
+        }
+    }
+
+    unlink( "rstardiskbacked.txt" );
 }

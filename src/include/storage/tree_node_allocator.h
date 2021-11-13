@@ -274,13 +274,6 @@ public:
     }
 
     void free( tree_node_handle handle, uint16_t alloc_size ) {
-#ifndef NDEBUG
-        if( handle.get_type() == 1 ) {
-            assert( alloc_size == 176 );
-        } else if( handle.get_type() == 2 ) {
-            assert( alloc_size == 1840 );
-        }
-#endif
         free_list_.push_back( std::make_pair( handle, alloc_size ) );
     }
 
