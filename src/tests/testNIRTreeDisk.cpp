@@ -877,7 +877,7 @@ TEST_CASE("NIRTreeDisk: pack simple leaf node") {
             sizeof(DefaultLeafNodeType) );
     REQUIRE( root_leaf_node->compute_packed_size() ==
             sizeof(void *) + sizeof(tree_node_handle)*2 +
-            sizeof(size_t) + sizeof(Point) * 5 );
+            sizeof(unsigned) + sizeof(Point) * 5 );
 
     tree_node_handle repacked_handle = root_leaf_node->repack(
             tree.node_allocator_.get() );
@@ -895,12 +895,12 @@ TEST_CASE("NIRTreeDisk: pack simple leaf node") {
                     *) + sizeof(tree_node_handle) ) ==
         root_leaf_node->parent );
 
-    REQUIRE( * (size_t *) (packed_leaf->buffer_ + sizeof(void
+    REQUIRE( * (unsigned *) (packed_leaf->buffer_ + sizeof(void
                     *) + sizeof(tree_node_handle)*2 ) ==
         root_leaf_node->cur_offset_ );
 
     Point *p = (Point *) (packed_leaf->buffer_ + sizeof(void *) +
-            sizeof(tree_node_handle)*2 + sizeof(size_t));
+            sizeof(tree_node_handle)*2 + sizeof(unsigned));
     REQUIRE( *(p++) == root_leaf_node->entries.at(0) );
     REQUIRE( *(p++) == root_leaf_node->entries.at(1) );
     REQUIRE( *(p++) == root_leaf_node->entries.at(2) );
@@ -967,9 +967,9 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             branch_node->parent );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (size_t *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             branch_node->cur_offset_ );
-    offset += sizeof(size_t);
+    offset += sizeof(unsigned);
 
     // There are 5 entries
 
@@ -1094,9 +1094,9 @@ TEST_CASE("NIRTreeDisk: pack complex inline polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             branch_node->parent );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (size_t *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (unsigned*) (packed_branch->buffer_ + offset) ==
             branch_node->cur_offset_ );
-    offset += sizeof(size_t);
+    offset += sizeof(unsigned);
 
 
     //Entry 1
@@ -1180,9 +1180,9 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             branch_node->parent );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (size_t *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (unsigned*) (packed_branch->buffer_ + offset) ==
             branch_node->cur_offset_ );
-    offset += sizeof(size_t);
+    offset += sizeof(unsigned);
 
     // Entry 1
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
@@ -1277,9 +1277,9 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             branch_node->parent );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (size_t *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (unsigned*) (packed_branch->buffer_ + offset) ==
             branch_node->cur_offset_ );
-    offset += sizeof(size_t);
+    offset += sizeof(unsigned);
 
     // Entry 1
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
@@ -1330,7 +1330,7 @@ TEST_CASE("NIRTreeDisk: Search packed leaf from branch." ) {
             sizeof(DefaultLeafNodeType) );
     REQUIRE( root_leaf_node->compute_packed_size() ==
             sizeof(void *) + sizeof(tree_node_handle)*2 +
-            sizeof(size_t) + sizeof(Point) * 5 );
+            sizeof(unsigned) + sizeof(Point) * 5 );
 
     tree_node_handle repacked_handle = root_leaf_node->repack(
             tree.node_allocator_.get() );
@@ -1382,7 +1382,7 @@ TEST_CASE("NIRTreeDisk: Search packed leaf direct." ) {
             sizeof(DefaultLeafNodeType) );
     REQUIRE( root_leaf_node->compute_packed_size() ==
             sizeof(void *) + sizeof(tree_node_handle)*2 +
-            sizeof(size_t) + sizeof(Point) * 5 );
+            sizeof(unsigned) + sizeof(Point) * 5 );
 
     tree_node_handle repacked_handle = root_leaf_node->repack(
             tree.node_allocator_.get() );
