@@ -995,18 +995,8 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     for( unsigned i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
-        Rectangle *summary_rectangle = (Rectangle *) (buffer + offset); \
-        offset += sizeof( Rectangle ); \
         unsigned rect_count = * (unsigned *) (buffer + offset); \
         offset += sizeof( unsigned ); \
-        if( not summary_rectangle->containsPoint( requestedPoint ) ) { \
-            if( rect_count == std::numeric_limits<unsigned>::max() ) { \
-                offset += sizeof(tree_node_handle); \
-            } else { \
-                offset += rect_count * sizeof( Rectangle ); \
-            }\
-            continue; \
-        } \
         if( rect_count == std::numeric_limits<unsigned>::max() ) { \
             tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
             offset += sizeof( tree_node_handle ); \
@@ -1058,18 +1048,8 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     for( unsigned i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
-        Rectangle *summary_rectangle = (Rectangle *) (buffer + offset); \
-        offset += sizeof( Rectangle ); \
         unsigned rect_count = * (unsigned *) (buffer + offset); \
         offset += sizeof( unsigned ); \
-        if( not summary_rectangle->intersectsRectangle( requestedRectangle ) ) { \
-            if( rect_count == std::numeric_limits<unsigned>::max() ) { \
-                offset += sizeof(tree_node_handle); \
-            } else { \
-                offset += rect_count * sizeof( Rectangle ); \
-            }\
-            continue; \
-        } \
         if( rect_count == std::numeric_limits<unsigned>::max() ) { \
             tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
             offset += sizeof( tree_node_handle ); \

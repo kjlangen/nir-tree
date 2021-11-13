@@ -124,7 +124,6 @@ namespace nirtreedisk
         ) {
             uint16_t sz = sizeof( child );
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
-                sz += sizeof( Rectangle ); // summary rectangle
 
                 auto should_pack_and_pin = should_repack_big_poly(
                     std::get<tree_node_handle>( boundingPoly ),
@@ -145,7 +144,6 @@ namespace nirtreedisk
             }
             InlineBoundedIsotheticPolygon &poly =
                 std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
-            sz += sizeof(Rectangle); //boundingBox
             unsigned rect_count = poly.get_rectangle_count();
             sz += sizeof( rect_count );
             sz  += rect_count * sizeof(Rectangle);
@@ -160,8 +158,6 @@ namespace nirtreedisk
         ) {
             uint16_t offset = write_data_to_buffer( buffer, &child );
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
-                Rectangle rect = get_summary_rectangle( existing_allocator );
-                offset += write_data_to_buffer( buffer + offset, &rect );
                 auto poly_pin =
                     existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
                             std::get<tree_node_handle>( boundingPoly ) );
@@ -184,8 +180,6 @@ namespace nirtreedisk
 
             InlineBoundedIsotheticPolygon &poly =
                 std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
-            offset += write_data_to_buffer( buffer + offset,
-                    &(poly.get_summary_rectangle()) );
             unsigned rect_count = poly.get_rectangle_count();
             offset += write_data_to_buffer( buffer + offset, &rect_count );
             for( auto iter = poly.begin(); iter != poly.end(); iter++ ) {

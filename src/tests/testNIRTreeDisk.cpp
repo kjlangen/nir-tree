@@ -977,9 +977,6 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-            Rectangle(0.0,0.0,1.0,1.0) );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             1U );
     offset += sizeof(unsigned);
@@ -991,9 +988,6 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-            Rectangle(0.0,0.0,2.0,2.0) );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             1U );
     offset += sizeof(unsigned);
@@ -1005,9 +999,6 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-            Rectangle(0.0,0.0,3.0,3.0) );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             1U );
     offset += sizeof(unsigned);
@@ -1019,9 +1010,6 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-            Rectangle(0.0,0.0,4.0,4.0) );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             1U );
     offset += sizeof(unsigned);
@@ -1033,9 +1021,6 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-            Rectangle(0.0,0.0,5.0,5.0) );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             1U );
     offset += sizeof(unsigned);
@@ -1103,9 +1088,6 @@ TEST_CASE("NIRTreeDisk: pack complex inline polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-            polygon.boundingBox );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             5U );
     offset += sizeof(unsigned);
@@ -1188,9 +1170,6 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
            leaf_handle ); 
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-           polygon.boundingBox );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
            std::numeric_limits<unsigned>::max() );
     offset += sizeof(unsigned);
@@ -1285,9 +1264,6 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
            leaf_handle ); 
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-           polygon.boundingBox );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
            20.0 );
     offset += sizeof(unsigned);
@@ -1301,9 +1277,6 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
            leaf_handle ); 
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
-           polygon2.boundingBox );
-    offset += sizeof(Rectangle);
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
            std::numeric_limits<unsigned>::max() );
     offset += sizeof(unsigned);
