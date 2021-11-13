@@ -117,12 +117,12 @@ namespace nirtreedisk
 
         }
 
-        size_t compute_packed_size(
+        uint16_t compute_packed_size(
             tree_node_allocator *existing_allocator,
             tree_node_allocator *new_allocator,
             unsigned maximum_repacked_rect_size
         ) {
-            size_t sz = sizeof( child );
+            uint16_t sz = sizeof( child );
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
                 sz += sizeof( Rectangle ); // summary rectangle
 
@@ -152,13 +152,13 @@ namespace nirtreedisk
             return sz;
         }
 
-        size_t repack_into(
+        uint16_t repack_into(
             char *buffer,
             tree_node_allocator *existing_allocator,
             tree_node_allocator *new_allocator,
             unsigned cut_off_inline_rect_count
         ) {
-            size_t offset = write_data_to_buffer( buffer, &child );
+            uint16_t offset = write_data_to_buffer( buffer, &child );
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
                 Rectangle rect = get_summary_rectangle( existing_allocator );
                 offset += write_data_to_buffer( buffer + offset, &rect );
@@ -223,7 +223,7 @@ namespace nirtreedisk
 		public:
             NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
             tree_node_handle parent;
-            size_t cur_offset_;
+            unsigned cur_offset_;
             tree_node_handle self_handle_;
 
             std::array<Point, max_branch_factor+1> entries;
@@ -291,7 +291,7 @@ namespace nirtreedisk
 		public:
             NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef;
             tree_node_handle parent;
-            size_t cur_offset_;
+            unsigned cur_offset_;
             tree_node_handle self_handle_;
 
             std::array<Branch, max_branch_factor+1> entries;
@@ -310,7 +310,7 @@ namespace nirtreedisk
 			// Helper functions
 			Rectangle boundingBox();
 			Branch &locateBranch(tree_node_handle child) {
-                for( size_t i = 0; i < this->cur_offset_; i++ ) {
+                for( unsigned i = 0; i < this->cur_offset_; i++ ) {
                     Branch &b = entries.at(i);
                     if (b.child == child)
                     {

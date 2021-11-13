@@ -2182,6 +2182,7 @@ tree_node_handle repack_subtree(
 #undef rectangle_search_leaf_handle
 #undef rectangle_search_leaf_node
 #undef rectangle_search_packed_leaf_node
+#undef rectangle_search_packed_leaf_handle
 #undef rectangle_search_packed_branch_handle
 #undef rectangle_search_branch_handle
 #undef decode_entry_count_and_offset_packed_node

@@ -675,7 +675,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
             auto tree_ptr = (rstartreedisk::RStarTreeDisk<3,7> *) spatialIndex;
             std::string fname = "repacked_rstar.txt";
             repack_tree( tree_ptr, fname, rstartreedisk::repack_subtree<3,7> );
-
         }
 
         spatialIndex->write_metadata();
