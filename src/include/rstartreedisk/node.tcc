@@ -997,12 +997,10 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(
     char *buffer = packed_branch->buffer_; \
     decode_entry_count_and_offset_packed_node( buffer ); \
     for( size_t i = 0; i < count; i++ ) { \
-        tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
-        offset += sizeof( tree_node_handle ); \
-        Rectangle *rect = (Rectangle *) (buffer + offset); \
-        offset += sizeof( Rectangle ); \
-        if( rect->containsPoint( requestedPoint ) ) { \
-            context.push( *child ); \
+        Branch *b = (Branch *) (buffer + offset); \
+        offset += sizeof( Branch ); \
+        if( b->boundingBox.containsPoint( requestedPoint ) ) { \
+            context.push( b->child ); \
         } \
     }
 
@@ -1088,12 +1086,10 @@ std::vector<Point> point_search(
     char *buffer = packed_branch->buffer_; \
     decode_entry_count_and_offset_packed_node( buffer ); \
     for( size_t i = 0; i < count; i++ ) { \
-        tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
-        offset += sizeof( tree_node_handle ); \
-        Rectangle *rect = (Rectangle *) (buffer + offset); \
-        offset += sizeof( Rectangle ); \
-        if( not rect->intersectsRectangle( requestedRectangle ) ) { \
-            context.push( *child ); \
+        Branch *b = (Branch *) (buffer + offset); \
+        offset += sizeof( Branch ); \
+        if( b->boundingBox.intersectsRectangle( requestedRectangle ) ) { \
+            context.push( b->child ); \
         } \
     }
 

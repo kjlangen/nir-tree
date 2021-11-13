@@ -1626,3 +1626,73 @@ TEST_CASE("R*TreeDisk: pack branch subtree") {
 
     unlink( "rstardiskbacked.txt" );
 }
+
+TEST_CASE("R*TreeDisk: Search Packed Leaf Node" ) {
+    unlink( "rstardiskbacked.txt" );
+    TreeType tree( 4096*5, "rstardiskbacked.txt" );
+
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point( i, i ) );
+    }
+
+    auto repacked_root = rstartreedisk::repack_subtree<3,7>( tree.root, &(tree.node_allocator_),
+            &(tree.node_allocator_) );
+
+    for( unsigned i = 0; i < 7; i++ ) {
+        Point p(i,i);
+        if( i < 5 ) {
+            REQUIRE( point_search( repacked_root, p, &tree ).size() == 1 );
+        } else {
+            REQUIRE( point_search( repacked_root, p, &tree ).size() == 0 );
+        }
+    }
+}
+
+TEST_CASE("R*TreeDisk: Search packed subtree") {
+    unlink( "rstardiskbacked.txt" );
+    TreeType tree( 4096*5, "rstardiskbacked.txt" );
+
+    auto alloc_data_root =
+        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+                NodeHandleType( BRANCH_NODE ) );
+    new (&(*alloc_data_root.first)) BranchNodeType( &tree,
+            alloc_data_root.second, tree_node_handle(nullptr), 1 );
+    auto root_node = alloc_data_root.first;
+    auto root_handle = alloc_data_root.second;
+
+    tree_node_handle leaves[5];
+    for( unsigned i = 0; i < 5; i++ ) {
+        Point p(i,i);
+        leaves[i] = createFullLeafNode( tree, root_handle, Point(i,i));
+        Rectangle bb( p, Point::closest_larger_point( p ) );
+        root_node->addBranchToNode( createBranchEntry( bb, leaves[i] ) );
+    }
+
+    auto repacked_handle = rstartreedisk::repack_subtree<3,7>(
+            root_handle, &(tree.node_allocator_),
+            &(tree.node_allocator_) );
+    REQUIRE( repacked_handle != nullptr );
+
+    tree.root = repacked_handle;
+    for( unsigned i = 0; i < 7; i++ ) {
+        Point p(i,i);
+        if( i < 5 ) {
+            REQUIRE( tree.search( p ).size() == 7 );
+        } else {
+            REQUIRE( tree.search( p ).size() == 0 );
+        }
+    }
+
+    for( unsigned i = 0; i < 5; i++ ) {
+        Point p(i,i);
+        Point p2(i+1,i+1);
+        Rectangle range( p, Point::closest_larger_point( p2 ) );
+        if( i < 4 ) {
+            REQUIRE( tree.search( range ).size() == 14 );
+        } else {
+            REQUIRE( tree.search( range ).size() == 7 );
+        }
+    }
+
+    unlink( "rstardiskbacked.txt" );
+}
