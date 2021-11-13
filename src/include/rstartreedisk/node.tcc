@@ -404,7 +404,7 @@ tree_node_handle adjustTreeSub(
             }
 
             pinned_node_ptr<LEAF_NODE_CLASS_TYPES>
-                sibling_node( treeRef->node_allocator_.buffer_pool_, nullptr,
+                sibling_node( treeRef->node_allocator_->buffer_pool_, nullptr,
                         nullptr );
             assert( sibling_node == nullptr );
 
@@ -427,7 +427,7 @@ tree_node_handle adjustTreeSub(
                 break;
             }
             pinned_node_ptr<BRANCH_NODE_CLASS_TYPES>
-                sibling_node( treeRef->node_allocator_.buffer_pool_, nullptr,
+                sibling_node( treeRef->node_allocator_->buffer_pool_, nullptr,
                         nullptr );
             assert( sibling_node == nullptr );
 
@@ -1013,7 +1013,7 @@ std::vector<Point> point_search(
     std::vector<Point> accumulator;
     std::stack<tree_node_handle> context;
     context.push( start_point );
-    tree_node_allocator *allocator = &(treeRef->node_allocator_);
+    tree_node_allocator *allocator = treeRef->node_allocator_.get();
 
     while( !context.empty() ) {
         tree_node_handle current_handle = context.top();
@@ -1102,7 +1102,7 @@ std::vector<Point> rectangle_search(
     std::vector<Point> accumulator;
 
     std::stack<tree_node_handle> context;
-    tree_node_allocator *allocator = &(treeRef->node_allocator_);
+    tree_node_allocator *allocator = treeRef->node_allocator_.get();
     context.push( start_point );
 
     while( not context.empty() ) {

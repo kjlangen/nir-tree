@@ -22,7 +22,7 @@ createFullLeafNode(TreeType &tree, tree_node_handle parent, Point p=Point::atOri
 {
     // Allocate new node
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>( NodeHandleType( LEAF_NODE ) );
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>( NodeHandleType( LEAF_NODE ) );
     tree_node_handle node_handle = alloc_data.second;
     auto node = alloc_data.first;
     new (&(*node)) LeafNodeType( &tree, node_handle, tree_node_handle() /* nullptr */, 0 );
@@ -48,7 +48,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
     {
         TreeType tree( 4096, "rstardiskbacked.txt" );
         auto alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         tree_node_handle root = alloc_data_root.second;
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
@@ -56,7 +56,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
         auto rootNode = alloc_data_root.first;
         
         auto alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         tree_node_handle child0 = alloc_data.second;
         new (&(*alloc_data.first)) LeafNodeType( &tree, child0, root, 0 );
@@ -66,7 +66,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
         rootNode->addBranchToNode( entry );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ));
         tree_node_handle child1 = alloc_data.second;
         new (&(*alloc_data.first)) LeafNodeType( &tree, child1, root, 0 );
@@ -76,7 +76,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
         rootNode->addBranchToNode( entry );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         tree_node_handle child2 = alloc_data.second;
         new (&(*alloc_data.first)) LeafNodeType( &tree, child2, root, 0 );
@@ -94,7 +94,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
         TreeType tree(4096, "rstardiskbacked.txt" );
 
         auto alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                 alloc_data_root.second, tree_node_handle( nullptr ), 1 );
@@ -102,7 +102,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
         auto rootNode = alloc_data_root.first;
         
         auto alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         tree_node_handle child0 = alloc_data.second;
         new (&(*alloc_data.first)) LeafNodeType( &tree, child0, root, 0 );
@@ -110,7 +110,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
             createBranchEntry( Rectangle(8.0, 12.0, 10.0, 14.0), child0 ) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         tree_node_handle child1 = alloc_data.second;
         new (&(*alloc_data.first)) LeafNodeType( &tree, child1, root, 0 );
@@ -118,7 +118,7 @@ TEST_CASE("R*TreeDisk: testBoundingBox")
             createBranchEntry( Rectangle(10.0, 12.0, 12.0, 14.0), child1) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         tree_node_handle child2 = alloc_data.second;
         new (&(*alloc_data.first)) LeafNodeType( &tree, child2, root, 0 );
@@ -138,7 +138,7 @@ TEST_CASE("R*TreeDisk: testUpdateBoundingBox") {
 	TreeType tree(4096, "rstardiskbacked.txt");
 
     auto alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     new (&(*alloc_data_root.first)) BranchNodeType( &tree,
             alloc_data_root.second, tree_node_handle(nullptr), 1 );
@@ -146,7 +146,7 @@ TEST_CASE("R*TreeDisk: testUpdateBoundingBox") {
     tree_node_handle root = alloc_data_root.second;
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child0 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child0, root, 0 );
@@ -154,7 +154,7 @@ TEST_CASE("R*TreeDisk: testUpdateBoundingBox") {
     parentNode->addBranchToNode( createBranchEntry( Rectangle(8.0, -6.0, 10.0, -4.0), child0 ) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child1 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child1, root, 0 );
@@ -163,7 +163,7 @@ TEST_CASE("R*TreeDisk: testUpdateBoundingBox") {
 
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child2 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child2, root, 0 );
@@ -171,7 +171,7 @@ TEST_CASE("R*TreeDisk: testUpdateBoundingBox") {
     parentNode->addBranchToNode( createBranchEntry(Rectangle(10.0, 12.0, 12.0, 14.0), child2) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child3 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child3, root, 0 );
@@ -198,7 +198,7 @@ TEST_CASE( "R*TreeDisk: testRemoveChild" ) {
 	TreeType tree(4096, "rstardiskbacked.txt");
 
     auto alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     new (&(*alloc_data_root.first)) BranchNodeType( &tree,
             alloc_data_root.second, tree_node_handle(nullptr), 1 );
@@ -207,7 +207,7 @@ TEST_CASE( "R*TreeDisk: testRemoveChild" ) {
     auto parentNode = alloc_data_root.first;
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child0 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child0, root, 1 );
@@ -215,7 +215,7 @@ TEST_CASE( "R*TreeDisk: testRemoveChild" ) {
 	parentNode->addBranchToNode( createBranchEntry(Rectangle(8.0, -6.0, 10.0, -4.0), child0) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child1 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child1, root, 0 );
@@ -223,7 +223,7 @@ TEST_CASE( "R*TreeDisk: testRemoveChild" ) {
     parentNode->addBranchToNode( createBranchEntry(Rectangle(12.0, -4.0, 16.0, -2.0), child1) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child2 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child2, root, 0 );
@@ -231,7 +231,7 @@ TEST_CASE( "R*TreeDisk: testRemoveChild" ) {
     parentNode->addBranchToNode( createBranchEntry(Rectangle(10.0, 12.0, 12.0, 14.0), child2) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     tree_node_handle child3 = alloc_data.second;
     new (&(*alloc_data.first)) LeafNodeType( &tree, child3, root, 0 );
@@ -254,7 +254,7 @@ TEST_CASE("R*TreeDisk: testRemoveData")
 
 	// Setup a rtree::Node with some data
 	TreeType tree( 4096, "rstardiskbacked.txt" );
-    auto parentNode = tree.node_allocator_.get_tree_node<LeafNodeType>(
+    auto parentNode = tree.node_allocator_->get_tree_node<LeafNodeType>(
             tree.root );
     REQUIRE( parentNode->level == 0 );
 
@@ -284,7 +284,7 @@ TEST_CASE("R*TreeDisk: testChooseLeaf")
 	TreeType tree( 4096*4, "rstardiskbacked.txt" );
 
     auto alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     new (&(*alloc_data_root.first)) BranchNodeType( &tree,
             alloc_data_root.second, tree_node_handle(nullptr), 2 );
@@ -292,14 +292,14 @@ TEST_CASE("R*TreeDisk: testChooseLeaf")
     auto rootNode = alloc_data_root.first;
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     auto leftNode = alloc_data.first;
     tree_node_handle left = alloc_data.second;
     new (&(*leftNode)) BranchNodeType( &tree, left, root, 1 );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     auto rightNode = alloc_data.first;
     tree_node_handle right = alloc_data.second;
@@ -347,7 +347,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 
 	TreeType tree( 4096 * 5, "rstardiskbacked.txt" );
     auto alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     new (&(*alloc_data_root.first)) BranchNodeType( &tree,
             alloc_data_root.second, tree_node_handle( nullptr ), 2 );
@@ -355,7 +355,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
     auto rootNode = alloc_data_root.first;
 
     auto alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     auto cluster4aNode = alloc_data.first;
     tree_node_handle cluster4a = alloc_data.second;
@@ -367,7 +367,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
     cluster4aNode->addPoint( Point(-10.0, -3.0) );
 	
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     auto cluster4bNode = alloc_data.first;
     tree_node_handle cluster4b = alloc_data.second;
@@ -379,7 +379,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 	cluster4bNode->addPoint( Point(-10.0, -5.0) );
 
     alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     auto cluster4Node = alloc_data_root.first;
     tree_node_handle cluster4 = alloc_data_root.second;
@@ -398,7 +398,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 	// (-14, -15), (-13, -15), (-12, -15)
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     auto cluster5aNode = alloc_data.first;
     tree_node_handle cluster5a = alloc_data.second;
@@ -409,7 +409,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 	cluster5aNode->addPoint( Point(-15.0, -14.0) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     auto cluster5bNode = alloc_data.first;
     tree_node_handle cluster5b = alloc_data.second;
@@ -421,7 +421,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 	cluster5bNode->addPoint( Point(-13.5, -16.0) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     auto cluster5cNode = alloc_data.first;
     tree_node_handle cluster5c = alloc_data.second;
@@ -434,7 +434,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 	cluster5cNode->addPoint( Point(-13.5, -15.5) );
 
     alloc_data =
-        tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+        tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                 NodeHandleType( LEAF_NODE ) );
     auto cluster5dNode = alloc_data.first;
     tree_node_handle cluster5d = alloc_data.second;
@@ -447,7 +447,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf")
 	cluster5dNode->addPoint( Point(-15.0, -15.0));
 
     alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     auto cluster5Node = alloc_data_root.first;
     tree_node_handle cluster5 = alloc_data_root.second;
@@ -515,7 +515,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         TreeType tree( 4096 * 5,"rstardiskbacked.txt" );
 
         auto alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                 alloc_data_root.second, tree_node_handle( nullptr ), 2 );
@@ -523,7 +523,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         auto rootNode = alloc_data_root.first;
 
         auto alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         auto cluster4aNode = alloc_data.first;
         cluster4a = alloc_data.second;
@@ -534,7 +534,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         cluster4aNode->addPoint( Point(-10.0, -3.0) );
         
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         auto cluster4bNode = alloc_data.first;
         cluster4b = alloc_data.second;
@@ -544,7 +544,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         cluster4bNode->addPoint( Point(-10.0, -5.0) );
 
         alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         auto cluster4Node = alloc_data_root.first;
         cluster4 = alloc_data_root.second;
@@ -562,7 +562,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         // (-14, -15), (-13, -15), (-12, -15)
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         auto cluster5aNode = alloc_data.first;
         cluster5a = alloc_data.second;
@@ -573,7 +573,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         cluster5aNode->addPoint( Point(-15.0, -14.0) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         auto cluster5bNode = alloc_data.first;
         cluster5b = alloc_data.second;
@@ -584,7 +584,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         cluster5bNode->addPoint( Point(-13.5, -16.0) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         auto cluster5cNode = alloc_data.first;
         cluster5c = alloc_data.second;
@@ -596,7 +596,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         cluster5cNode->addPoint( Point(-13.5, -15.5) );
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         auto cluster5dNode = alloc_data.first;
         cluster5d = alloc_data.second;
@@ -609,7 +609,7 @@ TEST_CASE("R*TreeDisk: testFindLeaf ON DISK")
         cluster5dNode->addPoint( Point(-15.0, -15.0) );
 
         alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         auto cluster5Node = alloc_data_root.first;
         cluster5 = alloc_data_root.second;
@@ -794,7 +794,7 @@ TEST_CASE("R*TreeDisk: testSplitNode")
     {
         TreeType tree3( 4096 * 5, "rstardiskbacked.txt" );
         auto alloc_data_root =
-            tree3.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree3.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree3,
                 alloc_data_root.second, tree_node_handle( nullptr ), 1
@@ -806,7 +806,7 @@ TEST_CASE("R*TreeDisk: testSplitNode")
         tree_node_handle dummys[7];
         for( int i = 0; i < 7; i++ ) {
             auto alloc_data =
-                tree3.node_allocator_.create_new_tree_node<LeafNodeType>(
+                tree3.node_allocator_->create_new_tree_node<LeafNodeType>(
                         NodeHandleType( LEAF_NODE ) );
             new (&(*alloc_data.first)) LeafNodeType( &tree3,
                     alloc_data.second, tree3.root, 0 );
@@ -832,7 +832,7 @@ TEST_CASE("R*TreeDisk: testSplitNode")
 
         // Extra rstartree::Node causing the split
         auto alloc_data =
-            tree3.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree3.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*alloc_data.first)) LeafNodeType( &tree3, alloc_data.second, tree3.root, 0 );
 
@@ -898,7 +898,7 @@ TEST_CASE("R*TreeDisk: testInsertOverflowReInsertAndSplit")
     {
         TreeType tree(4096*5, "rstardiskbacked.txt");
         auto alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                 alloc_data_root.second, tree_node_handle( nullptr ), 1
@@ -908,7 +908,7 @@ TEST_CASE("R*TreeDisk: testInsertOverflowReInsertAndSplit")
         tree.root = root;
 
         auto alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         auto childNode = alloc_data.first;
         new (&(*childNode)) LeafNodeType( &tree, alloc_data.second,
@@ -1014,7 +1014,7 @@ TEST_CASE("R*TreeDisk: testSplitNonLeafNode")
         TreeType tree(4096*5, "rstardiskbacked.txt" );
 
         auto alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                 alloc_data_root.second, tree_node_handle( nullptr ), 1
@@ -1133,7 +1133,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         TreeType tree( 4096*5, "rstardiskbacked.txt");
 
         auto alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                 alloc_data_root.second, tree_node_handle( nullptr ), 2
@@ -1144,7 +1144,7 @@ TEST_CASE("R*TreeDisk: testSearch")
 
 
         auto alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*alloc_data.first)) LeafNodeType( &tree, alloc_data.second,
                 tree_node_handle( nullptr ), 0 );
@@ -1155,7 +1155,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         cluster1a->addPoint(Point(-4.0, 13.0));
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*alloc_data.first)) LeafNodeType( &tree, alloc_data.second,
                 tree_node_handle( nullptr ), 0 );
@@ -1169,7 +1169,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Cluster 2, n = 8
         // (-14, 8), (-10, 8), (-9, 10), (-9, 9), (-8, 10), (-9, 7), (-8, 8), (-8, 9)
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*alloc_data.first)) LeafNodeType( &tree, alloc_data.second,
                 tree_node_handle(nullptr), 0 );
@@ -1182,7 +1182,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         cluster2a->addPoint(Point(-8.0, 8.0));
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*alloc_data.first)) LeafNodeType( &tree, alloc_data.second,
                 tree_node_handle(nullptr), 0 );
@@ -1195,7 +1195,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         // Cluster 3, n = 9
         // (-5, 4), (-3, 4), (-2, 4), (-4, 3), (-1, 3), (-6, 2), (-4, 1), (-3, 0), (-1, 1)
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*alloc_data.first)) LeafNodeType( &tree, alloc_data.second,
                 tree_node_handle(nullptr), 0 );
@@ -1208,7 +1208,7 @@ TEST_CASE("R*TreeDisk: testSearch")
         cluster3a->addPoint(Point(-1.0, 1.0));
 
         alloc_data =
-            tree.node_allocator_.create_new_tree_node<LeafNodeType>(
+            tree.node_allocator_->create_new_tree_node<LeafNodeType>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*alloc_data.first)) LeafNodeType( &tree, alloc_data.second,
                 tree_node_handle(nullptr), 0 );
@@ -1221,7 +1221,7 @@ TEST_CASE("R*TreeDisk: testSearch")
 
         // High level rstartree::Nodes
         alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                 alloc_data_root.second,
@@ -1242,7 +1242,7 @@ TEST_CASE("R*TreeDisk: testSearch")
                     cluster2b_handle));
 
         alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree, alloc_data_root.second,
                 tree_node_handle(nullptr), 1 );
@@ -1383,7 +1383,7 @@ TEST_CASE("R*TreeDisk: reInsertAccountsForNewTreeDepth")
         }
 
         auto alloc_data_root =
-            tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+            tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                     NodeHandleType( BRANCH_NODE ) );
         new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                 alloc_data_root.second, tree_node_handle( nullptr ), 2
@@ -1396,7 +1396,7 @@ TEST_CASE("R*TreeDisk: reInsertAccountsForNewTreeDepth")
         std::vector<tree_node_handle> middleLayer;
         for( unsigned i = 0; i < 7; i++ ) {
             alloc_data_root =
-                tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+                tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                         NodeHandleType( BRANCH_NODE ) );
             new (&(*alloc_data_root.first)) BranchNodeType( &tree,
                     alloc_data_root.second, tree_node_handle( nullptr ), 1 );
@@ -1467,11 +1467,11 @@ TEST_CASE("R*TreeDisk: pack simple leaf node") {
             sizeof(unsigned) + sizeof(Point) * 5 );
 
     tree_node_handle repacked_handle = root_leaf_node->repack(
-            &(tree.node_allocator_) );
+            tree.node_allocator_.get() );
 
     REQUIRE( repacked_handle != nullptr );
     auto packed_leaf =
-        tree.node_allocator_.get_tree_node<packed_node>(
+        tree.node_allocator_->get_tree_node<packed_node>(
                 repacked_handle );
     REQUIRE( read_pointer_from_buffer<TreeType>( packed_leaf->buffer_ ) == &tree );
     REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
@@ -1500,7 +1500,7 @@ TEST_CASE("R*TreeDisk: pack branch structure") {
     unlink( "rstardiskbacked.txt" );
     TreeType tree( 4096*5, "rstardiskbacked.txt" );
 
-    auto alloc_data_root = tree.node_allocator_.create_new_tree_node<BranchNodeType>();
+    auto alloc_data_root = tree.node_allocator_->create_new_tree_node<BranchNodeType>();
     new (&(*alloc_data_root.first)) BranchNodeType( &tree,
             alloc_data_root.second, tree_node_handle(nullptr), 1 );
     auto root_node = alloc_data_root.first;
@@ -1520,11 +1520,11 @@ TEST_CASE("R*TreeDisk: pack branch structure") {
             sizeof(void *) + sizeof(tree_node_handle)*2 +
             sizeof(unsigned) + sizeof(Branch) * 5 );
 
-    auto repacked_handle = root_node->repack( &(tree.node_allocator_) );
+    auto repacked_handle = root_node->repack( tree.node_allocator_.get() );
     REQUIRE( repacked_handle != nullptr );
 
     auto repacked_node =
-        tree.node_allocator_.get_tree_node<packed_node>(
+        tree.node_allocator_->get_tree_node<packed_node>(
                 repacked_handle );
 
     char *buffer = repacked_node->buffer_;
@@ -1555,7 +1555,7 @@ TEST_CASE("R*TreeDisk: pack branch subtree") {
     TreeType tree( 4096*5, "rstardiskbacked.txt" );
 
     auto alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     new (&(*alloc_data_root.first)) BranchNodeType( &tree,
             alloc_data_root.second, tree_node_handle(nullptr), 1 );
@@ -1577,12 +1577,12 @@ TEST_CASE("R*TreeDisk: pack branch subtree") {
             sizeof(unsigned) + sizeof(Branch) * 5 );
 
     auto repacked_handle = rstartreedisk::repack_subtree<3,7>(
-            root_handle, &(tree.node_allocator_),
-            &(tree.node_allocator_) );
+            root_handle, tree.node_allocator_.get(),
+            tree.node_allocator_.get() );
     REQUIRE( repacked_handle != nullptr );
 
     auto repacked_node =
-        tree.node_allocator_.get_tree_node<packed_node>(
+        tree.node_allocator_->get_tree_node<packed_node>(
                 repacked_handle );
 
     char *buffer = repacked_node->buffer_;
@@ -1607,7 +1607,7 @@ TEST_CASE("R*TreeDisk: pack branch subtree") {
     }
 
     for( unsigned i = 0; i < 5; i++ ) {
-        auto leaf_node = tree.node_allocator_.get_tree_node<packed_node>( leaves[i] );
+        auto leaf_node = tree.node_allocator_->get_tree_node<packed_node>( leaves[i] );
         char *buffer = leaf_node->buffer_;
         REQUIRE( read_pointer_from_buffer<TreeType>( buffer ) == &tree );
         REQUIRE( * (tree_node_handle *) (buffer + sizeof(void*)) ==
@@ -1635,8 +1635,9 @@ TEST_CASE("R*TreeDisk: Search Packed Leaf Node" ) {
         tree.insert( Point( i, i ) );
     }
 
-    auto repacked_root = rstartreedisk::repack_subtree<3,7>( tree.root, &(tree.node_allocator_),
-            &(tree.node_allocator_) );
+    auto repacked_root = rstartreedisk::repack_subtree<3,7>( tree.root,
+            tree.node_allocator_.get(),
+            tree.node_allocator_.get() );
 
     for( unsigned i = 0; i < 7; i++ ) {
         Point p(i,i);
@@ -1653,7 +1654,7 @@ TEST_CASE("R*TreeDisk: Search packed subtree") {
     TreeType tree( 4096*5, "rstardiskbacked.txt" );
 
     auto alloc_data_root =
-        tree.node_allocator_.create_new_tree_node<BranchNodeType>(
+        tree.node_allocator_->create_new_tree_node<BranchNodeType>(
                 NodeHandleType( BRANCH_NODE ) );
     new (&(*alloc_data_root.first)) BranchNodeType( &tree,
             alloc_data_root.second, tree_node_handle(nullptr), 1 );
@@ -1669,8 +1670,8 @@ TEST_CASE("R*TreeDisk: Search packed subtree") {
     }
 
     auto repacked_handle = rstartreedisk::repack_subtree<3,7>(
-            root_handle, &(tree.node_allocator_),
-            &(tree.node_allocator_) );
+            root_handle, tree.node_allocator_.get(),
+            tree.node_allocator_.get() );
     REQUIRE( repacked_handle != nullptr );
 
     tree.root = repacked_handle;

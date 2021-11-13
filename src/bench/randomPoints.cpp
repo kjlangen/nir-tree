@@ -476,7 +476,7 @@ static bool is_already_loaded(
     } else if( configU["tree"] == R_STAR_TREE ) {
         rstartreedisk::RStarTreeDisk<3,7> *tree =
             (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
-        size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
+        size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
@@ -490,6 +490,32 @@ static bool is_already_loaded(
     }
     return false;
 }
+
+template <class T>
+void repack_tree( T *tree_ptr, std::string &new_file_name,
+        tree_node_handle (*repack_func)( tree_node_handle, tree_node_allocator *,
+            tree_node_allocator * ) ) {
+
+    auto new_file_allocator = std::make_unique<tree_node_allocator>(
+            4096 * 13000,
+            new_file_name );
+
+    new_file_allocator->initialize();
+    std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+    auto repacked_handle = repack_func( tree_ptr->root,
+            tree_ptr->node_allocator_.get(), new_file_allocator.get() );
+    tree_ptr->root = repacked_handle;
+
+    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+
+    std::cout << "Repacking done in: " << delta.count() << "s" <<
+        std::endl;
+
+    // This evicts all the old pages, which is painful.
+    tree_ptr->node_allocator_ = std::move( new_file_allocator );
+}
+
 template <typename T>
 static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
 {
@@ -536,8 +562,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		spatialIndex = new
             nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>(
                 4096*13000, 
-                "repacked_nirtree.txt"
-                /*"nirdiskbacked_california.txt"*/);
+                /*"repacked_nirtree.txt"*/
+                "nirdiskbacked_california.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -637,30 +663,20 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         }
         std::cout << "Checksum OK." << std::endl;
 
-        /*
-        std::cout << "Repacking..." << std::endl;
-        auto tree_ptr = (nirtreedisk::NIRTreeDisk<3,7> *) spatialIndex;
+        if( configU["tree"] == NIR_TREE ) {
+            std::cout << "Repacking..." << std::endl;
+            auto tree_ptr =
+                (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy> *) spatialIndex;
+            std::string fname = "repacked_nirtree.txt";
+            repack_tree( tree_ptr, fname,
+                    nirtreedisk::repack_subtree<3,7,nirtreedisk::ExperimentalStrategy>  );
+        } else if( configU["tree"] == R_STAR_TREE ) {
+            std::cout << "Repacking..." << std::endl;
+            auto tree_ptr = (rstartreedisk::RStarTreeDisk<3,7> *) spatialIndex;
+            std::string fname = "repacked_rstar.txt";
+            repack_tree( tree_ptr, fname, rstartreedisk::repack_subtree<3,7> );
 
-        auto new_file_allocator = std::make_unique<tree_node_allocator>(
-                4096 * 13000,
-                "repacked_nirtree.txt" );
-        new_file_allocator->initialize();
-        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-        auto repacked_handle =
-            nirtreedisk::repack_subtree<3,7,nirtreedisk::ExperimentalStrategy>(
-                    tree_ptr->root, tree_ptr->node_allocator_.get(),
-                    new_file_allocator.get() );
-        tree_ptr->root = repacked_handle;
-
-        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
-
-        std::cout << "Repacking done in: " << delta.count() << "s" <<
-            std::endl;
-
-        // This evicts all the old pages, which is painful.
-        tree_ptr->node_allocator_ = std::move( new_file_allocator );
-        */
+        }
 
         spatialIndex->write_metadata();
 

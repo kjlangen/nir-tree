@@ -3,6 +3,7 @@
 #include <vector>
 #include <stack>
 #include <iostream>
+#include <memory>
 #include <index/index.h>
 #include <util/geometry.h>
 #include <rstartreedisk/node.h>
@@ -22,18 +23,20 @@ namespace rstartreedisk
 
 			tree_node_handle root;
 			Statistics stats;
-            tree_node_allocator node_allocator_;
+            std::unique_ptr<tree_node_allocator> node_allocator_;
             std::string backing_file_;
 
 			std::vector<bool> hasReinsertedOnLevel;
 
 			// Constructors and destructors
             RStarTreeDisk(size_t memory_budget, std::string backing_file
-                    ) : node_allocator_( memory_budget, backing_file ),
-                    backing_file_( backing_file )
+                    ) : backing_file_( backing_file )
             {
+
+                node_allocator_ = std::make_unique<tree_node_allocator>(
+                        memory_budget, backing_file );
                 // Initialize buffer pool
-                node_allocator_.initialize();
+                node_allocator_->initialize();
 
                 hasReinsertedOnLevel = {false};
 
@@ -41,15 +44,17 @@ namespace rstartreedisk
                  * that into memory if we have it. */
 
                 size_t existing_page_count =
-                    node_allocator_.buffer_pool_.get_preexisting_page_count();
+                    node_allocator_->buffer_pool_.get_preexisting_page_count();
 
                 // If this is a fresh tree, then make a fresh root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
-                        node_allocator_.create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor>>(
+                        node_allocator_->create_new_tree_node<LeafNode<min_branch_factor,max_branch_factor>>(
                                 NodeHandleType( LEAF_NODE ) );
                     root = alloc.second;
-                    new (&(*(alloc.first))) LeafNode<min_branch_factor,max_branch_factor>( this, root, tree_node_handle() /*nullptr*/, 0
+                    new (&(*(alloc.first)))
+                        LeafNode<min_branch_factor,max_branch_factor>(
+                                this, root, tree_node_handle( nullptr ), 0
                             );
                     return;
                 }
@@ -83,7 +88,7 @@ namespace rstartreedisk
             inline pinned_node_ptr<LeafNode<min_branch_factor,max_branch_factor>> get_leaf_node( tree_node_handle node_handle ) {
                 assert( node_handle.get_type() == LEAF_NODE );
                 auto ptr =
-                    node_allocator_.get_tree_node<LeafNode<min_branch_factor,max_branch_factor>>(
+                    node_allocator_->get_tree_node<LeafNode<min_branch_factor,max_branch_factor>>(
                             node_handle );
                 ptr->treeRef = this;
                 return ptr;
@@ -92,7 +97,7 @@ namespace rstartreedisk
             inline pinned_node_ptr<BranchNode<min_branch_factor,max_branch_factor>> get_branch_node( tree_node_handle node_handle ) {
                 assert( node_handle.get_type() == BRANCH_NODE );
                 auto ptr =
-                    node_allocator_.get_tree_node<BranchNode<min_branch_factor,max_branch_factor>>(
+                    node_allocator_->get_tree_node<BranchNode<min_branch_factor,max_branch_factor>>(
                             node_handle );
                 ptr->treeRef = this;
                 return ptr;
@@ -102,7 +107,7 @@ namespace rstartreedisk
             void write_metadata() {
                 // Step 1:
                 // Writeback everything to disk
-                node_allocator_.buffer_pool_.writeback_all_pages();
+                node_allocator_->buffer_pool_.writeback_all_pages();
 
                 // Step 2:
                 // Write metadata file

@@ -26,7 +26,7 @@ namespace rstartreedisk
     template <int min_branch_factor, int max_branch_factor>
     tree_node_allocator *get_node_allocator(
             RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef ) {
-        return &(treeRef->node_allocator_);
+        return treeRef->node_allocator_.get();
     }
 
     template <int min_branch_factor, int max_branch_factor>
