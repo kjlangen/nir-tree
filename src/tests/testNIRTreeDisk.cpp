@@ -388,20 +388,20 @@ TEST_CASE("NIRTreeDisk: testFindLeaf")
             Point(13.5,13.5));
     leftNode->addBranchToNode(
         createBranchEntry( InlineBoundedIsotheticPolygon(Rectangle(8.0, 12.0,
-                    nextafter(10.0, DBL_MAX),
-                    nextafter(14.0, DBL_MAX))), leftChild0 ) );
+                    nextafterf(10.0, FLT_MAX),
+                    nextafterf(14.0, FLT_MAX))), leftChild0 ) );
     leftNode->addBranchToNode( createBranchEntry(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0,
-                    nextafter(12.0, DBL_MAX),
-                    nextafter(15.0, DBL_MAX))), leftChild1 ) );
+                    nextafterf(12.0, FLT_MAX),
+                    nextafterf(15.0, FLT_MAX))), leftChild1 ) );
     leftNode->addBranchToNode( createBranchEntry(
             InlineBoundedIsotheticPolygon(Rectangle(12.0, 12.0,
-                    nextafter(14.0, DBL_MAX),
-                    nextafter(14.0, DBL_MAX))), leftChild2 ) );
+                    nextafterf(14.0, FLT_MAX),
+                    nextafterf(14.0, FLT_MAX))), leftChild2 ) );
     rootNode->addBranchToNode( createBranchEntry(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, 12.0,
-                    nextafter(14.0, DBL_MAX),
-                    nextafter(15.0, DBL_MAX))), left ) );
+                    nextafterf(14.0, FLT_MAX),
+                    nextafterf(15.0, FLT_MAX))), left ) );
 
     tree_node_handle rightChild0 = createFullLeafNode(tree,right,
             Point(7.0, 3.0) );
@@ -411,26 +411,27 @@ TEST_CASE("NIRTreeDisk: testFindLeaf")
     REQUIRE( rightNode->parent == root );
     rightNode->addBranchToNode( createBranchEntry(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, 1.0,
-                    nextafter(12.0, DBL_MAX),
-                    nextafter(5.0, DBL_MAX))), rightChild0 ));
+                    nextafterf(12.0, FLT_MAX),
+                    nextafterf(5.0, FLT_MAX))), rightChild0 ));
     rightNode->addBranchToNode( createBranchEntry(
             InlineBoundedIsotheticPolygon(Rectangle(12.0, -4.0,
-                    nextafter(16.0, DBL_MAX),
-                    nextafter(-2.0, DBL_MAX))), rightChild1 ));
+                    nextafterf(16.0, FLT_MAX),
+                    nextafterf(-2.0, FLT_MAX))), rightChild1 ));
     rightNode->addBranchToNode( createBranchEntry(
             InlineBoundedIsotheticPolygon(Rectangle(8.0, -6.0,
-                    nextafter(10.0, DBL_MAX),
-                    nextafter(-4.0, DBL_MAX))), rightChild2 ));
+                    nextafterf(10.0, FLT_MAX),
+                    nextafterf(-4.0, FLT_MAX))), rightChild2 ));
     rootNode->addBranchToNode( createBranchEntry(
             InlineBoundedIsotheticPolygon(Rectangle(7.0, -6.0,
-                    nextafter(16.0, DBL_MAX),
-                    nextafter(5.0, DBL_MAX))), right ));
+                    nextafterf(16.0, FLT_MAX),
+                    nextafterf(5.0, FLT_MAX))), right ));
 
 	// Test that we get the correct child for the given point
 	REQUIRE(rightChild1 == rootNode->findLeaf(Point(13.0, -3.0)));
 	REQUIRE(leftChild0 == rootNode->findLeaf(Point(8.5, 12.5)));
 	REQUIRE(leftChild2 == rootNode->findLeaf(Point(13.5, 13.5)));
 	REQUIRE(rightChild0 == rootNode->findLeaf(Point(7.0, 3.0)));
+
 	REQUIRE(leftChild1 == rootNode->findLeaf(Point(11.0, 15.0)));
 
     unlink( "nirdiskbacked.txt" );
@@ -800,7 +801,7 @@ TEST_CASE("NIRTreeDisk: testInsertGrowTreeHeight")
     unlink( "nirdiskbacked.txt" );
 }
 
-TEST_CASE("NIRTreeDisk: doubleGrowTreeHeight")
+TEST_CASE("NIRTreeDisk: floatGrowTreeHeight")
 {
     unlink( "nirdiskbacked.txt" );
     {
@@ -977,9 +978,9 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (uint8_t*) (packed_branch->buffer_ + offset) ==
             1U );
-    offset += sizeof(unsigned);
+    offset += sizeof(uint8_t);
     REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
             Rectangle(0.0,0.0,1.0,1.0) );
     offset += sizeof(Rectangle);
@@ -988,9 +989,9 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (uint8_t*) (packed_branch->buffer_ + offset) ==
             1U );
-    offset += sizeof(unsigned);
+    offset += sizeof(uint8_t);
     REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
             Rectangle(0.0,0.0,2.0,2.0) );
     offset += sizeof(Rectangle);
@@ -999,9 +1000,9 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (uint8_t*) (packed_branch->buffer_ + offset) ==
             1U );
-    offset += sizeof(unsigned);
+    offset += sizeof(uint8_t);
     REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
             Rectangle(0.0,0.0,3.0,3.0) );
     offset += sizeof(Rectangle);
@@ -1010,9 +1011,9 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (uint8_t*) (packed_branch->buffer_ + offset) ==
             1U );
-    offset += sizeof(unsigned);
+    offset += sizeof(uint8_t);
     REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
             Rectangle(0.0,0.0,4.0,4.0) );
     offset += sizeof(Rectangle);
@@ -1021,9 +1022,9 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (uint8_t*) (packed_branch->buffer_ + offset) ==
             1U );
-    offset += sizeof(unsigned);
+    offset += sizeof(uint8_t);
     REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
             Rectangle(0.0,0.0,5.0,5.0) );
     offset += sizeof(Rectangle);
@@ -1088,9 +1089,9 @@ TEST_CASE("NIRTreeDisk: pack complex inline polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
             leaf_handle );
     offset += sizeof(tree_node_handle);
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+    REQUIRE( * (uint8_t *) (packed_branch->buffer_ + offset) ==
             5U );
-    offset += sizeof(unsigned);
+    offset += sizeof(uint8_t);
     REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
             Rectangle(0.0,0.0,1.0,1.0) );
     offset += sizeof(Rectangle);
@@ -1130,7 +1131,7 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
     auto leaf_handle = alloc_leaf_data.second;
 
     IsotheticPolygon polygon( Rectangle(0.0, 0.0, 1.0, 1.0) );
-    for( double i = 1.0; i < 30.0; i += 1.0 ) {
+    for( float i = 1.0; i < 30.0; i += 1.0 ) {
         polygon.basicRectangles.push_back( Rectangle( i, i, i+1.0,
                     i+1.0) );
     }
@@ -1170,9 +1171,9 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
            leaf_handle ); 
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
-           std::numeric_limits<unsigned>::max() );
-    offset += sizeof(unsigned);
+    REQUIRE( * (uint8_t*) (packed_branch->buffer_ + offset) ==
+           std::numeric_limits<uint8_t>::max() );
+    offset += sizeof(uint8_t);
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) !=
            alloc_poly_data.second );
     REQUIRE( ((tree_node_handle *) (packed_branch->buffer_ +
@@ -1205,7 +1206,7 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
 
     // This is small enough to fit
     IsotheticPolygon polygon( Rectangle(0.0, 0.0, 1.0, 1.0) );
-    for( double i = 1.0; i < 20.0; i += 1.0 ) {
+    for( float i = 1.0; i < 20.0; i += 1.0 ) {
         polygon.basicRectangles.push_back( Rectangle( i, i, i+1.0,
                     i+1.0) );
     }
@@ -1224,7 +1225,7 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
 
     // too big, should be out of line
     IsotheticPolygon polygon2( Rectangle(0.0, 0.0, 1.0, 1.0) );
-    for( double i = 1.0; i < 30.0; i += 1.0 ) {
+    for( float i = 1.0; i < 30.0; i += 1.0 ) {
         polygon2.basicRectangles.push_back( Rectangle( i, i, i+1.0,
                     i+1.0) );
     }
@@ -1264,10 +1265,10 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
            leaf_handle ); 
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
-           20.0 );
-    offset += sizeof(unsigned);
-    for( unsigned i = 0; i < 20; i++ ) {
+    REQUIRE( * (uint8_t *) (packed_branch->buffer_ + offset) ==
+           20 );
+    offset += sizeof(uint8_t);
+    for( uint8_t i = 0; i < 20; i++ ) {
         REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset ) ==
                 polygon.basicRectangles.at(i) );
         offset += sizeof(Rectangle);
@@ -1277,9 +1278,9 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
            leaf_handle ); 
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
-           std::numeric_limits<unsigned>::max() );
-    offset += sizeof(unsigned);
+    REQUIRE( * (uint8_t *) (packed_branch->buffer_ + offset) ==
+           std::numeric_limits<uint8_t>::max() );
+    offset += sizeof(uint8_t);
     REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) !=
         alloc_poly_data.second );
 
@@ -1493,10 +1494,10 @@ TEST_CASE( "NIRTreeDisk: Point search packed branch multi-rect poly" ) {
     leaf_node1->addPoint( Point(4,4) );
     leaf_node1->addPoint( Point(5,5) );
 
-    Rectangle rect1(1,1,nextafter(1,DBL_MAX),nextafter(5, DBL_MAX));
-    Rectangle rect2(7,1,nextafter(20, DBL_MAX),nextafter(1,DBL_MAX));
+    Rectangle rect1(1,1,nextafterf(1,FLT_MAX),nextafterf(5, FLT_MAX));
+    Rectangle rect2(7,1,nextafterf(20, FLT_MAX),nextafterf(1,FLT_MAX));
     Rectangle rect3(-100,-100, -20, -20);
-    Rectangle rect4(1,1,nextafter(5,DBL_MAX),nextafter(5,DBL_MAX));
+    Rectangle rect4(1,1,nextafterf(5,FLT_MAX),nextafterf(5,FLT_MAX));
     IsotheticPolygon polygon( rect1 );
     polygon.basicRectangles.push_back( rect2 );
     polygon.basicRectangles.push_back( rect3 );
@@ -1682,10 +1683,10 @@ TEST_CASE( "NIRTreeDisk: Repack subtree" ) {
     leaf_node1->addPoint( Point(4,4) );
     leaf_node1->addPoint( Point(5,5) );
 
-    Rectangle rect1(1,1,nextafter(1,DBL_MAX),nextafter(5, DBL_MAX));
-    Rectangle rect2(7,1,nextafter(20, DBL_MAX),nextafter(1,DBL_MAX));
+    Rectangle rect1(1,1,nextafterf(1,FLT_MAX),nextafterf(5, FLT_MAX));
+    Rectangle rect2(7,1,nextafterf(20, FLT_MAX),nextafterf(1,FLT_MAX));
     Rectangle rect3(-100,-100, -20, -20);
-    Rectangle rect4(1,1,nextafter(5,DBL_MAX),nextafter(5,DBL_MAX));
+    Rectangle rect4(1,1,nextafterf(5,FLT_MAX),nextafterf(5,FLT_MAX));
     IsotheticPolygon polygon( rect1 );
     polygon.basicRectangles.push_back( rect2 );
     polygon.basicRectangles.push_back( rect3 );
@@ -1731,6 +1732,5 @@ TEST_CASE( "NIRTreeDisk: Repack subtree" ) {
             REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 0 );
         }
     }
-
     unlink( "nirdiskbacked.txt" );
 }

@@ -14,13 +14,13 @@
 
 #include <util/geometry.h>
 
-Point Point::atInfinity = Point(std::numeric_limits<double>::infinity());
-Point Point::atNegInfinity = Point(- std::numeric_limits<double>::infinity());
+Point Point::atInfinity = Point(std::numeric_limits<float >::infinity());
+Point Point::atNegInfinity = Point(- std::numeric_limits<float >::infinity());
 Point Point::atOrigin = Point(0.0);
 
 Point::Point()
 {
-	double infinity = std::numeric_limits<double>::infinity();
+	float infinity = std::numeric_limits<float >::infinity();
 
 	for (unsigned d = 0; d < dimensions; ++d)
 	{
@@ -28,13 +28,13 @@ Point::Point()
 	}
 }
 
-Point::Point(double x, double y)
+Point::Point(float x, float y)
 {
 	values[0] = x;
 	values[1] = y;
 }
 
-Point::Point(double value)
+Point::Point(float value)
 {
 	for (unsigned d = 0; d < dimensions; ++d)
 	{
@@ -61,9 +61,9 @@ bool Point::orderedCompare(const Point &rhs, unsigned startingDimension) const
 	return false;
 }
 
-double Point::distance(const Point &p) const
+float Point::distance(const Point &p) const
 {
-	double dist = 0.0;
+	float dist = 0.0;
 	for( unsigned d = 0; d < dimensions; d++ ) {
 		dist += pow(abs((*this)[d] - p[d]), 2);
 	}
@@ -90,7 +90,7 @@ Point &Point::operator+=(const Point &rhs)
 	return *this;
 }
 
-Point &Point::operator/=(double scalar)
+Point &Point::operator/=(float scalar)
 {
 	for (unsigned d = 0; d < dimensions; ++d)
 	{
@@ -100,7 +100,7 @@ Point &Point::operator/=(double scalar)
 	return *this;
 }
 
-Point &Point::operator*=(double scalar)
+Point &Point::operator*=(float scalar)
 {
 	for (unsigned d = 0; d < dimensions; ++d)
 	{
@@ -120,12 +120,12 @@ Point &Point::operator*=(const Point &rhs)
 	return *this;
 }
 
-double &Point::operator[](unsigned index)
+float &Point::operator[](unsigned index)
 {
 	return values[index];
 }
 
-double Point::operator[](unsigned index) const
+float Point::operator[](unsigned index) const
 {
 	return values[index];
 }
@@ -178,7 +178,7 @@ Point operator+(const Point &lhs, const Point &rhs)
 	return r;
 }
 
-Point operator*(const Point &lhs, const double scalar)
+Point operator*(const Point &lhs, const float scalar)
 {
 	Point r;
 
@@ -190,7 +190,7 @@ Point operator*(const Point &lhs, const double scalar)
 	return r;
 }
 
-Point operator/(const Point &lhs, const double scalar)
+Point operator/(const Point &lhs, const float scalar)
 {
 	Point r;
 
@@ -270,7 +270,7 @@ bool operator!=(const Point &lhs, const Point &rhs)
 
 std::ostream& operator<<(std::ostream &os, const Point &p)
 {
-	os.precision(std::numeric_limits<double>::max_digits10+3);
+	os.precision(std::numeric_limits<float>::max_digits10+3);
 
 	os << "(" << p[0];
 	for (unsigned d = 1; d < dimensions; ++d)
@@ -292,7 +292,7 @@ Rectangle::Rectangle()
 	upperRight = Point();
 }
 
-Rectangle::Rectangle(double x, double y, double xp, double yp) :
+Rectangle::Rectangle(float x, float y, float xp, float yp) :
     lowerLeft( x, y ),
     upperRight( xp, yp )
 {}
@@ -302,38 +302,38 @@ Rectangle::Rectangle(Point lowerLeft, Point upperRight) :
     upperRight( upperRight )
 {}
 
-double Rectangle::area() const
+float Rectangle::area() const
 {
-	double a = fabs( upperRight[0] - lowerLeft[0] );
+	float a = fabsf( upperRight[0] - lowerLeft[0] );
 
 	for( unsigned d = 1; d < dimensions; d++ ) {
-		a = a * fabs( upperRight[d] - lowerLeft[d] );
+		a = a * fabsf( upperRight[d] - lowerLeft[d] );
 	}
 
 	return a;
 }
 
-double Rectangle::margin() const
+float Rectangle::margin() const
 {
-	double margin = 0.0;
+	float margin = 0.0;
 	for( unsigned d = 0; d < dimensions; d++ ) {
-		margin += fabs( upperRight[d] - lowerLeft[d] );
+		margin += fabsf( upperRight[d] - lowerLeft[d] );
 	}
 
 	return margin;
 }
 
-double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
+float Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 {
 	// Quick exit
 	if( not intersectsRectangle(givenRectangle) ) {
 		return 0.0;
 	}
 
-	double intersectionArea = fabs( fmin( upperRight[0], givenRectangle.upperRight[0] ) - fmax( lowerLeft[0], givenRectangle.lowerLeft[0] ) );
+	float intersectionArea = fabsf( fminf( upperRight[0], givenRectangle.upperRight[0] ) - fmaxf( lowerLeft[0], givenRectangle.lowerLeft[0] ) );
 
 	for( unsigned d = 1; d < dimensions; d++ ) {
-		intersectionArea = intersectionArea * fabs( fmin( upperRight[d], givenRectangle.upperRight[d] ) - fmax( lowerLeft[d], givenRectangle.lowerLeft[d] ) );
+		intersectionArea = intersectionArea * fabsf( fminf( upperRight[d], givenRectangle.upperRight[d] ) - fmaxf( lowerLeft[d], givenRectangle.lowerLeft[d] ) );
 	}
 
     // Can actually get to 0.0 with floating point round-offs
@@ -342,7 +342,7 @@ double Rectangle::computeIntersectionArea(const Rectangle &givenRectangle) const
 	return intersectionArea;
 }
 
-double Rectangle::computeExpansionArea( const Point &givenPoint ) const
+float Rectangle::computeExpansionArea( const Point &givenPoint ) const
 {
 	// Early exit
 	if( containsPoint(givenPoint) ) {
@@ -350,21 +350,21 @@ double Rectangle::computeExpansionArea( const Point &givenPoint ) const
 	}
 
 	// Expanded rectangle area computed directly
-	double expandedArea = fabs( fmin(lowerLeft[0], givenPoint[0] ) -
-            fmax( upperRight[0], nextafter( givenPoint[0], DBL_MAX ) ) );
-	double existingArea = fabs( lowerLeft[0] - upperRight[0] );
+	float expandedArea = fabsf( fminf(lowerLeft[0], givenPoint[0] ) -
+            fmaxf( upperRight[0], nextafter( givenPoint[0], DBL_MAX ) ) );
+	float existingArea = fabsf( lowerLeft[0] - upperRight[0] );
 
 	for (unsigned d = 1; d < dimensions; d++) {
-		expandedArea *= fabs( fmin(lowerLeft[d], givenPoint[d] ) - fmax(
+		expandedArea *= fabsf( fminf(lowerLeft[d], givenPoint[d] ) - fmaxf(
                     upperRight[d], nextafter( givenPoint[d], DBL_MAX ) ) );
-		existingArea *= fabs( lowerLeft[d] - upperRight[d] );
+		existingArea *= fabsf( lowerLeft[d] - upperRight[d] );
 	}
 
 	// Compute the difference
 	return expandedArea - existingArea;
 }
 
-double Rectangle::computeExpansionMargin( const Point &givenPoint ) const
+float Rectangle::computeExpansionMargin( const Point &givenPoint ) const
 {
 	// Early exit
 	if( containsPoint(givenPoint) ) {
@@ -372,19 +372,19 @@ double Rectangle::computeExpansionMargin( const Point &givenPoint ) const
 	}
 
 	// Expanded rectangle area computed directly
-	double expandedMargin = fabs( fmin( lowerLeft[0], givenPoint[0] ) - fmax( upperRight[0], givenPoint[0] ) );
-	double existingMargin = fabs( lowerLeft[0] - upperRight[0] );
+	float expandedMargin = fabsf( fminf( lowerLeft[0], givenPoint[0] ) - fmaxf( upperRight[0], givenPoint[0] ) );
+	float existingMargin = fabsf( lowerLeft[0] - upperRight[0] );
 
 	for( unsigned d = 1; d < dimensions; d++) {
-		expandedMargin += fabs( fmin( lowerLeft[d], givenPoint[d] ) - fmax( upperRight[d], givenPoint[d] ) );
-		existingMargin += fabs( lowerLeft[d] - upperRight[d] );
+		expandedMargin += fabsf( fminf( lowerLeft[d], givenPoint[d] ) - fmaxf( upperRight[d], givenPoint[d] ) );
+		existingMargin += fabsf( lowerLeft[d] - upperRight[d] );
 	}
 
 	// Compute the difference
 	return expandedMargin - existingMargin;
 }
 
-double Rectangle::computeExpansionArea( const Rectangle &givenRectangle ) const
+float Rectangle::computeExpansionArea( const Rectangle &givenRectangle ) const
 {
 	// Early exit
 	if( containsRectangle( givenRectangle ) ) {
@@ -392,27 +392,27 @@ double Rectangle::computeExpansionArea( const Rectangle &givenRectangle ) const
 	}
 
 	// Expanded rectangle area computed directly
-	double expandedArea = fabs( fmin( givenRectangle.lowerLeft[0], lowerLeft[0] ) - fmax( givenRectangle.upperRight[0], upperRight[0] ) );
+	float expandedArea = fabsf( fminf( givenRectangle.lowerLeft[0], lowerLeft[0] ) - fmaxf( givenRectangle.upperRight[0], upperRight[0] ) );
 
 	for( unsigned d = 1; d < dimensions; d++) {
-		expandedArea = expandedArea * fabs( fmin( givenRectangle.lowerLeft[d], lowerLeft[d] ) - fmax( givenRectangle.upperRight[d], upperRight[d] ) );
+		expandedArea = expandedArea * fabsf( fminf( givenRectangle.lowerLeft[d], lowerLeft[d] ) - fmaxf( givenRectangle.upperRight[d], upperRight[d] ) );
 	}
 
 	// Compute the difference
 	return expandedArea - area();
 }
 
-double Rectangle::marginDelta( const Point &givenPoint, const Rectangle &givenRectangle ) const
+float Rectangle::marginDelta( const Point &givenPoint, const Rectangle &givenRectangle ) const
 {
-	double currentIntersectionMargin = intersection( givenRectangle ).margin();
-	double expandedIntersectionMargin = copyExpand( givenPoint ).intersection( givenRectangle ).margin();
+	float currentIntersectionMargin = intersection( givenRectangle ).margin();
+	float expandedIntersectionMargin = copyExpand( givenPoint ).intersection( givenRectangle ).margin();
 	return expandedIntersectionMargin - currentIntersectionMargin;
 }
 
-double Rectangle::areaDelta( const Point &givenPoint, const Rectangle &givenRectangle ) const
+float Rectangle::areaDelta( const Point &givenPoint, const Rectangle &givenRectangle ) const
 {
-	double currentIntersectionArea = computeIntersectionArea( givenRectangle );
-	double expandedIntersectionArea = copyExpand( givenPoint ).computeIntersectionArea( givenRectangle );
+	float currentIntersectionArea = computeIntersectionArea( givenRectangle );
+	float expandedIntersectionArea = copyExpand( givenPoint ).computeIntersectionArea( givenRectangle );
 	return expandedIntersectionArea - currentIntersectionArea;
 }
 
@@ -600,7 +600,7 @@ bool operator!=( const Rectangle &lhs, const Rectangle &rhs )
 
 std::ostream& operator<<(std::ostream &os, const Rectangle &rectangle)
 {
-	os.precision(std::numeric_limits<double>::max_digits10+3);
+	os.precision(std::numeric_limits<float >::max_digits10+3);
 	os << "[" << rectangle.lowerLeft << "; " << rectangle.upperRight << "]";
 	return os;
 }
@@ -627,9 +627,9 @@ void IsotheticPolygon::reset() {
     basicRectangles.clear();
 }
 
-double IsotheticPolygon::area() const
+float IsotheticPolygon::area() const
 {
-	double area = 0.0;
+	float area = 0.0;
 
 	for (const Rectangle &basicRectangle : basicRectangles)
 	{
@@ -639,9 +639,9 @@ double IsotheticPolygon::area() const
 	return area;
 }
 
-double IsotheticPolygon::computeIntersectionArea(const Rectangle &givenRectangle) const
+float IsotheticPolygon::computeIntersectionArea(const Rectangle &givenRectangle) const
 {
-	double runningTotal = 0.0;
+	float runningTotal = 0.0;
 
 	for (const Rectangle &basicRectangle : basicRectangles)
 	{
@@ -660,12 +660,11 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const 
 	}
 
 	// Take the minimum expansion area, defaulting to the first rectangle in the worst case
-	OptimalExpansion expansion = {0, std::numeric_limits<double>::infinity()};
-	double evalArea;
+	OptimalExpansion expansion = {0, std::numeric_limits<float>::infinity()};
+	float evalArea;
 
 	unsigned basicsSize = basicRectangles.size();
-	for (unsigned i = 0; i < basicsSize; ++i)
-	{
+	for (unsigned i = 0; i < basicsSize; i++) {
 		evalArea = basicRectangles.at(i).computeExpansionArea(givenPoint);
 
 		if( evalArea < expansion.area and basicRectangles.at(i).area() != 0.0 ) {
@@ -681,7 +680,7 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const 
 {
 	// Take the minimum expansion area
 	OptimalExpansion expansion = {0, basicRectangles.at(0).computeExpansionArea(givenRectangle)};
-	double evalArea;
+	float evalArea;
 
 	unsigned basicsSize = basicRectangles.size();
 	for (unsigned i = 1; i < basicsSize; ++i)
@@ -701,8 +700,8 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const 
 void IsotheticPolygon::expand(const Point &givenPoint)
 {
 	unsigned minIndex = 0;
-	double minArea = basicRectangles.at(0).computeExpansionArea(givenPoint);
-	double evalArea;
+	float minArea = basicRectangles.at(0).computeExpansionArea(givenPoint);
+	float evalArea;
 
 	for (unsigned i = 1; i < basicRectangles.size(); ++i)
 	{
@@ -906,7 +905,7 @@ void IsotheticPolygon::increaseResolution( const Point &givenPoint, const Isothe
 	}
 }
 
-void IsotheticPolygon::maxLimit(double limit, unsigned d)
+void IsotheticPolygon::maxLimit(float limit, unsigned d)
 {
 	unsigned startingSize = basicRectangles.size();
 
@@ -931,7 +930,7 @@ void IsotheticPolygon::maxLimit(double limit, unsigned d)
     recomputeBoundingBox();
 }
 
-void IsotheticPolygon::minLimit(double limit, unsigned d)
+void IsotheticPolygon::minLimit(float limit, unsigned d)
 {
 	unsigned startingSize = basicRectangles.size();
 
@@ -1190,7 +1189,7 @@ bool operator!=(const IsotheticPolygon &lhs, const IsotheticPolygon &rhs)
 
 std::ostream& operator<<(std::ostream &os, const IsotheticPolygon &polygon)
 {
-	os.precision(std::numeric_limits<double>::max_digits10 + 3);
+	os.precision(std::numeric_limits<float>::max_digits10 + 3);
 	os << "|";
 	for (auto rectangle : polygon.basicRectangles)
 	{

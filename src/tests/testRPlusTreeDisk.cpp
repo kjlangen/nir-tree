@@ -18,12 +18,12 @@ TEST_CASE("R+TreeDisk: testBoundingBox")
 	tree.insert(p2);
     auto root_node = tree.get_node( tree.root_ );
 	REQUIRE( root_node->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(5.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(5.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 
 	Point p3(10.0, 0.0);
 	tree.insert(p3);
 	REQUIRE(root_node->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(10.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(10.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 
     unlink( "rplustreedisk.txt" );
 }
@@ -45,7 +45,7 @@ TEST_CASE("R+TreeDisk: testPartition")
 
 	// Test partition
 	REQUIRE(part.dimension == 0);
-	REQUIRE(part.location == nextafter(4.0, DBL_MAX) );
+	REQUIRE(part.location == nextafterf(4.0, FLT_MAX) );
 
     unlink( "rplustreedisk.txt" );
 }
@@ -143,7 +143,7 @@ TEST_CASE("R+TreeDisk: testSplitNode")
 	REQUIRE(result.leftBranch.boundingBox == Rectangle(0.0, 0.0, 9.0, 8.0));
 	REQUIRE(right_child->cur_offset_  == 2);
 	REQUIRE(result.rightBranch.boundingBox == Rectangle(0.0, 9.0,
-                nextafter(9.0, DBL_MAX), nextafter(12.0,DBL_MAX)));
+                nextafterf(9.0, FLT_MAX), nextafterf(12.0,FLT_MAX)));
     unlink( "rplustreedisk.txt" );
 }
 
@@ -160,14 +160,14 @@ TEST_CASE("R+TreeDisk: testNewChildNode")
 
     auto root_node = tree.get_node( tree.root_ );
 	REQUIRE(root_node->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(9.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(9.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
     REQUIRE( not root_node->isLeaf() );
 	REQUIRE( root_node->cur_offset_ == 2 );
 
 	// test left child
     rplustreedisk::Branch &b1 = std::get<rplustreedisk::Branch>( root_node->entries.at(0) );
 	REQUIRE(b1.boundingBox == Rectangle(0.0, 0.0,
-                nextafter(4.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(4.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 
     auto child = tree.get_node( b1.child );
 	REQUIRE( child->isLeaf() );
@@ -178,7 +178,7 @@ TEST_CASE("R+TreeDisk: testNewChildNode")
     rplustreedisk::Branch &b2 = std::get<rplustreedisk::Branch>( root_node->entries.at(1) );
     child = tree.get_node( b2.child );
 	REQUIRE(b2.boundingBox == Rectangle(5.0, 0.0,
-                nextafter(9.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(9.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 	REQUIRE( child->isLeaf() );
 	REQUIRE( child->cur_offset_ == 2 );
 	REQUIRE( child->parent_ == tree.root_ );
@@ -230,7 +230,7 @@ TEST_CASE("R+TreeDisk: testInsert")
 
     root_node = tree.get_node( tree.root_ );
 	REQUIRE(root_node->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(9.0, DBL_MAX), nextafter(9.0, DBL_MAX) ));
+                nextafterf(9.0, FLT_MAX), nextafterf(9.0, FLT_MAX) ));
 	REQUIRE( not root_node->isLeaf() );
 	REQUIRE( root_node->cur_offset_ == 2 );
 

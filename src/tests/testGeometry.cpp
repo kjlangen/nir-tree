@@ -295,42 +295,43 @@ TEST_CASE("Geometry: testPointScalarMultiplication")
 {
 	// Test set one, general case
 	Point p1 = Point(4.0, 5.1);
-	double s1 = 9.0;
-	REQUIRE(p1 * s1 == Point(36.0, 45.9));
+	float s1 = 9.0;
+    REQUIRE( (p1*s1)[0] == Approx(36.0) );
+    REQUIRE( (p1*s1)[1] == Approx(45.9) );
 
 	// Test set two, operator chaining
 	Point p2 = Point(3.0, 4.1);
-	double s2 = 7.5;
+	float s2 = 7.5;
 	REQUIRE(p2 * s2 * s2 == Point(168.75, 230.62499999999997158));
 
 	// Test set three, squaring
 	Point p3 = Point(3.0, 3.0);
-	double s3 = 3.0;
+	float s3 = 3.0;
 	REQUIRE(p3 * s3 == Point(9.0, 9.0));
 
 	// Test set four, multiplying negative numbers
 	Point p4 = Point(-89.0, -798.0);
-	double s4 = -3246.0;
+	float s4 = -3246.0;
 	REQUIRE(p4 * s4 == Point(288894.0, 2590308.0));
 
 	// Test set five, multiplying mixed numbers
 	Point p5 = Point(-93.0, 74.0);
-	double s5 = 5.0;
+	float s5 = 5.0;
 	REQUIRE(p5 * s5 == Point(-465.0, 370.0));
 
 	// Test set six, zero identity
 	Point p6 = Point::atOrigin;
-	double s6 = 0.0;
+	float s6 = 0.0;
 	REQUIRE(p6 * s6 == Point::atOrigin);
 
 	// Test set seven, limits
 	Point p7 = Point::atInfinity;
-	double s7 = p7[0];
+	float s7 = p7[0];
 	REQUIRE(p7 * s7 == Point::atInfinity);
 
 	// Test set eight, limits
 	Point p8 = Point::atNegInfinity;
-	double s8 = p8[0];
+	float s8 = p8[0];
 	REQUIRE(p8 * s8 == Point::atInfinity);
 }
 
@@ -338,49 +339,50 @@ TEST_CASE("Geometry: testPointScalarMultiplicationEquals")
 {
 	// Test set one, general case
 	Point p1 = Point(4.0, 5.1);
-	double s1 = 9.0;
+	float s1 = 9.0;
 	p1 *= s1;
-	REQUIRE(p1 == Point(36.0, 45.9));
+	REQUIRE(p1[0] == Approx(36.0));
+	REQUIRE(p1[1] == Approx(45.9));
 
 	// Test set two, operator chaining
 	Point p2 = Point(3.0, 4.1);
-	double s2 = 7.5;
+	float s2 = 7.5;
 	p2 *= s2 * s2;
 	REQUIRE(p2 == Point(168.75, 230.62499999999997158));
 
 	// Test set three, squaring
 	Point p3 = Point(3.0, 3.0);
-	double s3 = 3.0;
+	float s3 = 3.0;
 	p3 *= s3;
 	REQUIRE(p3 == Point(9.0, 9.0));
 
 	// Test set four, multiplying negative numbers
 	Point p4 = Point(-89.0, -798.0);
-	double s4 = -3246.0;
+	float s4 = -3246.0;
 	p4 *= s4;
 	REQUIRE(p4 == Point(288894.0, 2590308.0));
 
 	// Test set five, multiplying mixed numbers
 	Point p5 = Point(-93.0, 74.0);
-	double s5 = 5.0;
+	float s5 = 5.0;
 	p5 *= s5;
 	REQUIRE(p5 == Point(-465.0, 370.0));
 
 	// Test set six, zero identity
 	Point p6 = Point::atOrigin;
-	double s6 = 0.0;
+	float s6 = 0.0;
 	p6 *= s6;
 	REQUIRE(p6 == Point::atOrigin);
 
 	// Test set seven, limits
 	Point p7 = Point::atInfinity;
-	double s7 = p7[0];
+	float s7 = p7[0];
 	p7 * s7;
 	REQUIRE(p7 == Point::atInfinity);
 
 	// Test set eight, limits
 	Point p8 = Point::atNegInfinity;
-	double s8 = p8[0];
+	float s8 = p8[0];
 	p8 *= s8;
 	REQUIRE(p8 == Point::atInfinity);
 }
@@ -389,50 +391,50 @@ TEST_CASE("Geometry: testPointScalarDivisionEquals")
 {
 	// Test set one, general case
 	Point p1 = Point(21.0, 28.7);
-	double s1 = 7.0;
+	float s1 = 7.0;
 	p1 /= s1;
 	REQUIRE(p1 == Point(3.0, 4.1));
 
 	// Test set two, operator chaining
 	Point p2 = Point(168.75, 230.625);
-	double s2 = 7.5;
+	float s2 = 7.5;
 	p2 /= s2;
 	p2 /= s2;
 	REQUIRE(p2 == Point(3.0, 4.1));
 
 	// Test set three, divide by onself
 	Point p3 = Point(3.0, 3.0);
-	double s3 = 3.0;
+	float s3 = 3.0;
 	p3 /= s3;
 	REQUIRE(p3 == Point(1.0, 1.0));
 
 	// Test set four, dividing negative numbers
 	Point p4 = Point(-288894.0, -2590308.0);
-	double s4 = -3246.0;
+	float s4 = -3246.0;
 	p4 /= s4;
 	REQUIRE(p4 == Point(89.0, 798.0));
 
 	// Test set five, dviding mixed numbers
 	Point p5 = Point(-465.0, 370.0);
-	double s5 = 5.0;
+	float s5 = 5.0;
 	p5 /= s5;
 	REQUIRE(p5 == Point(-93.0, 74.0));
 
 	// Test set six, zero identity
 	Point p6 = Point::atOrigin;
-	double s6 = 342967.98765;
+	float s6 = 342967.98765;
 	p6 /= s6;
 	REQUIRE(p6 == Point::atOrigin);
 
 	// Test set seven, limits
 	Point p7 = Point::atInfinity;
-	double s7 = 342967.98765;
+	float s7 = 342967.98765;
 	p7 /= s7;
 	REQUIRE(p7 == Point::atInfinity);
 
 	// Test set eight, limits
 	Point p8 = Point::atNegInfinity;
-	double s8 = 342967.98765;
+	float s8 = 342967.98765;
 	p8 /= s8;
 	REQUIRE(p8 == Point::atNegInfinity);
 }
@@ -575,7 +577,7 @@ TEST_CASE("Geometry: testRectangleArea")
 
 	// Test set four
 	Rectangle r4 = Rectangle(-5.0, -3.0, 13.3, 11.2);
-	REQUIRE(r4.area() == 259.86);
+	REQUIRE(r4.area() == Approx(259.86));
 }
 
 TEST_CASE("Geometry: testRectangleIntersectionArea")
@@ -617,16 +619,15 @@ TEST_CASE("Geometry: testRectangleComputeExpansionArea")
 	Rectangle r4 = Rectangle(0.0, 0.0, 4.0, 4.0);
 	Point p2 = Point(4.0, 4.0);
     // Requires expansion to 4.0+eps on x and y-axes
-    double error = nextafter(4.0, DBL_MAX);
-    error = error*error - 16.0;
-	REQUIRE(r4.computeExpansionArea(p2) == error); 
+    float exp = r4.computeExpansionArea(p2);
+	REQUIRE( exp == Approx( 0.0 ) );
 
 	Rectangle r4_2 = Rectangle(0.0, 0.0, 4.0,
-            nextafter(4.0, DBL_MAX));
+            nextafterf(4.0, FLT_MAX));
     // Requires expansion to 4.0+eps from 4.0 on x axis
     // y-axis diff is 4.0
-	REQUIRE(r4_2.computeExpansionArea(p2) ==
-            (nextafter(4.0,DBL_MAX)-4.0)*4.0 ); 
+	REQUIRE(r4_2.computeExpansionArea(p2) == Approx(0.0));
+
 
 	// Test set four, expansion area for a rectangle partially inside another rectangle
 	Rectangle r5 = Rectangle(-9.0, 4.0, 1.0, 8.0);
@@ -645,13 +646,13 @@ TEST_CASE("Geometry: testRectangleExpansion")
 	Rectangle r1 = Rectangle(2.0, 8.0, 4.0, 10.0);
 	Point p1 = Point(9.0, 15.0);
 	r1.expand(p1);
-    double area = (nextafter( 9.0, DBL_MAX ) - 2.0) * (nextafter( 15.0,
-                DBL_MAX ) - 8.0);
+    float area = (nextafterf( 9.0, FLT_MAX ) - 2.0) * (nextafterf( 15.0,
+                FLT_MAX ) - 8.0);
     REQUIRE( r1.area() == area );
 	REQUIRE(r1.area() == Approx( 49.0 ).epsilon(0.1) );
 	REQUIRE(r1.lowerLeft == Point(2.0, 8.0));
-	REQUIRE(r1.upperRight == Point(nextafter( 9.0, DBL_MAX ),
-                nextafter(15.0, DBL_MAX)));
+	REQUIRE(r1.upperRight == Point(nextafterf( 9.0, FLT_MAX ),
+                nextafterf(15.0, FLT_MAX)));
 
 	// Test set two, expansion for a rectangle
 	Rectangle r2 = Rectangle(4.0, -2.5, 5.0, 1.5);
@@ -667,7 +668,7 @@ TEST_CASE("Geometry: testRectangleExpansion")
 	r4.expand(p2);
 	REQUIRE(r4.area() == Approx(16.0));
 	REQUIRE(r4.lowerLeft == Point(0.0, 0.0));
-	REQUIRE(r4.upperRight == Point(nextafter(4.0, DBL_MAX), 4.0));
+	REQUIRE(r4.upperRight == Point(nextafterf(4.0, FLT_MAX), 4.0));
 
 	// Test set four, expansion area for a rectangle partially inside another rectangle
 	Rectangle r5 = Rectangle(-9.0, 4.0, 1.0, 8.0);
@@ -788,7 +789,7 @@ TEST_CASE("Geometry: testRectanglePointContainment1")
 	Point p5 = Point(3.0, 1.0);
 	REQUIRE(not r5.containsPoint(p5));
 
-	Rectangle r5_2 = Rectangle(-1.0, -1.0, nextafter(3.0,DBL_MAX), 3.0);
+	Rectangle r5_2 = Rectangle(-1.0, -1.0, nextafterf(3.0,FLT_MAX), 3.0);
 	REQUIRE(r5_2.containsPoint(p5));
 }
 
@@ -831,11 +832,11 @@ TEST_CASE("Geometry: testRectangleIntersection")
 	REQUIRE(r1.intersection(r2) == Rectangle(3.0, 3.0, 4.0, 7.0));
 
 	// Test set two, corner on corner intersection
-	r1 = Rectangle(0.0, 0.0, nextafter(12.3,DBL_MAX), nextafter(13.4,
-                DBL_MAX));
+	r1 = Rectangle(0.0, 0.0, nextafterf(12.3,FLT_MAX), nextafterf(13.4,
+                FLT_MAX));
 	r2 = Rectangle(12.3, 13.4, 19.7, 82.0);
 	REQUIRE(r1.intersection(r2) == Rectangle(12.3, 13.4,
-                nextafter(12.3,DBL_MAX), nextafter(13.4, DBL_MAX)));
+                nextafterf(12.3,FLT_MAX), nextafterf(13.4, DBL_MAX)));
 
 	// Test set three, no intersection
 	r1 = Rectangle(0.0, 0.0, 12.3, 13.4);
@@ -843,12 +844,12 @@ TEST_CASE("Geometry: testRectangleIntersection")
 	REQUIRE(r1.intersection(r2) == Rectangle::atInfinity);
 
 	// Test set four, side on side intersection
-	r1 = Rectangle(0.0, 0.0, nextafter(12.3, DBL_MAX), nextafter(13.4,
-                DBL_MAX));
-	r2 = Rectangle(-12.3, 0.0, nextafter(0.0, DBL_MAX), nextafter(13.4,
-                DBL_MAX ) );
-	REQUIRE(r1.intersection(r2) == Rectangle(0.0, 0.0, nextafter(0.0,
-                    DBL_MAX), nextafter(13.4,DBL_MAX)));
+	r1 = Rectangle(0.0, 0.0, nextafterf(12.3, FLT_MAX), nextafterf(13.4,
+                FLT_MAX));
+	r2 = Rectangle(-12.3, 0.0, nextafterf(0.0, FLT_MAX), nextafterf(13.4,
+                FLT_MAX ) );
+	REQUIRE(r1.intersection(r2) == Rectangle(0.0, 0.0, nextafterf(0.0,
+                    FLT_MAX), nextafterf(13.4,DBL_MAX)));
 
     // These do not intersect, they are beside each other.
 	r1 = Rectangle(0.0, 0.0, 12.3, 13.4);
@@ -962,7 +963,7 @@ TEST_CASE("Geometry: testPolygonExpansionArea")
 	IsotheticPolygon::OptimalExpansion expansion = ip1.computeExpansionArea(p1);
 
 	REQUIRE(expansion.index == 4);
-	REQUIRE(expansion.area == (nextafter(5.5, DBL_MAX)-5.5) + 0.5 );
+	REQUIRE(expansion.area == (nextafterf(5.5, FLT_MAX)-5.5) + 0.5 );
 
 	// Test set two, point contained
 	Point p2(3.5, 2.3);
@@ -978,7 +979,7 @@ TEST_CASE("Geometry: testPolygonExpansionArea")
 	Point p3(1.5, 0.5);
 	auto expansion = ip1.computeExpansionArea(p3);
 
-	REQUIRE(expansion.index == 1);
+	REQUIRE(expansion.index == 0);
 	REQUIRE(expansion.area == 2.75);
 }
 
@@ -1007,9 +1008,9 @@ TEST_CASE("Geometry: testPolygonExpand")
 	REQUIRE(ip1.basicRectangles[4] != r5);
 	REQUIRE(ip2.basicRectangles[4] != r5);
 	REQUIRE(ip1.basicRectangles[4] == Rectangle(5.0, 2.0, 6.0,
-                nextafter(5.5, DBL_MAX)));
+                nextafterf(5.5, FLT_MAX)));
 	REQUIRE(ip2.basicRectangles[4] == Rectangle(5.0, 2.0, 6.0,
-                nextafter(5.5, DBL_MAX)));
+                nextafterf(5.5, FLT_MAX)));
 	REQUIRE(ip1.basicRectangles[4] == ip2.basicRectangles[4]);
 	REQUIRE(ip1.basicRectangles[4].area() == Approx(r5.area() + 0.5));
 	REQUIRE(ip2.basicRectangles[4].area() == Approx(r5.area() + 0.5));
@@ -1033,19 +1034,15 @@ TEST_CASE("Geometry: testPolygonExpand")
 	Point p3(1.5, 0.5);
 	IsotheticPolygon ip5(reference);
 	IsotheticPolygon ip6(reference);
+    std::cout << "Determiningwhich rectangle to exapnd: " << std::endl;
 	ip5.expand(p3, ip5.computeExpansionArea(p3));
 	ip6.expand(p3);
 
-	REQUIRE(ip5.basicRectangles[1] != r2);
-	REQUIRE(ip6.basicRectangles[1] != r2);
-	REQUIRE(ip5.basicRectangles[1] == Rectangle(1.5, 0.5, 3.0, 5.0));
-	REQUIRE(ip6.basicRectangles[1] == Rectangle(1.5, 0.5, 3.0, 5.0));
-	REQUIRE(ip5.basicRectangles[1] == ip6.basicRectangles[1]);
-	REQUIRE(ip5.basicRectangles[1].area() == Approx(r1.area() +
+	REQUIRE(ip5.basicRectangles[0] != r1);
+	REQUIRE(ip6.basicRectangles[0] != r1);
+	REQUIRE(ip5.basicRectangles[0] == ip6.basicRectangles[0]);
+	REQUIRE(ip5.basicRectangles[0].area() == Approx(r1.area() +
                 2.75).epsilon(0.1));
-	REQUIRE(ip6.basicRectangles[1].area() == Approx(r1.area() +
-                2.75).epsilon(0.1));
-	REQUIRE(ip5.basicRectangles[1].area() == ip6.basicRectangles[1].area());
 }
 
 TEST_CASE("Geometry: testPolygonContainsPoint")
@@ -1076,7 +1073,7 @@ TEST_CASE("Geometry: testPolygonContainsPoint")
 	// Test set three, point on border
 	Point p3(4.0, 1.83);
 	REQUIRE(not ip1.containsPoint(p3));
-    Point p3_2(nextafter(4.0,-DBL_MAX),1.83);
+    Point p3_2(nextafterf(4.0,-FLT_MAX),1.83);
 	REQUIRE(ip1.containsPoint(p3_2));
 
 	// Test set four, point contained in three
@@ -1157,7 +1154,7 @@ TEST_CASE("Geometry: testPolygonIntersection")
     // Does not intersect rectangle 3
     // Intersects rectangle 4
 
-	double geometricIntersectionArea = ip1.computeIntersectionArea(r1);
+	float geometricIntersectionArea = ip1.computeIntersectionArea(r1);
 	std::vector<Rectangle> geometricIntersection = ip1.intersection(r1);
 
 	REQUIRE(geometricIntersectionArea == 3.0);
@@ -1429,23 +1426,23 @@ TEST_CASE("Geometry: testPolygonRemove")
 
 TEST_CASE("Geometry: testPolygonShrink")
 {
-	Rectangle r1 = Rectangle(0.0, 1.0, nextafter(1.0, DBL_MAX), nextafter(5.0, DBL_MAX));
-	Rectangle r2 = Rectangle(2.0, 0.0, nextafter(3.0, DBL_MAX),
-            nextafter(5.0, DBL_MAX));
-	Rectangle r3 = Rectangle(3.0, 0.0, nextafter(4.0, DBL_MAX),
-            nextafter(3.0, DBL_MAX));
-	Rectangle r4 = Rectangle(3.0, 2.0, nextafter(5.0, DBL_MAX),
-            nextafter(3.0, DBL_MAX));
-	Rectangle r5 = Rectangle(5.0, 2.0, nextafter(6.0, DBL_MAX),
-            nextafter(5.0, DBL_MAX));
+	Rectangle r1 = Rectangle(0.0, 1.0, nextafterf(1.0, FLT_MAX), nextafterf(5.0, DBL_MAX));
+	Rectangle r2 = Rectangle(2.0, 0.0, nextafterf(3.0, FLT_MAX),
+            nextafterf(5.0, FLT_MAX));
+	Rectangle r3 = Rectangle(3.0, 0.0, nextafterf(4.0, FLT_MAX),
+            nextafterf(3.0, FLT_MAX));
+	Rectangle r4 = Rectangle(3.0, 2.0, nextafterf(5.0, FLT_MAX),
+            nextafterf(3.0, FLT_MAX));
+	Rectangle r5 = Rectangle(5.0, 2.0, nextafterf(6.0, FLT_MAX),
+            nextafterf(5.0, FLT_MAX));
 
 	IsotheticPolygon reference(r1);
 	reference.basicRectangles.push_back(r2);
 	reference.basicRectangles.push_back(r3);
 	reference.basicRectangles.push_back(r4);
 	reference.basicRectangles.push_back(r5);
-	reference.boundingBox = Rectangle(0.0, 0.0, nextafter(6.0, DBL_MAX),
-            nextafter(5.0, DBL_MAX));
+	reference.boundingBox = Rectangle(0.0, 0.0, nextafterf(6.0, FLT_MAX),
+            nextafterf(5.0, FLT_MAX));
 
 	// Test set one, one rectangle shrinks
 	std::vector<Point> pinPoints1;
@@ -1464,8 +1461,8 @@ TEST_CASE("Geometry: testPolygonShrink")
 
 	REQUIRE(ip1.basicRectangles.size() == 5);
 	REQUIRE(ip1.basicRectangles[0] == r1);
-	REQUIRE(ip1.basicRectangles[1] == Rectangle(2.3, 0.0, nextafter(3.0,
-                    DBL_MAX), nextafter(4.0, DBL_MAX)));
+	REQUIRE(ip1.basicRectangles[1] == Rectangle(2.3, 0.0, nextafterf(3.0,
+                    FLT_MAX), nextafterf(4.0, DBL_MAX)));
 	REQUIRE(ip1.basicRectangles[2] == r3);
 	REQUIRE(ip1.basicRectangles[3] == r4);
 	REQUIRE(ip1.basicRectangles[4] == r5);
@@ -1508,17 +1505,17 @@ TEST_CASE("Geometry: testPolygonShrink")
 	ip3.shrink(pinPoints3);
 
 	REQUIRE(ip3.basicRectangles.size() == 5);
-	REQUIRE(ip3.basicRectangles[0] == Rectangle(0.0, 2.5, nextafter(1.0,
-                    DBL_MAX), nextafter(4.0, DBL_MAX)));
+	REQUIRE(ip3.basicRectangles[0] == Rectangle(0.0, 2.5, nextafterf(1.0,
+                    FLT_MAX), nextafterf(4.0, DBL_MAX)));
 	REQUIRE(ip3.basicRectangles[1] == Rectangle(2.5, 1.0,
-                nextafter(2.75, DBL_MAX), nextafter(2.75, DBL_MAX)));
+                nextafterf(2.75, FLT_MAX), nextafterf(2.75, DBL_MAX)));
 	REQUIRE(ip3.basicRectangles[2] == Rectangle(3.5, 1.0,
-                nextafter(3.75, DBL_MAX), nextafter(2.5, DBL_MAX)));
-	REQUIRE(ip3.basicRectangles[3] == Rectangle(3.5, 2.5, nextafter(5.0,
-                    DBL_MAX), nextafter(3.0, DBL_MAX)));
+                nextafterf(3.75, FLT_MAX), nextafterf(2.5, DBL_MAX)));
+	REQUIRE(ip3.basicRectangles[3] == Rectangle(3.5, 2.5, nextafterf(5.0,
+                    FLT_MAX), nextafterf(3.0, DBL_MAX)));
 	REQUIRE(ip3.basicRectangles[4] == Rectangle(5.0, 3.0,
-                nextafter(5.75, DBL_MAX),
-                nextafter(4.0, DBL_MAX)));
+                nextafterf(5.75, FLT_MAX),
+                nextafterf(4.0, FLT_MAX)));
 
 	// Test set four, some rectangles are eliminated
 	std::vector<Point> pinPoints4;
@@ -1533,15 +1530,15 @@ TEST_CASE("Geometry: testPolygonShrink")
 	ip4.shrink(pinPoints4);
 
 	REQUIRE(ip4.basicRectangles.size() == 4);
-	REQUIRE(ip4.basicRectangles[0] == Rectangle(0.0, 2.5, nextafter(1.0,
-                    DBL_MAX), nextafter(4.0, DBL_MAX)));
+	REQUIRE(ip4.basicRectangles[0] == Rectangle(0.0, 2.5, nextafterf(1.0,
+                    FLT_MAX), nextafterf(4.0, DBL_MAX)));
 	REQUIRE(ip4.basicRectangles[1] == Rectangle(3.5, 1.0,
-                nextafter(3.75, DBL_MAX), nextafter(2.5, DBL_MAX)));
-	REQUIRE(ip4.basicRectangles[2] == Rectangle(3.5, 2.5, nextafter(5.0,
-                    DBL_MAX), nextafter(3.0, DBL_MAX)));
+                nextafterf(3.75, FLT_MAX), nextafterf(2.5, DBL_MAX)));
+	REQUIRE(ip4.basicRectangles[2] == Rectangle(3.5, 2.5, nextafterf(5.0,
+                    FLT_MAX), nextafterf(3.0, DBL_MAX)));
 	REQUIRE(ip4.basicRectangles[3] == Rectangle(5.0, 3.0,
-                nextafter(5.75, DBL_MAX),
-                nextafter(4.0, DBL_MAX)));
+                nextafterf(5.75, FLT_MAX),
+                nextafterf(4.0, FLT_MAX)));
 }
 
 TEST_CASE("Geometry: testPolygonRefine")

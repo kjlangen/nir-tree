@@ -231,11 +231,11 @@ tree_node_handle NODE_CLASS_TYPES::chooseNode(Point givenPoint)
         // Compute the smallest expansion
         unsigned smallestExpansionIndex = 0;
         Branch &b_0 = std::get<Branch>( current_node->entries.at(0) );
-        double smallestExpansionArea = b_0.boundingBox.computeExpansionArea( givenPoint );
+        float smallestExpansionArea = b_0.boundingBox.computeExpansionArea( givenPoint );
         for( unsigned i = 1; i < current_node->cur_offset_ and smallestExpansionArea != -1.0; i++ ) {
 
             Branch &b_i = std::get<Branch>( current_node->entries.at(i) ) ;
-            double expansionArea = b_i.boundingBox.computeExpansionArea( givenPoint );
+            float expansionArea = b_i.boundingBox.computeExpansionArea( givenPoint );
             if( expansionArea < smallestExpansionArea ) {
                 smallestExpansionIndex = i;
                 smallestExpansionArea = expansionArea;
@@ -304,7 +304,7 @@ Partition NODE_CLASS_TYPES::partitionNode()
 {
     Partition defaultPartition;
     unsigned costMetric = std::numeric_limits<unsigned>::max();
-    double location;
+    float location;
 
     if( isLeaf() ) {
 
@@ -333,7 +333,7 @@ Partition NODE_CLASS_TYPES::partitionNode()
             if( duplicateCount < costMetric ) {
                 defaultPartition.dimension = d;
                 // Set the partition location after the point.
-                defaultPartition.location = nextafter(location, DBL_MAX);
+                defaultPartition.location = nextafterf(location, FLT_MAX);
                 costMetric = duplicateCount;
             }
         }
@@ -415,7 +415,7 @@ Partition NODE_CLASS_TYPES::partitionNode()
         for( unsigned i = 0; i < sortableBoundingBoxes.size(); i++ ) {
             unsigned left_count = 0;
             unsigned right_count = 0;
-            double partition_candidate =
+            float partition_candidate =
                 sortableBoundingBoxes[i].upperRight[d];
             unsigned cost = 0;
             for( unsigned j = 0; j < sortableBoundingBoxes.size(); j++ ) {
@@ -858,8 +858,8 @@ void NODE_CLASS_TYPES::stat()
     std::vector<unsigned long> histogramFanout;
     histogramFanout.resize( max_branch_factor, 0 );
 
-    double coverage = 0.0;
-    double overlap = 0.0;
+    float coverage = 0.0;
+    float overlap = 0.0;
 
     while( not context.empty() ) {
         auto current_handle = context.top();

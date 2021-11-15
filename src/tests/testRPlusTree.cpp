@@ -11,12 +11,12 @@ TEST_CASE("R+Tree: testBoundingBox")
 	Point p2(5.0, 5.0);
 	tree.insert(p2);
 	REQUIRE(tree.root->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(5.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(5.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 
 	Point p3(10.0, 0.0);
 	tree.insert(p3);
 	REQUIRE(tree.root->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(10.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(10.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 }
 
 TEST_CASE("R+Tree: testPartition")
@@ -87,20 +87,20 @@ TEST_CASE("R+Tree: testNewChildNode")
 	tree.insert(Point(9.0, 5.0));
 
 	REQUIRE(tree.root->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(9.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(9.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 	REQUIRE(tree.root->data.size() == 0);
 	REQUIRE(tree.root->branches.size() == 2);
 
 	// test left child
 	REQUIRE(tree.root->branches[0].boundingBox == Rectangle(0.0, 0.0,
-                nextafter(4.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(4.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 	REQUIRE(tree.root->branches[0].child->branches.size() == 0);
 	REQUIRE(tree.root->branches[0].child->data.size() == 2);
 	REQUIRE(tree.root->branches[0].child->parent == tree.root);
 
 	// test right child
 	REQUIRE(tree.root->branches[1].boundingBox == Rectangle(5.0, 0.0,
-                nextafter(9.0, DBL_MAX), nextafter(5.0, DBL_MAX)));
+                nextafterf(9.0, FLT_MAX), nextafterf(5.0, FLT_MAX)));
 	REQUIRE(tree.root->branches[1].child->branches.size() == 0);
 	REQUIRE(tree.root->branches[1].child->data.size() == 2);
 	REQUIRE(tree.root->branches[1].child->parent == tree.root);
@@ -130,7 +130,7 @@ TEST_CASE("R+Tree: testInsert")
 	tree.insert(Point(5.0, 5.0));
 
 	REQUIRE(tree.root->boundingBox() == Rectangle(0.0, 0.0,
-                nextafter(9.0, DBL_MAX), nextafter(9.0, DBL_MAX) ));
+                nextafterf(9.0, FLT_MAX), nextafterf(9.0, FLT_MAX) ));
 	REQUIRE(tree.root->data.size() == 0);
 	REQUIRE(tree.root->branches.size() == 2);
 
