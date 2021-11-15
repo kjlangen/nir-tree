@@ -271,7 +271,6 @@ namespace nirtreedisk
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 			unsigned height();
-			void stat();
 
             uint16_t compute_packed_size();
             tree_node_handle repack( tree_node_allocator *allocator );
@@ -295,9 +294,11 @@ namespace nirtreedisk
                     tree_node_handle self_handle ) :
                 treeRef( treeRef ), parent( parent ), cur_offset_( 0 ),
                 self_handle_( self_handle ) {
+                    /*
                     static_assert( sizeof(
                                 BranchNode<min_branch_factor,max_branch_factor,strategy>)
                             <= PAGE_DATA_SIZE );
+                            */
             }
 			void deleteSubtrees();
 
@@ -845,7 +846,6 @@ namespace nirtreedisk
 			void print(unsigned n=0);
 			void printTree(unsigned n=0);
 			unsigned height();
-			void stat();
 
             uint16_t compute_packed_size( tree_node_allocator
                     *existing_allocator, tree_node_allocator

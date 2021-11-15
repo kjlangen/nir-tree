@@ -469,12 +469,12 @@ SplitResult LEAF_NODE_CLASS_TYPES::adjustTree()
         std::pair<SplitResult, tree_node_handle>
             split_res_and_new_handle;
         if( current_handle.get_type() == LEAF_NODE ) {
-            auto current_leaf_node = treeRef->get_leaf_node(
+            auto current_leaf_node = tree_ref_backup->get_leaf_node(
                     current_handle );
             split_res_and_new_handle = adjust_tree_bottom_half(
                     current_leaf_node, tree_ref_backup, max_branch_factor );
         } else {
-            auto current_branch_node = treeRef->get_branch_node(
+            auto current_branch_node = tree_ref_backup->get_branch_node(
                     current_handle );
             split_res_and_new_handle = adjust_tree_bottom_half(
                     current_branch_node, tree_ref_backup,
@@ -666,67 +666,6 @@ unsigned LEAF_NODE_CLASS_TYPES::height()
     return 1;
 }
 
-NODE_TEMPLATE_PARAMS
-void LEAF_NODE_CLASS_TYPES::stat() {
-    /*
-    std::stack<tree_node_handle> context;
-
-    // Initialize our context stack
-    context.push( this->self_handle_ );
-    tree_node_handle currentContext;
-    size_t memoryFootprint = 0;
-    unsigned long totalLeaves = 0;
-    size_t deadSpace = 0;
-
-    std::vector<unsigned long> histogramPolygon;
-    histogramPolygon.resize(10000, 0);
-    std::vector<unsigned long> histogramFanout;
-    histogramFanout.resize( max_branch_factor, 0 );
-
-    unsigned fanout = this->cur_offset_;
-    if( fanout >= histogramFanout.size() ) {
-        histogramFanout.resize(2*fanout, 0);
-    }
-    histogramFanout[fanout]++;
-
-    totalLeaves++;
-    memoryFootprint +=
-        sizeof(LeafNode<min_branch_factor,max_branch_factor,strategy>) + this->cur_offset_ * sizeof(Point);
-    deadSpace += (sizeof(Point) *
-            (max_branch_factor-this->cur_offset_) );
-    // Print out what we have found
-    STATEXEC(std::cout << "### Statistics ###" << std::endl);
-    STATMEM(memoryFootprint);
-    STATHEIGHT(height());
-    STATSIZE(totalNodes);
-    STATEXEC(std::cout << "DeadSpace: " << deadSpace << std::endl);
-    STATSINGULAR(singularBranches);
-    STATLEAF(totalLeaves);
-    STATBRANCH(totalNodes - 1);
-    STATCOVER(coverage);
-    STATFANHIST();
-    for (unsigned i = 0; i < histogramFanout.size(); ++i)
-    {
-        if (histogramFanout[i] > 0)
-        {
-            STATHIST(i, histogramFanout[i]);
-        }
-    }
-    STATLINES(totalLines);
-    STATTOTALPOLYSIZE(totalPolygonSize);
-    STATPOLYHIST();
-    for (unsigned i = 0; i < histogramPolygon.size(); ++i)
-    {
-        if (histogramPolygon[i] > 0)
-        {
-            STATHIST(i, histogramPolygon[i]);
-        }
-    }
-    std::cout << this->treeRef->stats;
-
-    STATEXEC(std::cout << "### ### ### ###" << std::endl);
-    */
-}
 NODE_TEMPLATE_PARAMS
 uint16_t LEAF_NODE_CLASS_TYPES::compute_packed_size() {
     uint16_t sz = 0;
@@ -2145,17 +2084,22 @@ unsigned BRANCH_NODE_CLASS_TYPES::height()
     }
 }
 
-NODE_TEMPLATE_PARAMS
-void BRANCH_NODE_CLASS_TYPES::stat() {
+
+template <int min_branch_factor, int max_branch_factor, class strategy>
+void stat_node(
+    tree_node_handle start_handle,
+    NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef
+) {
     std::stack<tree_node_handle> context;
 
     // Initialize our context stack
-    context.push( this->self_handle_ );
+    context.push( start_handle );
     unsigned long polygonSize;
     unsigned long totalPolygonSize = 0;
     unsigned long totalLines = 0;
     size_t memoryFootprint = 0;
-    unsigned long totalNodes = 1;
+    size_t memoryPolygons = 0;
+    unsigned long totalNodes = 0;
     unsigned long totalLeaves = 0;
     size_t deadSpace = 0;
 
@@ -2166,11 +2110,13 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
 
     double coverage = 0.0;
 
-    tree_node_allocator *allocator = get_node_allocator( this->treeRef );
+    tree_node_allocator *allocator = get_node_allocator( treeRef );
 
     while( !context.empty() ) {
         auto currentContext = context.top();
         context.pop();
+
+        totalNodes++;
 
         if( currentContext.get_type() == LEAF_NODE ) {
 
@@ -2197,6 +2143,9 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
                 histogramFanout.resize(2*fanout, 0);
             }
             histogramFanout[fanout]++;
+            memoryFootprint += sizeof(void*) +
+                sizeof(tree_node_handle)*2 + sizeof(unsigned) +
+                count * sizeof(Point);
         } else if( currentContext.get_type() == REPACKED_BRANCH_NODE ) {
             auto current_node = allocator->get_tree_node<packed_node>(
                     currentContext );
@@ -2208,17 +2157,35 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
                 histogramFanout.resize(2*fanout, 0);
             }
             histogramFanout[fanout]++;
+            memoryFootprint += sizeof(void*)+ sizeof(tree_node_handle)*2
+                + sizeof(unsigned);
             for( unsigned i = 0; i < count; i++ ) {
                 tree_node_handle *child = (tree_node_handle *) (buffer + offset);
                 offset += sizeof( tree_node_handle );
-                offset += sizeof( Rectangle );
                 unsigned rect_count = * (unsigned *) (buffer + offset);
                 offset += sizeof( unsigned );
+                memoryFootprint += sizeof(tree_node_handle) + sizeof(unsigned);
                 context.push( *child );
                 if( rect_count == std::numeric_limits<unsigned>::max() ) {
+                    auto handle = * (tree_node_handle *) (buffer +
+                            offset);
                     offset += sizeof( tree_node_handle );
+                    memoryFootprint += sizeof( tree_node_handle );
+                    auto poly_pin =
+                        allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                                handle );
+                    memoryFootprint +=
+                        compute_sizeof_inline_unbounded_polygon(
+                                poly_pin->get_total_rectangle_count() );
+                    memoryPolygons +=
+                        (compute_sizeof_inline_unbounded_polygon (
+                                poly_pin->get_total_rectangle_count() )
+                         - sizeof(Rectangle));
                 } else {
                     offset += rect_count * sizeof( Rectangle );
+                    memoryFootprint += rect_count * sizeof(Rectangle);
+                    memoryPolygons += (rect_count * sizeof(Rectangle) -
+                            sizeof(Rectangle));
                 }
             }
         } else if( currentContext.get_type() == BRANCH_NODE ) {
@@ -2238,7 +2205,6 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
                 coverage += polygon.area();
             }
 
-            totalNodes += current_branch_node->cur_offset_;
             memoryFootprint +=
                 sizeof(BranchNode<min_branch_factor,max_branch_factor,strategy>);// +
                 // other out of line polys
@@ -2280,13 +2246,14 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
     // Print out what we have found
     STATEXEC(std::cout << "### Statistics ###" << std::endl);
     // Memory footprint is wrong!
-    //STATMEM(memoryFootprint);
+    STATMEM(memoryFootprint);
+    STATMEM(memoryPolygons);
     //STATHEIGHT(height());
     STATSIZE(totalNodes);
     //STATEXEC(std::cout << "DeadSpace: " << deadSpace << std::endl);
     //STATSINGULAR(singularBranches);
     STATLEAF(totalLeaves);
-    STATBRANCH(totalNodes - 1);
+    STATBRANCH(totalNodes - totalLeaves);
     STATCOVER(coverage);
     STATFANHIST();
     for (unsigned i = 0; i < histogramFanout.size(); ++i)
@@ -2306,9 +2273,10 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
             STATHIST(i, histogramPolygon[i]);
         }
     }
-    std::cout << this->treeRef->stats;
+    std::cout << treeRef->stats;
 
     STATEXEC(std::cout << "### ### ### ###" << std::endl);
+
 }
 
 #undef NODE_TEMPLATE_PARAMS

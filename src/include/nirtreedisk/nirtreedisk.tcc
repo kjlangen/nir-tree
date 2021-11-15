@@ -86,13 +86,7 @@ bool NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::validate() {
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::stat() {
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_node = get_leaf_node( root );
-        root_node->stat();
-    } else {
-        auto root_node = get_branch_node( root );
-        root_node->stat();
-    }
+    stat_node( root, this );
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
