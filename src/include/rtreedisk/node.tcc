@@ -287,10 +287,10 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::chooseLeaf(Point gi
         {
             // Choose subtree
             unsigned smallestExpansionIndex = 0;
-            float smallestExpansionArea = std::get<Branch>( node->entries[0] ).boundingBox.computeExpansionArea(givenPoint);
+            double smallestExpansionArea = std::get<Branch>( node->entries[0] ).boundingBox.computeExpansionArea(givenPoint);
             for (unsigned i = 0; i < node->cur_offset_; ++i)
             {
-                float testExpansionArea = std::get<Branch>( node->entries[i] ).boundingBox.computeExpansionArea(givenPoint);
+                double testExpansionArea = std::get<Branch>( node->entries[i] ).boundingBox.computeExpansionArea(givenPoint);
                 if (smallestExpansionArea > testExpansionArea)
                 {
                     smallestExpansionIndex = i;
@@ -325,10 +325,10 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::chooseNode(Reinsert
         {
             // Choose subtree
             unsigned smallestExpansionIndex = 0;
-            float smallestExpansionArea = std::get<Branch>( node->entries[0] ).boundingBox.computeExpansionArea(e.boundingBox);
+            double smallestExpansionArea = std::get<Branch>( node->entries[0] ).boundingBox.computeExpansionArea(e.boundingBox);
             for (unsigned i = 0; i < node->cur_offset_; ++i)
             {
-                float testExpansionArea = std::get<Branch>( node->entries[i] ).boundingBox.computeExpansionArea(e.boundingBox);
+                double testExpansionArea = std::get<Branch>( node->entries[i] ).boundingBox.computeExpansionArea(e.boundingBox);
                 if (smallestExpansionArea > testExpansionArea)
                 {
                     smallestExpansionIndex = i;
@@ -446,7 +446,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     unsigned seedB = boundingBoxesSize - 1;
 
     // Compute the first entry in each group based on PS1 & PS2
-    float maxWasted = 0;
+    double maxWasted = 0;
     Rectangle iBox, jBox;
     for (unsigned i = 0; i < boundingBoxesSize; ++i)
     {
@@ -459,7 +459,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
             Rectangle temp = iBox;
             temp.expand(jBox);
 
-            float wasted = temp.area() - iBox.area() - jBox.area() + iBox.computeIntersectionArea(jBox);
+            double wasted = temp.area() - iBox.area() - jBox.area() + iBox.computeIntersectionArea(jBox);
 
             if (maxWasted < wasted)
             {
@@ -500,15 +500,15 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(tree_node
     }
 
     // Go through the remaining entries and add them to groupA or groupB
-    float groupAAffinity, groupBAffinity;
+    double groupAAffinity, groupBAffinity;
     // QS2 [Check if done]
     while ( !isLeafNode() && (groupABoundingBoxes.size() + cur_offset_ > min_branch_factor) && (groupBBoundingBoxes.size() + cur_offset_ > min_branch_factor))
     {
         // PN1 [Determine the cost of putting each entry in each group]
         unsigned groupAIndex = 0;
-        float groupAMin = std::numeric_limits<double>::infinity();
+        double groupAMin = std::numeric_limits<double>::infinity();
         unsigned groupBIndex = 0;
-        float groupBMin = std::numeric_limits<double>::infinity();
+        double groupBMin = std::numeric_limits<double>::infinity();
 
         for (unsigned i = 0; i < cur_offset_; ++i)
         {
@@ -619,14 +619,14 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
     // Helper functions
     // Include the new point in our split consideration
     addEntryToNode(newData);
-    float dataSize = cur_offset_;
+    double dataSize = cur_offset_;
 
     // Compute the first entry in each group based on PS1 & PS2
     unsigned seedA = 0;
     unsigned seedB = dataSize - 1;
 
     // This rectangle drank too much and represents how wasted iData and jData are
-    float maxWasted = 0.0;
+    double maxWasted = 0.0;
 
     // QS1 [Pick entry for each group]
     Point iData, jData;
@@ -640,7 +640,7 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
             Rectangle temp = Rectangle(iData, iData);
             temp.expand(jData);
 
-            float wasted = temp.area();
+            double wasted = temp.area();
 
             if (maxWasted < wasted)
             {
@@ -677,15 +677,15 @@ tree_node_handle Node<min_branch_factor, max_branch_factor>::splitNode(Point new
     }
 
     // Go through the remaining entries and add them to groupA or groupB
-    float groupAAffinity, groupBAffinity;
+    double groupAAffinity, groupBAffinity;
     // QS2 [Check if done]
     while (isLeafNode() && cur_offset_ > 0 && (groupAData.size() + cur_offset_ > min_branch_factor) && (groupBData.size() + cur_offset_ > min_branch_factor))
     {
         // PN1 [Determine the cost of putting each entry in each group]
         unsigned groupAIndex = 0;
-        float groupAMin = std::numeric_limits<double>::infinity();
+        double groupAMin = std::numeric_limits<double>::infinity();
         unsigned groupBIndex = 0;
-        float groupBMin = std::numeric_limits<double>::infinity();
+        double groupBMin = std::numeric_limits<double>::infinity();
 
         for (unsigned i = 0; i < cur_offset_; ++i)
         {
@@ -1232,8 +1232,8 @@ void Node<min_branch_factor, max_branch_factor>::stat()
     std::vector<unsigned long> histogramFanout;
     histogramFanout.resize(max_branch_factor + 10, 0);
 
-    float coverage = 0.0;
-    float overlap = 0.0;
+    double coverage = 0.0;
+    double overlap = 0.0;
 
     // Initialize our context stack
     std::stack<tree_node_handle> context;

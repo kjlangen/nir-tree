@@ -159,7 +159,7 @@ NODE_TEMPLATE_PARAMS
 Partition LEAF_NODE_CLASS_TYPES::partitionLeafNode()
 {
     Partition defaultPartition;
-    float totalMass = 0.0;
+    double totalMass = 0.0;
     Point variance = Point::atOrigin;
     Point average = Point::atOrigin;
     Point sumOfSquares = Point::atOrigin;
@@ -995,9 +995,9 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     for( unsigned i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
-        uint8_t rect_count = * (uint8_t *) (buffer + offset); \
-        offset += sizeof( uint8_t ); \
-        if( rect_count == std::numeric_limits<uint8_t>::max() ) { \
+        unsigned rect_count = * (unsigned *) (buffer + offset); \
+        offset += sizeof( unsigned ); \
+        if( rect_count == std::numeric_limits<unsigned>::max() ) { \
             tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
             offset += sizeof( tree_node_handle ); \
             auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
@@ -1005,7 +1005,7 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
                 context.push( *child ); \
             } \
         } else { \
-            for( uint8_t r = 0; r < rect_count; r++ ) { \
+            for( unsigned r = 0; r < rect_count; r++ ) { \
                 Rectangle *rect = (Rectangle *) (buffer + offset); \
                 offset += sizeof(Rectangle); \
                 if( rect->containsPoint( requestedPoint ) ) { \
@@ -1048,9 +1048,9 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     for( unsigned i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
-        uint8_t rect_count = * (uint8_t *) (buffer + offset); \
-        offset += sizeof( uint8_t ); \
-        if( rect_count == std::numeric_limits<uint8_t>::max() ) { \
+        unsigned rect_count = * (unsigned *) (buffer + offset); \
+        offset += sizeof( unsigned ); \
+        if( rect_count == std::numeric_limits<unsigned>::max() ) { \
             tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
             offset += sizeof( tree_node_handle ); \
             auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
@@ -1058,7 +1058,7 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
                 context.push( *child ); \
             } \
         } else { \
-            for( uint8_t r = 0; r < rect_count; r++ ) { \
+            for( unsigned r = 0; r < rect_count; r++ ) { \
                 Rectangle *rect = (Rectangle *) (buffer + offset); \
                 offset += sizeof(Rectangle); \
                 if( rect->intersectsRectangle( requestedRectangle ) ) { \
@@ -2164,7 +2164,7 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
     std::vector<unsigned long> histogramFanout;
     histogramFanout.resize( max_branch_factor, 0 );
 
-    float coverage = 0.0;
+    double coverage = 0.0;
 
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
 
@@ -2235,28 +2235,6 @@ void BRANCH_NODE_CLASS_TYPES::stat() {
             for( unsigned i = 0; i < current_branch_node->cur_offset_; i++ ) {
                 Branch &b = current_branch_node->entries.at(i);
                 IsotheticPolygon polygon = b.materialize_polygon( allocator );
-
-                Point center = Point::atOrigin;
-                for( const auto &rect : polygon.basicRectangles ) {
-                    center += rect.centrePoint();
-                }
-                center /= polygon.basicRectangles.size();
-
-                std::cout << "Poly begin, centroid: " << center << std::endl;
-
-                Point avgDiff = Point::atOrigin;
-                for( const auto &rect : polygon.basicRectangles ) {
-                    Point lowerDiff = rect.lowerLeft - center;
-                    Point upperDiff = rect.upperRight - center;
-                    std::cout << "Offset " << rect.lowerLeft << " from centroid: " <<
-                        rect.lowerLeft - center << std::endl;
-                    std::cout << "Offset " << rect.upperRight << " from centroid: " <<
-                        rect.upperRight - center << std::endl;
-
-                    avgDiff += lowerDiff + upperDiff;
-                }
-                std::cout << "Poly end, avg: " <<
-                    avgDiff/(2*polygon.basicRectangles.size()) << std::endl;
                 coverage += polygon.area();
             }
 

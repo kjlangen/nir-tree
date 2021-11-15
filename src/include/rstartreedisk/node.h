@@ -215,7 +215,7 @@ namespace rstartreedisk
 	};
 
     template <class NE, class B, int N>
-	float computeOverlapGrowth(unsigned index, const
+	double computeOverlapGrowth(unsigned index, const
             std::array<B, N+1> &entries,
             unsigned els_to_consider,
             const Rectangle &givenBox) {
@@ -232,7 +232,7 @@ namespace rstartreedisk
         newRectangle.expand(givenBox);
 
         // 3. Compute the overlap expansion area 
-        float overlapDiff = 0;
+        double overlapDiff = 0;
         unsigned num_entries_els = els_to_consider;
         for (unsigned i = 0; i < num_entries_els; ++i) {
             const auto &entry = entries[i];

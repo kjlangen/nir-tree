@@ -133,18 +133,18 @@ namespace nirtreedisk
                 );
                 if( should_pack_and_pin.first ) {
                     auto poly_pin = should_pack_and_pin.second;
-                    sz += sizeof( uint8_t ); // Rectangle count
+                    sz += sizeof( unsigned ); // Rectangle count
                     sz += poly_pin->get_total_rectangle_count() * sizeof(
                             Rectangle ); //rectangles
                     return sz;
                 }
-                sz += sizeof( uint8_t ); // magic rect count id
+                sz += sizeof( unsigned ); // magic rect count id
                 sz += sizeof( tree_node_handle );
                 return sz;
             }
             InlineBoundedIsotheticPolygon &poly =
                 std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
-            uint8_t rect_count = poly.get_rectangle_count();
+            unsigned rect_count = poly.get_rectangle_count();
             sz += sizeof( rect_count );
             sz  += rect_count * sizeof(Rectangle);
             return sz;
@@ -180,11 +180,7 @@ namespace nirtreedisk
 
             InlineBoundedIsotheticPolygon &poly =
                 std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
-            if( poly.get_rectangle_count() >=
-                    std::numeric_limits<uint8_t>::max() ) {
-                abort();
-            }
-            uint8_t rect_count = poly.get_rectangle_count();
+            unsigned rect_count = poly.get_rectangle_count();
             offset += write_data_to_buffer( buffer + offset, &rect_count );
             for( auto iter = poly.begin(); iter != poly.end(); iter++ ) {
                 offset += write_data_to_buffer( buffer + offset,
@@ -209,7 +205,7 @@ namespace nirtreedisk
     struct Partition
     {
         unsigned dimension;
-        float location;
+        double location;
 
     };
 
@@ -345,8 +341,8 @@ namespace nirtreedisk
                                 allocator ) );
                 }
 
-                float best_candidate = 0.0;
-                float min_cost = std::numeric_limits<double>::max();
+                double best_candidate = 0.0;
+                double min_cost = std::numeric_limits<double>::max();
                 unsigned best_dimension = 0;
                 // D * ( M LOG M + M ) ~> O( D M LOG M )
                 for( unsigned d = 0; d < dimensions; d++ ) {
@@ -358,15 +354,15 @@ namespace nirtreedisk
                             }
                     );
                     for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
-                        float cost = 0;
+                        double cost = 0;
                         // starts at 1 cause first goes left
                         // Technically we should also walk the bottom bounds to
                         // be sure, even in the non F, C case.
                         unsigned left_count = 1;
                         unsigned right_count = 0; 
-                        float partition_candidate =
+                        double partition_candidate =
                             all_branch_polys.at(i).upperRight[d];
-                        float running_total = 0.0;
+                        double running_total = 0.0;
                         // Existing metric wanted to avoid recursive splits
                         // Let's try and do the same
                         for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
@@ -410,7 +406,7 @@ namespace nirtreedisk
                     }
                 }
                 // Degenerate case
-                assert( min_cost < std::numeric_limits<float>::max() );
+                assert( min_cost < std::numeric_limits<double>::max() );
 
                 defaultPartition.dimension = best_dimension;
                 defaultPartition.location = best_candidate;
@@ -433,8 +429,8 @@ namespace nirtreedisk
                                 allocator ) );
                 }
 
-                float best_candidate = 0.0;
-                float min_cost = std::numeric_limits<double>::max();
+                double best_candidate = 0.0;
+                double min_cost = std::numeric_limits<double>::max();
                 unsigned best_dimension = 0;
                 // D * ( M LOG M + M ) ~> O( D M LOG M )
                 for( unsigned d = 0; d < dimensions; d++ ) {
@@ -458,15 +454,15 @@ namespace nirtreedisk
                             }
                     );
                     for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
-                        float cost = 0;
+                        double cost = 0;
                         // starts at 1 cause {i} goes left
                         // Technically we should also walk the bottom bounds to
                         // be sure, even in the non F, C case.
                         unsigned left_count = 0;
                         unsigned right_count = 0; 
-                        float partition_candidate =
+                        double partition_candidate =
                             all_branch_polys.at(i).upperRight[d];
-                        float running_total = 0.0;
+                        double running_total = 0.0;
                         // Existing metric wanted to avoid recursive splits
                         // Let's try and do the same
                         for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
@@ -518,7 +514,7 @@ namespace nirtreedisk
                             and right_count <= max_branch_factor and
                             left_count > 0 and right_count > 0 )
                         {
-                            float mean_d_pt = running_total /
+                            double mean_d_pt = running_total /
                                 (2*all_branch_polys.size());
                             // Distance
                             cost = (mean_d_pt-partition_candidate);
@@ -533,7 +529,7 @@ namespace nirtreedisk
                     }
                 }
                 // Degenerate case
-                assert( min_cost < std::numeric_limits<float>::max() );
+                assert( min_cost < std::numeric_limits<double>::max() );
 
                 defaultPartition.dimension = best_dimension;
                 defaultPartition.location = best_candidate;
@@ -572,7 +568,7 @@ namespace nirtreedisk
                 Partition defaultPartition;
                 Point mean_point = Point::atOrigin;
 
-                float mass = 0.0;
+                double mass = 0.0;
                 for( auto &branch_bounding_box : all_branch_polys ) {
                     mean_point += branch_bounding_box.lowerLeft;
                     mean_point += branch_bounding_box.upperRight;
@@ -588,7 +584,7 @@ namespace nirtreedisk
 
                 for( unsigned d = 0; d < dimensions; d++ ) {
                     // Is this a valid split?
-                    float location = mean_point[d];
+                    double location = mean_point[d];
                     unsigned cost = 0;
                     unsigned left_count = 0;
                     unsigned right_count = 0;
@@ -685,8 +681,8 @@ namespace nirtreedisk
 
                 }
 
-                float best_candidate = 0.0;
-                float min_cost = std::numeric_limits<double>::max();
+                double best_candidate = 0.0;
+                double min_cost = std::numeric_limits<double>::max();
                 unsigned best_dimension = 0;
                 // D * ( M LOG M + M ) ~> O( D M LOG M )
                 for( unsigned d = 0; d < dimensions; d++ ) {
@@ -710,15 +706,15 @@ namespace nirtreedisk
                             }
                     );
                     for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
-                        float cost = 0;
+                        double cost = 0;
                         // starts at 1 cause {i} goes left
                         // Technically we should also walk the bottom bounds to
                         // be sure, even in the non F, C case.
                         unsigned left_count = 0;
                         unsigned right_count = 0; 
-                        float partition_candidate =
+                        double partition_candidate =
                             all_branch_polys.at(i).upperRight[d];
-                        float running_total = 0.0;
+                        double running_total = 0.0;
                         // Existing metric wanted to avoid recursive splits
                         // Let's try and do the same
                         for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
@@ -778,7 +774,7 @@ namespace nirtreedisk
                             and right_count <= max_branch_factor and
                             left_count > 0 and right_count > 0 )
                         {
-                            float mean_d_pt = running_total /
+                            double mean_d_pt = running_total /
                                 (2*all_branch_polys.size());
                             // Distance
                             cost = (mean_d_pt-partition_candidate);
@@ -796,7 +792,7 @@ namespace nirtreedisk
                     }
                 }
                 // Degenerate case
-                assert( min_cost < std::numeric_limits<float>::max() );
+                assert( min_cost < std::numeric_limits<double>::max() );
 
                 defaultPartition.dimension = best_dimension;
                 defaultPartition.location = best_candidate;

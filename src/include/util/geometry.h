@@ -39,7 +39,7 @@ class Point
 {
 	public:
 
-        float values[dimensions];
+        double values[dimensions];
 
 		static Point atInfinity;
 		static Point atNegInfinity;
@@ -47,7 +47,7 @@ class Point
         static Point closest_larger_point( const Point &existing_point ) {
             Point local_point( existing_point );
             for( unsigned d = 0; d < dimensions; d++ ) {
-                local_point[d] = nextafterf( local_point[d], FLT_MAX );
+                local_point[d] = nextafter( local_point[d], DBL_MAX );
                 if( not (local_point[d] > existing_point[d] ) ) {
                     std::cout << "existing point: " << existing_point[d]
                         << std::endl;
@@ -59,7 +59,7 @@ class Point
         static Point closest_smaller_point( const Point &existing_point ) {
             Point local_point( existing_point );
             for( unsigned d = 0; d < dimensions; d++ ) {
-                local_point[d] = nextafterf( local_point[d], -FLT_MAX );
+                local_point[d] = nextafter( local_point[d], -DBL_MAX );
                 assert( local_point[d] < existing_point[d] );
             }
             return local_point;
@@ -68,27 +68,27 @@ class Point
 
 		Point();
 
-		Point(float x, float y);
-		Point(float value);
+		Point(double x, double y);
+		Point(double value);
 		Point(const Point &o) = default;
 
 		bool orderedCompare(const Point &rhs, unsigned startingDimension) const;
-		float distance(const Point &p) const;
+		double distance(const Point &p) const;
 
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
-		Point &operator/=(float scalar);
-		Point &operator*=(float scalar);
+		Point &operator/=(double scalar);
+		Point &operator*=(double scalar);
 		Point &operator*=(const Point &rhs);
-		float &operator[](unsigned index);
-		float operator[](unsigned index) const;
+		double &operator[](unsigned index);
+		double operator[](unsigned index) const;
 		Point &operator<<(const Point &p);
 		Point &operator>>(const Point &p);
 
 		friend Point operator-(const Point &lhs, const Point &rhs);
 		friend Point operator+(const Point &lhs, const Point &rhs);
-		friend Point operator*(const Point &lhs, const float scalar);
-		friend Point operator/(const Point &lsh, const float scalar);
+		friend Point operator*(const Point &lhs, const double scalar);
+		friend Point operator/(const Point &lsh, const double scalar);
 		friend Point operator*(const Point &lhs, const Point &rhs);
 		friend bool operator<(const Point &lhs, const Point &rhs);
 		friend bool operator>(const Point &lhs, const Point &rhs);
@@ -120,18 +120,18 @@ class Rectangle
 		Point upperRight;
 
 		Rectangle();
-		Rectangle(float x, float y, float xp, float yp);
+		Rectangle(double x, double y, double xp, double yp);
 		Rectangle(Point lowerLeft, Point upperRight);
 		Rectangle(const Rectangle &o) = default;
 
-		float area() const;
-		float margin() const;
-		float computeIntersectionArea(const Rectangle &givenRectangle) const;
-		float computeExpansionArea(const Point &givenPoint) const;
-		float computeExpansionMargin(const Point &givenPoint) const;
-		float computeExpansionArea(const Rectangle &givenRectangle) const;
-		float marginDelta(const Point &givenPoint, const Rectangle &givenRectangle) const;
-		float areaDelta(const Point &givenPoint, const Rectangle &givenRectangle) const;
+		double area() const;
+		double margin() const;
+		double computeIntersectionArea(const Rectangle &givenRectangle) const;
+		double computeExpansionArea(const Point &givenPoint) const;
+		double computeExpansionMargin(const Point &givenPoint) const;
+		double computeExpansionArea(const Rectangle &givenRectangle) const;
+		double marginDelta(const Point &givenPoint, const Rectangle &givenRectangle) const;
+		double areaDelta(const Point &givenPoint, const Rectangle &givenRectangle) const;
 		void expand(const Point &givenPoint);
 		void expand(const Rectangle &givenRectangle);
 		bool alignedForMerging(const Rectangle &givenRectangle) const;
@@ -164,7 +164,7 @@ class IsotheticPolygon
 		struct OptimalExpansion
 		{
 			unsigned index;
-			float area;
+			double area;
 		};
 
 		Rectangle boundingBox;
@@ -175,8 +175,8 @@ class IsotheticPolygon
 		explicit IsotheticPolygon(const Rectangle &baseRectangle);
 		IsotheticPolygon(const IsotheticPolygon &basePolygon);
 
-		float area() const;
-		float computeIntersectionArea(const Rectangle &givenRectangle) const;
+		double area() const;
+		double computeIntersectionArea(const Rectangle &givenRectangle) const;
 		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;
 		OptimalExpansion computeExpansionArea(const Rectangle &givenRectangle) const;
 		void expand(const Point &givenPoint);
@@ -191,8 +191,8 @@ class IsotheticPolygon
 		void increaseResolution(const Point &givenPoint, const Rectangle &clippingRectangle);
 		void increaseResolution(const Point &givenPoint, const IsotheticPolygon &clippingPolygon);
 
-		void maxLimit(float limit, unsigned d=0);
-		void minLimit(float limit, unsigned d=0);
+		void maxLimit(double limit, unsigned d=0);
+		void minLimit(double limit, unsigned d=0);
 		void merge(const IsotheticPolygon &mergePolygon);
 		void remove(unsigned basicRectangleIndex);
 		void deduplicate();
@@ -249,8 +249,8 @@ class InlineBoundedIsotheticPolygon {
 
         InlineBoundedIsotheticPolygon() :
             summary_rectangle_(
-                    Point(std::numeric_limits<float >::infinity()),
-                    Point(-std::numeric_limits<float >::infinity())
+                    Point(std::numeric_limits<double>::infinity()),
+                    Point(-std::numeric_limits<double>::infinity())
             )
         {
             rectangle_count_ = 0;
@@ -697,13 +697,9 @@ class InlineUnboundedIsotheticPolygon {
 
             // Inline oversize polygon into repacked node directly.
             if( total_rectangle_count_ <= cut_off_inline_rect_count ) {
-                if( total_rectangle_count_ >=
-                        std::numeric_limits<uint8_t>::max() ) {
-                    abort();
-                }
                 size_t sz = 0;
-                * (uint8_t *) buffer = (uint8_t) total_rectangle_count_;
-                sz += sizeof( uint8_t );
+                * (unsigned *) buffer = total_rectangle_count_;
+                sz += sizeof( total_rectangle_count_ );
                 for( auto iter = begin(); iter != end(); iter++ ) {
                     * (Rectangle *) (buffer + sz) = (*iter);
                     sz += sizeof( Rectangle );
@@ -715,9 +711,9 @@ class InlineUnboundedIsotheticPolygon {
 
             // Write magic to signify out of band polygon
             size_t sz = 0;
-            * (uint8_t *) buffer =
-                std::numeric_limits<uint8_t>::max();
-            sz += sizeof( uint8_t );
+            * (unsigned *) buffer =
+                std::numeric_limits<unsigned>::max();
+            sz += sizeof( unsigned );
 
             // Compute exact size needed to represent this out of band
             // polygon, allocate it using the new allocator.
@@ -766,5 +762,5 @@ constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects )
 // 216 for 3
 // 280 for 5
 //FIXME broken
-//static_assert( compute_sizeof_inline_unbounded_polygon(
-//            MAX_RECTANGLE_COUNT + 1 ) == 272 );
+static_assert( compute_sizeof_inline_unbounded_polygon(
+            MAX_RECTANGLE_COUNT + 1 ) == 272 );

@@ -217,7 +217,7 @@ TEST_CASE( "Tree Node Allocator: Test freelist split allocs" ) {
     allocator.free( alloc_data.second, sizeof(NodeType) );
     unsigned remaining_slots = (PAGE_DATA_SIZE % sizeof(NodeType))/poly_size + 
         sizeof(NodeType)/poly_size;
-    REQUIRE( remaining_slots == 6 );
+    REQUIRE( remaining_slots == 7 );
     for( unsigned i = 0; i < remaining_slots; i++ ) {
         auto alloc_data2 =
             allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(

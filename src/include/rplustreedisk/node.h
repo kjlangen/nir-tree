@@ -63,7 +63,7 @@ namespace rplustreedisk
     struct Partition
     {
         unsigned dimension;
-        float location;
+        double location;
     };
 
 

@@ -99,7 +99,7 @@ NODE_TEMPLATE_PARAMS
 unsigned LEAF_NODE_CLASS_TYPES::chooseSplitLeafAxis()
 {
     unsigned optimalAxis = 0;
-    float optimalMargin = std::numeric_limits<double>::infinity();
+    double optimalMargin = std::numeric_limits<double>::infinity();
 
     // Make the entries easier to work with
     std::vector<Point *> entriesCopy;
@@ -121,7 +121,7 @@ unsigned LEAF_NODE_CLASS_TYPES::chooseSplitLeafAxis()
         std::vector<Point *> groupB( entriesCopy.begin() + min_branch_factor, entriesCopy.end() );
 
         // Cycle through all M-2m+2 distributions
-        float totalMargin = 0.0;
+        double totalMargin = 0.0;
         while( groupA.size() <= max_branch_factor and groupB.size() >= min_branch_factor ) {
             // Compute the margin of groupA and groupB
             Rectangle boundingBoxA( *groupA[0], Point::closest_larger_point( *groupA[0] ) );
@@ -188,8 +188,8 @@ unsigned LEAF_NODE_CLASS_TYPES::chooseSplitIndex( unsigned axis ) {
     unsigned splitIndex = cur_offset_  / 2;
 
     // Find the best size out of all the distributions
-    float minOverlap = std::numeric_limits<double>::infinity();
-    float minArea = std::numeric_limits<double>::infinity();
+    double minOverlap = std::numeric_limits<double>::infinity();
+    double minArea = std::numeric_limits<double>::infinity();
 
     // Tracking what the current "cut" mark is
     unsigned currentSplitPoint = min_branch_factor;
@@ -209,7 +209,7 @@ unsigned LEAF_NODE_CLASS_TYPES::chooseSplitIndex( unsigned axis ) {
         }
 
         // Compute intersection area to determine best grouping of data points
-        float evalDistOverlap = boundingBoxA.computeIntersectionArea(boundingBoxB);
+        double evalDistOverlap = boundingBoxA.computeIntersectionArea(boundingBoxB);
 
         if( evalDistOverlap < minOverlap ) {
             // We save this current distribution of indices to return
@@ -217,12 +217,12 @@ unsigned LEAF_NODE_CLASS_TYPES::chooseSplitIndex( unsigned axis ) {
             splitIndex = currentSplitPoint;
 
             // Set this if we haven't already
-            if( minArea == std::numeric_limits<float>::infinity() ) {
+            if( minArea == std::numeric_limits<double>::infinity() ) {
                 minArea = boundingBoxA.area() + boundingBoxB.area();
             }
         } else if( evalDistOverlap == minOverlap ) {
             // If overlap is equal, we use the distribution that creates the smallest areas
-            float evalMinArea = boundingBoxA.area() + boundingBoxB.area();
+            double evalMinArea = boundingBoxA.area() + boundingBoxB.area();
 
             if( evalMinArea < minArea ) {
                 // Save this current distribution of indices to return
@@ -1203,9 +1203,9 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
         if( childrenAreLeaves ) {
             //std::cout << "ChildrenAreLeaves: " << childrenAreLeaves <<
             //    std::endl;
-            float smallestOverlapExpansion = std::numeric_limits<double>::infinity();
-            float smallestExpansionArea = std::numeric_limits<double>::infinity();
-            float smallestArea = std::numeric_limits<double>::infinity();
+            double smallestOverlapExpansion = std::numeric_limits<double>::infinity();
+            double smallestExpansionArea = std::numeric_limits<double>::infinity();
+            double smallestArea = std::numeric_limits<double>::infinity();
 
             // Choose the entry in N whose rectangle needs least overlap enlargement
             unsigned num_entries_els = node->cur_offset_;
@@ -1213,7 +1213,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
                 const Branch &b = node->entries.at(i);
 
                 // Compute overlap
-                float testOverlapExpansionArea =
+                double testOverlapExpansionArea =
                     computeOverlapGrowth<NodeEntry,Branch,max_branch_factor>(i, node->entries,
                             node->cur_offset_, givenEntryBoundingBox);
 
@@ -1228,7 +1228,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
                     smallestArea = b.boundingBox.area();
                 } else if( smallestOverlapExpansion == testOverlapExpansionArea ) {
                     // Use expansion area to break tie
-                    float testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
+                    double testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
                     if( smallestExpansionArea > testExpansionArea ) {
                         descentIndex = i;
                         // Don't need to update smallestOverlapExpansion, its the same
@@ -1236,7 +1236,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
                         smallestArea = b.boundingBox.area();
                     } else if( smallestExpansionArea == testExpansionArea ) {
                         // Use area to break tie
-                        float testArea = b.boundingBox.area();
+                        double testArea = b.boundingBox.area();
                         if( smallestArea > testArea ) {
                             descentIndex = i;
                             // Don't need to update smallestOverlapExpansion, its the same
@@ -1248,22 +1248,22 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::chooseSubtree( const NodeEntry &givenN
             }
         // childrenAreLeaves end
         } else {
-            float smallestExpansionArea = std::numeric_limits<double>::infinity();
-            float smallestArea = std::numeric_limits<double>::infinity();
+            double smallestExpansionArea = std::numeric_limits<double>::infinity();
+            double smallestArea = std::numeric_limits<double>::infinity();
 
             // CL2 [Choose subtree]
             // Find the bounding box with least required expansion/overlap
             unsigned num_entries_els = node->cur_offset_;
             for( unsigned i = 0; i < num_entries_els; i++ ) {
                 const Branch &b = node->entries.at(i);
-                float testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
+                double testExpansionArea = b.boundingBox.computeExpansionArea(givenEntryBoundingBox);
                 if( smallestExpansionArea > testExpansionArea ) {
                     descentIndex = i;
                     smallestExpansionArea = testExpansionArea;
                     smallestArea = b.boundingBox.area();
                 } else if( smallestExpansionArea == testExpansionArea ) {
                     // Use area to break tie
-                    float testArea = b.boundingBox.area();
+                    double testArea = b.boundingBox.area();
                     if( smallestArea > testArea ) {
                         descentIndex = i;
                         // Don't need to update smallestExpansionArea
@@ -1314,8 +1314,8 @@ unsigned BRANCH_NODE_CLASS_TYPES::chooseSplitNonLeafAxis()
 {
     unsigned optimalAxisLower = 0;
     unsigned optimalAxisUpper = 0;
-    float optimalMarginLower = std::numeric_limits<double>::infinity();
-    float optimalMarginUpper = std::numeric_limits<double>::infinity();
+    double optimalMarginLower = std::numeric_limits<double>::infinity();
+    double optimalMarginUpper = std::numeric_limits<double>::infinity();
 
     // Make entries easier to work with
     std::vector<Branch *> lowerEntries;
@@ -1353,8 +1353,8 @@ unsigned BRANCH_NODE_CLASS_TYPES::chooseSplitNonLeafAxis()
                 min_branch_factor, upperEntries.end());
 
         // Cycle through all M-2m+2 distributions
-        float totalMarginLower = 0.0;
-        float totalMarginUpper = 0.0;
+        double totalMarginLower = 0.0;
+        double totalMarginUpper = 0.0;
         while( groupALower.size() <= max_branch_factor and groupBLower.size() >= min_branch_factor ) {
             // Compute the margin of groupA and groupB
             Rectangle boundingBoxALower = groupALower[0]->boundingBox;
@@ -1450,8 +1450,8 @@ unsigned BRANCH_NODE_CLASS_TYPES::chooseSplitIndex(
     unsigned splitIndex = cur_offset_  / 2;
 
     // Find the best size out of all the distributions
-    float minOverlap = std::numeric_limits<double>::infinity();
-    float minArea = std::numeric_limits<double>::infinity();
+    double minOverlap = std::numeric_limits<double>::infinity();
+    double minArea = std::numeric_limits<double>::infinity();
 
     // Tracking what the current "cut" mark is
     unsigned currentSplitPoint = min_branch_factor;
@@ -1470,7 +1470,7 @@ unsigned BRANCH_NODE_CLASS_TYPES::chooseSplitIndex(
         }
 
         // Compute intersection area to determine best grouping of data points
-        float evalDistOverlap = boundingBoxA.computeIntersectionArea(boundingBoxB);
+        double evalDistOverlap = boundingBoxA.computeIntersectionArea(boundingBoxB);
 
         if( evalDistOverlap < minOverlap ) {
             // We save this current distribution of indices to return
@@ -1478,12 +1478,12 @@ unsigned BRANCH_NODE_CLASS_TYPES::chooseSplitIndex(
             splitIndex = currentSplitPoint;
 
             // Set this if we haven't already
-            if( minArea == std::numeric_limits<float>::infinity() ) {
+            if( minArea == std::numeric_limits<double>::infinity() ) {
                 minArea = boundingBoxA.area() + boundingBoxB.area();
             }
         } else if( evalDistOverlap == minOverlap ) {
             // If overlap is equal, we use the distribution that creates the smallest areas
-            float evalMinArea = boundingBoxA.area() + boundingBoxB.area();
+            double evalMinArea = boundingBoxA.area() + boundingBoxB.area();
 
             if( evalMinArea < minArea ) {
                 // Save this current distribution of indices to return
@@ -1976,8 +1976,8 @@ void BRANCH_NODE_CLASS_TYPES::stat() const
         unsigned long totalNodes;
         unsigned long singularBranches;
         unsigned long totalLeaves;
-        float coverage;
-        float overlap;
+        double coverage;
+        double overlap;
         std::vector<unsigned long> histogramFanout;
 
         StatWalker()

@@ -663,7 +663,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         }
         std::cout << "Checksum OK." << std::endl;
 
-        /*
         if( configU["tree"] == NIR_TREE ) {
             std::cout << "Repacking..." << std::endl;
             auto tree_ptr =
@@ -677,7 +676,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
             std::string fname = "repacked_rstar.txt";
             repack_tree( tree_ptr, fname, rstartreedisk::repack_subtree<3,7> );
         }
-        */
 
         spatialIndex->write_metadata();
 
