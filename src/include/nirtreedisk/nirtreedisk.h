@@ -42,6 +42,7 @@ namespace nirtreedisk
 		public:
             tree_node_handle root;
             std::unique_ptr<tree_node_allocator> node_allocator_;
+			std::vector<bool> hasReinsertedOnLevel;
 
 			Statistics stats;
 
@@ -55,6 +56,7 @@ namespace nirtreedisk
                 size_t existing_page_count =
                     node_allocator_->buffer_pool_.get_preexisting_page_count();
 
+                hasReinsertedOnLevel = {false};
                 // If this is a fresh tree, we need a root
                 if( existing_page_count == 0 ) { 
                     auto alloc =
@@ -63,7 +65,7 @@ namespace nirtreedisk
                     root = alloc.second;
                     new (&(*(alloc.first)))
                         LeafNode<min_branch_factor,max_branch_factor,strategy>( this,
-                                tree_node_handle(nullptr), root );
+                                tree_node_handle(nullptr), root, 0 );
 
                     return;
                 }

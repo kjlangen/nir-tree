@@ -219,6 +219,7 @@ namespace nirtreedisk
             tree_node_handle parent;
             unsigned cur_offset_;
             tree_node_handle self_handle_;
+            uint8_t level_;
 
             std::array<Point, max_branch_factor+1> entries;
 
@@ -226,10 +227,11 @@ namespace nirtreedisk
 			LeafNode(
                 NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef,
                 tree_node_handle parent,
-                tree_node_handle self_handle
+                tree_node_handle self_handle,
+                uint8_t level
             ) :
                 treeRef( treeRef ), parent( parent ), cur_offset_( 0 ),
-                self_handle_( self_handle ) {
+                self_handle_( self_handle ), level_( level ) {
                     static_assert( sizeof(
                                 LeafNode<min_branch_factor,max_branch_factor,strategy>)
                             <= PAGE_DATA_SIZE );
@@ -256,12 +258,16 @@ namespace nirtreedisk
                     tree_node_handle handle_to_skip );
 			SplitResult splitNode(Partition p, bool is_downsplit);
 			SplitResult splitNode();
-			SplitResult adjustTree();
+			SplitResult adjustTree( std::vector<bool>
+                    &hasReinsertedOnLevel );
 			void condenseTree();
 
 			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
-			tree_node_handle insert(Point givenPoint);
+			tree_node_handle insert( Point givenPoint, std::vector<bool>
+                    &hasReinsertedOnLevel);
+			void reInsert( std::vector<bool> &hasReinsertedOnLevel );
+
 			tree_node_handle remove(Point givenPoint);
 
 			// Miscellaneous
@@ -286,14 +292,15 @@ namespace nirtreedisk
             tree_node_handle parent;
             unsigned cur_offset_;
             tree_node_handle self_handle_;
+            uint8_t level_;
 
             std::array<Branch, max_branch_factor+1> entries;
 
 			// Constructors and destructors
 			BranchNode(NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef, tree_node_handle parent,
-                    tree_node_handle self_handle ) :
+                    tree_node_handle self_handle, uint8_t level ) :
                 treeRef( treeRef ), parent( parent ), cur_offset_( 0 ),
-                self_handle_( self_handle ) {
+                self_handle_( self_handle ), level_( level ) {
                     /*
                     static_assert( sizeof(
                                 BranchNode<min_branch_factor,max_branch_factor,strategy>)
@@ -323,7 +330,8 @@ namespace nirtreedisk
                 entries.at( this->cur_offset_++ ) = entry;
             }
 
-			tree_node_handle chooseNode(Point givenPoint);
+			tree_node_handle chooseNode(std::variant<Branch,Point>
+                    &nodeEntry, uint8_t stopping_level );
 			tree_node_handle findLeaf(Point givenPoint);
 			Partition partitionNode();
 
@@ -836,7 +844,10 @@ namespace nirtreedisk
 
 			// Data structure interface functions
 			void exhaustiveSearch(Point &requestedPoint, std::vector<Point> &accumulator);
-			tree_node_handle insert(Point givenPoint);
+			tree_node_handle insert(std::variant<Branch,Point>
+                    &nodeEntry,  std::vector<bool>
+                    &hasReinsertedOnLevel);
+			void reInsert( std::vector<bool> &hasReinsertedOnLevel );
 			tree_node_handle remove(Point givenPoint);
 
 			// Miscellaneous

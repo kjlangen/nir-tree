@@ -698,6 +698,23 @@ IsotheticPolygon::OptimalExpansion IsotheticPolygon::computeExpansionArea(const 
 	return expansion;
 }
 
+std::pair<double, std::vector<IsotheticPolygon::OptimalExpansion>>
+IsotheticPolygon::computeExpansionArea( const IsotheticPolygon &poly ) const {
+    // What we want to know is how much bigger this polygon has to get
+    // to enclose the other polygon.
+    // I think we call computeOptimalExpansionArea on every rect in
+    // and sum the additional area?
+
+    std::vector<IsotheticPolygon::OptimalExpansion> expansions;
+    double totalAreas = 0.0;
+    for( const auto &rect : poly.basicRectangles ) {
+        IsotheticPolygon::OptimalExpansion exp = computeExpansionArea( rect );
+        totalAreas += exp.area;
+        expansions.push_back( exp );
+    }
+    return std::make_pair( totalAreas, expansions );
+}
+
 void IsotheticPolygon::expand(const Point &givenPoint)
 {
 	unsigned minIndex = 0;

@@ -179,6 +179,8 @@ class IsotheticPolygon
 		double computeIntersectionArea(const Rectangle &givenRectangle) const;
 		OptimalExpansion computeExpansionArea(const Point &givenPoint) const;
 		OptimalExpansion computeExpansionArea(const Rectangle &givenRectangle) const;
+        std::pair<double, std::vector<OptimalExpansion>>
+                computeExpansionArea(const IsotheticPolygon &poly) const;
 		void expand(const Point &givenPoint);
 		void expand(const Point &givenPoint, const OptimalExpansion &expansion);
 		bool intersectsRectangle(const Rectangle &givenRectangle) const;

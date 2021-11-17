@@ -40,12 +40,14 @@ NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::search( Rectangle req
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::insert( Point givenPoint ) {
+    std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
     if( root.get_type() == LEAF_NODE ) {
         auto root_node = get_leaf_node( root );
-        root = root_node->insert(givenPoint);
+        root = root_node->insert(givenPoint, hasReinsertedOnLevel);
     } else {
         auto root_node = get_branch_node( root );
-        root = root_node->insert(givenPoint);
+        std::variant<Branch,Point> entry = givenPoint;
+        root = root_node->insert(entry, hasReinsertedOnLevel);
     }
 }
 
