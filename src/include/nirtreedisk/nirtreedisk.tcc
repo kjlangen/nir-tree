@@ -49,6 +49,7 @@ void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::insert( Point gi
         std::variant<Branch,Point> entry = givenPoint;
         root = root_node->insert(entry, hasReinsertedOnLevel);
     }
+    std::cout << "Top level insert returning." << std::endl;
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>

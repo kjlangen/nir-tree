@@ -44,8 +44,7 @@ createFullLeafNode(DefaulTreeType &tree, tree_node_handle parent, Point p=Point:
 
     std::vector<bool> hasReinsertedOnLevel = {false};
 	for (unsigned i = 0; i < 7; i++) {
-		auto new_handle = node->insert(p, hasReinsertedOnLevel );
-        REQUIRE( new_handle == node_handle );
+		node->insert(p, hasReinsertedOnLevel );
 	}
 
     node->parent = parent;
