@@ -14,7 +14,7 @@
 // limitations under the License.
 #pragma once
 
-#define MAX_RECTANGLE_COUNT 5
+#define MAX_RECTANGLE_COUNT 3
 
 #include <iostream>
 #include <algorithm>
@@ -764,5 +764,7 @@ constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects )
 // 216 for 3
 // 280 for 5
 //FIXME broken
+/*(
 static_assert( compute_sizeof_inline_unbounded_polygon(
             MAX_RECTANGLE_COUNT + 1 ) == 272 );
+            */

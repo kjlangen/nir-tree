@@ -709,10 +709,12 @@ IsotheticPolygon::computeExpansionArea( const IsotheticPolygon &poly ) const {
     double totalAreas = 0.0;
     for( const auto &rect : poly.basicRectangles ) {
         IsotheticPolygon::OptimalExpansion exp = computeExpansionArea( rect );
-        totalAreas += exp.area;
+        if( exp.area != 0.0 and exp.area != -1.0 ) {
+            totalAreas += exp.area;
+        }
         expansions.push_back( exp );
     }
-    return std::make_pair( totalAreas, expansions );
+    return std::make_pair( totalAreas == 0.0 ? -1.0 : totalAreas, expansions );
 }
 
 void IsotheticPolygon::expand(const Point &givenPoint)
