@@ -299,60 +299,9 @@ SplitResult LEAF_NODE_CLASS_TYPES::splitNode(
     }
     this->cur_offset_ = 0;
 
-    // Push left to disk
-    if( left_polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-        split.leftBranch.boundingPoly =
-            InlineBoundedIsotheticPolygon();
-        std::get<InlineBoundedIsotheticPolygon>(
-                split.leftBranch.boundingPoly
-        ).push_polygon_to_disk( left_polygon );
-    } else {
-        unsigned overfull_rect_count = (unsigned) (2 *
-                left_polygon.basicRectangles.size() );
-        overfull_rect_count =
-            std::min(overfull_rect_count,
-                (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                );
+    update_branch_polygon( split.leftBranch, left_polygon, treeRef, true );
+    update_branch_polygon( split.rightBranch, right_polygon, treeRef, true );
 
-        auto poly_alloc_data =
-            allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                    compute_sizeof_inline_unbounded_polygon(
-                        overfull_rect_count ), NodeHandleType(
-                            BIG_POLYGON ) );
-        new (&(*poly_alloc_data.first))
-            InlineUnboundedIsotheticPolygon( allocator,
-                    overfull_rect_count );
-        split.leftBranch.boundingPoly = poly_alloc_data.second;
-        poly_alloc_data.first->push_polygon_to_disk( left_polygon );
-    }
-
-    // Push right to disk
-    if( right_polygon.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-        split.rightBranch.boundingPoly =
-            InlineBoundedIsotheticPolygon();
-        std::get<InlineBoundedIsotheticPolygon>(
-                split.rightBranch.boundingPoly
-        ).push_polygon_to_disk( right_polygon );
-    } else {
-        unsigned overfull_rect_count = (unsigned) (2 *
-                right_polygon.basicRectangles.size() );
-        overfull_rect_count =
-            std::min(overfull_rect_count,
-                (unsigned) InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                );
-
-        auto poly_alloc_data =
-            allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                    compute_sizeof_inline_unbounded_polygon(
-                        overfull_rect_count ), NodeHandleType(
-                            BIG_POLYGON ) );
-        new (&(*poly_alloc_data.first))
-            InlineUnboundedIsotheticPolygon( allocator,
-                    overfull_rect_count );
-        split.rightBranch.boundingPoly = poly_alloc_data.second;
-        poly_alloc_data.first->push_polygon_to_disk( right_polygon );
-
-    }
     return split;
 }
 
@@ -407,6 +356,7 @@ void LEAF_NODE_CLASS_TYPES::reInsert(
     // Need to really think about whether this is correct
     // We want to adjust the paths on the way up to precisely reflect
     // what region we are in.
+
     fix_up_path_polys( self_handle_, treeRef );
     tree_node_handle root_handle = treeRef->root;
 
@@ -467,6 +417,49 @@ IsotheticPolygon get_polygon_path_constraints(
     return constraint_poly;
 }
 
+template <int min_branch_factor, int max_branch_factor, class strategy>
+void update_branch_polygon(
+    Branch &branch_to_update,
+    IsotheticPolygon &polygon_to_write,
+    NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef,
+    bool force_create = false
+) {
+    if( polygon_to_write.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
+        // Could leak if we had an out of band rectangle before
+        branch_to_update.boundingPoly = InlineBoundedIsotheticPolygon();
+        std::get<InlineBoundedIsotheticPolygon>( branch_to_update.boundingPoly
+                ).push_polygon_to_disk( polygon_to_write );
+    } else {
+        tree_node_allocator *allocator = get_node_allocator( treeRef );
+        if( std::holds_alternative<tree_node_handle>(
+                    branch_to_update.boundingPoly ) and not force_create ) {
+            auto poly_pin =
+                allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                        std::get<tree_node_handle>(
+                            branch_to_update.boundingPoly ) );
+            if( poly_pin->get_max_rectangle_count_on_first_page() ==
+                    InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page() ) {
+                poly_pin->push_polygon_to_disk( polygon_to_write );
+                return;
+            }
+        }
+
+        unsigned rect_count = force_create ?
+            polygon_to_write.basicRectangles.size() :
+            InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page();
+
+        auto alloc_data =
+            allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                    compute_sizeof_inline_unbounded_polygon(
+                        rect_count ), NodeHandleType( BIG_POLYGON ) );
+        new (&(*alloc_data.first)) InlineUnboundedIsotheticPolygon(
+                allocator,
+                rect_count );
+        alloc_data.first->push_polygon_to_disk( polygon_to_write );
+        branch_to_update.boundingPoly = alloc_data.second;
+    }
+}
+
 NODE_TEMPLATE_PARAMS
 void BRANCH_NODE_CLASS_TYPES::reInsert(
     std::vector<bool> &hasReinsertedOnLevel
@@ -510,37 +503,30 @@ void BRANCH_NODE_CLASS_TYPES::reInsert(
             self_handle_, treeRef );
 
     cur_offset_ = remainder; 
-    fix_up_path_polys( self_handle_, treeRef );
 
     auto tree_ref_backup = treeRef;
-    tree_node_handle root_handle = tree_ref_backup->root;
-
     tree_node_allocator *allocator = get_node_allocator(
             tree_ref_backup );
+
+    fix_up_path_polys( self_handle_, treeRef );
+    for( Branch &entry : entriesToReinsert ) {
+        // FIXME: consolidate with stuff below.
+        IsotheticPolygon branch_poly = entry.materialize_polygon(
+                allocator );
+        branch_poly.intersection( true_region_mask );
+
+        cut_out_branch_region_in_path( self_handle_, branch_poly, treeRef );
+    }
+
+    tree_node_handle root_handle = tree_ref_backup->root;
+
     for( Branch &entry : entriesToReinsert ) {
 
         IsotheticPolygon branch_poly = entry.materialize_polygon(
                 allocator );
 
         branch_poly.intersection( true_region_mask );
-        if( branch_poly.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-            entry.boundingPoly = InlineBoundedIsotheticPolygon();
-            std::get<InlineBoundedIsotheticPolygon>( entry.boundingPoly
-                    ).push_polygon_to_disk( branch_poly );
-        } else {
-            auto alloc_data =
-                allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        compute_sizeof_inline_unbounded_polygon(
-                            InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                            ), NodeHandleType( BIG_POLYGON ) );
-            new (&(*alloc_data.first)) InlineUnboundedIsotheticPolygon(
-                    allocator,
-                    InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                    );
-            alloc_data.first->push_polygon_to_disk( branch_poly );
-            entry.boundingPoly = alloc_data.second;
-        }
-
+        update_branch_polygon( entry, branch_poly, tree_ref_backup );
         auto root_node = tree_ref_backup->get_branch_node( root_handle );
 
         std::variant<Branch,Point> ent = entry;
@@ -723,32 +709,49 @@ void fix_up_path_polys(
             parent_node->make_disjoint_from_children( our_poly, current_handle );
 
             // Now we need to store this poly
-            if( our_poly.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-                // FIXME: should free out of line poly if it was already
-                // there
-                Branch &parent_branch = parent_node->locateBranch( current_handle );
-                parent_branch.boundingPoly =
-                    InlineBoundedIsotheticPolygon();
-                std::get<InlineBoundedIsotheticPolygon>(parent_branch.boundingPoly).push_polygon_to_disk( our_poly );
-            } else {
-                // FIXME: should free out of line poly if it was already
-                // there
+            Branch &parent_branch = parent_node->locateBranch( current_handle );
+            update_branch_polygon( parent_branch, our_poly, treeRef );
+        }
+        current_handle = parent_handle;
+    }
+    // Hit the root, done!
+}
 
-                uint16_t alloc_size =
-                    compute_sizeof_inline_unbounded_polygon(
-                            InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                            );
-                tree_node_allocator *allocator = get_node_allocator( treeRef );
-                auto alloc_data = allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                        alloc_size, NodeHandleType( BIG_POLYGON ) );
-                new (&(*alloc_data.first))
-                    InlineUnboundedIsotheticPolygon( allocator,
-                            InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                            );
-                alloc_data.first->push_polygon_to_disk( our_poly );
-                Branch &parent_branch = parent_node->locateBranch( current_handle );
-                parent_branch.boundingPoly = alloc_data.second;
-            }
+
+
+template <int min_branch_factor, int max_branch_factor, class strategy>
+void cut_out_branch_region_in_path(
+    tree_node_handle start_handle,
+    IsotheticPolygon &region_to_cut_out,
+    NIRTreeDisk<min_branch_factor,max_branch_factor,strategy> *treeRef
+) {
+    tree_node_handle current_handle = start_handle;
+    while( current_handle != nullptr ) {
+        // Regenerate this node's bounding polygon
+
+        tree_node_handle parent_handle;
+        IsotheticPolygon our_poly;
+        if( current_handle.get_type() == LEAF_NODE ) {
+            auto leaf_node = treeRef->get_leaf_node( current_handle );
+            our_poly = IsotheticPolygon( leaf_node->boundingBox() );
+            parent_handle = leaf_node->parent;
+        } else {
+            auto branch_node = treeRef->get_branch_node( current_handle );
+            our_poly = IsotheticPolygon( branch_node->boundingBox() );
+            parent_handle = branch_node->parent;
+        }
+        if( parent_handle ) {
+            auto parent_node = treeRef->get_branch_node( parent_handle );
+
+            Branch &my_branch  = parent_node->locateBranch( current_handle );
+            IsotheticPolygon our_poly = my_branch.materialize_polygon(
+                    treeRef->node_allocator_.get() );
+            our_poly.increaseResolution( Point::atInfinity, region_to_cut_out );
+            our_poly.refine();
+            our_poly.recomputeBoundingBox();
+   
+            Branch &parent_branch = parent_node->locateBranch( current_handle );
+            update_branch_polygon( parent_branch, our_poly, treeRef );
         }
         current_handle = parent_handle;
     }
@@ -1071,6 +1074,7 @@ uint16_t BRANCH_NODE_CLASS_TYPES::compute_packed_size(
 
 NODE_TEMPLATE_PARAMS
 tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator ) {
+    std::cout << "Repacking: " << self_handle_ << std::endl;
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
     uint16_t alloc_size = compute_packed_size();
     auto alloc_data = allocator->create_new_tree_node<packed_node>(
@@ -1085,12 +1089,14 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
         buffer += write_data_to_buffer( buffer, &(entries.at(i)) );
     }
     assert( buffer - alloc_data.first->buffer_ == alloc_size );
+    std::cout << "Done." << std::endl;
     return alloc_data.second;
 }
 
 NODE_TEMPLATE_PARAMS
 tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
         *existing_allocator, tree_node_allocator *new_allocator ) {
+    std::cout << "Repacking: " << self_handle_ << std::endl;
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
     unsigned maximum_repacked_rect_size;
     uint16_t alloc_size = 0;
@@ -1123,6 +1129,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
     }
     unsigned true_size = (buffer - alloc_data.first->buffer_);
     assert( true_size == alloc_size );
+    std::cout << "Done." << std::endl;
     return alloc_data.second;
 }
 
@@ -1581,6 +1588,7 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
             // one of the branches to encode our expansion
             double minimal_area_expansion =
                 std::numeric_limits<double>::max();
+            double minimal_poly_area = std::numeric_limits<double>::max();
 
             // This is the branch that gives us that minimum area
             // expansion
@@ -1598,8 +1606,13 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         branch_poly );
                 minimal_area_expansion =
                     expansion_computation_results.first;
+                minimal_poly_area = branch_poly.area();
                 expansions = expansion_computation_results.second;
-
+                /*
+                if( minimal_area_expansion == -1.0 ) {
+                    abort();
+                }
+                */
             } else {
                 IsotheticPolygon::OptimalExpansion exp = node_poly.computeExpansionArea(
                         std::get<Point>( nodeEntry ) );
@@ -1607,8 +1620,7 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                 expansions.push_back( exp );
             }
 
-            for( unsigned i = 1; i < cur_node->cur_offset_ &&
-                    minimal_area_expansion != -1.0; i++ ) {
+            for( unsigned i = 1; i < cur_node->cur_offset_; i++ ) {
                 Branch &b = cur_node->entries.at(i);
                 node_poly = b.materialize_polygon( allocator );
                 assert( node_poly.basicRectangles.size() > 0 );
@@ -1625,16 +1637,27 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                     // the expanded rectangle could be part of two
                     // distinct polygons. So as a result of doing this
                     // the polygon's constituent rectangles may now
-                    // overlap. FIXME
+                    // overlap.
                     auto expansion_computation_results = node_poly.computeExpansionArea(
                             branch_poly );
+                    double poly_area = node_poly.area();
                     if( expansion_computation_results.first <
-                            minimal_area_expansion ) {
+                            minimal_area_expansion or 
+                     (expansion_computation_results.first ==
+                      minimal_area_expansion and poly_area <
+                      minimal_poly_area)
+                     ) {
                         minimal_area_expansion =
                             expansion_computation_results.first;
+                        minimal_poly_area = poly_area;
                         expansions = expansion_computation_results.second;
                         smallestExpansionBranchIndex = i;
                     }
+                    /*
+                    if( minimal_area_expansion == -1.0 ) {
+                        abort();
+                    }
+                    */
                 } else {
                     IsotheticPolygon::OptimalExpansion exp = node_poly.computeExpansionArea(
                             std::get<Point>( nodeEntry ) );
@@ -1688,25 +1711,8 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         other_poly.refine();
                         other_poly.recomputeBoundingBox();
 
-                        if( other_poly.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-                            other_branch.boundingPoly =
-                                InlineBoundedIsotheticPolygon();
-                            std::get<InlineBoundedIsotheticPolygon>(
-                                    other_branch.boundingPoly
-                                    ).push_polygon_to_disk( other_poly );
-                        } else {
-                            auto alloc_data =
-                                allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                                        compute_sizeof_inline_unbounded_polygon(
-                                            InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page() ), NodeHandleType( BIG_POLYGON ) );
-                            new (&(*alloc_data.first))
-                                InlineUnboundedIsotheticPolygon(
-                                        allocator,
-                                        InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                                        );
-                            alloc_data.first->push_polygon_to_disk( other_poly );
-                            other_branch.boundingPoly = alloc_data.second;
-                        }
+                        update_branch_polygon( other_branch, other_poly, treeRef );
+
                     }
                 }
                 
@@ -1781,25 +1787,7 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                 node_poly.refine();
                 node_poly.recomputeBoundingBox();
 
-                if( node_poly.basicRectangles.size() <= MAX_RECTANGLE_COUNT ) {
-                    chosen_branch.boundingPoly =
-                        InlineBoundedIsotheticPolygon();
-                    std::get<InlineBoundedIsotheticPolygon>(
-                            chosen_branch.boundingPoly
-                            ).push_polygon_to_disk( node_poly );
-                } else {
-                    auto alloc_data =
-                        allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                                compute_sizeof_inline_unbounded_polygon(
-                                    InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()),
-                                    NodeHandleType( BIG_POLYGON ));
-                    new (&(*alloc_data.first))
-                        InlineUnboundedIsotheticPolygon( allocator,
-                                InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                                );
-                    alloc_data.first->push_polygon_to_disk( node_poly );
-                    chosen_branch.boundingPoly = alloc_data.second;
-                }
+                update_branch_polygon( chosen_branch, node_poly, treeRef );
             }
 
             // Descend
@@ -1995,6 +1983,9 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
             >= p.location;
         assert( not(is_contained_left and is_contained_right) );
 
+
+        IsotheticPolygon child_poly = branch.materialize_polygon(
+                allocator );
         // Entirely contained in the left polygon
         if( is_contained_left and not is_contained_right) {
             if( branch.child.get_type() == LEAF_NODE ) {
@@ -2046,6 +2037,8 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
             }
         // Partially spanned by both nodes, need to downsplit
         } else {
+            IsotheticPolygon branch_poly = branch.materialize_polygon(
+                    allocator );
             SplitResult downwardSplit;
 
             if( branch.child.get_type() == LEAF_NODE ) {
@@ -2299,25 +2292,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
                     allocator );
             branch_polygon.increaseResolution( Point::atInfinity, insertion_polygon );
             branch_polygon.recomputeBoundingBox();
-            if( branch_polygon.basicRectangles.size() <= 
-                    MAX_RECTANGLE_COUNT ) {
-                b.boundingPoly = InlineBoundedIsotheticPolygon();
-                std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
-                        ).push_polygon_to_disk( branch_polygon );
-            } else {
-                auto alloc_data =
-                    allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
-                            compute_sizeof_inline_unbounded_polygon(
-                                InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                                ), NodeHandleType( BIG_POLYGON ) );
-                new (&(*alloc_data.first))
-                    InlineUnboundedIsotheticPolygon( allocator,
-                            InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page()
-                            );
-                alloc_data.first->push_polygon_to_disk( branch_polygon
-                        );
-                b.boundingPoly = alloc_data.second;
-            }
+            update_branch_polygon( b, branch_polygon, treeRef );
         }
 
         current_node->addBranchToNode( sub_branch );
