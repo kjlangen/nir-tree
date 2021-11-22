@@ -184,9 +184,9 @@ class PointGenerator
 		std::fstream backingFile;
 		unsigned offset;
 
+	public:
 		std::vector<Point> pointBuffer;
 
-	public:
 		static_assert(std::is_base_of<BenchTypeClasses::Benchmark, T>::value && 
 			!std::is_same<T,BenchTypeClasses::Benchmark>::value, "PointGenerator must take a Benchmark subclass");
 

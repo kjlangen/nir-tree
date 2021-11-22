@@ -1,5 +1,6 @@
 #include <bench/randomPoints.h>
 #include <unistd.h>
+#include <algorithm>
 
 unsigned BenchTypeClasses::Uniform::size = 10000;
 unsigned BenchTypeClasses::Uniform::dimensions = dimensions;
@@ -157,7 +158,7 @@ std::optional<Point> PointGenerator<T>::nextPoint()
 	return nextPoint(BenchDetail::getBenchTag<T>{});
 }
 
-static Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
+static std::vector<Rectangle> generateRectangles(unsigned benchmarkSize, unsigned seed, unsigned rectanglesSize)
 {
 	std::default_random_engine generator(seed + benchmarkSize);
 	std::uniform_real_distribution<double> pointDist(0.0, 1.0);
@@ -165,13 +166,15 @@ static Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsi
 	// Initialize rectangles
 	Point ll;
 	Point ur;
-	Rectangle *rectangles = new Rectangle[rectanglesSize];
+    std::vector<Rectangle> rectangles;
+    rectangles.reserve( rectanglesSize );
 	// Compute the dimensions-th root of a percentage that will give rectangles that in expectation return 1000 points
 	double requiredPercentage = 1500.0 / (double) benchmarkSize;
 	double root = std::pow(requiredPercentage, 1.0 / (double) dimensions);
 	std::cout << "Begnning initialization of " << rectanglesSize << " rectangles with " << requiredPercentage << "% and " << root << "..." << std::endl;
 	for (unsigned i = 0; i < rectanglesSize; ++i)
 	{
+        Rectangle rect;
 		// Generate a new point and then create a square from it that covers 5% of the total area
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
@@ -179,14 +182,14 @@ static Rectangle *generateRectangles(unsigned benchmarkSize, unsigned seed, unsi
 			ur[d] = ll[d] + root;
 		}
 
-		rectangles[i] = Rectangle(ll, ur);
+		rectangles.push_back( Rectangle(ll, ur) );
 	}
 	std::cout << "Initialization OK." << std::endl;
 
 	return rectangles;
 }
 
-static Rectangle *generateBitRectangles()
+static std::vector<Rectangle> generateBitRectangles()
 {
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
@@ -201,19 +204,22 @@ static Rectangle *generateBitRectangles()
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[BitQuerySize];
+    std::vector<Rectangle> rectangles;
+    rectangles.reserve( BitQuerySize );
 	std::cout << "Beginning initialization of " << BitQuerySize << " computer rectangles..." << std::endl;
 	for (unsigned i = 0; i < BitQuerySize; ++i)
 	{
+        Rectangle rect;
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			rect.lowerLeft[d] = *doubleBuffer;
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].upperRight[d] = *doubleBuffer;
+			rect.upperRight[d] = *doubleBuffer;
 		}
+        rectangles.push_back( rect );
 	}
 	std::cout << "Initialization OK." << std::endl;
 
@@ -224,7 +230,7 @@ static Rectangle *generateBitRectangles()
 	return rectangles;
 }
 
-static Rectangle *generateHazeRectangles()
+static std::vector<Rectangle> generateHazeRectangles()
 {
 	// Query set is pre-generated and requires 2 or 3 dimensions
 	assert(dimensions == 2 || dimensions == 3);
@@ -239,19 +245,22 @@ static Rectangle *generateHazeRectangles()
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[HazeQuerySize];
+    std::vector<Rectangle> rectangles;
+    rectangles.reserve( HazeQuerySize );
 	std::cout << "Beginning initialization of " << HazeQuerySize << " hazy rectangles..." << std::endl;
 	for (unsigned i = 0; i < HazeQuerySize; ++i)
 	{
+        Rectangle rect;
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			rect.lowerLeft[d] = *doubleBuffer;
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].upperRight[d] = *doubleBuffer;
+			rect.upperRight[d] = *doubleBuffer;
 		}
+        rectangles.push_back( rect );
 	}
 	std::cout << "Initialization OK." << std::endl;
 
@@ -262,7 +271,7 @@ static Rectangle *generateHazeRectangles()
 	return rectangles;
 }
 
-static Rectangle *generateCaliRectangles()
+static std::vector<Rectangle> generateCaliRectangles()
 {
 	// Query set is pre-generated and requires 2 dimensions
 	assert(dimensions == 2);
@@ -277,19 +286,23 @@ static Rectangle *generateCaliRectangles()
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[CaliforniaQuerySize];
+    std::vector<Rectangle> rectangles;
+    rectangles.reserve(CaliforniaQuerySize);
 	std::cout << "Beginning initialization of " << CaliforniaQuerySize << " california roll rectangles..." << std::endl;
 	for (unsigned i = 0; i < CaliforniaQuerySize; ++i)
 	{
+        Rectangle loc_rect;
+
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			loc_rect.lowerLeft[d] = *doubleBuffer;
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].upperRight[d] = *doubleBuffer;
+			loc_rect.upperRight[d] = *doubleBuffer;
 		}
+        rectangles.push_back( loc_rect );
 	}
 	std::cout << "Initialization OK." << std::endl;
 
@@ -300,7 +313,7 @@ static Rectangle *generateCaliRectangles()
 	return rectangles;
 }
 
-static Rectangle *generateBioRectangles()
+static std::vector<Rectangle> generateBioRectangles()
 {
 	// Query set is pre-generated and requires 3 dimensions
 	assert(dimensions == 3);
@@ -315,19 +328,22 @@ static Rectangle *generateBioRectangles()
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[BiologicalQuerySize];
+    std::vector<Rectangle> rectangles;
+    rectangles.reserve( BiologicalQuerySize );
 	std::cout << "Beginning initialization of " << BiologicalQuerySize << " biological warfare rectangles..." << std::endl;
 	for (unsigned i = 0; i < BiologicalQuerySize; ++i)
 	{
+        Rectangle rect;
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			rect.lowerLeft[d] = *doubleBuffer;
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].upperRight[d] = *doubleBuffer;
+			rect.upperRight[d] = *doubleBuffer;
 		}
+        rectangles.push_back( rect );
 	}
 	std::cout << "Initialization OK." << std::endl;
 
@@ -338,7 +354,7 @@ static Rectangle *generateBioRectangles()
 	return rectangles;
 }
 
-static Rectangle *generateForestRectangles()
+static std::vector<Rectangle> generateForestRectangles()
 {
 	// Query set is pre-generated and requires 5 dimensions
 	assert(dimensions == 5);
@@ -353,19 +369,23 @@ static Rectangle *generateForestRectangles()
 	double *doubleBuffer = (double *)buffer;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[ForestQuerySize];
+    std::vector<Rectangle> rectangles;
+	rectangles.reserve( ForestQuerySize );
 	std::cout << "Beginning initialization of " << ForestQuerySize << " forest fire rectangles..." << std::endl;
 	for (unsigned i = 0; i < ForestQuerySize; ++i)
 	{
+        Rectangle rect;
 		for (unsigned d = 0; d < dimensions; ++d)
 		{
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].lowerLeft[d] = *doubleBuffer;
+			rect.lowerLeft[d] = *doubleBuffer;
 			fileGoodOrDie(file);
 			file.read(buffer, sizeof(double));
-			rectangles[i].upperRight[d] = *doubleBuffer;
+			rect.upperRight[d] = *doubleBuffer;
 		}
+
+        rectangles.push_back( rect );
 	}
 	std::cout << "Initialization OK." << std::endl;
 
@@ -376,7 +396,7 @@ static Rectangle *generateForestRectangles()
 	return rectangles;
 }
 
-static Rectangle *generateCanadaRectangles()
+static std::vector<Rectangle> generateCanadaRectangles()
 {
 	// Query set is pre-generated and requires 2 dimensions
 	assert(dimensions == 2);
@@ -389,21 +409,25 @@ static Rectangle *generateCanadaRectangles()
 	double bufferX, bufferY;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[CanadaQuerySize];
+    std::vector<Rectangle> rectangles;
+	rectangles.reserve(CanadaQuerySize);
 	std::cout << "Beginning initialization of " << CanadaQuerySize << " maple leaf rectangles..." << std::endl;
 	for (unsigned i = 0; i < CanadaQuerySize; ++i)
 	{
+        Rectangle rect;
 		// Read in lower left
 		file >> bufferX;
 		file >> bufferY;
-		rectangles[i].lowerLeft[0] = bufferX;
-		rectangles[i].lowerLeft[1] = bufferY;
+		rect.lowerLeft[0] = bufferX;
+		rect.lowerLeft[1] = bufferY;
 
 		// Read in upper right
 		file >> bufferX;
 		file >> bufferY;
-		rectangles[i].upperRight[0] = bufferX;
-		rectangles[i].upperRight[1] = bufferY;
+		rect.upperRight[0] = bufferX;
+		rect.upperRight[1] = bufferY;
+
+        rectangles.push_back( rect );
 	}
 
 	// Cleanup
@@ -412,7 +436,7 @@ static Rectangle *generateCanadaRectangles()
 	return rectangles;
 }
 
-static Rectangle *generateGaiaRectangles()
+static std::vector<Rectangle> generateGaiaRectangles()
 {
 	// Query set is pre-generated and requires 3 dimensions
 	assert(dimensions == 3);
@@ -425,25 +449,29 @@ static Rectangle *generateGaiaRectangles()
 	double buffer;
 
 	// Initialize rectangles
-	Rectangle *rectangles = new Rectangle[GaiaQuerySize];
+    std::vector<Rectangle> rectangles;
+	rectangles.reserve( GaiaQuerySize );
 	std::cout << "Beginning initialization of " << GaiaQuerySize << " starry rectangles..." << std::endl;
 	for (unsigned i = 0; i < GaiaQuerySize; ++i)
 	{
+        Rectangle rect;
 		// Read in lower left
 		file >> buffer;
-		rectangles[i].lowerLeft[0] = buffer;
+		rect.lowerLeft[0] = buffer;
 		file >> buffer;
-		rectangles[i].lowerLeft[1] = buffer;
+		rect.lowerLeft[1] = buffer;
 		file >> buffer;
-		rectangles[i].lowerLeft[2] = buffer;
+		rect.lowerLeft[2] = buffer;
 
 		// Read in upper right
 		file >> buffer;
-		rectangles[i].upperRight[0] = buffer;
+		rect.upperRight[0] = buffer;
 		file >> buffer;
-		rectangles[i].upperRight[1] = buffer;
+		rect.upperRight[1] = buffer;
 		file >> buffer;
-		rectangles[i].upperRight[2] = buffer;
+		rect.upperRight[2] = buffer;
+
+        rectangles.push_back( rect );
 	}
 
 	// Cleanup
@@ -458,24 +486,24 @@ static bool is_already_loaded(
 ) {
     if( configU["tree"] == NIR_TREE ) {
         
-        nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>
+        nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy>
             *tree =
-            (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy> *) spatial_index;
+            (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy> *) spatial_index;
 
         size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
     } else if( configU["tree"] == R_PLUS_TREE ) {
-        rplustreedisk::RPlusTreeDisk<3,7> *tree =
-            (rplustreedisk::RPlusTreeDisk<3,7> *) spatial_index;
+        rplustreedisk::RPlusTreeDisk<12,25> *tree =
+            (rplustreedisk::RPlusTreeDisk<12,25> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
     } else if( configU["tree"] == R_STAR_TREE ) {
-        rstartreedisk::RStarTreeDisk<3,7> *tree =
-            (rstartreedisk::RStarTreeDisk<3,7> *) spatial_index;
+        rstartreedisk::RStarTreeDisk<12,25> *tree =
+            (rstartreedisk::RStarTreeDisk<12,25> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
@@ -497,7 +525,7 @@ void repack_tree( T *tree_ptr, std::string &new_file_name,
             tree_node_allocator * ) ) {
 
     auto new_file_allocator = std::make_unique<tree_node_allocator>(
-            4096 * 13000,
+            40960 * 1300/2,
             new_file_name );
 
     new_file_allocator->initialize();
@@ -545,22 +573,22 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	else if (configU["tree"] == R_PLUS_TREE)
 	{
         spatialIndex = new
-            rplustreedisk::RPlusTreeDisk<3,7>(4096*13000,
+            rplustreedisk::RPlusTreeDisk<12,25>(4096*13000,
                 "rplustreediskbacked_california.txt" );
 		//spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
 	}
 	else if (configU["tree"] == R_STAR_TREE)
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rstartreedisk::RStarTreeDisk<3,7>( 4096 *
+		spatialIndex = new rstartreedisk::RStarTreeDisk<12,25>( 4096 *
                 13000, "rstardiskbacked_california.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
-		//spatialIndex = new nirtree::NIRTree(3,7);
+		//spatialIndex = new nirtree::NIRTree(12,25);
 		spatialIndex = new
-            nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy>(
+            nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy>(
                 4096*13000*10, 
                 /*"repacked_nirtree.txt"*/
                 "nirdiskbacked_california.txt");
@@ -580,7 +608,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 
 	// Initialize search rectangles
-	Rectangle *searchRectangles;
+    std::vector<Rectangle> searchRectangles;
 	if (configU["distribution"] == UNIFORM)
 	{
 		searchRectangles = generateRectangles(configU["size"], configU["seed"], configU["rectanglescount"]);
@@ -664,31 +692,24 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         }
         std::cout << "Checksum OK." << std::endl;
 
-        /*
-        std::cout << "Validating." << std::endl;
-        spatialIndex->validate();
 
         if( configU["tree"] == NIR_TREE ) {
             std::cout << "Repacking..." << std::endl;
             auto tree_ptr =
-                (nirtreedisk::NIRTreeDisk<3,7,nirtreedisk::ExperimentalStrategy> *) spatialIndex;
+                (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy> *) spatialIndex;
             std::string fname = "repacked_nirtree.txt";
             repack_tree( tree_ptr, fname,
-                    nirtreedisk::repack_subtree<3,7,nirtreedisk::ExperimentalStrategy>  );
+                    nirtreedisk::repack_subtree<12,25,nirtreedisk::ExperimentalStrategy>  );
         } else if( configU["tree"] == R_STAR_TREE ) {
             std::cout << "Repacking..." << std::endl;
-            auto tree_ptr = (rstartreedisk::RStarTreeDisk<3,7> *) spatialIndex;
+            auto tree_ptr = (rstartreedisk::RStarTreeDisk<12,25> *) spatialIndex;
             std::string fname = "repacked_rstar.txt";
-            repack_tree( tree_ptr, fname, rstartreedisk::repack_subtree<3,7> );
+            repack_tree( tree_ptr, fname, rstartreedisk::repack_subtree<12,25> );
         }
-        */
 
         spatialIndex->write_metadata();
 
     }
-
-    spatialIndex->stat();
-    return;
 
 	// Validate tree
 	//spatialIndex->validate();
@@ -697,6 +718,14 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	// Search for points and time their retrieval
 	std::cout << "Beginning search." << std::endl;
 	pointGen.reset();
+
+    std::mt19937 g;
+    g.seed(0);
+
+    std::shuffle( pointGen.pointBuffer.begin(),
+            pointGen.pointBuffer.end(), g );
+
+#if 0
 	while((nextPoint = pointGen.nextPoint()) /* Intentional = not == */)
 	{
 		// Search
@@ -714,6 +743,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         if( totalSearches % 10000 == 0 ) {
 		    std::cout << "Point[" << totalSearches << "] queried. " << delta.count() << " s" << std::endl;
         }
+
+        if( totalSearches >= 30000 ) {
+            break;
+        }
 	}
 	std::cout << "Search OK." << std::endl;
 
@@ -726,6 +759,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	std::cout << "Checksum OK." << std::endl;
     */
+
+#endif
+
+    std::shuffle( searchRectangles.begin(), searchRectangles.end(), g );
 
 	// Search for rectangles
 	unsigned rangeSearchChecksum = 0;
@@ -750,6 +787,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 			assert(searchRectangles[i].containsPoint(v[j]));
 		}
 		// std::cout << v.size() << " points verified." << std::endl;
+
+        if( totalRangeSearches == 100 ) {
+            break;
+        }
 #endif
 	}
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
@@ -803,7 +844,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
     std::cout << "Metadata written." << std::endl;
 	// Cleanup
 	//delete spatialIndex;
-	delete [] searchRectangles;
 }
 
 void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)

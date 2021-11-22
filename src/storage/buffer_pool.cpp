@@ -9,6 +9,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <chrono>
+#include <thread>
+
+
 #include <storage/buffer_pool.h>
 #include <storage/page.h>
 
@@ -89,7 +93,6 @@ void buffer_pool::initialize() {
     off_t rc = lseek( backing_file_fd_, file_offset, SEEK_SET );
     assert( rc == (off_t) file_offset );
 
-
     // Create any more backing file data that we need
     for( size_t i = existing_page_count_; i < max_mem_pages_; i++ ) { 
         std::unique_ptr<page> page_ptr = std::make_unique<page>();
@@ -122,6 +125,8 @@ page *buffer_pool::get_page( size_t page_id ) {
         return page_ptr;
     }
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::cout << "Page miss." << std::endl;
 
     // Step 2: It is not, so obtain a page
     // Will evict an old page if necessary
@@ -129,6 +134,7 @@ page *buffer_pool::get_page( size_t page_id ) {
 
     // No free pages available.
     if( page_ptr == nullptr ) {
+        abort();
         return nullptr;
     }
 
@@ -159,6 +165,7 @@ void buffer_pool::unpin_page( page *page_ptr ) {
 page *buffer_pool::create_new_page() {
     page *page_ptr = obtain_clean_page();
     if( page_ptr == nullptr ) {
+        abort();
         return nullptr;
     }
 

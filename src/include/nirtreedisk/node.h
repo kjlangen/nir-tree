@@ -350,36 +350,43 @@ namespace nirtreedisk
                                 allocator ) );
                 }
 
+                unsigned cut_off = min_branch_factor;
                 double best_candidate = 0.0;
                 double min_cost = std::numeric_limits<double>::max();
                 unsigned best_dimension = 0;
-                // D * ( M LOG M + M ) ~> O( D M LOG M )
-                for( unsigned d = 0; d < dimensions; d++ ) {
-                    std::sort( all_branch_polys.begin(), all_branch_polys.end(),
-                            [d](Rectangle &poly1, Rectangle &poly2
-                                ) {
-                                return poly1.upperRight[d] <
-                                poly2.upperRight[d];
-                            }
-                    );
-                    for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
-                        double cost = 0;
-                        // starts at 1 cause first goes left
-                        // Technically we should also walk the bottom bounds to
-                        // be sure, even in the non F, C case.
-                        unsigned left_count = 1;
-                        unsigned right_count = 0; 
-                        double partition_candidate =
-                            all_branch_polys.at(i).upperRight[d];
-                        double running_total = 0.0;
-                        // Existing metric wanted to avoid recursive splits
-                        // Let's try and do the same
-                        for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
-                            Rectangle &poly_ref = all_branch_polys.at(j);
-                            running_total += poly_ref.lowerLeft[d] +
-                                poly_ref.upperRight[d];
+                do { 
+                    // D * ( M LOG M + M ) ~> O( D M LOG M )
+                    for( unsigned d = 0; d < dimensions; d++ ) {
+                        std::sort( all_branch_polys.begin(), all_branch_polys.end(),
+                                [d](Rectangle &poly1, Rectangle &poly2
+                                    ) {
+                                    return poly1.upperRight[d] <
+                                    poly2.upperRight[d];
+                                }
+                        );
 
-                            if( i != j ) {
+                        std::vector<double> partition_candidates;
+                        for( unsigned i = 0; i < all_branch_polys.size(); i++ ) {
+                            partition_candidates.push_back(
+                                    all_branch_polys.at(i).lowerLeft[d] );
+                            partition_candidates.push_back(
+                                    all_branch_polys.at(i).upperRight[d] );
+                        }
+                        for( double partition_candidate : partition_candidates ) {
+                            double cost = 0;
+                            // starts at 1 cause first goes left
+                            // Technically we should also walk the bottom bounds to
+                            // be sure, even in the non F, C case.
+                            unsigned left_count = 0;
+                            unsigned right_count = 0; 
+                            double running_total = 0.0;
+                            // Existing metric wanted to avoid recursive splits
+                            // Let's try and do the same
+                            for( unsigned j = 0; j < all_branch_polys.size(); j++ ) {
+                                Rectangle &poly_ref = all_branch_polys.at(j);
+                                running_total += poly_ref.lowerLeft[d] +
+                                    poly_ref.upperRight[d];
+
                                 bool greater_than_left = poly_ref.lowerLeft[d] <
                                     partition_candidate;
                                 bool less_than_right = partition_candidate <
@@ -402,18 +409,22 @@ namespace nirtreedisk
                                 } else if( should_go_right ) {
                                     right_count++;
                                 }
-
+                            }
+                            if( cost < min_cost and left_count <= max_branch_factor
+                                    and right_count <= max_branch_factor and
+                                    left_count >= cut_off and right_count >= cut_off ) {
+                                best_candidate = partition_candidate;
+                                best_dimension = d;
+                                min_cost = cost;
                             }
                         }
-                        if( cost < min_cost and left_count <= max_branch_factor
-                                and right_count <= max_branch_factor and
-                                left_count > 0 and right_count > 0 ) {
-                            best_candidate = partition_candidate;
-                            best_dimension = d;
-                            min_cost = cost;
-                        }
                     }
-                }
+                    if( cut_off == 1 and min_cost ==
+                            std::numeric_limits<double>::max() ) {
+                        abort();
+                    }
+                    cut_off = 1;
+                } while( min_cost == std::numeric_limits<double>::max() );
                 // Degenerate case
                 assert( min_cost < std::numeric_limits<double>::max() );
 

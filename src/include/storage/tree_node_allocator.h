@@ -258,6 +258,8 @@ public:
         // Fall through, need new location
         page *page_ptr = get_page_to_alloc_on( node_size );
         if( page_ptr == nullptr ) {
+            std::cout << "NO PAGE TO ALLOC ON for size: " << node_size << std::endl;
+            abort();
             return std::make_pair( pinned_node_ptr( buffer_pool_,
                         static_cast<T *>( nullptr ), static_cast<page *>(
                             nullptr ) ), tree_node_handle() );
@@ -288,7 +290,14 @@ public:
             assert( entry.first != node_ptr );
         }
 #endif
+        std::cout << "Getting page for type: " << (unsigned) node_ptr.get_type() <<
+            std::endl;
         page *page_ptr = buffer_pool_.get_page( node_ptr.get_page_id() );
+        std::cout << "Done." << std::endl;
+        if( page_ptr == nullptr ) {
+            std::cout << "Page is null." << std::endl;
+            abort();
+        }
         assert( page_ptr != nullptr );
         T *obj_ptr = (T *) (page_ptr->data_ + node_ptr.get_offset() );
         return pinned_node_ptr( buffer_pool_, obj_ptr, page_ptr );

@@ -552,7 +552,7 @@ std::pair<SplitResult, tree_node_handle> adjust_tree_bottom_half(
     }
 
     // Otherwise, split node
-    if( hasReinsertedOnLevel.at( current_node->level_ ) ) {
+    if( hasReinsertedOnLevel.at( current_node->level_ ) or true ) {
         tree_node_handle parent = current_node->parent;
         auto propagationSplit = current_node->splitNode();
 
@@ -1079,6 +1079,8 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
     uint16_t alloc_size = compute_packed_size();
     auto alloc_data = allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
+    std::cout << "New allocator handed us handle: " << alloc_data.second
+        << std::endl;
 
     char *buffer = alloc_data.first->buffer_;
     buffer += write_data_to_buffer( buffer, &treeRef );
@@ -1088,8 +1090,13 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         buffer += write_data_to_buffer( buffer, &(entries.at(i)) );
     }
+    if( buffer - alloc_data.first->buffer_ != alloc_size ) {
+        std::cout << "Memory corruption, abort." << std::endl;
+        abort();
+    }
+
     assert( buffer - alloc_data.first->buffer_ == alloc_size );
-    std::cout << "Done." << std::endl;
+    std::cout << "Done. New handle is now: " << alloc_data.second << std::endl;
     return alloc_data.second;
 }
 
@@ -1116,8 +1123,13 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
     assert( maximum_repacked_rect_size >= 5 );
     auto alloc_data = new_allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
+    std::cout << "New allocator handed us handle: " << alloc_data.second
+        << std::endl;
 
+    std::cout << "Going to write to buffer." << std::endl;
     char *buffer = alloc_data.first->buffer_;
+    std::cout << "Writing " << (void *) treeRef << " to " << (void *)
+        buffer;
     buffer += write_data_to_buffer( buffer, &treeRef );
     buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
     buffer += write_data_to_buffer( buffer, &parent );
@@ -1128,8 +1140,12 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
                 new_allocator, maximum_repacked_rect_size );
     }
     unsigned true_size = (buffer - alloc_data.first->buffer_);
+    if( alloc_size != true_size ) {
+        std::cout << "Memory corruption, abort." << std::endl;
+        abort();
+    }
     assert( true_size == alloc_size );
-    std::cout << "Done." << std::endl;
+    std::cout << "Done. New handle is now: " << alloc_data.second << std::endl;
     return alloc_data.second;
 }
 
@@ -1481,13 +1497,21 @@ tree_node_handle repack_subtree(
             // we don't know that until we repack the branch node above.
             // So, we re-walk the new children here and set up all their
             // parents.
+            std::cout << "Adjusting children parents" << std::endl;
             for( unsigned i = 0; i < branch_node->cur_offset_; i++ ) {
+                std::cout << "Adjusting child: " <<
+                    branch_node->entries.at(i).child << std::endl;
                 auto new_child =
                     new_allocator->get_tree_node<packed_node>(
                             branch_node->entries.at(i).child );
+                std::cout << "Reading " << (void *) new_child->buffer_
+                    << std::endl;
+                std::cout << "Got treeRef: " << (void *)
+                    (new_child->buffer_) << std::endl;
                 * (tree_node_handle *) (new_child->buffer_ + sizeof(void*) +
                     sizeof(tree_node_handle)) = new_handle;
             }
+            std::cout << "Done adjusting children." << std::endl;
 
             existing_allocator->free( handle, sizeof(
                     BRANCH_NODE_CLASS_TYPES ) );
