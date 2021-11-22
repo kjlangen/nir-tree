@@ -14,7 +14,7 @@
 // limitations under the License.
 #pragma once
 
-#define MAX_RECTANGLE_COUNT 3
+#define MAX_RECTANGLE_COUNT 5
 
 #include <iostream>
 #include <algorithm>

@@ -126,7 +126,6 @@ page *buffer_pool::get_page( size_t page_id ) {
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    std::cout << "Page miss." << std::endl;
 
     // Step 2: It is not, so obtain a page
     // Will evict an old page if necessary
@@ -134,7 +133,6 @@ page *buffer_pool::get_page( size_t page_id ) {
 
     // No free pages available.
     if( page_ptr == nullptr ) {
-        abort();
         return nullptr;
     }
 
@@ -165,7 +163,6 @@ void buffer_pool::unpin_page( page *page_ptr ) {
 page *buffer_pool::create_new_page() {
     page *page_ptr = obtain_clean_page();
     if( page_ptr == nullptr ) {
-        abort();
         return nullptr;
     }
 

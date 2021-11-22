@@ -290,10 +290,7 @@ public:
             assert( entry.first != node_ptr );
         }
 #endif
-        std::cout << "Getting page for type: " << (unsigned) node_ptr.get_type() <<
-            std::endl;
         page *page_ptr = buffer_pool_.get_page( node_ptr.get_page_id() );
-        std::cout << "Done." << std::endl;
         if( page_ptr == nullptr ) {
             std::cout << "Page is null." << std::endl;
             abort();
