@@ -114,7 +114,7 @@ TEST_CASE( "Compression: set xor bits" ) {
     REQUIRE( ret_ptr == bit_ptr+4 );
 }
 
-TEST_CASE( "Compression: Double Rectangle Polygon" ) {
+TEST_CASE( "Compression: Single Dimension Corner Double Rectangle Polygon" ) {
     std::vector<Rectangle> rectangles;
     rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
     rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
@@ -123,26 +123,129 @@ TEST_CASE( "Compression: Double Rectangle Polygon" ) {
     char buffer[64 *4 + 4 + 2];
     memset( buffer, '\0', sizeof(buffer) );
     double centroid_bits = 0.0;
+    uint8_t bit_mask_offset = 0;
 
-    int offset = encode_dimension_corner( buffer, 0, true, (uint64_t *) &centroid_bits,
+    int offset = encode_dimension_corner( buffer, &bit_mask_offset, 0, true, (uint64_t *) &centroid_bits,
             rectangles.begin(), rectangles.end() );
 
     // This function presumes we have already written the count and
     // centroid to the buffer. We straight up start reading the lower
     // bits.
 
+    offset = 0;
     uint8_t offset_mask = 0;
-    int offset_to_update = 0;
     LengthTagBits tag = interpret_tag_bits( buffer + offset,
-            &offset_mask, &offset_to_update );
+            &offset_mask, &offset );
     REQUIRE( tag == SHORT );
-    REQUIRE( offset_to_update == 0 );
+    REQUIRE( offset == 0 );
     REQUIRE( offset_mask == 3 );
-    double converted = read_n_bits_as_double( 35, centroid_bits, buffer + offset_to_update,
-            &offset_mask, &offset_to_update );
+    double converted = read_n_bits_as_double( 35, centroid_bits, buffer + offset,
+            &offset_mask, &offset);
     // We should be pulling out
     // 000  00000000 00000000 11110000 00111111
+
+    // 000 0000 0011 1100 0000
     REQUIRE( converted == 1.0 );
+    REQUIRE( offset == 4 );
+    REQUIRE( offset_mask == 6 );
+
+    tag = interpret_tag_bits( buffer + offset, &offset_mask, &offset );
+    REQUIRE( tag == REPEAT );
+
+}
+
+TEST_CASE( "Compression: Single Dimension Double Rectangle Polygon" ) {
+    std::vector<Rectangle> rectangles;
+    rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
+    rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
+
+    // 4 doubles, 1 uint16, 4 leading codes worst case;
+    char buffer[64 *4 + 4 + 2];
+    memset( buffer, '\0', sizeof(buffer) );
+    Point centroid(0.0,0.0);
+    uint8_t bit_mask_offset = 0;
+
+    int offset = encode_dimension( buffer, &bit_mask_offset, 0, centroid,
+            rectangles.begin(), rectangles.end() );
+
+    offset = 0;
+    uint8_t offset_mask = 0;
+    decoded_poly_data poly_data;
+    decode_dimension( 0, true, 2, buffer + offset, &offset_mask,
+            poly_data );
+
+    REQUIRE( poly_data.data_[0].lower_[0] == 1.0 );
+    REQUIRE( poly_data.data_[0].lower_[1] == 1.0 );
+    REQUIRE( poly_data.data_[0].upper_[0] == 2.0 );
+    REQUIRE( poly_data.data_[0].upper_[1] == 2.0 );
+
+}
+
+TEST_CASE( "Compression: Double Dimension Double Rectangle Polygon" ) {
+    std::vector<Rectangle> rectangles;
+    rectangles.push_back( Rectangle( 1.0, -1.0, 2.0, -2.0 ) );
+    rectangles.push_back( Rectangle( 1.0, -1.0, 2.0, -2.0 ) );
+
+    // 8 doubles, 1 uint16, 8 leading codes worst case;
+    char buffer[64 *8 + 8 + 2];
+    memset( buffer, '\0', sizeof(buffer) );
+    Point centroid(0.0,0.0);
+    uint8_t bit_mask_offset = 0;
+
+    int offset = encode_dimension( buffer, &bit_mask_offset, 0, centroid,
+            rectangles.begin(), rectangles.end() );
+    offset += encode_dimension( buffer+offset, &bit_mask_offset, 1, centroid,
+            rectangles.begin(), rectangles.end() );
+
+    int write_offset = offset;
+    offset = 0;
+    uint8_t offset_mask = 0;
+    decoded_poly_data poly_data;
+    offset = decode_dimension( 0, true, 2, buffer + offset, &offset_mask,
+            poly_data );
+    offset += decode_dimension( 1, true, 2, buffer + offset, &offset_mask,
+            poly_data );
+
+    REQUIRE( poly_data.data_[0].lower_[0] == 1.0 );
+    REQUIRE( poly_data.data_[0].lower_[1] == 1.0 );
+    REQUIRE( poly_data.data_[0].upper_[0] == 2.0 );
+    REQUIRE( poly_data.data_[0].upper_[1] == 2.0 );
+
+    REQUIRE( poly_data.data_[1].lower_[0] == -1.0 );
+    REQUIRE( poly_data.data_[1].lower_[1] == -1.0 );
+    REQUIRE( poly_data.data_[1].upper_[0] == -2.0 );
+    REQUIRE( poly_data.data_[1].upper_[1] == -2.0 );
+
+    REQUIRE( offset == write_offset );
+
+}
+
+
+
+
+TEST_CASE( "Compress: Read N bits short reads" ) {
+    char buffer[8];
+
+    // Write 2 bytes to the buffer
+    uint8_t val = 0b11001100;
+    uint8_t *buffer_ptr = (uint8_t *) buffer;
+    *buffer_ptr = val;
+    buffer_ptr++;
+    *buffer_ptr = val;
+
+    uint8_t offset_mask = 6;
+    int offset = 0;
+    double centroid_bits = 0.0;
+    double converted = read_n_bits_as_double( 6, centroid_bits, buffer,
+            &offset_mask, &offset );
+    // We should pull out 00|001100
+    // That will get ntohll'd, which will put those bytes at the top.
+    uint64_t read_value = * (uint64_t *) &converted;
+    read_value = htonll( read_value ); // flip bytes back
+    REQUIRE( read_value == 12 );
+    REQUIRE( offset == 1 );
+    REQUIRE( offset_mask == 4 );
+
 
 }
 

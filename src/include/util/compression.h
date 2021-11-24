@@ -134,6 +134,7 @@ uint8_t *set_xor_bits(
 template <RectangleIterator iter>
 int encode_dimension_corner(
     char *buffer,
+    uint8_t *bit_mask_offset,
     unsigned dimension,
     bool is_lower_corner,
     uint64_t *centroid_bits,
@@ -143,24 +144,24 @@ int encode_dimension_corner(
     double last_primary_val = *centroid_bits;
     double last_secondary_val = *centroid_bits;
     uint8_t *bit_write_loc = (uint8_t *) buffer;
-    uint8_t bit_mask_offset = 0;
 
     for( auto rect_iter = begin; rect_iter != end; rect_iter++ ) {
+        std::cout << "Writing rectangle." << std::endl;
         double corner_val_primary = is_lower_corner ?
             rect_iter->lowerLeft[dimension] :
             rect_iter->upperRight[dimension];
-        std::cout << "Going lowerLeft: " << corner_val_primary <<
-            std::endl;
         double corner_val_secondary = is_lower_corner ?
             rect_iter->upperRight[dimension] :
             rect_iter->lowerLeft[dimension];
         if( corner_val_primary == last_primary_val ) {
             std::cout << "match use zero." << std::endl;
-            bit_write_loc = set_zero( bit_write_loc, &bit_mask_offset );
+            bit_write_loc = set_zero( bit_write_loc, bit_mask_offset );
         } else if( corner_val_primary == last_secondary_val ) {
-            bit_write_loc = set_one( bit_write_loc, &bit_mask_offset );
+            bit_write_loc = set_one( bit_write_loc, bit_mask_offset );
             std::cout << "match use one." << std::endl;
         } else {
+            std::cout << "Priomary val: " << corner_val_primary <<
+                std::endl;
             uint64_t *primary_bits = (uint64_t *) &corner_val_primary;
             std::cout << "Primary: " << *primary_bits << std::endl;
             // Flip for mantissa to be on the top
@@ -170,30 +171,39 @@ int encode_dimension_corner(
             std::cout << "Needs # bits to rep: " <<
                 bits_required_to_represent << std::endl;
             bit_write_loc = set_xor_bits( bit_write_loc,
-                    &bit_mask_offset, bits_required_to_represent,
+                    bit_mask_offset, bits_required_to_represent,
                     xor_bits );
         }
         last_primary_val = corner_val_primary;
         last_secondary_val = corner_val_secondary;
+        std::cout << "After rectangle, at: " << (bit_write_loc -
+                (uint8_t *) buffer) << std::endl;
+        std::cout << "Bitmask: offset: " << *bit_mask_offset <<
+            std::endl;
     }
-    return 0;
+    return (bit_write_loc - (uint8_t *) buffer);
 }
 
 template <RectangleIterator iter>
 int encode_dimension(
+    char *buffer,
+    uint8_t *bit_mask_offset,
     unsigned dimension,
     Point &centroid,
     iter begin,
-    iter end,
-    char *buffer
+    iter end
 ) {
     static_assert( sizeof(centroid[0]) == sizeof(uint64_t), 
             "Point values mismatch int size to hold bits." );
     uint64_t *centroid_bits = (uint64_t *) &(centroid[dimension]);
     int offset = 0;
+    std::cout << "Going to write centroid to " << (void *) buffer <<
+        std::endl;
     offset += write_data_to_buffer( buffer, centroid_bits );
-
-    encode_dimension_corner( buffer, dimension, true, centroid_bits, begin, end );
+    std::cout << "Offset is: " << offset << std::endl;
+    offset += encode_dimension_corner( buffer+offset, bit_mask_offset, dimension, true, centroid_bits, begin, end );
+    std::cout << "End offset of first corner: " << offset << std::endl;
+    offset += encode_dimension_corner( buffer+offset, bit_mask_offset, dimension, false, centroid_bits, begin, end );
     return offset;
 }
 
@@ -206,8 +216,10 @@ void compress_polygon( iter begin, iter end, unsigned rectangle_count ) {
     uint16_t shrunk_count = (uint16_t) rectangle_count;
     int offset = 0;
     offset += write_data_to_buffer( buffer, &shrunk_count );
+    uint8_t bit_mask_offset = 0;
     for( unsigned d = 0; d < dimensions; d++ ) {
-        offset += encode_dimension( d, centroid, begin, end, buffer + offset );
+        offset = encode_dimension( buffer + offset, &bit_mask_offset, d, centroid, begin,
+                end );
     }
 }
 
@@ -223,7 +235,8 @@ enum LengthTagBits {
     REPEAT = 0,
     CONTINUE = 1,
     SHORT = 2,
-    LONG = 3
+    LONG = 3,
+    ALL = 4
 };
 
 LengthTagBits interpret_tag_bits(
@@ -242,7 +255,7 @@ LengthTagBits interpret_tag_bits(
         if( *offset_mask == 8 ) {
             byte_ptr++; // Walk one byte forwrd
             (*offset_to_update)++; // Update the offset
-            offset_mask = 0;
+            *offset_mask = 0;
             one_bit = 0b10000000;
         } else {
             one_bit >>= 1;
@@ -253,7 +266,7 @@ LengthTagBits interpret_tag_bits(
     (*offset_mask)++;
     if( *offset_mask == 8 ) {
         (*offset_to_update)++; // Update the offset
-        offset_mask = 0;
+        *offset_mask = 0;
         one_bit = 0b10000000;
     } else {
         one_bit >>= 1;
@@ -266,8 +279,11 @@ LengthTagBits interpret_tag_bits(
         return CONTINUE;
     } else if( one_bit_count == 2 ) {
         return SHORT;
+    } else if( one_bit_count == 3 ) {
+        return LONG;
     }
-    return LONG;
+    assert( one_bit_count == 4 );
+    return ALL;
 }
 
 double read_n_bits_as_double(
@@ -278,37 +294,69 @@ double read_n_bits_as_double(
     int *offset_to_update
 ) {
     uint64_t sink = 0;
-    int start_bit = n;
-
-    // Create a single set bit, move it to the position we should start
-    // filling in bits in the sink
-    uint64_t sink_one_bit = 1UL << (start_bit-1);
-
-    uint8_t buffer_one_bit = 0b10000000;
-    buffer_one_bit >>= *offset_mask;
     uint8_t *buffer_ptr = (uint8_t *) buffer;
+    int start_bit;
 
-    std::cout << std::bitset<8>( *buffer_ptr ) << std::endl;
+    // Interpret as uint64, only keep bits after the offset
+    // mask which indicates starting point
+    // Read from the offset_mask until a byte boundary, copying over
+    // bits into the right position in sink. Then copy byte at a time
+    // until we are out of bits to copy
+    for( start_bit = n; start_bit >= 8;  ) {
+        uint64_t interpreted_byte = (uint64_t) *buffer_ptr;
+        uint64_t bit_mask = 0b11111111 >> (uint64_t) (*offset_mask);
+        interpreted_byte &= bit_mask;
+        interpreted_byte <<= (start_bit-8+*offset_mask);
+        sink |= interpreted_byte;
+        start_bit -= (8-*offset_mask);
+        *offset_mask = 0;
+        buffer_ptr++;
+        (*offset_to_update)++;
+        std::cout << "Internal walk, read byte." << std::endl;
+    }
 
-    for( int i = 0; i < n; i++ ) {
-        // If their bit is set, set our bit
-        if( *buffer_ptr & buffer_one_bit ) {
-            std::cout << "Set one bit at pos: " << i << std::endl;
-            sink |= sink_one_bit;
+    // We have a few bits left.
+    assert( start_bit < 8 ); 
+
+    // There's an edge case here where someone asks us to read fewer
+    // than 8 bytes, but starting from an unaligned position so it makes
+    // us walk a byte boundary. That will force a loop.
+    while( start_bit > 0 ) {
+        std::cout << "last iteration. Need bits: " << start_bit <<
+            std::endl;
+        uint64_t interpreted_byte = *buffer_ptr;
+        uint64_t bit_mask = 0b11111111 >> *offset_mask;
+        std::cout << "Interpreted byte: " << std::bitset<64>(
+                interpreted_byte ) <<  std::endl;
+        std::cout << "Bit_mask: " << std::bitset<64>(
+                bit_mask) <<  std::endl;
+
+
+        interpreted_byte &= bit_mask;
+
+        // We may only want a few of these bits if start_bit is small,
+        // so shift excess off if needed
+        if( start_bit + *offset_mask >= 8 ) {
+            interpreted_byte <<= (start_bit-8+*offset_mask);
+        } else {
+            // What's left
+            interpreted_byte >>= (8-start_bit+*offset_mask);
         }
-        // Move to next bit
-        sink_one_bit >>= 1;
-        (*offset_mask)++;
-        buffer_one_bit >>= 1;
+        sink |= interpreted_byte;
 
-        // Move to next byte, reset bit offsets
-        if( *offset_mask == 8 ) {
-            buffer_ptr++; // walk forward one byte
-            (*offset_to_update)++;
+        uint64_t bits_read = std::min( 8 - *offset_mask, start_bit );
+        start_bit -= bits_read;
+        *offset_mask += bits_read;
+        // If we crossed a byte boundary, then update so we know about it
+        if( *offset_mask >= 8 ) {
+            assert( *offset_mask == 8 );
             *offset_mask = 0;
-            buffer_one_bit = 0b10000000;
+            buffer_ptr++;
+            std::cout << "Outer bound, increasing again." << std::endl;
+            (*offset_to_update)++;
         }
     }
+    
     std::cout << "sink bits: " << std::bitset<64>( sink ) << std::endl;
     uint64_t *centroid_bits = (uint64_t *) &centroid;
     sink ^= *centroid_bits;
@@ -319,37 +367,92 @@ double read_n_bits_as_double(
     return converted;
 }
 
-int decode_next_dimension(
+int decode_dimension(
     unsigned d,
     bool is_lower,
     uint16_t rect_count,
     char *buffer,
-    int offset,
     uint8_t *offset_mask,
     decoded_poly_data &poly_data
 ) {
     // Read centroid, adjust offset
+    int offset = 0;
+    std::cout << "Going to read centroid from: " << (void *) buffer <<
+        std::endl;
     double centroid = * (double *) (buffer + offset);
     offset += sizeof(double);
     // OK, now the packing starts
     double last_primary_val = centroid;
-    double last_secondary_val = centroid;
+    std::cout << "In decode dimension. Obtained Centroid: " << centroid
+        << std::endl;
 
-    LengthTagBits tag = interpret_tag_bits( buffer + offset,
-             offset_mask, &offset );
-    if( tag == REPEAT ) {
-        poly_data.data_[0].lower_.push_back( last_primary_val );
-    } else if( tag == CONTINUE ) {
-        // We won't have secondary values at this point, so we will need
-        // to fill them in post hoc
-        // FIXME 
-        poly_data.data_[0].lower_.push_back( last_primary_val );
-    }  else if( tag == SHORT ) {
-        read_n_bits_as_double( 35, centroid, buffer + offset, offset_mask, &offset );
+    // Read all primary vals
+    for( uint16_t i = 0; i < rect_count; i++ ) {
+        LengthTagBits tag = interpret_tag_bits( buffer + offset,
+                 offset_mask, &offset );
+        if( tag == CONTINUE ) {
+            // We won't have secondary values at this point, so we will need
+            // to fill them in post hoc
+            // Put sentinel value in to fix later
+            std::cout << "Got continue tag." << std::endl;
+            last_primary_val = std::numeric_limits<double>::infinity();
+        } else if( tag == SHORT ) {
+            std::cout << "Got short tag." << std::endl;
+            last_primary_val = read_n_bits_as_double( 35, centroid, buffer + offset, offset_mask, &offset );
+        } else if( tag == LONG ) {
+            std::cout << "Got long tag." << std::endl;
+            last_primary_val = read_n_bits_as_double( 45, centroid, buffer + offset,
+                    offset_mask, &offset );
+        } else if( tag == ALL ) {
+            std::cout << "Got All tag." << std::endl;
+            last_primary_val = read_n_bits_as_double( 64, centroid, buffer + offset,
+                    offset_mask, &offset );
+        }
+
+        if( tag == REPEAT and last_primary_val ==
+                std::numeric_limits<double>::infinity() ) {
+            std::cout << "Flipped sign." << std::endl;
+            // Flip signed-ness to say we repeating whatever value was
+            // there before, not doing another CONTINUE.
+            last_primary_val = -std::numeric_limits<double>::infinity();
+        }
+        std::cout << "Pushing back lower." << last_primary_val <<
+            std::endl;
+        poly_data.data_[d].lower_.push_back( last_primary_val );
     }
-    
+    assert( poly_data.data_[d].lower_.size() == rect_count );
 
-    return 0;
+    last_primary_val = centroid;
+    for( uint16_t i = 0; i < rect_count; i++ ) {
+
+        // First, fix up the stubbed entries in lower if I have them
+        if( poly_data.data_[d].lower_.at(i) ==
+                std::numeric_limits<double>::infinity() ) {
+            poly_data.data_[d].lower_.at(i) = last_primary_val;
+        } else if( poly_data.data_[d].lower_.at(i) ==
+                -std::numeric_limits<double>::infinity() ) {
+            poly_data.data_[d].lower_.at(i) =
+                poly_data.data_[d].lower_.at(i-1);
+        }
+
+        // OK carry on.
+        LengthTagBits tag = interpret_tag_bits( buffer + offset,
+                 offset_mask, &offset );
+        if( tag == CONTINUE ) {
+            last_primary_val = poly_data.data_[d].lower_.at(i-1);
+        } else if( tag == SHORT ) {
+            last_primary_val = read_n_bits_as_double( 35, centroid, buffer + offset, offset_mask, &offset );
+        } else if( tag == LONG ) {
+            last_primary_val = read_n_bits_as_double( 45, centroid, buffer + offset,
+                    offset_mask, &offset );
+        } else if( tag == ALL ) {
+            last_primary_val = read_n_bits_as_double( 64, centroid, buffer + offset,
+                    offset_mask, &offset );
+        }
+        poly_data.data_[d].upper_.push_back( last_primary_val );
+    }
+
+    return offset;
 
 }
 
@@ -361,9 +464,10 @@ IsotheticPolygon decompress_polygon( char *buffer ) {
     uint8_t offset_mask = 0;
     decoded_poly_data poly_data;
     for( unsigned d = 0; d < dimensions; d++ ) {
-        offset = decode_next_dimension( d, true, shrunk_count, buffer,
-                offset, &offset_mask, poly_data );
-        offset = decode_next_dimension( d, false, shrunk_count, buffer,
-                offset, &offset_mask, poly_data );
+        offset = decode_dimension( d, true, shrunk_count, buffer+offset,
+                &offset_mask, poly_data );
+        offset = decode_dimension( d, false, shrunk_count, buffer+offset,
+                 &offset_mask, poly_data );
     }
+    assert( false );
 }
