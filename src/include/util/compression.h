@@ -30,6 +30,7 @@ Point compute_centroid( iter begin, iter end, unsigned rectangle_count ) {
     return centroid / (2.0 * rectangle_count);
 }
 
+// Push a one bit_write_loc at bit offset bit_mask_offset
 uint8_t *set_one( uint8_t *bit_write_loc, uint8_t *bit_mask_offset ) {
     assert( *bit_mask_offset <= 7 );
     uint8_t one_bit = 0b10000000;
@@ -41,12 +42,12 @@ uint8_t *set_one( uint8_t *bit_write_loc, uint8_t *bit_mask_offset ) {
         *bit_mask_offset = 0;
         // Move one byte forward
         bit_write_loc++;
-        std::cout << "Hopped a byte forward." << std::endl;
         return bit_write_loc;
     }
     return bit_write_loc;
 }
 
+// Push a zero bit_write_loc at bit offset bit_mask_offset
 uint8_t *set_zero( uint8_t *bit_write_loc, uint8_t *bit_mask_offset ) {
     assert( *bit_mask_offset <= 7 );
     uint8_t one_bit = 0b10000000;
@@ -66,6 +67,8 @@ uint8_t *set_zero( uint8_t *bit_write_loc, uint8_t *bit_mask_offset ) {
     return bit_write_loc;
 }
 
+// Write n bits from xor_bits into the destination starting at bit_write_loc, starting 
+// from bit_mask_offset bits in.
 uint8_t *write_n_bits(
     uint8_t *bit_write_loc,
     uint8_t *bit_mask_offset,
@@ -73,30 +76,23 @@ uint8_t *write_n_bits(
     uint64_t xor_bits
 ) {
     uint64_t set_bit = 1UL << (bits_to_write-1);
-    std::cout << "bits_to_write: " << bits_to_write << std::endl;
-    std::cout << "Set bit: " << set_bit << std::endl;
     // This could be more efficient by &'ing in byte-chunks at a time, but
     // we can fix that later if this is effective.
-    std::cout << "Going to write " << bits_to_write << " bits." <<
-        std::endl;
     std::cout << std::bitset<64>( xor_bits ) << std::endl;
     for( uint64_t i = 0; i < bits_to_write; i++ ) {
-        std::cout << "Looking at offset: " << set_bit << std::endl;
         if( set_bit & xor_bits ) {
-            std::cout << "Wrote 1" << std::endl;
             bit_write_loc = set_one( bit_write_loc, bit_mask_offset );
         } else {
-            std::cout << "Wrote 0" << std::endl;
             bit_write_loc = set_zero( bit_write_loc, bit_mask_offset );
         }
         set_bit >>= 1;
     }
-
-    std::cout << "Done setting bits." << std::endl;
     return bit_write_loc;
 }
 
-
+// Write xor_bits into the destination starting at bit_write_loc, with
+// an offset of bit_mask_offset bits. Writes 
+// bits_required_to_represent bits there, even if the value is bigger.
 uint8_t *set_xor_bits(
     uint8_t *bit_write_loc,
     uint8_t *bit_mask_offset,
@@ -104,11 +100,9 @@ uint8_t *set_xor_bits(
     uint64_t xor_bits
 ) {
     if( bits_required_to_represent <= 35 ) {
-        std::cout << "Setting 35 bits." << std::endl;
         bit_write_loc = set_one( bit_write_loc, bit_mask_offset );
         bit_write_loc = set_one( bit_write_loc, bit_mask_offset );
         bit_write_loc = set_zero( bit_write_loc, bit_mask_offset );
-        std::cout << "Set one, one, zero." << std::endl;
         bit_write_loc = write_n_bits( bit_write_loc, bit_mask_offset,
                 35, xor_bits );
     } else if( bits_required_to_represent <= 45 ) {
@@ -131,6 +125,11 @@ uint8_t *set_xor_bits(
     return bit_write_loc;
 }
 
+// Writes the lower or upper values for a dimension of the rectangles in
+// iterator into the buffer, starting at bit_mask_offset bits in.
+// Centroid bits is assumed to be a uint64_t pointer to double data,
+// used solely for bit masking. I'm pretty sure this violates C standard type
+// aliasing rules, but it seems to work well enough in practice. 
 template <RectangleIterator iter>
 int encode_dimension_corner(
     char *buffer,
@@ -153,37 +152,37 @@ int encode_dimension_corner(
         double corner_val_secondary = is_lower_corner ?
             rect_iter->upperRight[dimension] :
             rect_iter->lowerLeft[dimension];
+        std::cout << "Corner val primary: " << corner_val_primary <<
+            std::endl;
+        std::cout << "Corner val secondary: " << corner_val_secondary <<
+            std::endl;
+
         if( corner_val_primary == last_primary_val ) {
             std::cout << "match use zero." << std::endl;
             bit_write_loc = set_zero( bit_write_loc, bit_mask_offset );
         } else if( corner_val_primary == last_secondary_val ) {
             bit_write_loc = set_one( bit_write_loc, bit_mask_offset );
+            bit_write_loc = set_zero( bit_write_loc, bit_mask_offset );
             std::cout << "match use one." << std::endl;
         } else {
-            std::cout << "Priomary val: " << corner_val_primary <<
-                std::endl;
             uint64_t *primary_bits = (uint64_t *) &corner_val_primary;
-            std::cout << "Primary: " << *primary_bits << std::endl;
             // Flip for mantissa to be on the top
             uint64_t xor_bits = htonll(*primary_bits ^ *centroid_bits);
-            std::cout << "Got xor bits: " << xor_bits <<  std::endl;
             uint64_t bits_required_to_represent = log2( xor_bits );
-            std::cout << "Needs # bits to rep: " <<
-                bits_required_to_represent << std::endl;
             bit_write_loc = set_xor_bits( bit_write_loc,
                     bit_mask_offset, bits_required_to_represent,
                     xor_bits );
         }
         last_primary_val = corner_val_primary;
         last_secondary_val = corner_val_secondary;
-        std::cout << "After rectangle, at: " << (bit_write_loc -
-                (uint8_t *) buffer) << std::endl;
-        std::cout << "Bitmask: offset: " << *bit_mask_offset <<
-            std::endl;
     }
     return (bit_write_loc - (uint8_t *) buffer);
 }
 
+// Write the polygons in the iterator along the given dimension to the
+// buffer starting at the bit_mask_offset. Returns how many bytes we
+// wrote and updates the bit_mask_offset for the offset into the
+// byte.
 template <RectangleIterator iter>
 int encode_dimension(
     char *buffer,
@@ -192,35 +191,50 @@ int encode_dimension(
     Point &centroid,
     iter begin,
     iter end
-) {
-    static_assert( sizeof(centroid[0]) == sizeof(uint64_t), 
+) { static_assert( sizeof(centroid[0]) == sizeof(uint64_t), 
             "Point values mismatch int size to hold bits." );
     uint64_t *centroid_bits = (uint64_t *) &(centroid[dimension]);
     int offset = 0;
-    std::cout << "Going to write centroid to " << (void *) buffer <<
-        std::endl;
     offset += write_data_to_buffer( buffer, centroid_bits );
-    std::cout << "Offset is: " << offset << std::endl;
+    std::cout << "Wrote centroid bits to: " << (void *) buffer <<
+        std::endl;
     offset += encode_dimension_corner( buffer+offset, bit_mask_offset, dimension, true, centroid_bits, begin, end );
-    std::cout << "End offset of first corner: " << offset << std::endl;
+    std::cout << "End offset of dim " << dimension << " first corner: " << offset << "Mask : "
+        << (uint64_t) *bit_mask_offset << std::endl;
     offset += encode_dimension_corner( buffer+offset, bit_mask_offset, dimension, false, centroid_bits, begin, end );
+    std::cout << "End offset of dim " << dimension << " second corner: " << offset << "Mask : "
+        << (uint64_t) *bit_mask_offset << std::endl;
     return offset;
 }
 
+
+// We can't know ahead of time how much space we need for this polygon.
+// We can precompute an upper bound and prealloc that space, but that
+// would ruin packing for tree nodes
+// So, this function mallocs a buffer that is overprovisioned and writes
+// the polygon there. We return a pointer to the allocd and filled
+// buffer, and the size that we actually used.
 template <RectangleIterator iter>
-void compress_polygon( iter begin, iter end, unsigned rectangle_count ) {
+std::pair<char *, int> compress_polygon( iter begin, iter end, unsigned rectangle_count ) {
     Point centroid = compute_centroid( begin, end, rectangle_count );
-    char *buffer = (char *) malloc( sizeof(rectangle_count*8) + sizeof(centroid)
-            + sizeof(uint16_t) );
+
+    char *buffer = (char *) malloc(
+            sizeof(Rectangle)*rectangle_count +
+            sizeof(double)*dimensions + sizeof(uint16_t) +
+            rectangle_count*1 );
     assert( rectangle_count <= std::numeric_limits<uint16_t>::max() );
     uint16_t shrunk_count = (uint16_t) rectangle_count;
     int offset = 0;
     offset += write_data_to_buffer( buffer, &shrunk_count );
     uint8_t bit_mask_offset = 0;
     for( unsigned d = 0; d < dimensions; d++ ) {
-        offset = encode_dimension( buffer + offset, &bit_mask_offset, d, centroid, begin,
+        std::cout << "Started writing dimension: " << d << " at offset: " << offset << " mask: " << (uint64_t) bit_mask_offset << std::endl;
+        offset += encode_dimension( buffer + offset, &bit_mask_offset, d, centroid, begin,
                 end );
+        std::cout << "Done writing dimension: " << d << " at offset: "
+            << offset << " mask: " << (uint64_t) bit_mask_offset << std::endl;
     }
+    return std::make_pair( buffer, offset );
 }
 
 struct decoded_poly_data {
@@ -239,6 +253,9 @@ enum LengthTagBits {
     ALL = 4
 };
 
+// Given that a length tag starts at buffer at bit offset offset_mask,
+// read that length tag and return it, updating the offset_mask and
+// offset_to_update accordingly
 LengthTagBits interpret_tag_bits(
     char *buffer,
     uint8_t *offset_mask,
@@ -286,6 +303,9 @@ LengthTagBits interpret_tag_bits(
     return ALL;
 }
 
+// Interpret the next n bits starting at buffer with an offset of
+// offset_mask as a network ordered double xor'd with centroid. Update
+// the mask and offset accordingly.
 double read_n_bits_as_double(
     int n,
     double centroid,
@@ -312,7 +332,6 @@ double read_n_bits_as_double(
         *offset_mask = 0;
         buffer_ptr++;
         (*offset_to_update)++;
-        std::cout << "Internal walk, read byte." << std::endl;
     }
 
     // We have a few bits left.
@@ -322,15 +341,8 @@ double read_n_bits_as_double(
     // than 8 bytes, but starting from an unaligned position so it makes
     // us walk a byte boundary. That will force a loop.
     while( start_bit > 0 ) {
-        std::cout << "last iteration. Need bits: " << start_bit <<
-            std::endl;
         uint64_t interpreted_byte = *buffer_ptr;
         uint64_t bit_mask = 0b11111111 >> *offset_mask;
-        std::cout << "Interpreted byte: " << std::bitset<64>(
-                interpreted_byte ) <<  std::endl;
-        std::cout << "Bit_mask: " << std::bitset<64>(
-                bit_mask) <<  std::endl;
-
 
         interpreted_byte &= bit_mask;
 
@@ -352,24 +364,19 @@ double read_n_bits_as_double(
             assert( *offset_mask == 8 );
             *offset_mask = 0;
             buffer_ptr++;
-            std::cout << "Outer bound, increasing again." << std::endl;
             (*offset_to_update)++;
         }
     }
     
-    std::cout << "sink bits: " << std::bitset<64>( sink ) << std::endl;
     uint64_t *centroid_bits = (uint64_t *) &centroid;
-    sink ^= *centroid_bits;
-    std::cout << "sink post xor: " << sink << std::endl;
     sink = ntohll( sink );
-    std::cout << "sink post nothll: " << sink << std::endl;
+    sink ^= *centroid_bits;
     double converted = * (double *) &sink;
     return converted;
 }
 
 int decode_dimension(
     unsigned d,
-    bool is_lower,
     uint16_t rect_count,
     char *buffer,
     uint8_t *offset_mask,
@@ -409,18 +416,20 @@ int decode_dimension(
                     offset_mask, &offset );
         }
 
-        if( tag == REPEAT and last_primary_val ==
-                std::numeric_limits<double>::infinity() ) {
+        if( tag == REPEAT and std::isinf(last_primary_val) ) {
             std::cout << "Flipped sign." << std::endl;
             // Flip signed-ness to say we repeating whatever value was
             // there before, not doing another CONTINUE.
             last_primary_val = -std::numeric_limits<double>::infinity();
         }
-        std::cout << "Pushing back lower." << last_primary_val <<
+        std::cout << "Pushing back lower: " << last_primary_val <<
             std::endl;
         poly_data.data_[d].lower_.push_back( last_primary_val );
     }
     assert( poly_data.data_[d].lower_.size() == rect_count );
+
+    std::cout << "Done first decode corner, dimension: " << d << " at offset: " << offset << 
+        " Mask: " << (uint64_t) *offset_mask << std::endl;
 
     last_primary_val = centroid;
     for( uint16_t i = 0; i < rect_count; i++ ) {
@@ -451,7 +460,8 @@ int decode_dimension(
         }
         poly_data.data_[d].upper_.push_back( last_primary_val );
     }
-
+    std::cout << "Done second decode corner, dimension: " << d << " at offset: " << offset << 
+        " Mask: " << (uint64_t) *offset_mask << std::endl;
     return offset;
 
 }
@@ -459,15 +469,32 @@ int decode_dimension(
 IsotheticPolygon decompress_polygon( char *buffer ) {
     int offset = 0;
     uint16_t shrunk_count = * (uint16_t *) (buffer + offset);
-    buffer += sizeof(uint16_t);
+    offset += sizeof(uint16_t);
+    std:: cout << "We are going to read " << shrunk_count << " polygons." << std::endl;
     // X-dimension encoding
     uint8_t offset_mask = 0;
     decoded_poly_data poly_data;
     for( unsigned d = 0; d < dimensions; d++ ) {
-        offset = decode_dimension( d, true, shrunk_count, buffer+offset,
+        std::cout << "Started reading dimension " << d << " at offset: " <<
+            offset << " mask: " << (uint64_t) offset_mask << std::endl;
+        offset += decode_dimension( d,shrunk_count, buffer+offset,
                 &offset_mask, poly_data );
-        offset = decode_dimension( d, false, shrunk_count, buffer+offset,
-                 &offset_mask, poly_data );
+        std::cout << "Done reading dimension " << d << " at offset: " <<
+            offset << " mask: " << (uint64_t) offset_mask << std::endl;
     }
-    assert( false );
+    IsotheticPolygon polygon;
+    for( uint16_t i = 0; i < shrunk_count; i++ ) {
+        Point lowerLeft(
+            poly_data.data_[0].lower_[i],
+            poly_data.data_[1].lower_[i]
+        );
+        Point upperRight(
+            poly_data.data_[0].upper_[i],
+            poly_data.data_[1].upper_[i]
+        );
+        polygon.basicRectangles.push_back( Rectangle( lowerLeft,
+                    upperRight ) );
+    }
+    polygon.recomputeBoundingBox();
+    return polygon;
 }

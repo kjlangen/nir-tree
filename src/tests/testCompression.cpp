@@ -171,7 +171,7 @@ TEST_CASE( "Compression: Single Dimension Double Rectangle Polygon" ) {
     offset = 0;
     uint8_t offset_mask = 0;
     decoded_poly_data poly_data;
-    decode_dimension( 0, true, 2, buffer + offset, &offset_mask,
+    decode_dimension( 0, 2, buffer + offset, &offset_mask,
             poly_data );
 
     REQUIRE( poly_data.data_[0].lower_[0] == 1.0 );
@@ -201,9 +201,9 @@ TEST_CASE( "Compression: Double Dimension Double Rectangle Polygon" ) {
     offset = 0;
     uint8_t offset_mask = 0;
     decoded_poly_data poly_data;
-    offset = decode_dimension( 0, true, 2, buffer + offset, &offset_mask,
+    offset = decode_dimension( 0, 2, buffer + offset, &offset_mask,
             poly_data );
-    offset += decode_dimension( 1, true, 2, buffer + offset, &offset_mask,
+    offset += decode_dimension( 1, 2, buffer + offset, &offset_mask,
             poly_data );
 
     REQUIRE( poly_data.data_[0].lower_[0] == 1.0 );
@@ -220,7 +220,190 @@ TEST_CASE( "Compression: Double Dimension Double Rectangle Polygon" ) {
 
 }
 
+// NOW, Add tests to do repeats and continues explicitly.
+// Do continues on both axises...
+TEST_CASE( "Compression: Axis Continues" ) {
 
+    std::vector<Rectangle> rectangles;
+    rectangles.push_back( Rectangle( 1.0, -1.0, 2.0, -2.0 ) );
+    rectangles.push_back( Rectangle( 2.0, 0.0, 3.0, -1.0 ) );
+    rectangles.push_back( Rectangle( 3.0, 1.0, 4.0, 0.0 ) );
+
+    // 12 doubles, 1 uint16, 12 leading codes worst case;
+    char buffer[64*12 + 12 + 2];
+    memset( buffer, '\0', sizeof(buffer) );
+    Point centroid(0.0,0.0);
+    uint8_t bit_mask_offset = 0;
+
+    int offset = encode_dimension( buffer, &bit_mask_offset, 0, centroid,
+            rectangles.begin(), rectangles.end() );
+    offset += encode_dimension( buffer+offset, &bit_mask_offset, 1, centroid,
+            rectangles.begin(), rectangles.end() );
+
+    int write_offset = offset;
+    offset = 0;
+    uint8_t offset_mask = 0;
+    decoded_poly_data poly_data;
+    offset = decode_dimension( 0, 3, buffer + offset, &offset_mask,
+            poly_data );
+    offset += decode_dimension( 1, 3, buffer + offset, &offset_mask,
+            poly_data );
+
+    REQUIRE( poly_data.data_[0].lower_[0] == 1.0 );
+    REQUIRE( poly_data.data_[0].lower_[1] == 2.0 );
+    REQUIRE( poly_data.data_[0].lower_[2] == 3.0 );
+    REQUIRE( poly_data.data_[0].upper_[0] == 2.0 );
+    REQUIRE( poly_data.data_[0].upper_[1] == 3.0 );
+    REQUIRE( poly_data.data_[0].upper_[2] == 4.0 );
+
+    REQUIRE( poly_data.data_[1].lower_[0] == -1.0 );
+    REQUIRE( poly_data.data_[1].lower_[1] == 0.0 );
+    REQUIRE( poly_data.data_[1].lower_[2] == 1.0 );
+    REQUIRE( poly_data.data_[1].upper_[0] == -2.0 );
+    REQUIRE( poly_data.data_[1].upper_[1] == -1.0 );
+    REQUIRE( poly_data.data_[1].upper_[2] == 0.0 );
+
+    REQUIRE( offset == write_offset );
+    REQUIRE( offset <= 60 );
+}
+
+TEST_CASE( "Compression: Axis Continues Then Repeats" ) {
+
+    std::vector<Rectangle> rectangles;
+    rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
+    rectangles.push_back( Rectangle( 2.0, 2.0, 3.0, 3.0 ) );
+    rectangles.push_back( Rectangle( 2.0, 3.0, 3.0, 3.0 ) );
+    rectangles.push_back( Rectangle( 2.0, 3.0, 3.0, 3.0 ) );
+
+    // 16 doubles, 1 uint16, 16 leading codes worst case;
+    char buffer[64*16 + 16 + 2];
+    memset( buffer, '\0', sizeof(buffer) );
+    Point centroid(0.0,0.0);
+    uint8_t bit_mask_offset = 0;
+
+    int offset = encode_dimension( buffer, &bit_mask_offset, 0, centroid,
+            rectangles.begin(), rectangles.end() );
+    offset += encode_dimension( buffer+offset, &bit_mask_offset, 1, centroid,
+            rectangles.begin(), rectangles.end() );
+
+    int write_offset = offset;
+    offset = 0;
+    uint8_t offset_mask = 0;
+    decoded_poly_data poly_data;
+    offset = decode_dimension( 0, 4, buffer + offset, &offset_mask,
+            poly_data );
+    offset += decode_dimension( 1, 4, buffer + offset, &offset_mask,
+            poly_data );
+
+
+    REQUIRE( offset == write_offset );
+
+    REQUIRE( poly_data.data_[0].lower_[0] == 1.0 );
+    REQUIRE( poly_data.data_[0].lower_[1] == 2.0 );
+    REQUIRE( poly_data.data_[0].lower_[2] == 2.0 );
+    REQUIRE( poly_data.data_[0].lower_[3] == 2.0 );
+    REQUIRE( poly_data.data_[0].upper_[0] == 2.0 );
+    REQUIRE( poly_data.data_[0].upper_[1] == 3.0 );
+    REQUIRE( poly_data.data_[0].upper_[2] == 3.0 );
+    REQUIRE( poly_data.data_[0].upper_[3] == 3.0 );
+
+    REQUIRE( poly_data.data_[1].lower_[0] == 1.0 );
+    REQUIRE( poly_data.data_[1].lower_[1] == 2.0 );
+    REQUIRE( poly_data.data_[1].lower_[2] == 3.0 );
+    REQUIRE( poly_data.data_[1].lower_[3] == 3.0 );
+    REQUIRE( poly_data.data_[1].upper_[0] == 2.0 );
+    REQUIRE( poly_data.data_[1].upper_[1] == 3.0 );
+    REQUIRE( poly_data.data_[1].upper_[2] == 3.0 );
+    REQUIRE( poly_data.data_[1].upper_[3] == 3.0 );
+}
+
+TEST_CASE( "Compression: Full compress/decompress workflow" ) {
+
+    std::vector<Rectangle> rectangles;
+    rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
+    rectangles.push_back( Rectangle( 2.0, 2.0, 3.0, 3.0 ) );
+    rectangles.push_back( Rectangle( 2.0, 3.0, 3.0, 3.0 ) );
+    rectangles.push_back( Rectangle( 2.0, 3.0, 3.0, 3.0 ) );
+
+    auto compress_result = compress_polygon( rectangles.begin(),
+            rectangles.end(), 4 );
+
+    IsotheticPolygon decompress_result = decompress_polygon(
+            compress_result.first );
+
+    REQUIRE( decompress_result.basicRectangles.size() == 4 );
+    REQUIRE( decompress_result.basicRectangles.at(0) == rectangles.at(0) );
+    REQUIRE( decompress_result.basicRectangles.at(1) == rectangles.at(1) );
+    REQUIRE( decompress_result.basicRectangles.at(2) == rectangles.at(2) );
+    REQUIRE( decompress_result.basicRectangles.at(3) == rectangles.at(3) );
+}
+
+TEST_CASE( "Compression: Full compress/decompress real data" ) {
+
+    std::vector<Rectangle> rectangles;
+    rectangles.push_back(Rectangle(-122.07329500000000166,
+                37.700079999999999814, -122.04237399999999525,
+                37.73029499999999814));
+    rectangles.push_back(Rectangle(-122.04237399999999525,
+                37.700079999999999814, -122.03842199999998286,
+                37.726629000000009739));
+    rectangles.push_back(Rectangle(-122.03842199999998286,
+                37.700079999999999814, -122.03807199999998545,
+                37.702030000000000598));
+    rectangles.push_back(Rectangle(-122.06309149999998453,
+                37.817076000000007241, -122.04237399999999525,
+                37.965603500000007386));
+    rectangles.push_back(Rectangle(-122.03773949999998649,
+                37.817076000000007241, -122.03757199999998306,
+                37.965603500000007386));
+    rectangles.push_back(Rectangle(-122.03566549999997903,
+                37.817076000000007241, -122.0353240000000028,
+                37.965603500000007386));
+    rectangles.push_back(Rectangle(-122.03492399999997531,
+                37.817076000000007241, -122.03482850000000326,
+                37.965603500000007386));
+    rectangles.push_back(Rectangle(-122.03442399999998713,
+                37.817076000000007241, -122.03391699999998821,
+                37.965603500000007386));
+    rectangles.push_back(Rectangle(-122.03391699999998821,
+                37.817076000000007241, -122.03387299999998561,
+                37.917422999999999433));
+    rectangles.push_back(Rectangle(-122.03387299999998561,
+                37.817076000000007241, -122.03386999999999318,
+                37.914123000000003572));
+    rectangles.push_back(Rectangle(-122.04237399999999525,
+                37.817376000000002989, -122.0423564999999968,
+                37.930323000000001343));
+    rectangles.push_back(Rectangle(-122.0423564999999968,
+                37.817376000000002989, -122.03773949999998649,
+                37.913181500000000312));
+    rectangles.push_back(Rectangle(-122.03757199999998306,
+                37.817376000000002989, -122.03566549999997903,
+                37.913522999999997865));
+    rectangles.push_back(Rectangle(-122.0353240000000028,
+                37.817376000000002989, -122.03492399999997531,
+                37.93836849999999572));
+    rectangles.push_back(Rectangle(-122.03482850000000326,
+                37.817376000000002989, -122.03442399999998713,
+                37.93836849999999572));
+
+    auto compress_result = compress_polygon( rectangles.begin(),
+            rectangles.end(), rectangles.size() );
+
+    IsotheticPolygon decompress_result = decompress_polygon(
+            compress_result.first );
+
+    REQUIRE( decompress_result.basicRectangles.size() ==
+            rectangles.size() );
+
+    std::cout << "Size for " << rectangles.size() << " = " <<
+        compress_result.second << std::endl;
+
+    for( int i = 0; i < rectangles.size(); i++ ) {
+        REQUIRE( decompress_result.basicRectangles.at(i) ==
+                rectangles.at(i) );
+    }
+}
 
 
 TEST_CASE( "Compress: Read N bits short reads" ) {
