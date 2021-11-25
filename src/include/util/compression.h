@@ -60,7 +60,6 @@ uint8_t *set_zero( uint8_t *bit_write_loc, uint8_t *bit_mask_offset ) {
         *bit_mask_offset = 0;
         // Move one byte forward
         bit_write_loc++;
-        std::cout << "Hopped a byte forward." << std::endl;
         return bit_write_loc;
     }
 
@@ -78,7 +77,6 @@ uint8_t *write_n_bits(
     uint64_t set_bit = 1UL << (bits_to_write-1);
     // This could be more efficient by &'ing in byte-chunks at a time, but
     // we can fix that later if this is effective.
-    std::cout << std::bitset<64>( xor_bits ) << std::endl;
     for( uint64_t i = 0; i < bits_to_write; i++ ) {
         if( set_bit & xor_bits ) {
             bit_write_loc = set_one( bit_write_loc, bit_mask_offset );
@@ -145,30 +143,28 @@ int encode_dimension_corner(
     uint8_t *bit_write_loc = (uint8_t *) buffer;
 
     for( auto rect_iter = begin; rect_iter != end; rect_iter++ ) {
-        std::cout << "Writing rectangle." << std::endl;
         double corner_val_primary = is_lower_corner ?
             rect_iter->lowerLeft[dimension] :
             rect_iter->upperRight[dimension];
         double corner_val_secondary = is_lower_corner ?
             rect_iter->upperRight[dimension] :
             rect_iter->lowerLeft[dimension];
-        std::cout << "Corner val primary: " << corner_val_primary <<
-            std::endl;
-        std::cout << "Corner val secondary: " << corner_val_secondary <<
-            std::endl;
 
         if( corner_val_primary == last_primary_val ) {
-            std::cout << "match use zero." << std::endl;
             bit_write_loc = set_zero( bit_write_loc, bit_mask_offset );
         } else if( corner_val_primary == last_secondary_val ) {
             bit_write_loc = set_one( bit_write_loc, bit_mask_offset );
             bit_write_loc = set_zero( bit_write_loc, bit_mask_offset );
-            std::cout << "match use one." << std::endl;
         } else {
             uint64_t *primary_bits = (uint64_t *) &corner_val_primary;
-            // Flip for mantissa to be on the top
-            uint64_t xor_bits = htonll(*primary_bits ^ *centroid_bits);
-            uint64_t bits_required_to_represent = log2( xor_bits );
+            uint64_t xor_bits = *primary_bits ^ *centroid_bits;
+            uint64_t bits_required_to_represent;
+            if( xor_bits == 0 ) {
+                bits_required_to_represent = 1UL;
+            } else {
+                bits_required_to_represent = std::ceil( log2( xor_bits )
+                        );
+            }
             bit_write_loc = set_xor_bits( bit_write_loc,
                     bit_mask_offset, bits_required_to_represent,
                     xor_bits );
@@ -191,19 +187,19 @@ int encode_dimension(
     Point &centroid,
     iter begin,
     iter end
-) { static_assert( sizeof(centroid[0]) == sizeof(uint64_t), 
+) {
+    static_assert( sizeof(centroid[0]) == sizeof(uint64_t), 
             "Point values mismatch int size to hold bits." );
+
+    // Write the centroid using all bits to buffer, update our mask and
+    // offset accordingly. No tag for centroid.
     uint64_t *centroid_bits = (uint64_t *) &(centroid[dimension]);
-    int offset = 0;
-    offset += write_data_to_buffer( buffer, centroid_bits );
-    std::cout << "Wrote centroid bits to: " << (void *) buffer <<
-        std::endl;
+    uint8_t *buffer_ptr = (uint8_t *) buffer;
+    uint8_t *new_ptr = write_n_bits( buffer_ptr, bit_mask_offset, 64, *centroid_bits );
+    int offset = (new_ptr - buffer_ptr);
+
     offset += encode_dimension_corner( buffer+offset, bit_mask_offset, dimension, true, centroid_bits, begin, end );
-    std::cout << "End offset of dim " << dimension << " first corner: " << offset << "Mask : "
-        << (uint64_t) *bit_mask_offset << std::endl;
     offset += encode_dimension_corner( buffer+offset, bit_mask_offset, dimension, false, centroid_bits, begin, end );
-    std::cout << "End offset of dim " << dimension << " second corner: " << offset << "Mask : "
-        << (uint64_t) *bit_mask_offset << std::endl;
     return offset;
 }
 
@@ -228,11 +224,8 @@ std::pair<char *, int> compress_polygon( iter begin, iter end, unsigned rectangl
     offset += write_data_to_buffer( buffer, &shrunk_count );
     uint8_t bit_mask_offset = 0;
     for( unsigned d = 0; d < dimensions; d++ ) {
-        std::cout << "Started writing dimension: " << d << " at offset: " << offset << " mask: " << (uint64_t) bit_mask_offset << std::endl;
         offset += encode_dimension( buffer + offset, &bit_mask_offset, d, centroid, begin,
                 end );
-        std::cout << "Done writing dimension: " << d << " at offset: "
-            << offset << " mask: " << (uint64_t) bit_mask_offset << std::endl;
     }
     return std::make_pair( buffer, offset );
 }
@@ -306,9 +299,8 @@ LengthTagBits interpret_tag_bits(
 // Interpret the next n bits starting at buffer with an offset of
 // offset_mask as a network ordered double xor'd with centroid. Update
 // the mask and offset accordingly.
-double read_n_bits_as_double(
+uint64_t read_n_bits_internal(
     int n,
-    double centroid,
     char *buffer,
     uint8_t *offset_mask,
     int *offset_to_update
@@ -343,7 +335,6 @@ double read_n_bits_as_double(
     while( start_bit > 0 ) {
         uint64_t interpreted_byte = *buffer_ptr;
         uint64_t bit_mask = 0b11111111 >> *offset_mask;
-
         interpreted_byte &= bit_mask;
 
         // We may only want a few of these bits if start_bit is small,
@@ -367,9 +358,20 @@ double read_n_bits_as_double(
             (*offset_to_update)++;
         }
     }
-    
+    return sink;
+}
+
+double read_n_bits_as_double(
+    int n,
+    double centroid,
+    char *buffer,
+    uint8_t *offset_mask,
+    int *offset_to_update
+) {
+    uint64_t sink = read_n_bits_internal( n, buffer, offset_mask,
+            offset_to_update );
+
     uint64_t *centroid_bits = (uint64_t *) &centroid;
-    sink = ntohll( sink );
     sink ^= *centroid_bits;
     double converted = * (double *) &sink;
     return converted;
@@ -384,14 +386,14 @@ int decode_dimension(
 ) {
     // Read centroid, adjust offset
     int offset = 0;
-    std::cout << "Going to read centroid from: " << (void *) buffer <<
-        std::endl;
-    double centroid = * (double *) (buffer + offset);
-    offset += sizeof(double);
+
+    uint64_t centroid_bits = read_n_bits_internal( 64, buffer, offset_mask, &offset );
+    double centroid = * (double *) &centroid_bits;
+
+    assert( offset == 8 );
+
     // OK, now the packing starts
     double last_primary_val = centroid;
-    std::cout << "In decode dimension. Obtained Centroid: " << centroid
-        << std::endl;
 
     // Read all primary vals
     for( uint16_t i = 0; i < rect_count; i++ ) {
@@ -401,35 +403,27 @@ int decode_dimension(
             // We won't have secondary values at this point, so we will need
             // to fill them in post hoc
             // Put sentinel value in to fix later
-            std::cout << "Got continue tag." << std::endl;
             last_primary_val = std::numeric_limits<double>::infinity();
         } else if( tag == SHORT ) {
-            std::cout << "Got short tag." << std::endl;
             last_primary_val = read_n_bits_as_double( 35, centroid, buffer + offset, offset_mask, &offset );
         } else if( tag == LONG ) {
-            std::cout << "Got long tag." << std::endl;
             last_primary_val = read_n_bits_as_double( 45, centroid, buffer + offset,
                     offset_mask, &offset );
         } else if( tag == ALL ) {
-            std::cout << "Got All tag." << std::endl;
             last_primary_val = read_n_bits_as_double( 64, centroid, buffer + offset,
                     offset_mask, &offset );
+        } else {
+            assert( tag == REPEAT );
         }
 
         if( tag == REPEAT and std::isinf(last_primary_val) ) {
-            std::cout << "Flipped sign." << std::endl;
             // Flip signed-ness to say we repeating whatever value was
             // there before, not doing another CONTINUE.
             last_primary_val = -std::numeric_limits<double>::infinity();
         }
-        std::cout << "Pushing back lower: " << last_primary_val <<
-            std::endl;
         poly_data.data_[d].lower_.push_back( last_primary_val );
     }
     assert( poly_data.data_[d].lower_.size() == rect_count );
-
-    std::cout << "Done first decode corner, dimension: " << d << " at offset: " << offset << 
-        " Mask: " << (uint64_t) *offset_mask << std::endl;
 
     last_primary_val = centroid;
     for( uint16_t i = 0; i < rect_count; i++ ) {
@@ -457,11 +451,10 @@ int decode_dimension(
         } else if( tag == ALL ) {
             last_primary_val = read_n_bits_as_double( 64, centroid, buffer + offset,
                     offset_mask, &offset );
+        } else {
         }
         poly_data.data_[d].upper_.push_back( last_primary_val );
     }
-    std::cout << "Done second decode corner, dimension: " << d << " at offset: " << offset << 
-        " Mask: " << (uint64_t) *offset_mask << std::endl;
     return offset;
 
 }
@@ -470,17 +463,12 @@ IsotheticPolygon decompress_polygon( char *buffer ) {
     int offset = 0;
     uint16_t shrunk_count = * (uint16_t *) (buffer + offset);
     offset += sizeof(uint16_t);
-    std:: cout << "We are going to read " << shrunk_count << " polygons." << std::endl;
     // X-dimension encoding
     uint8_t offset_mask = 0;
     decoded_poly_data poly_data;
     for( unsigned d = 0; d < dimensions; d++ ) {
-        std::cout << "Started reading dimension " << d << " at offset: " <<
-            offset << " mask: " << (uint64_t) offset_mask << std::endl;
         offset += decode_dimension( d,shrunk_count, buffer+offset,
                 &offset_mask, poly_data );
-        std::cout << "Done reading dimension " << d << " at offset: " <<
-            offset << " mask: " << (uint64_t) offset_mask << std::endl;
     }
     IsotheticPolygon polygon;
     for( uint16_t i = 0; i < shrunk_count; i++ ) {

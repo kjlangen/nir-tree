@@ -114,45 +114,6 @@ TEST_CASE( "Compression: set xor bits" ) {
     REQUIRE( ret_ptr == bit_ptr+4 );
 }
 
-TEST_CASE( "Compression: Single Dimension Corner Double Rectangle Polygon" ) {
-    std::vector<Rectangle> rectangles;
-    rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
-    rectangles.push_back( Rectangle( 1.0, 1.0, 2.0, 2.0 ) );
-
-    // 4 doubles, 1 uint16, 4 leading codes worst case;
-    char buffer[64 *4 + 4 + 2];
-    memset( buffer, '\0', sizeof(buffer) );
-    double centroid_bits = 0.0;
-    uint8_t bit_mask_offset = 0;
-
-    int offset = encode_dimension_corner( buffer, &bit_mask_offset, 0, true, (uint64_t *) &centroid_bits,
-            rectangles.begin(), rectangles.end() );
-
-    // This function presumes we have already written the count and
-    // centroid to the buffer. We straight up start reading the lower
-    // bits.
-
-    offset = 0;
-    uint8_t offset_mask = 0;
-    LengthTagBits tag = interpret_tag_bits( buffer + offset,
-            &offset_mask, &offset );
-    REQUIRE( tag == SHORT );
-    REQUIRE( offset == 0 );
-    REQUIRE( offset_mask == 3 );
-    double converted = read_n_bits_as_double( 35, centroid_bits, buffer + offset,
-            &offset_mask, &offset);
-    // We should be pulling out
-    // 000  00000000 00000000 11110000 00111111
-
-    // 000 0000 0011 1100 0000
-    REQUIRE( converted == 1.0 );
-    REQUIRE( offset == 4 );
-    REQUIRE( offset_mask == 6 );
-
-    tag = interpret_tag_bits( buffer + offset, &offset_mask, &offset );
-    REQUIRE( tag == REPEAT );
-
-}
 
 TEST_CASE( "Compression: Single Dimension Double Rectangle Polygon" ) {
     std::vector<Rectangle> rectangles;
@@ -264,7 +225,6 @@ TEST_CASE( "Compression: Axis Continues" ) {
     REQUIRE( poly_data.data_[1].upper_[2] == 0.0 );
 
     REQUIRE( offset == write_offset );
-    REQUIRE( offset <= 60 );
 }
 
 TEST_CASE( "Compression: Axis Continues Then Repeats" ) {
@@ -396,13 +356,90 @@ TEST_CASE( "Compression: Full compress/decompress real data" ) {
     REQUIRE( decompress_result.basicRectangles.size() ==
             rectangles.size() );
 
-    std::cout << "Size for " << rectangles.size() << " = " <<
-        compress_result.second << std::endl;
-
-    for( int i = 0; i < rectangles.size(); i++ ) {
+    for( unsigned i = 0; i < rectangles.size(); i++ ) {
         REQUIRE( decompress_result.basicRectangles.at(i) ==
                 rectangles.at(i) );
     }
+}
+
+TEST_CASE( "Compression: real compression/decompress workflow" ) {
+    std::vector<Rectangle> rectangles;
+    rectangles.push_back(Rectangle(-122.03059849999999642, 37.817925999999999931,
+            -122.00577099999999575, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03377299999998229, 37.836874999999999147,
+            -122.03067250000000854, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.0337729999999965, 37.874273999999999774,
+            -122.03377299999998229, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.03386999999999318, 37.886673999999999296,
+            -122.03377299999998229, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.00577099999999575, 37.888546500000003903,
+            -122.00361349999998595, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03067250000000854, 37.905124000000007811,
+            -122.03059849999999642, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.0423564999999968, 37.913181500000000312,
+            -122.03773949999998649, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03757199999998306, 37.913522999999997865,
+            -122.03566549999997903, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03387299999998561, 37.914123000000003572,
+            -122.03386999999999318, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.03391699999998821, 37.917422999999999433,
+            -122.03387299999998561, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.04237399999999525, 37.930323000000001343,
+            -122.0423564999999968, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.0353240000000028, 37.93836849999999572,
+            -122.03492399999997531, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03482850000000326, 37.93836849999999572,
+            -122.03442399999998713, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.06092399999999998, 37.965603500000007386,
+            -122.06057400000000257, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.06057400000000257, 37.965603500000007386,
+            -122.06055050000000506, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.06055050000000506, 37.965603500000007386,
+            -122.05106399999998246, 37.971221999999997365));
+    rectangles.push_back(Rectangle(-122.05106399999998246, 37.965603500000007386,
+            -122.04237399999999525, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.03773949999998649, 37.965603500000007386,
+            -122.03757199999998306, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.03566549999997903, 37.965603500000007386,
+            -122.0353240000000028, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.03492399999997531, 37.965603500000007386,
+            -122.03482850000000326, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-122.03442399999998713, 37.965603500000007386,
+            -122.03391699999998821, 37.982349499999997988));
+    rectangles.push_back(Rectangle(-121.93181999999997345, 38.040552000000005251,
+            -121.73704099999999073, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.06057400000000257, 38.048769000000007168,
+            -122.04237399999999525, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03773949999998649, 38.048769000000007168,
+            -122.03757199999998306, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03566549999997903, 38.048769000000007168,
+            -122.0353240000000028, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03492399999997531, 38.048769000000007168,
+            -122.03482850000000326, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.03442399999998713, 38.048769000000007168,
+            -122.00357199999999125, 38.057619000000009635));
+    rectangles.push_back(Rectangle(-122.00357199999999125, 38.05671900000000818,
+            -121.93181999999997345, 38.057619000000009635));
+
+    auto compress_result = compress_polygon( rectangles.begin(),
+            rectangles.end(), rectangles.size() );
+
+    IsotheticPolygon decompress_result = decompress_polygon(
+            compress_result.first );
+
+    REQUIRE( decompress_result.basicRectangles.size() ==
+            rectangles.size() );
+
+    for( unsigned i = 0; i < rectangles.size(); i++ ) {
+        REQUIRE( decompress_result.basicRectangles.at(i) ==
+                rectangles.at(i) );
+    }
+
+    std::cout << "SIZE: " << sizeof(Rectangle)*rectangles.size() <<
+        std::endl;
+    std::cout << "Compressed size: " << compress_result.second <<
+        std::endl;
+
 }
 
 
