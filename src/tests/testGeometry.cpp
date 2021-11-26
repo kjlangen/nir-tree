@@ -2118,3 +2118,49 @@ TEST_CASE( "Test simplify real poly" ) {
     std::cout << compute_sizeof_inline_unbounded_polygon(
             MAX_RECTANGLE_COUNT + 1 ) << std::endl;
 }
+
+TEST_CASE("Test computeExpansionAreaForInlinePolygon: Bounded") {
+	Point one_one(1,1);
+    Point two_two(2,2);
+	Point three_three(3,3);
+    Rectangle one_two_rect( one_one, two_two );
+	Rectangle two_three_rect( two_two, three_three );
+
+    InlineBoundedIsotheticPolygon inline_poly;
+    IsotheticPolygon local_poly;
+    local_poly.basicRectangles = { one_two_rect, two_three_rect };
+    local_poly.recomputeBoundingBox();
+    inline_poly.push_polygon_to_disk( local_poly );
+    REQUIRE( inline_poly.get_rectangle_count() == 2 );
+    auto begin = inline_poly.begin();
+	auto end = inline_poly.end();
+
+	// TESTING THE QUICK EXIT
+	Point contained(1.5, 1.5);
+
+	auto contained_expansion =  computeExpansionArea<InlineBoundedIsotheticPolygon, Rectangle  *>(
+		inline_poly, begin, end, contained
+	);
+
+	REQUIRE(contained_expansion.index == 0);
+	REQUIRE(contained_expansion.area == -1);
+
+	Point not_contained(0.5, 0.5);
+
+	auto contained_expansion2 =  computeExpansionArea<InlineBoundedIsotheticPolygon, Rectangle  *>(
+		inline_poly, begin, end, not_contained
+	);
+
+	REQUIRE(contained_expansion2.index == 0);
+	REQUIRE(contained_expansion2.area == 1.25);
+
+	Point far(6, 6);
+
+	auto far_expansion =  computeExpansionArea<InlineBoundedIsotheticPolygon, Rectangle  *>(
+		inline_poly, begin, end, far
+	);
+
+	REQUIRE(far_expansion.index == 1);
+	REQUIRE((int)far_expansion.area == 15); // float comparison
+
+}

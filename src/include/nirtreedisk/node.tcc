@@ -1604,9 +1604,14 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
             }
 
             tree_node_allocator *allocator = get_node_allocator( this->treeRef );
-            IsotheticPolygon node_poly = cur_node->entries.at(0).materialize_polygon(
+            inline_poly node_poly = cur_node->entries.at(0).get_inline_polygon(
                     allocator );
-            assert( node_poly.basicRectangles.size() > 0 );
+            bool node_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(node_poly);
+            if (node_poly_unbounded) {
+                assert( std::get<unbounded_poly_pin>(node_poly)->get_total_rectangle_count() > 0 );
+            } else {
+                assert( std::get<InlineBoundedIsotheticPolygon>(node_poly).get_rectangle_count() > 0 );
+            }
 
             // This is the minimum amount of additional area we need in
             // one of the branches to encode our expansion
@@ -1623,14 +1628,18 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
             std::vector<IsotheticPolygon::OptimalExpansion> expansions;
 
             if( std::holds_alternative<Branch>( nodeEntry ) ) {
-                IsotheticPolygon branch_poly =
-                    std::get<Branch>(nodeEntry).materialize_polygon(
-                            allocator );
-                auto expansion_computation_results = node_poly.computeExpansionArea(
-                        branch_poly );
-                minimal_area_expansion =
-                    expansion_computation_results.first;
-                minimal_poly_area = branch_poly.area();
+                inline_poly branch_poly =
+                    std::get<Branch>(nodeEntry).get_inline_polygon( allocator );
+                auto expansion_computation_results = computeExpansionArea( node_poly, branch_poly );
+                minimal_area_expansion = expansion_computation_results.first;
+
+                bool branch_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(branch_poly);
+                if (branch_poly_unbounded) {
+                    minimal_poly_area = std::get<unbounded_poly_pin>(branch_poly)->area();
+                } else {
+                    minimal_poly_area = std::get<InlineBoundedIsotheticPolygon>(branch_poly).area();
+                }
+
                 expansions = expansion_computation_results.second;
                 /*
                 if( minimal_area_expansion == -1.0 ) {
@@ -1638,20 +1647,34 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                 }
                 */
             } else {
-                IsotheticPolygon::OptimalExpansion exp = node_poly.computeExpansionArea(
-                        std::get<Point>( nodeEntry ) );
+                IsotheticPolygon::OptimalExpansion exp;
+                if (node_poly_unbounded) {
+                    auto unb_node_poly = std::get<unbounded_poly_pin>(node_poly);
+                    auto inline_exp = computeExpansionArea<InlineUnboundedIsotheticPolygon, InlineUnboundedIsotheticPolygon::Iterator>(
+                        *unb_node_poly , unb_node_poly->begin(), unb_node_poly->end(), std::get<Point>( nodeEntry ) );
+                    exp = inline_exp;
+                } else {
+                    auto b_node_poly = std::get<InlineBoundedIsotheticPolygon>(node_poly);
+                    exp = computeExpansionArea<InlineBoundedIsotheticPolygon, InlineBoundedIsotheticPolygon::iterator>(
+                        b_node_poly , b_node_poly.begin(), b_node_poly.end(), std::get<Point>( nodeEntry ) );
+                }
                 minimal_area_expansion = exp.area;
                 expansions.push_back( exp );
             }
 
             for( unsigned i = 1; i < cur_node->cur_offset_; i++ ) {
                 Branch &b = cur_node->entries.at(i);
-                node_poly = b.materialize_polygon( allocator );
-                assert( node_poly.basicRectangles.size() > 0 );
-             
+                node_poly = b.get_inline_polygon( allocator );
+                bool node_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(node_poly);
+                if (node_poly_unbounded) {
+                    assert( std::get<unbounded_poly_pin>(node_poly)->get_total_rectangle_count() > 0 );
+                } else {
+                    assert( std::get<InlineBoundedIsotheticPolygon>(node_poly).get_rectangle_count() > 0 );
+                }
+
                 if( std::holds_alternative<Branch>( nodeEntry ) ) {
-                    IsotheticPolygon branch_poly =
-                        std::get<Branch>(nodeEntry).materialize_polygon(
+                    inline_poly branch_poly =
+                        std::get<Branch>(nodeEntry).get_inline_polygon(
                                 allocator );
                     // Walk every rectangle in the branch's polygon
                     // Find rectangle in our polygon that needs to be
@@ -1662,9 +1685,15 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                     // distinct polygons. So as a result of doing this
                     // the polygon's constituent rectangles may now
                     // overlap.
-                    auto expansion_computation_results = node_poly.computeExpansionArea(
-                            branch_poly );
-                    double poly_area = node_poly.area();
+                    auto expansion_computation_results = computeExpansionArea( node_poly, branch_poly );
+                    double poly_area;
+
+                    if (node_poly_unbounded) {
+                        poly_area = std::get<unbounded_poly_pin>(node_poly)->area();
+                    } else {
+                        poly_area = std::get<InlineBoundedIsotheticPolygon>(node_poly).area();
+                    }
+
                     if( expansion_computation_results.first <
                             minimal_area_expansion or 
                      (expansion_computation_results.first ==
@@ -1683,8 +1712,19 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                     }
                     */
                 } else {
-                    IsotheticPolygon::OptimalExpansion exp = node_poly.computeExpansionArea(
-                            std::get<Point>( nodeEntry ) );
+                    IsotheticPolygon::OptimalExpansion exp;
+                    if (node_poly_unbounded) {
+                        auto unb_node_poly = std::get<unbounded_poly_pin>(node_poly);
+                        auto inline_exp = computeExpansionArea<InlineUnboundedIsotheticPolygon, InlineUnboundedIsotheticPolygon::Iterator>(
+                            *unb_node_poly , unb_node_poly->begin(), unb_node_poly->end(), std::get<Point>( nodeEntry ) );
+                        exp = inline_exp;
+                    } else {
+                        auto b_node_poly = std::get<InlineBoundedIsotheticPolygon>(node_poly);
+                        auto inline_exp = computeExpansionArea<InlineBoundedIsotheticPolygon, InlineBoundedIsotheticPolygon::iterator>(
+                            b_node_poly , b_node_poly.begin(), b_node_poly.end(), std::get<Point>( nodeEntry ) );
+                        exp = inline_exp;
+                    }
+
                     if( exp.area < minimal_area_expansion ) {
                         minimal_area_expansion = exp.area;
                         expansions.clear();
@@ -1715,8 +1755,9 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
 
                 Branch &chosen_branch =
                     cur_node->entries.at(smallestExpansionBranchIndex);
-                node_poly = chosen_branch.materialize_polygon( allocator
-                        );
+                node_poly = chosen_branch.get_inline_polygon( allocator );
+
+                IsotheticPolygon mat_node_poly = chosen_branch.materialize_polygon( allocator );
 
 
                 if( std::holds_alternative<Branch>( nodeEntry ) ) {
@@ -1754,7 +1795,7 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         auto &expansion = expansions.at(i);
                         auto &insertion_rect= insertion_poly.basicRectangles.at(i);
                         Rectangle &existing_rect =
-                            node_poly.basicRectangles.at(expansion.index);
+                            mat_node_poly.basicRectangles.at(expansion.index);
                         // Expand the existing rectangle. This rectangle
                         // might now overlap with other rectangles in
                         // the polygon. But if we make it not overlap,
@@ -1765,15 +1806,15 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         assert( existing_rect.containsRectangle(
                                     insertion_rect ) );
                     }
-                    node_poly.recomputeBoundingBox();
+                    mat_node_poly.recomputeBoundingBox();
                 } else {
                     assert( expansions.size() == 1 );
                     Point &p = std::get<Point>( nodeEntry );
                     Rectangle &existing_rect =
-                        node_poly.basicRectangles.at(expansions.at(0).index);
+                        mat_node_poly.basicRectangles.at(expansions.at(0).index);
                     existing_rect.expand( p );
-                    node_poly.recomputeBoundingBox();
-                    assert( node_poly.containsPoint( p ) );
+                    mat_node_poly.recomputeBoundingBox();
+                    assert( mat_node_poly.containsPoint( p ) );
                 }
 
                 // Dodge all the other branches
@@ -1783,7 +1824,7 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         continue;
                     }
                     Branch &other_branch = cur_node->entries.at(i);
-                    node_poly.increaseResolution( Point::atInfinity,
+                    mat_node_poly.increaseResolution( Point::atInfinity,
                             other_branch.materialize_polygon( allocator ) );
                 }
 
@@ -1808,10 +1849,10 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                 }
                 */
 
-                node_poly.refine();
-                node_poly.recomputeBoundingBox();
+                mat_node_poly.refine();
+                mat_node_poly.recomputeBoundingBox();
 
-                update_branch_polygon( chosen_branch, node_poly, treeRef );
+                update_branch_polygon( chosen_branch, mat_node_poly, treeRef );
             }
 
             // Descend

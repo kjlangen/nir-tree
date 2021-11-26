@@ -290,6 +290,17 @@ class InlineBoundedIsotheticPolygon {
             return basicRectangles.cbegin() + rectangle_count_;
         }
 
+        double area() const {
+            double area = 0.0;
+
+            for (const Rectangle &basicRectangle : basicRectangles)
+            {
+                area += basicRectangle.area();
+            }
+
+            return area;
+        }
+
         IsotheticPolygon materialize_polygon() {
             IsotheticPolygon polygon;
             std::copy( this->begin(), this->end(),
@@ -534,6 +545,18 @@ class InlineUnboundedIsotheticPolygon {
             return iter;
         }
 
+        double area() {
+            double area = 0.0;
+
+            for (auto it = begin(); it != end(); ++it)
+            {
+                Rectangle &basicRectangle = *it;
+                area += basicRectangle.area();
+            }
+
+            return area;
+        }
+
         IsotheticPolygon materialize_polygon() {
             // Copy all the sequentially arranged polygon stuff into an
             // in-memory buffer
@@ -768,3 +791,115 @@ constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects )
 static_assert( compute_sizeof_inline_unbounded_polygon(
             MAX_RECTANGLE_COUNT + 1 ) == 272 );
             */
+
+
+template <class InlinePolyType, class InlinePolygonIter>
+IsotheticPolygon::OptimalExpansion computeExpansionArea(InlinePolyType &poly, InlinePolygonIter begin, InlinePolygonIter end, Point &givenPoint)
+{
+	// Early exit
+	if (poly.containsPoint(givenPoint))
+	{
+		return {0, -1.0};
+	}
+
+	// Take the minimum expansion area, defaulting to the first rectangle in the worst case
+	IsotheticPolygon::OptimalExpansion expansion = {0, std::numeric_limits<double>::infinity()};
+	double evalArea;
+
+    unsigned i = 0;
+	for (auto it = begin; it != end; it++)
+	{
+		evalArea = it->computeExpansionArea(givenPoint);
+
+		if( evalArea < expansion.area and it->area() != 0.0 ) {
+			expansion.index = i;
+			expansion.area = evalArea;
+		}
+
+        i++;
+	}
+
+	return expansion;
+}
+
+template <class InlinePolygonIter>
+IsotheticPolygon::OptimalExpansion computeExpansionArea(InlinePolygonIter begin, InlinePolygonIter end, const Rectangle &givenRectangle)
+{
+	// Take the minimum expansion area
+	IsotheticPolygon::OptimalExpansion expansion = {0, begin->computeExpansionArea(givenRectangle)};
+	double evalArea;
+
+    auto it = begin;
+    ++it;
+    unsigned i = 0;
+	for (; it != end; ++it)
+	{
+		evalArea = it->computeExpansionArea(givenRectangle);
+
+		if (evalArea < expansion.area)
+		{
+			expansion.index = i;
+			expansion.area = evalArea;
+		}
+        i++;
+	}
+
+	return expansion;
+}
+
+typedef pinned_node_ptr<InlineUnboundedIsotheticPolygon> unbounded_poly_pin;
+typedef std::variant<unbounded_poly_pin, InlineBoundedIsotheticPolygon> inline_poly;
+
+static
+std::pair<double, std::vector<IsotheticPolygon::OptimalExpansion>>
+computeExpansionArea( const inline_poly &this_poly, const inline_poly &other_poly ) {
+    std::vector<IsotheticPolygon::OptimalExpansion> expansions;
+    double totalAreas = 0.0;
+
+    bool this_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(this_poly);
+    bool other_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(other_poly);
+
+
+    if (other_poly_unbounded) {
+        unbounded_poly_pin o_poly_pin = std::get<unbounded_poly_pin>(other_poly);
+        for (auto it = o_poly_pin->begin(); it != o_poly_pin->end(); it++) {
+            const Rectangle &rect = *it;
+
+            IsotheticPolygon::OptimalExpansion exp;
+            if (this_poly_unbounded) {
+                unbounded_poly_pin t_poly_pin = std::get<unbounded_poly_pin>(this_poly);
+                exp = computeExpansionArea<InlineUnboundedIsotheticPolygon::Iterator>( t_poly_pin->begin(), t_poly_pin->end(), rect );
+            } else{
+                InlineBoundedIsotheticPolygon t_poly = std::get<InlineBoundedIsotheticPolygon>(this_poly);
+                exp = computeExpansionArea<InlineBoundedIsotheticPolygon::iterator>( t_poly.begin(), t_poly.end(), rect );
+            }
+
+            if( exp.area != 0.0 and exp.area != -1.0 ) {
+                totalAreas += exp.area;
+            }
+            expansions.push_back( exp );
+        }
+    } else {
+        InlineBoundedIsotheticPolygon o_poly = std::get<InlineBoundedIsotheticPolygon>(other_poly);
+
+        for (auto it = o_poly.begin(); it != o_poly.end(); it++) {
+            const Rectangle &rect = *it;
+
+            IsotheticPolygon::OptimalExpansion exp;
+            if (this_poly_unbounded) {
+                unbounded_poly_pin t_poly_pin = std::get<unbounded_poly_pin>(this_poly);
+                exp = computeExpansionArea<InlineUnboundedIsotheticPolygon::Iterator>( t_poly_pin->begin(), t_poly_pin->end(), rect );
+            } else{
+                InlineBoundedIsotheticPolygon t_poly = std::get<InlineBoundedIsotheticPolygon>(this_poly);
+                exp = computeExpansionArea<InlineBoundedIsotheticPolygon::iterator>( t_poly.begin(), t_poly.end(), rect );
+            }
+
+            if( exp.area != 0.0 and exp.area != -1.0 ) {
+                totalAreas += exp.area;
+            }
+            expansions.push_back( exp );
+        }
+    }
+
+    return std::make_pair( totalAreas == 0.0 ? -1.0 : totalAreas, expansions );
+}
