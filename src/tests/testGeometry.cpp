@@ -2119,7 +2119,7 @@ TEST_CASE( "Test simplify real poly" ) {
             MAX_RECTANGLE_COUNT + 1 ) << std::endl;
 }
 
-TEST_CASE("Test computeExpansionAreaForInlinePolygon: Bounded") {
+TEST_CASE("Test computeExpansionArea given Point: Bounded") {
 	Point one_one(1,1);
     Point two_two(2,2);
 	Point three_three(3,3);
@@ -2162,5 +2162,239 @@ TEST_CASE("Test computeExpansionAreaForInlinePolygon: Bounded") {
 
 	REQUIRE(far_expansion.index == 1);
 	REQUIRE((int)far_expansion.area == 15); // float comparison
+
+}
+
+
+TEST_CASE("Test computeExpansionArea given Rectangle: Bounded") {
+	Point zero_zero(0,0);
+	Point one_one(1,1);
+    Point two_two(2,2);
+	Point three_three(3,3);
+	Point four_four(4,4);
+	Rectangle zero_one_rect( zero_zero, one_one );
+    Rectangle one_two_rect( one_one, two_two );
+	Rectangle two_three_rect( two_two, three_three );
+	Rectangle three_four_rect( three_three, four_four );
+
+    InlineBoundedIsotheticPolygon inline_poly;
+    IsotheticPolygon local_poly;
+    local_poly.basicRectangles = { one_two_rect, two_three_rect };
+    local_poly.recomputeBoundingBox();
+    inline_poly.push_polygon_to_disk( local_poly );
+    REQUIRE( inline_poly.get_rectangle_count() == 2 );
+    auto begin = inline_poly.begin();
+	auto end = inline_poly.end();
+
+	// TESTING THE QUICK EXIT
+
+	auto contained_expansion =  computeExpansionArea<Rectangle  *>(
+		begin, end, three_four_rect
+	);
+
+	REQUIRE(contained_expansion.index == 1);
+	REQUIRE(contained_expansion.area == 3);
+
+	contained_expansion =  computeExpansionArea<Rectangle  *>(
+		begin, end, zero_one_rect
+	);
+
+	REQUIRE(contained_expansion.index == 0);
+	REQUIRE(contained_expansion.area == 3);
+
+}
+
+TEST_CASE("Test computeExpansionArea given Point: Unbounded") {
+    tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
+    size_t max_rectangles_per_page =
+        PageableIsotheticPolygon::get_max_rectangle_count_per_page();
+
+    IsotheticPolygon polygon;
+    for( size_t i = 0; i < max_rects_on_first_page +
+            2*max_rectangles_per_page-5; i++ ) {
+        polygon.basicRectangles.push_back( Rectangle( Point(i,i),
+                    Point(i+0.5,i+0.5) ) );
+    }
+    polygon.recomputeBoundingBox();
+
+    auto alloc_data = allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            PAGE_DATA_SIZE, NodeHandleType( 0 ) );
+
+    new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+            &allocator, max_rects_on_first_page );
+
+    auto inline_poly = alloc_data.first;
+
+    inline_poly->push_polygon_to_disk( polygon );
+
+	Point one_one(1,1);
+    Point two_two(2,2);
+	Point three_three(3,3);
+    Rectangle one_two_rect( one_one, two_two );
+	Rectangle two_three_rect( two_two, three_three );
+
+	// TESTING THE QUICK EXIT
+	Point contained(1, 1);
+
+	auto contained_expansion =  computeExpansionArea<InlineUnboundedIsotheticPolygon, InlineUnboundedIsotheticPolygon::Iterator>(
+		*inline_poly, inline_poly->begin(), inline_poly->end(), contained
+	);
+
+	REQUIRE(contained_expansion.index == 0);
+	REQUIRE(contained_expansion.area == -1);
+
+	Point not_contained(0.5, 0.5);
+
+	auto contained_expansion2 =  computeExpansionArea<InlineUnboundedIsotheticPolygon, InlineUnboundedIsotheticPolygon::Iterator>(
+		*inline_poly, inline_poly->begin(), inline_poly->end(), not_contained
+	);
+
+	REQUIRE(contained_expansion2.index == 0);
+	REQUIRE((int)contained_expansion2.area == 0);
+
+	Point six(6.75, 6.75);
+
+	auto far_expansion =  computeExpansionArea<InlineUnboundedIsotheticPolygon, InlineUnboundedIsotheticPolygon::Iterator>(
+		*inline_poly, inline_poly->begin(), inline_poly->end(), six
+	);
+
+	REQUIRE(far_expansion.index == 7);
+	REQUIRE(far_expansion.area == 0.3125);
+
+}
+
+
+TEST_CASE("Test computeExpansionArea given Rectangle: Unbounded") {
+tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
+    size_t max_rectangles_per_page =
+        PageableIsotheticPolygon::get_max_rectangle_count_per_page();
+
+    IsotheticPolygon polygon;
+    for( size_t i = 0; i < max_rects_on_first_page +
+            2*max_rectangles_per_page-5; i++ ) {
+        polygon.basicRectangles.push_back( Rectangle( Point(i,i),
+                    Point(i+0.5,i+0.5) ) );
+    }
+    polygon.recomputeBoundingBox();
+
+    auto alloc_data = allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            PAGE_DATA_SIZE, NodeHandleType( 0 ) );
+
+    new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+            &allocator, max_rects_on_first_page );
+
+    auto inline_poly = alloc_data.first;
+
+    inline_poly->push_polygon_to_disk( polygon );
+
+	Point zero_zero(0,0);
+	Point one_one(1,1);
+    Point two_two(2,2);
+	Point three_three(3,3);
+	Point four_four(4,4);
+	Rectangle zero_one_rect( zero_zero, one_one );
+    Rectangle one_two_rect( one_one, two_two );
+	Rectangle two_three_rect( two_two, three_three );
+	Rectangle three_four_rect( three_three, four_four );
+
+	// TESTING THE QUICK EXIT
+
+	auto contained_expansion =  computeExpansionArea<InlineUnboundedIsotheticPolygon::Iterator>(
+		inline_poly->begin(), inline_poly->end(), three_four_rect
+	);
+
+	REQUIRE(contained_expansion.index == 3);
+	REQUIRE(contained_expansion.area == 0.75);
+
+	contained_expansion =  computeExpansionArea<InlineUnboundedIsotheticPolygon::Iterator>(
+		inline_poly->begin(), inline_poly->end(), zero_one_rect
+	);
+
+	REQUIRE(contained_expansion.index == 0);
+	REQUIRE(contained_expansion.area == 0.75);
+
+}
+
+
+TEST_CASE("Test computeExpansionArea given Two Inline Polygons") {
+tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
+    unlink( allocator.get_backing_file_name().c_str() );
+    allocator.initialize();
+
+    size_t max_rects_on_first_page = ((PAGE_DATA_SIZE -
+            sizeof(InlineUnboundedIsotheticPolygon))/sizeof(Rectangle))
+        + 1;
+
+    size_t max_rectangles_per_page =
+        PageableIsotheticPolygon::get_max_rectangle_count_per_page();
+
+    IsotheticPolygon polygon;
+    for( size_t i = 0; i < max_rects_on_first_page +
+            2*max_rectangles_per_page-5; i++ ) {
+        polygon.basicRectangles.push_back( Rectangle( Point(i,i),
+                    Point(i+0.5,i+0.5) ) );
+    }
+    polygon.recomputeBoundingBox();
+
+    auto alloc_data = allocator.create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            PAGE_DATA_SIZE, NodeHandleType( 0 ) );
+
+    new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+            &allocator, max_rects_on_first_page );
+
+    auto inline_poly = alloc_data.first;
+
+    inline_poly->push_polygon_to_disk( polygon );
+
+	Point zero_zero(0,0);
+	Point one_one(1,1);
+    Point two_two(2,2);
+	Point three_three(3,3);
+	Point four_four(4,4);
+	Rectangle zero_one_rect( zero_zero, one_one );
+    Rectangle one_two_rect( one_one, two_two );
+	Rectangle two_three_rect( two_two, three_three );
+	Rectangle three_four_rect( three_three, four_four );
+
+    InlineBoundedIsotheticPolygon inline_poly_bounded;
+    IsotheticPolygon local_poly_bounded;
+    local_poly_bounded.basicRectangles = { one_two_rect, two_three_rect };
+    local_poly_bounded.recomputeBoundingBox();
+    inline_poly_bounded.push_polygon_to_disk( local_poly_bounded );
+    REQUIRE( inline_poly_bounded.get_rectangle_count() == 2 );
+    auto begin = inline_poly_bounded.begin();
+	auto end = inline_poly_bounded.end();
+
+	// TESTING THE QUICK EXIT
+
+	auto exp_info =  computeExpansionArea(
+		inline_poly, inline_poly_bounded
+	);
+
+	REQUIRE(exp_info.first == 1.5);
+	REQUIRE(exp_info.second.size() == 2);
+
+
+	auto exp_info_rev =  computeExpansionArea(
+		inline_poly_bounded, inline_poly
+	);
+
+	REQUIRE(exp_info_rev.first == 16747407.0);
+	REQUIRE(exp_info_rev.second.size() == max_rects_on_first_page +
+            2*max_rectangles_per_page-5);
 
 }

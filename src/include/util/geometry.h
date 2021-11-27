@@ -831,7 +831,7 @@ IsotheticPolygon::OptimalExpansion computeExpansionArea(InlinePolygonIter begin,
 
     auto it = begin;
     ++it;
-    unsigned i = 0;
+    unsigned i = 1;
 	for (; it != end; ++it)
 	{
 		evalArea = it->computeExpansionArea(givenRectangle);
