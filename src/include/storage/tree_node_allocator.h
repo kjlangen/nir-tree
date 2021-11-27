@@ -86,10 +86,10 @@ public:
 // accidentally specify a type as the size during allocations and cause
 // amazing memory problems
 struct NodeHandleType {
-    explicit NodeHandleType( uint16_t type ) :
+    explicit NodeHandleType( uint8_t type ) :
        type_( type ) { } 
 
-    uint16_t type_;
+    uint8_t type_;
 };
 
 class tree_node_handle {
@@ -115,16 +115,19 @@ public:
     tree_node_handle( uint32_t page_id, uint16_t offset, NodeHandleType
             type ) :
         page_location_( std::in_place, page_id, offset ),
-        type_( type.type_ ) {
+        type_( type.type_ ),
+        associated_poly_is_compressed_( 0 ) {
     }
 
     tree_node_handle() :
         page_location_( std::nullopt ),
-        type_( 0 ) {}
+        type_( 0 ),
+        associated_poly_is_compressed_( 0 ) {}
 
     tree_node_handle( std::nullptr_t ) :
         page_location_( std::nullopt ),
-        type_( 0 ) {}
+        type_( 0 ),
+        associated_poly_is_compressed_( 0 ) {}
 
     operator bool() const {
         return page_location_.has_value();
@@ -158,8 +161,16 @@ public:
         return page_location_.value().offset_;
     }
     
-    inline uint16_t get_type() {
+    inline uint8_t get_type() {
         return type_;
+    }
+
+    inline void set_associated_poly_is_compressed() {
+        associated_poly_is_compressed_ = 1;
+    }
+
+    inline bool get_associated_poly_is_compressed() {
+        return associated_poly_is_compressed_ == 1;
     }
 
     inline void set_type( NodeHandleType type ) {
@@ -181,9 +192,12 @@ private:
     std::optional<page_location> page_location_;
     // Special bits to indicate what type of node is on the other
     // end of this handle.
-    uint16_t type_;
+    uint8_t type_;
+    uint8_t associated_poly_is_compressed_;
 
 };
+
+static_assert( sizeof(tree_node_handle) == 16 );
 
 template <typename T, typename U>
 pinned_node_ptr<U> reinterpret_handle_ptr( const pinned_node_ptr<T> &ptr )

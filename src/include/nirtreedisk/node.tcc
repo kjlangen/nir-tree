@@ -1055,7 +1055,7 @@ uint16_t LEAF_NODE_CLASS_TYPES::compute_packed_size() {
 }
 
 NODE_TEMPLATE_PARAMS
-uint16_t BRANCH_NODE_CLASS_TYPES::compute_packed_size(
+std::pair<uint16_t, std::vector<std::optional<std::pair<char*,int>>>> BRANCH_NODE_CLASS_TYPES::compute_packed_size(
     tree_node_allocator *existing_allocator,
     tree_node_allocator *new_allocator,
     unsigned &maximum_repacked_rect_size
@@ -1065,11 +1065,32 @@ uint16_t BRANCH_NODE_CLASS_TYPES::compute_packed_size(
     sz += sizeof( self_handle_ );
     sz += sizeof( parent );
     sz += sizeof( cur_offset_ );
+
+    std::vector<std::optional<std::pair<char *, int>>>
+        branch_compression_data;
+
+    // At the top layers of the tree, we are going to write out
+    // everything.
+    // On the last layer before leaves, just use rectangles.
     for( unsigned i = 0; i < cur_offset_; i++ ) {
-        sz += entries.at(i).compute_packed_size( existing_allocator,
-                new_allocator, maximum_repacked_rect_size );
+        uint16_t unpacked_size = 0;
+        do {
+            unpacked_size = entries.at(i).compute_packed_size( existing_allocator,
+                    new_allocator, 25, false );
+            maximum_repacked_rect_size /= 2;
+        } while( unpacked_size >= PAGE_DATA_SIZE );
+
+        auto compression_result = entries.at(i).compute_compression_data(
+                    existing_allocator );
+        if( compression_result.has_value() ) {
+            sz += compression_result.value().second +
+                sizeof(tree_node_handle);
+        } else {
+            sz += unpacked_size;
+        }
+        branch_compression_data.push_back( compression_result );
     }
-    return sz;
+    return std::make_pair( sz, branch_compression_data );
 }
 
 NODE_TEMPLATE_PARAMS
@@ -1091,7 +1112,6 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
         buffer += write_data_to_buffer( buffer, &(entries.at(i)) );
     }
     if( buffer - alloc_data.first->buffer_ != alloc_size ) {
-        std::cout << "Memory corruption, abort." << std::endl;
         abort();
     }
 
@@ -1105,31 +1125,16 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
         *existing_allocator, tree_node_allocator *new_allocator ) {
     std::cout << "Repacking: " << self_handle_ << std::endl;
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
-    unsigned maximum_repacked_rect_size;
-    uint16_t alloc_size = 0;
-    for( maximum_repacked_rect_size = 25;
-            maximum_repacked_rect_size >= 5; maximum_repacked_rect_size
-            /= 2 ) {
-        alloc_size = compute_packed_size(
-            existing_allocator,
-            new_allocator,
-            maximum_repacked_rect_size
-        );
-        if( alloc_size <= PAGE_DATA_SIZE ) {
-            break;
-        }
-    }
-    assert( alloc_size <= PAGE_DATA_SIZE );
-    assert( maximum_repacked_rect_size >= 5 );
+
+    unsigned maximum_unpacked_rect_size = 25;
+    auto packing_computation_result = compute_packed_size(
+            existing_allocator, new_allocator,
+            maximum_unpacked_rect_size);
+    uint16_t alloc_size = packing_computation_result.first;
     auto alloc_data = new_allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
-    std::cout << "New allocator handed us handle: " << alloc_data.second
-        << std::endl;
 
-    std::cout << "Going to write to buffer." << std::endl;
     char *buffer = alloc_data.first->buffer_;
-    std::cout << "Writing " << (void *) treeRef << " to " << (void *)
-        buffer;
     buffer += write_data_to_buffer( buffer, &treeRef );
     buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
     buffer += write_data_to_buffer( buffer, &parent );
@@ -1137,15 +1142,17 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = entries.at(i);
         buffer += b.repack_into( buffer, existing_allocator,
-                new_allocator, maximum_repacked_rect_size );
+                new_allocator, 25, 
+                packing_computation_result.second.at(i) );
     }
     unsigned true_size = (buffer - alloc_data.first->buffer_);
     if( alloc_size != true_size ) {
-        std::cout << "Memory corruption, abort." << std::endl;
+        std::cout << "Memory corruption -- disaster." << std::endl;
+        std::cout << "Alloc Size: " << alloc_size << ", " << true_size
+            << std::endl;
         abort();
     }
     assert( true_size == alloc_size );
-    std::cout << "Done. New handle is now: " << alloc_data.second << std::endl;
     return alloc_data.second;
 }
 
@@ -1497,21 +1504,13 @@ tree_node_handle repack_subtree(
             // we don't know that until we repack the branch node above.
             // So, we re-walk the new children here and set up all their
             // parents.
-            std::cout << "Adjusting children parents" << std::endl;
             for( unsigned i = 0; i < branch_node->cur_offset_; i++ ) {
-                std::cout << "Adjusting child: " <<
-                    branch_node->entries.at(i).child << std::endl;
                 auto new_child =
                     new_allocator->get_tree_node<packed_node>(
                             branch_node->entries.at(i).child );
-                std::cout << "Reading " << (void *) new_child->buffer_
-                    << std::endl;
-                std::cout << "Got treeRef: " << (void *)
-                    (new_child->buffer_) << std::endl;
                 * (tree_node_handle *) (new_child->buffer_ + sizeof(void*) +
                     sizeof(tree_node_handle)) = new_handle;
             }
-            std::cout << "Done adjusting children." << std::endl;
 
             existing_allocator->free( handle, sizeof(
                     BRANCH_NODE_CLASS_TYPES ) );
@@ -2711,32 +2710,49 @@ void stat_node(
             for( unsigned i = 0; i < count; i++ ) {
                 tree_node_handle *child = (tree_node_handle *) (buffer + offset);
                 offset += sizeof( tree_node_handle );
-                unsigned rect_count = * (unsigned *) (buffer + offset);
-                offset += sizeof( unsigned );
-                memoryFootprint += sizeof(tree_node_handle) + sizeof(unsigned);
-                context.push( *child );
-                if( rect_count == std::numeric_limits<unsigned>::max() ) {
-                    auto handle = * (tree_node_handle *) (buffer +
-                            offset);
-                    offset += sizeof( tree_node_handle );
-                    memoryFootprint += sizeof( tree_node_handle );
-                    auto poly_pin =
-                        allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
-                                handle );
-                    memoryFootprint +=
-                        compute_sizeof_inline_unbounded_polygon(
-                                poly_pin->get_total_rectangle_count() );
-                    memoryPolygons +=
-                        (compute_sizeof_inline_unbounded_polygon (
-                                poly_pin->get_total_rectangle_count() )
-                         - sizeof(Rectangle));
+
+                if( !child->get_associated_poly_is_compressed() ) {
+                    unsigned rect_count = * (unsigned *) (buffer + offset);
+                    offset += sizeof( unsigned );
+                    memoryFootprint += sizeof(tree_node_handle) + sizeof(unsigned);
+                    context.push( *child );
+                    if( rect_count == std::numeric_limits<unsigned>::max() ) {
+                        auto handle = * (tree_node_handle *) (buffer +
+                                offset);
+                        offset += sizeof( tree_node_handle );
+                        memoryFootprint += sizeof( tree_node_handle );
+                        auto poly_pin =
+                            allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                                    handle );
+                        memoryFootprint +=
+                            compute_sizeof_inline_unbounded_polygon(
+                                    poly_pin->get_total_rectangle_count() );
+                        memoryPolygons +=
+                            (compute_sizeof_inline_unbounded_polygon (
+                                    poly_pin->get_total_rectangle_count() )
+                             - sizeof(Rectangle));
+                    } else {
+                        offset += rect_count * sizeof( Rectangle );
+                        memoryFootprint += rect_count * sizeof(Rectangle);
+                        memoryPolygons += (rect_count * sizeof(Rectangle) -
+                                sizeof(Rectangle));
+                    }
                 } else {
-                    offset += rect_count * sizeof( Rectangle );
-                    memoryFootprint += rect_count * sizeof(Rectangle);
-                    memoryPolygons += (rect_count * sizeof(Rectangle) -
-                            sizeof(Rectangle));
+                    int new_offset;
+                    IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset,
+                        &new_offset );
+                    memoryFootprint += sizeof(tree_node_handle) + new_offset;
+                    std::cout << "Compressed poly consumes: " <<
+                        sizeof(tree_node_handle) + new_offset <<
+                        std::endl;
+                    std::cout << "Would have consumed: " <<
+                        decomp_poly.basicRectangles.size() *
+                        sizeof(Rectangle) << std::endl;
+                    context.push( *child );
+                    offset += new_offset;
                 }
             }
+
         } else if( currentContext.get_type() == BRANCH_NODE ) {
             auto current_branch_node = treeRef->get_branch_node( currentContext
                     );

@@ -1767,3 +1767,379 @@ TEST_CASE( "NIRTreeDisk: Repack subtree" ) {
 
     unlink( "nirdiskbacked.txt" );
 }
+
+TEST_CASE( "NIRTreeDisk: Compress Simple Branch" ) {
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node = alloc_leaf_data.first;
+
+    // Create highly compressible polygon
+    IsotheticPolygon branch_polygon;
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon );
+    branch_node->addBranchToNode( b );
+
+    tree_node_allocator *allocator = tree.node_allocator_.get();
+
+    auto compression_data = b.compute_compression_data( allocator );
+    REQUIRE( compression_data.has_value() );
+    REQUIRE( compression_data.value().second == 20 );
+
+    IsotheticPolygon decomp_poly = decompress_polygon(
+            compression_data.value().first );
+    REQUIRE( decomp_poly.basicRectangles.size() ==
+            branch_polygon.basicRectangles.size() );
+    for( unsigned i = 0; i < decomp_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decomp_poly.basicRectangles.at(i) ==
+                branch_polygon.basicRectangles.at(i) );
+    }
+
+    unlink( "nirdiskbacked.txt" );
+
+}
+
+TEST_CASE( "NIRTreeDisk: Compress/Repack Single Branch" ) {
+
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node = alloc_leaf_data.first;
+
+    // Create highly compressible polygon
+    IsotheticPolygon branch_polygon;
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon );
+    branch_node->addBranchToNode( b );
+
+    tree_node_allocator *allocator = tree.node_allocator_.get();
+    tree_node_handle compressed_handle = branch_node->repack( allocator, allocator );
+
+    auto compressed_branch = allocator->get_tree_node<packed_node>(
+            compressed_handle );
+    char *buffer = compressed_branch->buffer_;
+    unsigned offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    unsigned count = * (unsigned *) (buffer +offset); \
+    offset += sizeof( unsigned );
+
+    REQUIRE( count == 1 );
+    tree_node_handle *child = (tree_node_handle *) (buffer + offset );
+    REQUIRE( child->get_associated_poly_is_compressed() == true );
+    offset += sizeof( tree_node_handle );
+
+    IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset );
+    REQUIRE( decomp_poly.basicRectangles.size() ==
+            branch_polygon.basicRectangles.size() );
+    for( unsigned i = 0; i < decomp_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decomp_poly.basicRectangles.at(i) ==
+                branch_polygon.basicRectangles.at(i) );
+    }
+
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE( "NIRTreeDisk: Compress/Repack Multiple-Branch" ) {
+
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node = alloc_leaf_data.first;
+
+    // Create highly compressible polygon
+    IsotheticPolygon branch_polygon;
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 2, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 2, 1, 3, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 3, 1, 4, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 4, 1, 1, 1 ) );
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon );
+    branch_node->addBranchToNode( b );
+
+    IsotheticPolygon branch_polygon2;
+    branch_polygon2.basicRectangles.push_back( Rectangle( 5, 1, 1, 2 ) );
+    branch_polygon2.basicRectangles.push_back( Rectangle( 5, 2, 1, 3 ) );
+    branch_polygon2.basicRectangles.push_back( Rectangle( 5, 3, 1, 4 ) );
+    branch_polygon2.basicRectangles.push_back( Rectangle( 5, 4, 1, 1 ) );
+
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon2 );
+    branch_node->addBranchToNode( b );
+
+
+    tree_node_allocator *allocator = tree.node_allocator_.get();
+    tree_node_handle compressed_handle = branch_node->repack( allocator, allocator );
+
+    auto compressed_branch = allocator->get_tree_node<packed_node>(
+            compressed_handle );
+    char *buffer = compressed_branch->buffer_;
+    unsigned offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    unsigned count = * (unsigned *) (buffer +offset); \
+    offset += sizeof( unsigned );
+
+    REQUIRE( count == 2 );
+    tree_node_handle *child = (tree_node_handle *) (buffer + offset );
+    REQUIRE( child->get_associated_poly_is_compressed() == true );
+    offset += sizeof( tree_node_handle );
+
+    int new_offset;
+    IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset,
+            &new_offset );
+    REQUIRE( decomp_poly.basicRectangles.size() ==
+            branch_polygon.basicRectangles.size() );
+    for( unsigned i = 0; i < decomp_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decomp_poly.basicRectangles.at(i) ==
+                branch_polygon.basicRectangles.at(i) );
+    }
+    offset += new_offset;
+    child = (tree_node_handle *) (buffer + offset );
+    REQUIRE( child->get_associated_poly_is_compressed() == true );
+    offset += sizeof( tree_node_handle );
+
+    decomp_poly = decompress_polygon( buffer + offset,
+            &new_offset );
+    REQUIRE( decomp_poly.basicRectangles.size() ==
+            branch_polygon2.basicRectangles.size() );
+    for( unsigned i = 0; i < decomp_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decomp_poly.basicRectangles.at(i) ==
+                branch_polygon2.basicRectangles.at(i) );
+    }
+
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE( "NIRTreeDisk: Some branches compressed" ) {
+
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node = alloc_leaf_data.first;
+
+    // Create highly compressible polygon
+    IsotheticPolygon branch_polygon;
+    branch_polygon.basicRectangles.push_back( Rectangle( 5, 1, 1, 2 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 5, 2, 1, 3 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 5, 3, 1, 4 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 5, 4, 1, 1 ) );
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon );
+
+    branch_node->addBranchToNode( b );
+
+    IsotheticPolygon branch_polygon2;
+    branch_polygon2.basicRectangles.push_back( Rectangle( 1.324234525342,
+                -12.34925289, -354.95892761, 12.592089053 ) );
+    branch_polygon2.basicRectangles.push_back( Rectangle( 23.8954980323,
+                2093.729, 98.6442, 43.942222 ) );
+    branch_polygon2.basicRectangles.push_back( Rectangle(
+                17.293432908571, -31.2890808942, 1.980809808,
+                4.2345982582 ) );
+
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon2 );
+    branch_node->addBranchToNode( b );
+
+    tree_node_allocator *allocator = tree.node_allocator_.get();
+    tree_node_handle compressed_handle = branch_node->repack( allocator, allocator );
+
+    auto compressed_branch = allocator->get_tree_node<packed_node>(
+            compressed_handle );
+    char *buffer = compressed_branch->buffer_;
+    unsigned offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    unsigned count = * (unsigned *) (buffer +offset); \
+    offset += sizeof( unsigned );
+
+    REQUIRE( count == 2 );
+    tree_node_handle *child = (tree_node_handle *) (buffer + offset );
+    REQUIRE( child->get_associated_poly_is_compressed() == true );
+    offset += sizeof( tree_node_handle );
+
+    int new_offset;
+    IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset,
+            &new_offset );
+    REQUIRE( decomp_poly.basicRectangles.size() ==
+            branch_polygon.basicRectangles.size() );
+    for( unsigned i = 0; i < decomp_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decomp_poly.basicRectangles.at(i) ==
+                branch_polygon.basicRectangles.at(i) );
+    }
+
+    offset += new_offset;
+    child = (tree_node_handle *) (buffer + offset );
+    REQUIRE( child->get_associated_poly_is_compressed() == false );
+    offset += sizeof( tree_node_handle );
+
+    unsigned rect_count = * (unsigned *) (buffer+offset);
+    REQUIRE( rect_count == branch_polygon2.basicRectangles.size() );
+    offset += sizeof( unsigned );
+
+    for( unsigned i = 0; i < rect_count; i++ ) {
+        Rectangle *rect = (Rectangle *) (buffer + offset);
+        REQUIRE( *rect == branch_polygon2.basicRectangles.at(i));
+        offset += sizeof( Rectangle );
+    }
+
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE( "NIRTreeDisk: Compress/Repack weird alignment" ) {
+
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node = alloc_leaf_data.first;
+
+    // Create highly compressible polygon
+    IsotheticPolygon branch_polygon;
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+    branch_polygon.basicRectangles.push_back( Rectangle( 1, 1, 1, 1 ) );
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon );
+    branch_node->addBranchToNode( b );
+
+    IsotheticPolygon branch_polygon2;
+    branch_polygon2.basicRectangles.push_back( Rectangle( 2, 2, 2, 2 ) );
+    branch_polygon2.basicRectangles.push_back( Rectangle( 2, 2, 2, 2 ) );
+    branch_polygon2.basicRectangles.push_back( Rectangle( 2, 2, 2, 2 ) );
+
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( branch_polygon2 );
+    branch_node->addBranchToNode( b );
+
+    tree_node_allocator *allocator = tree.node_allocator_.get();
+    tree_node_handle compressed_handle = branch_node->repack( allocator, allocator );
+
+    auto compressed_branch = allocator->get_tree_node<packed_node>(
+            compressed_handle );
+    char *buffer = compressed_branch->buffer_;
+    unsigned offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    unsigned count = * (unsigned *) (buffer +offset); \
+    offset += sizeof( unsigned );
+
+    REQUIRE( count == 2 );
+    tree_node_handle *child = (tree_node_handle *) (buffer + offset );
+    REQUIRE( child->get_associated_poly_is_compressed() == true );
+    offset += sizeof( tree_node_handle );
+
+    int new_offset;
+    IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset,
+            &new_offset );
+    REQUIRE( decomp_poly.basicRectangles.size() ==
+            branch_polygon.basicRectangles.size() );
+    for( unsigned i = 0; i < decomp_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decomp_poly.basicRectangles.at(i) ==
+                branch_polygon.basicRectangles.at(i) );
+    }
+
+    offset += new_offset;
+    child = (tree_node_handle *) (buffer + offset );
+    REQUIRE( child->get_associated_poly_is_compressed() == true );
+    offset += sizeof(tree_node_handle);
+    decomp_poly = decompress_polygon( buffer + offset,
+            &new_offset );
+    REQUIRE( decomp_poly.basicRectangles.size() ==
+            branch_polygon2.basicRectangles.size() );
+    for( unsigned i = 0; i < decomp_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decomp_poly.basicRectangles.at(i) ==
+                branch_polygon2.basicRectangles.at(i) );
+    }
+
+    unlink( "nirdiskbacked.txt" );
+}

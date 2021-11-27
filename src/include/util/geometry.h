@@ -14,7 +14,7 @@
 // limitations under the License.
 #pragma once
 
-#define MAX_RECTANGLE_COUNT 5
+#define MAX_RECTANGLE_COUNT 3
 
 #include <iostream>
 #include <algorithm>
@@ -151,12 +151,6 @@ class Rectangle
 
 bool operator==(const Rectangle &lhs, const Rectangle &rhs);
 bool operator!=(const Rectangle &lhs, const Rectangle &rhs);
-
-class RectangleIterator {
-    struct RectangleIteratorBase {
-        virtual ~RectangleIteratorBase();
-    };
-};
 
 class IsotheticPolygon
 {

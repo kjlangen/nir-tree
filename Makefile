@@ -1,7 +1,7 @@
 C++ = g++
 DIR = src/include # Include directory
 SXX = -std=c++20 # Standard
-CXXFLAGS = -Wall
+CXXFLAGS = -Wall -fno-strict-aliasing
 CPPFLAGS = -DDIM=2 -I $(DIR)
 
 ifdef PROD
