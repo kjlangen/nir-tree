@@ -486,9 +486,9 @@ static bool is_already_loaded(
 ) {
     if( configU["tree"] == NIR_TREE ) {
         
-        nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits>
+        nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy>
             *tree =
-            (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits> *) spatial_index;
+            (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy> *) spatial_index;
 
         size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
@@ -588,7 +588,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
 		//spatialIndex = new nirtree::NIRTree(12,25);
 		spatialIndex = new
-            nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits>(
+            nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy>(
                 4096*13000*10, 
                 /*"repacked_nirtree.txt"*/
                 "nirdiskbacked_california.txt");
@@ -696,10 +696,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         if( configU["tree"] == NIR_TREE ) {
             std::cout << "Repacking..." << std::endl;
             auto tree_ptr =
-                (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits> *) spatialIndex;
+                (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy> *) spatialIndex;
             std::string fname = "repacked_nirtree.txt";
             repack_tree( tree_ptr, fname,
-                    nirtreedisk::repack_subtree<12,25,nirtreedisk::LineMinimizeDownsplits>  );
+                    nirtreedisk::repack_subtree<12,25,nirtreedisk::ExperimentalStrategy>  );
         } else if( configU["tree"] == R_STAR_TREE ) {
             std::cout << "Repacking..." << std::endl;
             auto tree_ptr = (rstartreedisk::RStarTreeDisk<12,25> *) spatialIndex;
@@ -761,7 +761,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
     */
 
 #endif
-#if 0
     std::shuffle( searchRectangles.begin(), searchRectangles.end(), g );
 
 	// Search for rectangles
@@ -782,7 +781,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 
 	}
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
-#endif
 
 	// Gather statistics
 
