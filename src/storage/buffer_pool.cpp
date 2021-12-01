@@ -125,7 +125,8 @@ page *buffer_pool::get_page( size_t page_id ) {
         return page_ptr;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    //std::cout << "Page miss." << std::endl;
 
     // Step 2: It is not, so obtain a page
     // Will evict an old page if necessary

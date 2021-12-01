@@ -152,12 +152,6 @@ class Rectangle
 bool operator==(const Rectangle &lhs, const Rectangle &rhs);
 bool operator!=(const Rectangle &lhs, const Rectangle &rhs);
 
-class RectangleIterator {
-    struct RectangleIteratorBase {
-        virtual ~RectangleIteratorBase();
-    };
-};
-
 class IsotheticPolygon
 {
 	public:

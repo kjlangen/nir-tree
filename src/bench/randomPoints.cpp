@@ -761,7 +761,6 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
     */
 
 #endif
-
     std::shuffle( searchRectangles.begin(), searchRectangles.end(), g );
 
 	// Search for rectangles
@@ -780,22 +779,11 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		// std::cout << "searchRectangles[" << i << "] queried. " << delta.count() << " s" << std::endl;
 		// std::cout << "searchRectangles[" << i << "] returned " << v.size() << " points" << std::endl;
 
-#ifndef NDEBUG
-		// Validate points returned in the search
-		for (unsigned j = 0; j < v.size(); ++j)
-		{
-			assert(searchRectangles[i].containsPoint(v[j]));
-		}
-		// std::cout << v.size() << " points verified." << std::endl;
-
-        if( totalRangeSearches == 100 ) {
-            break;
-        }
-#endif
 	}
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
 	// Gather statistics
+
 #ifdef STAT
 	spatialIndex->stat();
 	std::cout << "Statistics OK." << std::endl;

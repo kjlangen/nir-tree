@@ -33,6 +33,7 @@
 #include <util/graph.h>
 #include <util/debug.h>
 #include <util/repacking.h>
+#include <util/compression.h>
 #include <util/statistics.h>
 #include <variant>
 
@@ -132,9 +133,17 @@ namespace nirtreedisk
         uint16_t compute_packed_size(
             tree_node_allocator *existing_allocator,
             tree_node_allocator *new_allocator,
-            unsigned maximum_repacked_rect_size
+            unsigned maximum_repacked_rect_size,
+            bool truncate_polygons
         ) {
             uint16_t sz = sizeof( child );
+            /*
+            if( truncate_polygons ) {
+                sz += sizeof( unsigned ); // always 1
+                sz += sizeof( Rectangle ); // single rect
+                return sz;
+            }
+            */
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
 
                 auto should_pack_and_pin = should_repack_big_poly(
@@ -162,23 +171,144 @@ namespace nirtreedisk
             return sz;
         }
 
+        std::optional<std::pair<char *, int>> compute_compression_data(
+            tree_node_allocator *existing_allocator
+        ) {
+            if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
+                tree_node_handle poly_handle = std::get<tree_node_handle>( boundingPoly );
+                auto poly_pin =
+                    existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                            poly_handle );
+                unsigned rect_count =
+                    poly_pin->get_total_rectangle_count();
+                std::pair<char *, int> compression_result =
+                    compress_polygon( poly_pin->begin(),
+                            poly_pin->end(), rect_count );
+                unsigned compressed_size = compression_result.second;
+                if( compressed_size + 10 < rect_count * sizeof(Rectangle) ) {
+                    std::cout << "Uncompressed = " << rect_count *
+                        sizeof(Rectangle) << std::endl;
+                    std::cout << "Compressed = " << compressed_size <<
+                        std::endl;
+                    std::cout << "Decided to use compressed version because it saves: " << rect_count * sizeof(Rectangle) - compressed_size << " bytes." << std::endl;
+                    return compression_result;
+                }
+                std::cout << "Uncompressed = " << rect_count *
+                    sizeof(Rectangle) << std::endl;
+                std::cout << "Compressed = " << compressed_size <<
+                        std::endl;
+                std::cout << "Decided not to used compressed version." << std::endl;
+                std::cout << "Compression Result: " << (void *)
+                    compression_result.first << std::endl;
+                free( compression_result.first );
+                std::cout << "Done the free?" << std::endl;
+                return std::nullopt;
+            }
+            InlineBoundedIsotheticPolygon &poly =
+                std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
+            unsigned rect_count = poly.get_rectangle_count();
+            std::pair<char *, int> compression_result =
+                compress_polygon( poly.begin(), poly.end(), rect_count );
+            unsigned compressed_size = compression_result.second;
+            if( compressed_size + 10 < rect_count * sizeof(Rectangle) ) {
+                std::cout << "Uncompressed = " << rect_count *
+                    sizeof(Rectangle) << std::endl;
+                std::cout << "Compressed = " << compressed_size <<
+                    std::endl;
+                std::cout << "Decided to use compressed version because it saves: " << rect_count * sizeof(Rectangle) - compressed_size << " bytes." << std::endl;
+                return compression_result;
+
+            }
+            std::cout << "Uncompressed = " << rect_count *
+                sizeof(Rectangle) << std::endl;
+            std::cout << "Compressed = " << compressed_size <<
+                    std::endl;
+
+            std::cout << "Decided not to used compressed version." << std::endl;
+            free( compression_result.first );
+            return std::nullopt;
+        }
+
+        void generate_compressed_polygons(
+                tree_node_allocator *existing_allocator
+        ) {
+            if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
+                auto poly_pin =
+                    existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                            std::get<tree_node_handle>( boundingPoly ) );
+                unsigned total_rects =
+                    poly_pin->get_total_rectangle_count();
+
+                std::pair<char *, int> compressed_poly_data =
+                    compress_polygon( poly_pin->begin(),
+                            poly_pin->end(), total_rects );
+
+                int true_size = (int)
+                    compute_sizeof_inline_unbounded_polygon( total_rects );
+                std::cout << "Compressed size would save #bytes: " << true_size
+                    - compressed_poly_data.second  << std::endl;
+
+                free( compressed_poly_data.first );
+                return;
+            }
+
+            InlineBoundedIsotheticPolygon &poly =
+                std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
+
+            unsigned rect_count = poly.get_rectangle_count();
+            std::pair<char *, int> compressed_poly_data =
+                compress_polygon( poly.begin(),
+                        poly.end(), rect_count );
+
+            int true_size = sizeof(Rectangle) * rect_count;
+            std::cout << "Compressed size would save #bytes: " << true_size
+                - compressed_poly_data.second  << std::endl;
+
+            free( compressed_poly_data.first );
+        }
+
         uint16_t repack_into(
             char *buffer,
             tree_node_allocator *existing_allocator,
             tree_node_allocator *new_allocator,
-            unsigned cut_off_inline_rect_count
+            unsigned cut_off_inline_rect_count,
+            std::optional<std::pair<char*,int>> compressed_poly_data
         ) {
+
+            if( compressed_poly_data.has_value() ) {
+                child.set_associated_poly_is_compressed();
+                uint16_t offset = write_data_to_buffer( buffer, &child );
+                auto &cpd = compressed_poly_data.value();
+                memcpy( buffer+offset, cpd.first, cpd.second );
+                offset += cpd.second;
+                std::cout << "After packing in compressed poly, true usage is: " << offset << std::endl;
+                return offset;
+            }
+
             uint16_t offset = write_data_to_buffer( buffer, &child );
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
                 auto poly_pin =
                     existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
                             std::get<tree_node_handle>( boundingPoly ) );
 
-
                 // This will write the polygon in direct, or allocate
                 // space for it elsewhere using new_allocator and then
                 // write that handle in.
-                offset += poly_pin->repack( buffer + offset, cut_off_inline_rect_count, new_allocator );
+                offset += poly_pin->repack( buffer + offset,
+                        cut_off_inline_rect_count,
+                        new_allocator );
+
+                /*
+                if( truncate_rectangles ) {
+                    unsigned rect_count = 1;
+                    offset += write_data_to_buffer( buffer + offset, &rect_count );
+                    Rectangle rect = poly_pin->get_summary_rectangle();
+                    offset += write_data_to_buffer( buffer + offset, &rect );
+                } else {
+                    std::cout << "Poly dump done." << std::endl;
+                    offset += poly_pin->repack( buffer + offset, cut_off_inline_rect_count, new_allocator );
+                }
+                */
 
                 // Free the old polygon
                 poly_pin->free_subpages( existing_allocator );
@@ -192,12 +322,26 @@ namespace nirtreedisk
 
             InlineBoundedIsotheticPolygon &poly =
                 std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
+
+            /*
+            if( truncate_rectangles ) {
+                unsigned rect_count = 1;
+                offset += write_data_to_buffer( buffer + offset, &rect_count );
+                Rectangle rect = poly.get_summary_rectangle();
+                offset += write_data_to_buffer( buffer + offset, &rect );
+                return offset;
+            }
+            */
+
             unsigned rect_count = poly.get_rectangle_count();
             offset += write_data_to_buffer( buffer + offset, &rect_count );
             for( auto iter = poly.begin(); iter != poly.end(); iter++ ) {
                 offset += write_data_to_buffer( buffer + offset,
                         &(*iter) );
             }
+            std::cout << "Poly Done." << std::endl;
+            std::cout << "After packing in uncompressed poly, true usage is: " << offset << std::endl;
+
             return offset;
         }
 
@@ -853,10 +997,8 @@ namespace nirtreedisk
                         }
                 );
 
-                    
                 return defaultPartition;
             }
-
 
             void make_disjoint_from_children( IsotheticPolygon &polygon,
                     tree_node_handle handle_to_skip );
@@ -881,9 +1023,11 @@ namespace nirtreedisk
 			void printTree(unsigned n=0);
 			unsigned height();
 
-            uint16_t compute_packed_size( tree_node_allocator
+            std::pair<uint16_t, std::vector<std::optional<std::pair<char*,int>>>> 
+            compute_packed_size( tree_node_allocator
                     *existing_allocator, tree_node_allocator
-                    *new_allocator, unsigned &maximum_repacked_rect_size );
+                    *new_allocator, unsigned
+                    &maximum_repacked_rect_size );
             tree_node_handle repack( tree_node_allocator
                     *existing_allocator, tree_node_allocator
                     *new_allocator );
