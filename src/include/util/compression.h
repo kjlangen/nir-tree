@@ -146,11 +146,17 @@ int encode_dimension(
 template <RectangleIterator iter>
 std::pair<char *, int> compress_polygon( iter begin, iter end, unsigned rectangle_count ) {
     Point centroid = compute_centroid( begin, end, rectangle_count );
+    // uint16_t
+    // Centroid in every dimension
+    // Header bits (max of 1 byte for each point)
+    // Every Point
+    // Trailing bits
 
-    char *buffer = (char *) malloc(
-            sizeof(Rectangle)*rectangle_count +
+    unsigned sz = sizeof(Rectangle)*rectangle_count +
             sizeof(double)*dimensions + sizeof(uint16_t) +
-            rectangle_count*1 );
+            rectangle_count*2*dimensions*1 ;
+    char *buffer = (char *) malloc( sz );
+    std::cout << "Created buffer of size: " << sz << std::endl;
     assert( rectangle_count <= std::numeric_limits<uint16_t>::max() );
     uint16_t shrunk_count = (uint16_t) rectangle_count;
     int offset = 0;
@@ -164,6 +170,7 @@ std::pair<char *, int> compress_polygon( iter begin, iter end, unsigned rectangl
     if( bit_mask_offset != 0 ) {
         offset++;
     }
+    std::cout << "Stopped at: " << offset << std::endl;
     return std::make_pair( buffer, offset );
 }
 

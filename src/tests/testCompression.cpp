@@ -455,14 +455,10 @@ TEST_CASE( "Compress: Read N bits short reads" ) {
 
     uint8_t offset_mask = 6;
     int offset = 0;
-    double centroid_bits = 0.0;
-    double converted = read_n_bits_as_double( 6, centroid_bits, buffer,
+    uint64_t converted = read_n_bits_internal( 6, buffer,
             &offset_mask, &offset );
-    // We should pull out 00|001100
-    // That will get ntohll'd, which will put those bytes at the top.
-    uint64_t read_value = * (uint64_t *) &converted;
-    read_value = htonll( read_value ); // flip bytes back
-    REQUIRE( read_value == 12 );
+
+    REQUIRE( converted == 12 );
     REQUIRE( offset == 1 );
     REQUIRE( offset_mask == 4 );
 

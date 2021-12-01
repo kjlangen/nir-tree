@@ -1060,37 +1060,40 @@ std::pair<uint16_t, std::vector<std::optional<std::pair<char*,int>>>> BRANCH_NOD
     tree_node_allocator *new_allocator,
     unsigned &maximum_repacked_rect_size
 ) {
-    uint16_t sz = 0;
-    sz += sizeof( treeRef );
-    sz += sizeof( self_handle_ );
-    sz += sizeof( parent );
-    sz += sizeof( cur_offset_ );
+    do {
+        uint16_t sz = 0;
+        sz += sizeof( treeRef );
+        sz += sizeof( self_handle_ );
+        sz += sizeof( parent );
+        sz += sizeof( cur_offset_ );
 
-    std::vector<std::optional<std::pair<char *, int>>>
-        branch_compression_data;
+        std::vector<std::optional<std::pair<char *, int>>>
+            branch_compression_data;
 
-    // At the top layers of the tree, we are going to write out
-    // everything.
-    // On the last layer before leaves, just use rectangles.
-    for( unsigned i = 0; i < cur_offset_; i++ ) {
-        uint16_t unpacked_size = 0;
-        do {
+        // At the top layers of the tree, we are going to write out
+        // everything.
+        // On the last layer before leaves, just use rectangles.
+        for( unsigned i = 0; i < cur_offset_; i++ ) {
+            uint16_t unpacked_size = 0;
             unpacked_size = entries.at(i).compute_packed_size( existing_allocator,
-                    new_allocator, 25, false );
-            maximum_repacked_rect_size /= 2;
-        } while( unpacked_size >= PAGE_DATA_SIZE );
+                    new_allocator, maximum_repacked_rect_size, false );
 
-        auto compression_result = entries.at(i).compute_compression_data(
-                    existing_allocator );
-        if( compression_result.has_value() ) {
-            sz += compression_result.value().second +
-                sizeof(tree_node_handle);
-        } else {
-            sz += unpacked_size;
+            auto compression_result = entries.at(i).compute_compression_data(
+                        existing_allocator );
+            if( compression_result.has_value() ) {
+                sz += compression_result.value().second +
+                    sizeof(tree_node_handle);
+            } else {
+                sz += unpacked_size;
+            }
+            branch_compression_data.push_back( compression_result );
         }
-        branch_compression_data.push_back( compression_result );
-    }
-    return std::make_pair( sz, branch_compression_data );
+        if( sz <= PAGE_DATA_SIZE ) {
+            return std::make_pair( sz, branch_compression_data );
+        }
+        assert( maximum_repacked_rect_size >= 1 );
+        maximum_repacked_rect_size /= 2;
+    } while( true );
 }
 
 NODE_TEMPLATE_PARAMS
@@ -1142,7 +1145,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = entries.at(i);
         buffer += b.repack_into( buffer, existing_allocator,
-                new_allocator, 25, 
+                new_allocator, maximum_unpacked_rect_size, 
                 packing_computation_result.second.at(i) );
     }
     unsigned true_size = (buffer - alloc_data.first->buffer_);

@@ -186,7 +186,10 @@ namespace nirtreedisk
                 std::cout << "Compressed = " << compressed_size <<
                         std::endl;
                 std::cout << "Decided not to used compressed version." << std::endl;
+                std::cout << "Compression Result: " << (void *)
+                    compression_result.first << std::endl;
                 free( compression_result.first );
+                std::cout << "Done the free?" << std::endl;
                 return std::nullopt;
             }
             InlineBoundedIsotheticPolygon &poly =

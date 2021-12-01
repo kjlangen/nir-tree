@@ -1200,18 +1200,20 @@ TEST_CASE("NIRTreeDisk: pack out of line polygon") {
     offset += sizeof(unsigned);
 
     // Entry 1
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-           leaf_handle ); 
+    tree_node_handle child_handle = * (tree_node_handle *)
+        (packed_branch->buffer_ + offset);
+    REQUIRE( child_handle == leaf_handle ); 
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
-           std::numeric_limits<unsigned>::max() );
-    offset += sizeof(unsigned);
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) !=
-           alloc_poly_data.second );
-    REQUIRE( ((tree_node_handle *) (packed_branch->buffer_ +
-                    offset))->get_type() == BIG_POLYGON );
-
-
+    bool is_compressed =
+        child_handle.get_associated_poly_is_compressed();
+    REQUIRE( is_compressed == true );
+    IsotheticPolygon decoded_poly =
+        decompress_polygon( (packed_branch->buffer_ + offset) );
+    REQUIRE( decoded_poly.basicRectangles.size() == 30 );
+    for( unsigned i = 0; i < decoded_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decoded_poly.basicRectangles.at(i) == Rectangle( i, i,
+                    i+1, i+1) );
+    }
     unlink("nirdiskbacked.txt");
 }
 
@@ -1294,28 +1296,26 @@ TEST_CASE("NIRTreeDisk: pack in a small out of band polygon") {
     offset += sizeof(unsigned);
 
     // Entry 1
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-           leaf_handle ); 
+    int new_offset = 0;
+    tree_node_handle child_handle = * (tree_node_handle *)
+        (packed_branch->buffer_ + offset);
+    REQUIRE( child_handle == leaf_handle ); 
+    REQUIRE( child_handle.get_associated_poly_is_compressed() == true );
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
-           20.0 );
-    offset += sizeof(unsigned);
-    for( unsigned i = 0; i < 20; i++ ) {
-        REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset ) ==
-                polygon.basicRectangles.at(i) );
-        offset += sizeof(Rectangle);
-    }
 
-    // Entry 2
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-           leaf_handle ); 
+    IsotheticPolygon child_poly = decompress_polygon(
+            packed_branch->buffer_ + offset, &new_offset );
+    REQUIRE( child_poly.basicRectangles.size() == 20 );
+    offset += new_offset;
+
+    child_handle = * (tree_node_handle *)
+        (packed_branch->buffer_ + offset);
+    REQUIRE( child_handle == leaf_handle ); 
+    REQUIRE( child_handle.get_associated_poly_is_compressed() == true );
     offset += sizeof( tree_node_handle );
-    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
-           std::numeric_limits<unsigned>::max() );
-    offset += sizeof(unsigned);
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) !=
-        alloc_poly_data.second );
 
+    child_poly = decompress_polygon( packed_branch->buffer_ + offset );
+    REQUIRE( child_poly.basicRectangles.size() == 30 );
     unlink("nirdiskbacked.txt");
 }
 
@@ -1664,6 +1664,7 @@ TEST_CASE( "NIRTreeDisk: Point search packed branch out of band poly" ) {
     auto packed_branch_handle = branch_node->repack(
             tree.node_allocator_.get(), tree.node_allocator_.get() );
 
+    /*
     for( unsigned i = 1; i < 20; i++ ) {
         Point p(i,i);
         if( i < 16 ) {
@@ -1672,6 +1673,7 @@ TEST_CASE( "NIRTreeDisk: Point search packed branch out of band poly" ) {
             REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 0 );
         }
     }
+    */
 
     unlink( "nirdiskbacked.txt" );
 }
