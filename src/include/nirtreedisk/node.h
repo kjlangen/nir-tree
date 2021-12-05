@@ -84,6 +84,18 @@ namespace nirtreedisk
             return poly_pin->get_summary_rectangle();
         }
 
+        inline_poly get_inline_polygon( tree_node_allocator *allocator ) {
+            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                        boundingPoly ) ) {
+                return std::get<InlineBoundedIsotheticPolygon>(
+                        boundingPoly );
+            }
+            tree_node_handle poly_handle = std::get<tree_node_handle>( boundingPoly );
+            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                    poly_handle );
+            return poly_pin;
+        }
+
         IsotheticPolygon materialize_polygon( tree_node_allocator
                 *allocator ) {
             if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
