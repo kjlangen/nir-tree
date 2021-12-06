@@ -1166,7 +1166,7 @@ void BRANCH_NODE_CLASS_TYPES::deleteSubtrees()
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         Branch &b = entries.at(i);
         tree_node_handle child_handle = b.child;
-        
+
         if( child_handle.get_type() == LEAF_NODE ) {
             allocator->free(
                 child_handle,
@@ -2895,6 +2895,159 @@ void stat_node(
 
     STATEXEC(std::cout << "### ### ### ###" << std::endl);
 
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle unpack_leaf(tree_node_handle handle, tree_node_allocator *allocator) {
+    using TreeType = NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>;
+    auto packed_leaf = allocator->get_tree_node<packed_node>( handle );
+    unsigned meta_data_offset = 0;
+
+    // Tree ref is the FIRST THING written to the buffer
+    TreeType *treeRef = read_pointer_from_buffer<TreeType>(packed_leaf->buffer_ + meta_data_offset);
+    meta_data_offset += sizeof(void *);
+    meta_data_offset += sizeof(tree_node_handle); // ignore the self handle
+    tree_node_handle parent_handle = * (tree_node_handle *)(packed_leaf->buffer_ + meta_data_offset);
+    unsigned level = 0;
+    char *data = packed_leaf->buffer_;
+
+    // We will go from a REPACKED_LEAF_NODE to a LEAF_NODE
+    auto alloc_data = allocator->create_new_tree_node<LEAF_NODE_CLASS_TYPES>(
+                NodeHandleType( LEAF_NODE ) );
+    tree_node_handle leaf_handle = alloc_data.second;
+    auto leaf_node = alloc_data.first; // take pin
+    new (&(*leaf_node)) LEAF_NODE_CLASS_TYPES( treeRef,
+            parent_handle, leaf_handle, level );
+
+    decode_entry_count_and_offset_packed_node( data );
+    for( unsigned i = 0; i < count; i++ ) {
+        Point *p = (Point *) (data + offset);
+        leaf_node->addPoint( *p );
+        offset += sizeof( Point );
+    }
+
+    return leaf_handle;
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle unpack_branch(tree_node_handle handle, tree_node_allocator *allocator ) {
+    using TreeType = NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>;
+    using NodeType = BRANCH_NODE_CLASS_TYPES;
+
+    auto packed_branch = allocator->get_tree_node<packed_node>( handle );
+    unsigned meta_data_offset = 0;
+
+    TreeType *treeRef = read_pointer_from_buffer<TreeType>(packed_branch->buffer_ + meta_data_offset);
+    meta_data_offset += sizeof(void *);
+    meta_data_offset += sizeof(tree_node_handle); // ignore the self handle
+    tree_node_handle parent_handle = * (tree_node_handle *)(packed_branch->buffer_ + meta_data_offset);
+    unsigned level = 1;
+
+    // This will be the child at entries[0] and after the new branch node is alloc'd it will be used to determine level
+    tree_node_handle level_determining_node;
+
+    auto alloc_data = allocator->create_new_tree_node<BRANCH_NODE_CLASS_TYPES>(
+                NodeHandleType( BRANCH_NODE ) );
+    tree_node_handle branch_handle = alloc_data.second;
+    auto branch_node = alloc_data.first; // take pin
+    new (&(*branch_node)) BRANCH_NODE_CLASS_TYPES( treeRef,
+        parent_handle, branch_handle, level );
+
+    char *buffer = packed_branch->buffer_;
+    decode_entry_count_and_offset_packed_node( buffer );
+    for ( unsigned i = 0; i < count; i++ ) {
+        tree_node_handle *child = (tree_node_handle *) (buffer + offset);
+        if (i == 0) level_determining_node = *child;
+        offset += sizeof( tree_node_handle );
+
+        bool is_compressed = child->get_associated_poly_is_compressed();
+        if ( is_compressed ) {
+
+            int new_offset;
+            IsotheticPolygon decoded_poly = decompress_polygon( (buffer + offset), &new_offset );
+            offset += new_offset;
+
+            // To determine if unbounded or not...
+            // Check the number of rectangles
+            if (decoded_poly.basicRectangles.size() < MAX_RECTANGLE_COUNT) {
+                // UNBOUNDED:
+                InlineBoundedIsotheticPolygon poly;
+                poly.push_polygon_to_disk( decoded_poly );
+                branch_node->addBranchToNode( Branch( poly, *child ) );
+            } else {
+                // BOUNDED:
+                size_t max_rects_on_first_page = std::min(InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page(), decoded_poly.basicRectangles.size() );
+                size_t unbounded_poly_size = compute_sizeof_inline_unbounded_polygon( max_rects_on_first_page );
+                auto alloc_data = allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                        unbounded_poly_size, NodeHandleType( BIG_POLYGON ) );
+
+                new (&(*(alloc_data.first))) InlineUnboundedIsotheticPolygon(
+                        allocator, max_rects_on_first_page );
+
+                auto poly = alloc_data.first;
+                poly->push_polygon_to_disk( decoded_poly );
+                branch_node->addBranchToNode( Branch( alloc_data.second, *child ) );
+            }
+            continue;
+        }
+
+        unsigned rect_count = * (unsigned *) (buffer + offset);
+        offset += sizeof( unsigned );
+
+        if( rect_count == std::numeric_limits<unsigned>::max() ) {
+            tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset );
+            offset += sizeof( tree_node_handle );
+            branch_node->addBranchToNode( Branch( *poly_handle, *child ) );
+        } else {
+            IsotheticPolygon accumulator;
+            for( unsigned r = 0; r < rect_count; r++ ) {
+                Rectangle *rect = (Rectangle *) (buffer + offset);
+                offset += sizeof(Rectangle);
+
+                accumulator.basicRectangles.push_back( *rect );
+            }
+
+            InlineBoundedIsotheticPolygon poly;
+            poly.push_polygon_to_disk( accumulator );
+            branch_node->addBranchToNode( Branch( poly, *child ) );
+
+        }
+
+    }
+
+    assert( level_determining_node );
+    while (level_determining_node.get_type() != REPACKED_LEAF_NODE
+        && level_determining_node.get_type() != LEAF_NODE )
+    {
+        assert( level_determining_node.get_type() != UNASSIGNED );
+        level++;
+        tree_node_handle child;
+        if ( level_determining_node.get_type() == BRANCH_NODE ) {
+            child = allocator->get_tree_node<NodeType>( level_determining_node )->entries.at(0).child;
+        } else if ( level_determining_node.get_type() == REPACKED_BRANCH_NODE ) {
+            char *dfs_buffer = allocator->get_tree_node<packed_node>(level_determining_node)->buffer_;
+            decode_entry_count_and_offset_packed_node( dfs_buffer );
+            child = *(tree_node_handle *) (dfs_buffer + offset);
+        } else {
+            assert(false);
+        }
+        level_determining_node = child;
+    }
+
+    branch_node->level_ = level;
+
+    return branch_handle;
+}
+
+NODE_TEMPLATE_PARAMS
+tree_node_handle unpack( tree_node_handle &handle, tree_node_allocator *allocator ) {
+    if ( handle.get_type() ==  REPACKED_LEAF_NODE) {
+        return unpack_leaf<min_branch_factor,max_branch_factor,strategy>( handle, allocator );
+    } else if ( handle.get_type() == REPACKED_BRANCH_NODE ) {
+        return unpack_branch<min_branch_factor,max_branch_factor,strategy>( handle, allocator );
+    }
+
+    return handle;
 }
 
 #undef NODE_TEMPLATE_PARAMS
