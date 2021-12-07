@@ -1098,13 +1098,10 @@ std::pair<uint16_t, std::vector<std::optional<std::pair<char*,int>>>> BRANCH_NOD
 
 NODE_TEMPLATE_PARAMS
 tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator ) {
-    std::cout << "Repacking: " << self_handle_ << std::endl;
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
     uint16_t alloc_size = compute_packed_size();
     auto alloc_data = allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
-    std::cout << "New allocator handed us handle: " << alloc_data.second
-        << std::endl;
 
     char *buffer = alloc_data.first->buffer_;
     buffer += write_data_to_buffer( buffer, &treeRef );
@@ -1119,14 +1116,12 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
     }
 
     assert( buffer - alloc_data.first->buffer_ == alloc_size );
-    std::cout << "Done. New handle is now: " << alloc_data.second << std::endl;
     return alloc_data.second;
 }
 
 NODE_TEMPLATE_PARAMS
 tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
         *existing_allocator, tree_node_allocator *new_allocator ) {
-    std::cout << "Repacking: " << self_handle_ << std::endl;
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
 
     unsigned maximum_unpacked_rect_size = 25;
@@ -1150,9 +1145,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
     }
     unsigned true_size = (buffer - alloc_data.first->buffer_);
     if( alloc_size != true_size ) {
-        std::cout << "Memory corruption -- disaster." << std::endl;
-        std::cout << "Alloc Size: " << alloc_size << ", " << true_size
-            << std::endl;
         abort();
     }
     assert( true_size == alloc_size );
@@ -1341,25 +1333,34 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     for( unsigned i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
-        unsigned rect_count = * (unsigned *) (buffer + offset); \
-        offset += sizeof( unsigned ); \
-        if( rect_count == std::numeric_limits<unsigned>::max() ) { \
-            tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
-            offset += sizeof( tree_node_handle ); \
-            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
-            if( poly_pin->containsPoint( requestedPoint ) ) { \
-                context.push( *child ); \
-            } \
-        } else { \
-            for( unsigned r = 0; r < rect_count; r++ ) { \
-                Rectangle *rect = (Rectangle *) (buffer + offset); \
-                offset += sizeof(Rectangle); \
-                if( rect->containsPoint( requestedPoint ) ) { \
+        if( !child->get_associated_poly_is_compressed() ) { \
+            unsigned rect_count = * (unsigned *) (buffer + offset); \
+            offset += sizeof( unsigned ); \
+            if( rect_count == std::numeric_limits<unsigned>::max() ) { \
+                tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
+                offset += sizeof( tree_node_handle ); \
+                auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
+                if( poly_pin->containsPoint(requestedPoint) ) { \
                     context.push( *child ); \
-                    offset += (rect_count-r-1) * sizeof(Rectangle); \
-                    break; \
+                } \
+            } else { \
+                for( unsigned r = 0; r < rect_count; r++ ) { \
+                    Rectangle *rect = (Rectangle *) (buffer + offset); \
+                    offset += sizeof(Rectangle); \
+                    if( rect->containsPoint( requestedPoint ) ) { \
+                        context.push( *child ); \
+                        offset += (rect_count-r-1) * sizeof(Rectangle); \
+                        break; \
+                    } \
                 } \
             } \
+        } else { \
+            int new_offset; \
+            IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset, &new_offset ); \
+            if( decomp_poly.containsPoint( requestedPoint ) ) { \
+                context.push( *child ); \
+            } \
+            offset += new_offset; \
         } \
     }
 
@@ -2784,16 +2785,21 @@ void stat_node(
                             (compute_sizeof_inline_unbounded_polygon (
                                     poly_pin->get_total_rectangle_count() )
                              - sizeof(Rectangle));
+                        histogramPolygon.at(
+                                poly_pin->get_total_rectangle_count() )++;
                     } else {
                         offset += rect_count * sizeof( Rectangle );
                         memoryFootprint += rect_count * sizeof(Rectangle);
                         memoryPolygons += (rect_count * sizeof(Rectangle) -
                                 sizeof(Rectangle));
+                        histogramPolygon.at( rect_count )++;
                     }
                 } else {
                     int new_offset;
                     IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset,
                         &new_offset );
+                    histogramPolygon.at(
+                            decomp_poly.basicRectangles.size() )++;
                     memoryFootprint += sizeof(tree_node_handle) + new_offset;
                     std::cout << "Compressed poly consumes: " <<
                         sizeof(tree_node_handle) + new_offset <<
@@ -2895,6 +2901,83 @@ void stat_node(
 
     STATEXEC(std::cout << "### ### ### ###" << std::endl);
 
+}
+
+template <class NT>
+std::pair<std::vector<Rectangle>, std::vector<Rectangle>> make_rectangles_disjoint_accounting_for_region_ownership(
+    NT *treeRef,
+    Rectangle &a,
+    tree_node_handle &a_node,
+    Rectangle &b,
+    tree_node_handle &b_node
+) {
+    std::vector<Rectangle> ret_a_rects;
+    std::vector<Rectangle> ret_b_rects;
+    if( not a.intersectsRectangle( b ) ) {
+        ret_a_rects.push_back( a );
+        ret_b_rects.push_back( b );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+
+    Rectangle overlapping_rect = a.intersection( b );
+    assert( overlapping_rect != Rectangle::atInfinity );
+
+    std::vector<Point> a_owned_points = rectangle_search( a_node,
+            overlapping_rect, treeRef );
+    // If no owned points, then yield the region to b
+    if( a_owned_points.empty() ) {
+        ret_a_rects = a.fragmentRectangle( overlapping_rect );
+        ret_b_rects.push_back( b );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+    Rectangle a_owned_rect( a_owned_points[0],
+            Point::closest_larger_point( a_owned_points[0] ) );
+    for( unsigned i = 1; i < a_owned_points.size(); i++ ) {
+        a_owned_rect.expand( a_owned_points.at( i ) );
+    }
+
+    std::vector<Point> b_owned_points = rectangle_search( b_node,
+            overlapping_rect, treeRef );
+    // If no owned points, yield the region to a
+    if( b_owned_points.empty() ) {
+        ret_a_rects.push_back( a );
+        ret_b_rects = b.fragmentRectangle( overlapping_rect );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+
+    Rectangle b_owned_rect( b_owned_points[0],
+            Point::closest_larger_point( b_owned_points[0] ) );
+    for( unsigned i = 1; i < b_owned_points.size(); i++ ) {
+        b_owned_rect.expand( b_owned_points.at( i ) );
+    }
+
+    Rectangle ownership_overlap = a_owned_rect.intersection(
+            b_owned_rect );
+    // No overlap in one dimension. We can just add the owned rectangles
+    // to whatever we have after we fragment about the overalpping areas
+    if( ownership_overlap == Rectangle::atInfinity ) {
+        // see above and return
+        ret_a_rects = a.fragmentRectangle( overlapping_rect );
+        ret_b_rects = b.fragmentRectangle( overlapping_rect );
+        
+        ret_a_rects.push_back( a_owned_rect );
+        ret_b_rects.push_back( b_owned_rect );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+
+    // Now, its time to get fancy
+    // Sort by each dimension, and create bounding boxes in that
+    // dimension aligned with the overlapping region such that the boxes
+    // start from the point of interest and stop just before the point
+    // when sorted along that dimension. If two points have the same
+    // value, note that and skip it for now, we will need to do a
+    // 'horizontal split' after that.
+
+    // Fragment out the overlapping region from each rectangle.
+    // TODO:
+
+    assert( false );
+    return std::make_pair( ret_a_rects, ret_b_rects );
 }
 
 #undef NODE_TEMPLATE_PARAMS

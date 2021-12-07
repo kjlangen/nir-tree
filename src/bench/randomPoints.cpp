@@ -486,9 +486,9 @@ static bool is_already_loaded(
 ) {
     if( configU["tree"] == NIR_TREE ) {
         
-        nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy>
+        nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits>
             *tree =
-            (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy> *) spatial_index;
+            (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits> *) spatial_index;
 
         size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
@@ -525,7 +525,7 @@ void repack_tree( T *tree_ptr, std::string &new_file_name,
             tree_node_allocator * ) ) {
 
     auto new_file_allocator = std::make_unique<tree_node_allocator>(
-            40960 * 1300/2,
+            40960 * 13000,
             new_file_name );
 
     new_file_allocator->initialize();
@@ -539,6 +539,8 @@ void repack_tree( T *tree_ptr, std::string &new_file_name,
 
     std::cout << "Repacking done in: " << delta.count() << "s" <<
         std::endl;
+
+    new_file_allocator->dump_free_list();
 
     // This evicts all the old pages, which is painful.
     tree_ptr->node_allocator_ = std::move( new_file_allocator );
@@ -588,8 +590,8 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
 		//spatialIndex = new nirtree::NIRTree(12,25);
 		spatialIndex = new
-            nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy>(
-                4096*13000*10, 
+            nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits>(
+                40960*13000, 
                 /*"repacked_nirtree.txt"*/
                 "nirdiskbacked_california.txt");
 	}
@@ -696,10 +698,10 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         if( configU["tree"] == NIR_TREE ) {
             std::cout << "Repacking..." << std::endl;
             auto tree_ptr =
-                (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::ExperimentalStrategy> *) spatialIndex;
+                (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits> *) spatialIndex;
             std::string fname = "repacked_nirtree.txt";
             repack_tree( tree_ptr, fname,
-                    nirtreedisk::repack_subtree<12,25,nirtreedisk::ExperimentalStrategy>  );
+                    nirtreedisk::repack_subtree<12,25,nirtreedisk::LineMinimizeDownsplits>  );
         } else if( configU["tree"] == R_STAR_TREE ) {
             std::cout << "Repacking..." << std::endl;
             auto tree_ptr = (rstartreedisk::RStarTreeDisk<12,25> *) spatialIndex;
@@ -744,7 +746,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		    std::cout << "Point[" << totalSearches << "] queried. " << delta.count() << " s" << std::endl;
         }
 
-        if( totalSearches >= 30000 ) {
+        if( totalSearches >= 300 ) {
             break;
         }
 	}
@@ -763,6 +765,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 #endif
     std::shuffle( searchRectangles.begin(), searchRectangles.end(), g );
 
+#if 1
 	// Search for rectangles
 	unsigned rangeSearchChecksum = 0;
 	std::cout << "Beginning search for " << configU["rectanglescount"] << " rectangles..." << std::endl;
@@ -782,6 +785,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	}
 	std::cout << "Range search OK. Checksum = " << rangeSearchChecksum << std::endl;
 
+#endif
 	// Gather statistics
 
 #ifdef STAT
