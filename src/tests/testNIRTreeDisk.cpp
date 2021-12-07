@@ -2346,3 +2346,144 @@ TEST_CASE( "NIRTreeDisk: DodgeRectangle OwnershipIntersect but boxable" ) {
 
     unlink( "nirdiskbacked.txt" );
 }
+
+TEST_CASE( "NIRTreeDisk: DodgeRectangle OwnershipIntersect space slice required" ) {
+    unlink( "nirdiskbacked.txt" );
+
+    // Two rectanglesthat overlap, but there are no points in the
+    // overlapping region
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+
+    auto alloc_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+                NodeHandleType( LEAF_NODE ) );
+    tree_node_handle a_handle = alloc_data.second;
+    auto a_leaf_node = alloc_data.first;
+    new (&(*a_leaf_node)) DefaultLeafNodeType( &tree, tree_node_handle(nullptr),
+            a_handle, 0 );
+    a_leaf_node->addPoint( Point(0,1) );
+    a_leaf_node->addPoint( Point(2,3) );
+    a_leaf_node->addPoint( Point(1.5,1.5) );
+    a_leaf_node->addPoint( Point(1.7,1.7) );
+    alloc_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+                NodeHandleType( LEAF_NODE ) );
+    tree_node_handle b_handle = alloc_data.second;
+    auto b_leaf_node = alloc_data.first;
+    new (&(*b_leaf_node)) DefaultLeafNodeType( &tree, tree_node_handle(nullptr),
+            b_handle, 0 );
+    b_leaf_node->addPoint( Point(1,0) );
+    b_leaf_node->addPoint( Point(1.6,1.6) );
+    b_leaf_node->addPoint( Point(3,2) );
+
+    Rectangle a_rect = a_leaf_node->boundingBox();
+    Rectangle b_rect = b_leaf_node->boundingBox();
+    auto res = nirtreedisk::make_rectangles_disjoint_accounting_for_region_ownership(
+        &tree, a_rect, a_handle, b_rect, b_handle );
+
+    Rectangle decomp_a_first =
+        Rectangle(0,1,1,nextafter(3.0, DBL_MAX));
+    Rectangle decomp_a_second =
+        Rectangle(1,nextafter(2,DBL_MAX),
+                nextafter(2, DBL_MAX), nextafter(3.0, DBL_MAX));
+
+    Rectangle decomp_a_third =
+        Rectangle(1.5, 1, nextafter(1.5,DBL_MAX), nextafter(2,DBL_MAX) );
+
+    Rectangle decomp_a_fourth =
+        Rectangle(1.7, 1, nextafter(1.7,DBL_MAX), nextafter(2,DBL_MAX) );
+
+    REQUIRE( res.first.size() == 4 );
+    REQUIRE( std::find( res.first.begin(), res.first.end(),
+                decomp_a_first ) != res.first.end() );
+    REQUIRE( std::find( res.first.begin(), res.first.end(),
+                decomp_a_second ) != res.first.end() );
+    REQUIRE( std::find( res.first.begin(), res.first.end(),
+                decomp_a_third ) != res.first.end() );
+    REQUIRE( std::find( res.first.begin(), res.first.end(),
+                decomp_a_fourth ) != res.first.end() );
+
+
+    REQUIRE( res.second.size() == 3 );
+    Rectangle decomp_b_first =
+        Rectangle(1,0,nextafter(2,DBL_MAX),1);
+    Rectangle decomp_b_second =
+        Rectangle(nextafter(2,DBL_MAX),0,nextafter(3,DBL_MAX),nextafter(2,DBL_MAX));
+    Rectangle decomp_b_third=
+        Rectangle(1.6, 1, nextafter(1.6, DBL_MAX), nextafter(2,
+                    DBL_MAX));
+
+    REQUIRE( std::find( res.second.begin(), res.second.end(),
+                decomp_b_first ) != res.second.end() );
+    REQUIRE( std::find( res.second.begin(), res.second.end(),
+                decomp_b_second ) != res.second.end() );
+    REQUIRE( std::find( res.second.begin(), res.second.end(),
+                decomp_b_third ) != res.second.end() );
+    IsotheticPolygon poly;
+    poly.basicRectangles = res.first;
+    poly.recomputeBoundingBox();
+
+    IsotheticPolygon poly2;
+    poly2.basicRectangles = res.second;
+    poly2.recomputeBoundingBox();
+
+    REQUIRE( poly.disjoint( poly2 ) );
+
+
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE( "NIRTreeDisk: MergeCmd Simple Tests" ) {
+    std::vector<std::pair<Point,uint8_t>> points_with_ownership =
+    { {Point(0,0), 0}, {Point(1,0), 0}, {Point(2,0), 1}, {Point(3,0),0}
+        };
+
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 1, 0 ) ==
+            nirtreedisk::ADD );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 2, 0 ) ==
+            nirtreedisk::STOP );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 3, 1 ) ==
+            nirtreedisk::STOP );
+
+    points_with_ownership =
+    { {Point(0,0), 0}, {Point(1,0), 1}, {Point(2,0), 1}, {Point(3,0),1} };
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 1, 0 ) ==
+            nirtreedisk::STOP );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 2, 1 ) ==
+            nirtreedisk::ADD );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 3, 1 ) ==
+            nirtreedisk::ADD );
+}
+
+TEST_CASE( "NIRTreeDisk: MergeCmd Vertical Tests" ) {
+    std::vector<std::pair<Point,uint8_t>> points_with_ownership =
+    { {Point(0,0), 0}, {Point(1,0), 0}, {Point(2,0), 1}, {Point(2,1),1},
+        {Point(2,2),1}, {Point(3,0),0}, {Point(4,0),0} };
+
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 1, 0 ) ==
+            nirtreedisk::ADD );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 2, 0 ) ==
+            nirtreedisk::STOP );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 3, 1 ) ==
+            nirtreedisk::ADD );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 4, 1 ) ==
+            nirtreedisk::ADD );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 5, 1 ) ==
+            nirtreedisk::STOP );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 6, 0 ) ==
+            nirtreedisk::ADD );
+
+    points_with_ownership =
+    { {Point(0,0), 0}, {Point(1,0), 0}, {Point(2,0), 1}, {Point(2,1),0},
+        {Point(2,2),1}, {Point(3,0),0}, {Point(4,0),0} };
+
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 1, 0 ) ==
+            nirtreedisk::ADD );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 2, 0 ) ==
+            nirtreedisk::CREATE_VERTICAL);
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 5, 0 ) ==
+            nirtreedisk::ADD );
+    REQUIRE( nirtreedisk::get_merge_cmd( points_with_ownership, 5, 0 ) ==
+            nirtreedisk::ADD );
+
+}
