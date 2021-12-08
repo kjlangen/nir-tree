@@ -2912,6 +2912,7 @@ enum LookAheadMergeCmd {
 inline LookAheadMergeCmd get_merge_cmd(
     std::vector<std::pair<Point, uint8_t>> &points_with_ownership,
     unsigned i,
+    unsigned dimension,
     uint8_t cur_ownership
 ) {
     // Need to reconsider this with higher dimensions
@@ -2928,27 +2929,173 @@ inline LookAheadMergeCmd get_merge_cmd(
     if( points_with_ownership.at(i).second != cur_ownership ) {
 
         uint8_t existing_ownership = points_with_ownership.at(i).second;
-        double existing_x = points_with_ownership.at(i).first[0];
+        double existing_val =
+            points_with_ownership.at(i).first[dimension];
         // OK, stop time. Now we need to decide if this stop is a
         // vertical stop or a regular stop.
         for( unsigned j = i+1; j < points_with_ownership.size(); j++ ) {
-            double next_x = points_with_ownership.at(j).first[0];
+            double next_val = points_with_ownership.at(j).first[dimension];
             uint8_t next_ownership = points_with_ownership.at(j).second;
-            if( existing_x != next_x ) {
+            if( existing_val != next_val ) {
                 return STOP;
             }
             if( existing_ownership != next_ownership ) {
-                // Same x val, but different owner. Needs vertical split
+                // Same val, but different owner. Needs vertical split
                 return CREATE_VERTICAL;
             }
-            // Same x val, but same owner. continue
+            // Same val, but same owner. continue
         }
         return STOP;
     }
 
-    // The next item differed on x.
+    // The next item differed on val.
     // Go ahead and add the current item.
     return ADD;
+}
+
+inline std::pair<std::vector<Rectangle>, std::vector<Rectangle>>
+walk_and_dice_overlapping_region(
+    std::vector<std::pair<Point,uint8_t>> &points_with_ownership,
+    unsigned dimension_to_walk,
+    Rectangle overlapping_dimensions
+) {
+    std::vector<Rectangle> ret_a_rects;
+    std::vector<Rectangle> ret_b_rects;
+
+    Point lower_point = overlapping_dimensions.lowerLeft;
+    Point upper_point = overlapping_dimensions.upperRight;
+    lower_point[dimension_to_walk] =
+        points_with_ownership.at(0).first[dimension_to_walk];
+    upper_point[dimension_to_walk] =
+        nextafter(
+                points_with_ownership.at(0).first[dimension_to_walk],
+                DBL_MAX );
+    Rectangle cur_rect( lower_point, upper_point );
+
+    uint8_t cur_ownership = points_with_ownership.at(0).second;
+
+    std::vector<std::vector<std::pair<Point,uint8_t>>> vertical_splits;
+    std::vector<Rectangle> vertical_rects;
+    std::cout << "Points[0]" << points_with_ownership.at(0).first <<
+        ", owner: " << (unsigned) points_with_ownership.at(0).second << std::endl;
+
+    for( unsigned i = 1; i < points_with_ownership.size(); i++ ) {
+        std::cout << "Points[" << i << "]" << points_with_ownership.at(i).first <<
+            ", owner: " << (unsigned) points_with_ownership.at(i).second << std::endl;
+
+        LookAheadMergeCmd cmd = get_merge_cmd( points_with_ownership, i,
+                dimension_to_walk,
+                cur_ownership );
+        std::cout << "Got cmd " << (unsigned) cmd << " for: " << i <<
+            std::endl;
+        if( cmd == ADD ) {
+            upper_point[dimension_to_walk] =
+                points_with_ownership.at(i).first[dimension_to_walk];
+            cur_rect.expand( upper_point );
+        } else if( cmd == STOP ) {
+            std::cout << "Got stop." << std::endl;
+            if( cur_ownership == 0 ) {
+                std::cout << "Pushed " << cur_rect << " into A." << std::endl;
+                ret_a_rects.push_back( cur_rect );
+            } else {
+                std::cout << "Pushed " << cur_rect << " into B." << std::endl;
+                ret_b_rects.push_back( cur_rect );
+            }
+            lower_point[dimension_to_walk] =
+                points_with_ownership.at(i).first[dimension_to_walk];
+            upper_point[dimension_to_walk] = nextafter(
+                points_with_ownership.at(i).first[dimension_to_walk],
+                DBL_MAX );
+            cur_rect = Rectangle( lower_point, upper_point );
+            cur_ownership = points_with_ownership.at(i).second;
+            std::cout << "Updated cur ownership to: " << cur_ownership
+                << std::endl;
+        } else if( cmd == CREATE_VERTICAL ) {
+            std::cout << "CREATE VERTICAL." << std::endl;
+            if( cur_ownership == 0 ) {
+                ret_a_rects.push_back( cur_rect );
+            } else {
+                ret_b_rects.push_back( cur_rect );
+            }
+
+            std::vector<std::pair<Point,uint8_t>> vertical_data;
+            vertical_data.push_back(points_with_ownership.at(i));
+            double existing_val =
+                points_with_ownership.at(i).first[dimension_to_walk];
+            lower_point[dimension_to_walk] =
+                points_with_ownership.at(i).first[dimension_to_walk];
+            upper_point[dimension_to_walk] = nextafter(
+                points_with_ownership.at(i).first[dimension_to_walk],
+                DBL_MAX );
+            Rectangle sub_overlap_rect( lower_point, upper_point );
+            std::cout << "Pushing overlapping rect: " <<
+                sub_overlap_rect << std::endl;
+            i++;
+            while( i < points_with_ownership.size() and
+                    points_with_ownership.at(i).first[dimension_to_walk]
+                    == existing_val ) {
+                std::cout << "Point[" << i << "] = " <<
+                    points_with_ownership.at(i).first << ", with owner: " << (unsigned) points_with_ownership.at(i).second << " needs vert split. skipping." << std::endl;
+                vertical_data.push_back(points_with_ownership.at(i));
+                i++;
+            }
+            vertical_splits.push_back( vertical_data );
+            vertical_rects.push_back( sub_overlap_rect );
+
+            std::cout << "After CREATE VERTICAL, have i: " << i <<
+                std::endl;
+            if( i != points_with_ownership.size() ) {
+                // Start new rectnagle
+                lower_point[dimension_to_walk] =
+                    points_with_ownership.at(i).first[dimension_to_walk];
+                upper_point[dimension_to_walk] = nextafter(
+                    points_with_ownership.at(i).first[dimension_to_walk],
+                    DBL_MAX );
+                cur_rect = Rectangle( lower_point, upper_point );
+                cur_ownership = points_with_ownership.at(i).second;
+                std::cout << "Set Rectangle: "  <<  cur_rect << " with ownership: " << cur_ownership << std::endl;
+            } else {
+                // special break condition so we don't add stuff when we
+                // exit the loop
+                cur_ownership = 2;
+            }
+        }
+    }
+
+    std::cout << "Done main loop." << std::endl;
+    if( cur_ownership == 0 ) {
+        std::cout << "Putting " << cur_rect << " into A" << std::endl;
+        ret_a_rects.push_back( cur_rect );
+    } else if( cur_ownership == 1 ) {
+        std::cout << "Putting " << cur_rect << " into B" << std::endl;
+        ret_b_rects.push_back( cur_rect );
+    }
+
+    // Do any subsplits if req'd
+    for( unsigned i = 0; i < vertical_splits.size(); i++ ) {
+        std::cout << "Downsplit." << std::endl;
+        for( unsigned j = 0; j < vertical_splits.at(i).size(); j++ ) {
+            std::cout << vertical_splits.at(i).at(j).first << " -> " << (unsigned) vertical_splits.at(i).at(j).second << std::endl;
+        }
+        std::cout << "data dump done." <<  std::endl;
+        auto ret_data = walk_and_dice_overlapping_region(
+                vertical_splits.at(i),
+                dimension_to_walk+1,
+                vertical_rects.at(i)
+        );
+        for( auto &rect : ret_data.first ) {
+            std::cout << "Obtained: " << rect << " for A from subsplit."
+                << std::endl;
+            ret_a_rects.push_back( rect );
+        }
+        for( auto &rect : ret_data.second ) {
+            std::cout << "Obtained: " << rect << " for b from subsplit."
+                << std::endl;
+
+            ret_b_rects.push_back( rect );
+        }
+    }
+    return std::make_pair( ret_a_rects, ret_b_rects );
 }
 
 template <class NT>
@@ -3036,79 +3183,29 @@ std::pair<std::vector<Rectangle>, std::vector<Rectangle>> make_rectangles_disjoi
     // Sort on X
     std::sort( points_with_ownership.begin(),
             points_with_ownership.end(), []( std::pair<Point,uint8_t>
-                &p1, std::pair<Point,uint8_t> &p2 ) { return
-            p1.first[0] < p2.first[0]; } );
-
-    Point start_point = points_with_ownership.at(0).first;
-    Rectangle cur_rect( start_point[0], overlapping_rect.lowerLeft[1],
-            nextafter( start_point[1], DBL_MAX ), overlapping_rect.upperRight[1] );
-    uint8_t cur_ownership = points_with_ownership.at(0).second;
-
-    std::vector<std::vector<std::pair<Point,uint8_t>>> vertical_splits;
-
-    for( unsigned i = 1; i < points_with_ownership.size(); i++ ) {
-        auto &entry = points_with_ownership.at(i);
-
-        LookAheadMergeCmd cmd = get_merge_cmd( points_with_ownership, i,
-                cur_ownership );
-        if( cmd == ADD ) {
-            cur_rect.expand( Point(entry.first[0],
-                    overlapping_rect.upperRight[1]) );
-        } else if( cmd == STOP ) {
-            if( cur_ownership == 0 ) {
-                ret_a_rects.push_back( cur_rect );
-            } else {
-                ret_b_rects.push_back( cur_rect );
+                &p1, std::pair<Point,uint8_t> &p2 ) {
+            if( p1.first[0] != p2.first[0] ) {
+                return p1.first[0] < p2.first[0];
             }
-            cur_rect = Rectangle( points_with_ownership.at(i).first[0],
-                    overlapping_rect.lowerLeft[1], nextafter(
-                        points_with_ownership.at(i).first[0], DBL_MAX ),
-                    overlapping_rect.upperRight[1] );
-            cur_ownership = points_with_ownership.at(i).second;
-        } else if( cmd == CREATE_VERTICAL ) {
-            if( cur_ownership == 0 ) {
-                ret_a_rects.push_back( cur_rect );
-            } else {
-                ret_b_rects.push_back( cur_rect );
-            }
+                return p1.first[1] < p2.first[1];
+    } );
 
-            std::vector<std::pair<Point,uint8_t>> vertical_data;
-            vertical_data.push_back(points_with_ownership.at(i));
-            // Create chunked rectangle
-            double existing_x = points_with_ownership.at(i).first[0];
-            i++;
-            while( i < points_with_ownership.size() and
-                    points_with_ownership.at(i).first[0] == existing_x ) {
-                vertical_data.push_back(points_with_ownership.at(i));
-                i++;
-            }
-            vertical_splits.push_back( vertical_data );
+    auto ret_data = walk_and_dice_overlapping_region(
+            points_with_ownership, 0, overlapping_rect );
 
-            if( i != points_with_ownership.size() ) {
-                // Start new rectnagle
-                cur_rect = Rectangle( points_with_ownership.at(i).first[0],
-                        overlapping_rect.lowerLeft[1], nextafter(
-                            points_with_ownership.at(i).first[0],
-                            DBL_MAX), overlapping_rect.upperRight[1] );
-                cur_ownership = points_with_ownership.at(i).second;
-            } else {
-                // special break condition so we don't add stuff when we
-                // exit the loop
-                cur_ownership = 2;
-            }
-        }
+    auto additional_a_rects = ret_data.first;
+    for( auto &rect : additional_a_rects ) {
+        ret_a_rects.push_back( rect );
     }
-
-    if( cur_ownership == 0 ) {
-        ret_a_rects.push_back( cur_rect );
-    } else if( cur_ownership == 1 ) {
-        ret_b_rects.push_back( cur_rect );
+    auto additional_b_rects = ret_data.second;
+    for( auto &rect : additional_b_rects ) {
+        ret_b_rects.push_back( rect );
     }
-
-    assert( vertical_splits.empty() );
 
     return std::make_pair( ret_a_rects, ret_b_rects );
 }
+
+
 
 #undef NODE_TEMPLATE_PARAMS
 #undef LEAF_NODE_CLASS_TYPES
