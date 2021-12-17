@@ -22,7 +22,7 @@ TESTOBJ = $(TESTSRC:.cpp=.o)
 %.o: %.cpp
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-all: bin/main bin/gen_tree bin/tests
+all: bin/main bin/tests
 
 bin/main: $(OBJ)
 	mkdir -p bin
@@ -40,6 +40,14 @@ bin/main: $(OBJ)
 
 bin/gen_tree: $(OBJ)
 	mkdir -p bin
+	cp src/nirtree/node.o nirtreenode.o
+	cp src/rtree/node.o rtreenode.o
+	cp src/rplustree/node.o rplustreenode.o
+	cp src/rstartree/node.o rstartreenode.o
+	cp src/quadtree/node.o quadtreenode.o
+	cp src/revisedrstartree/node.o revisedrstartreenode.o
+	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
+	rm -rf test*.o
 	mv main.o main.nocompile || echo
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/gen_tree -I $(DIR)
 	mv main.nocompile main.o || echo

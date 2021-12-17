@@ -26,6 +26,64 @@ void parameters(std::map<std::string, unsigned> &configU, std::map<std::string, 
 	std::cout << "### ### ### ### ### ###" << std::endl << std::endl;
 }
 
+void randomPoints(std::map<std::string, unsigned> &configU, std::map<std::string, double> &configD)
+{
+	switch (configU["distribution"])
+	{
+		case UNIFORM:
+		{
+			BenchTypeClasses::Uniform::size = configU["size"];
+			BenchTypeClasses::Uniform::dimensions = dimensions;
+			BenchTypeClasses::Uniform::seed = configU["seed"];
+			PointGenerator<BenchTypeClasses::Uniform> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case SKEW:
+		{
+			PointGenerator<BenchTypeClasses::Skew> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case CALIFORNIA:
+		{
+			PointGenerator<BenchTypeClasses::California> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case BIOLOGICAL:
+		{
+			PointGenerator<BenchTypeClasses::Biological> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case FOREST:
+		{
+			PointGenerator<BenchTypeClasses::Forest> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case CANADA:
+		{
+			PointGenerator<BenchTypeClasses::Canada> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case GAIA:
+		{
+			PointGenerator<BenchTypeClasses::Gaia> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+		case MICROSOFTBUILDINGS:
+		{
+			PointGenerator<BenchTypeClasses::MicrosoftBuildings> pointGen;
+			runBench(pointGen, configU, configD);
+			break;
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	// Process command line options

@@ -831,6 +831,7 @@ bool IsotheticPolygon::containsPoint(const Point &givenPoint) const
 bool IsotheticPolygon::disjoint(const IsotheticPolygon &givenPolygon) const
 {
 	bool rectanglesIntersect, opposingAlignment;
+    bool ret = true;
 	for (const Rectangle &basicRectangle : basicRectangles)
 	{
 		for (const Rectangle &givenBasicRectangle : givenPolygon.basicRectangles)
@@ -840,12 +841,15 @@ bool IsotheticPolygon::disjoint(const IsotheticPolygon &givenPolygon) const
 
 			if (rectanglesIntersect && !opposingAlignment)
 			{
-				return false;
+                std::cout << basicRectangle << " intersects " <<
+                    givenBasicRectangle << std::endl;
+                ret = false;
+				//return false;
 			}
 		}
 	}
-
-	return true;
+    return ret;
+	//return true;
 }
 
 std::vector<Rectangle> IsotheticPolygon::intersection(const Rectangle &givenRectangle) const

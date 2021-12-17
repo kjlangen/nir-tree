@@ -5,6 +5,171 @@
 #include <vector>
 #include <cmath>
 #include <unistd.h>
+#include <random>
+
+template <class TreeType>
+void make_all_rects_disjoint(
+    TreeType *treeRef,
+    std::vector<Rectangle> &rects_a,
+    tree_node_handle a_node,
+    std::vector<Rectangle> &rects_b,
+    tree_node_handle b_node
+){
+    std::vector<Rectangle> a_output;
+
+    std::stack<Rectangle, std::vector<Rectangle>>
+        remaining_a_rects( rects_a );
+
+    while( not remaining_a_rects.empty() ) {
+        Rectangle a = remaining_a_rects.top();
+        remaining_a_rects.pop();
+        bool did_split = false;
+        for( unsigned i = 0; i < rects_b.size(); i++ ) {
+            Rectangle &b = rects_b.at(i);
+            // If there is no intersection with this rectangle, keep
+            // going
+            if( not a.intersectsRectangle( b ) ) {
+                continue;
+            }
+            // If there is, we need to split it.
+            auto ret = nirtreedisk::make_rectangles_disjoint_accounting_for_region_ownership(
+                treeRef,
+                a,
+                a_node,
+                b,
+                b_node
+            );
+
+            IsotheticPolygon poly1;
+            poly1.basicRectangles = ret.first;
+            poly1.recomputeBoundingBox();
+
+            IsotheticPolygon poly2;
+            poly2.basicRectangles = ret.second;
+            poly2.recomputeBoundingBox();
+
+            if( not poly1.disjoint( poly2 ) ) {
+                std::cout << "A: " << a << std::endl;
+                std::cout << "B: " << b << std::endl;
+                std::cout << "Poly1: " << poly1 << std::endl;
+                std::cout << "Poly2: " << poly2 << std::endl;
+
+                std::cout << "Intersection." << std::endl;
+                poly1.intersection( poly2 );
+                std::cout << poly1 << std::endl;
+
+                assert( false );
+            }
+            assert( poly1.disjoint( poly2 ) );
+
+            for( auto &ret_a_rect : ret.first ) {
+                remaining_a_rects.push( ret_a_rect );
+            }
+            rects_b.erase( rects_b.begin() + i );
+            for( auto &ret_b_rect : ret.second ) {
+                rects_b.push_back( ret_b_rect );
+            }
+            // Need to loop around because we broke the iterator, and
+            // both a and b have new sets of rectangles
+            did_split = true;
+            break;
+        }
+        if( not did_split ) {
+            a_output.push_back( a );
+        }
+    }
+    rects_a = a_output;
+}
+
+template <class TreeType, class NT>
+void fill_branch(
+    TreeType *treeRef,
+    NT branch_node,
+    tree_node_handle node_handle,
+    std::vector<std::pair<Point,tree_node_handle>> &node_point_pairs,
+    unsigned &offset,
+    unsigned branch_factor
+) {
+    std::vector<std::pair<IsotheticPolygon, tree_node_handle>>
+        fixed_bb_and_handles;
+    tree_node_allocator *allocator = treeRef->node_allocator_.get();
+
+    // Add up to branch factor items to it
+    for( unsigned i = 0; i < branch_factor; i++ ) {
+        tree_node_handle child_handle =
+            node_point_pairs[offset++].second;
+        Rectangle bbox;
+        // Adjust parent
+        if( child_handle.get_type() == LEAF_NODE ) {
+            auto node =
+                allocator->get_tree_node<nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy>>(
+                        child_handle );
+            node->parent = node_handle;
+            bbox = node->boundingBox();
+        } else {
+            auto node =
+                allocator->get_tree_node<nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>>(
+                        child_handle );
+            node->parent = node_handle;
+            bbox = node->boundingBox();
+        }
+
+        // FIXME: for RStar, we would not fix up BB's here.
+        fixed_bb_and_handles.push_back( std::make_pair(
+                    IsotheticPolygon( bbox ), child_handle ) );
+
+        if( offset == node_point_pairs.size() ) {
+            break;
+        }
+    }
+
+
+    for( unsigned i = 0; i < fixed_bb_and_handles.size(); i++ ) {
+        for( unsigned j = i+1; j < fixed_bb_and_handles.size(); j++ ) {
+
+            std::vector<Rectangle> &existing_rects_a =
+                fixed_bb_and_handles.at(i).first.basicRectangles;
+            std::vector<Rectangle> &existing_rects_b =
+                fixed_bb_and_handles.at(j).first.basicRectangles;
+            make_all_rects_disjoint(
+                treeRef,
+                existing_rects_a,
+                fixed_bb_and_handles.at(i).second,
+                existing_rects_b,
+                fixed_bb_and_handles.at(j).second
+            );
+        }
+    }
+
+    // Now we have made all the BoundingRegions disjoint.
+    // It is time to add our children
+    for( unsigned int i = 0; i < fixed_bb_and_handles.size(); i++ ) {
+        nirtreedisk::Branch b;
+        b.child = fixed_bb_and_handles.at(i).second;
+        IsotheticPolygon &constructed_poly =
+            fixed_bb_and_handles.at(i).first;
+        if( constructed_poly.basicRectangles.size() <=
+                MAX_RECTANGLE_COUNT ) {
+            b.boundingPoly = InlineBoundedIsotheticPolygon();
+            std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+                    ).push_polygon_to_disk( constructed_poly );
+        } else {
+            unsigned rect_size = std::min(
+                    InlineUnboundedIsotheticPolygon::maximum_possible_rectangles_on_first_page(),
+                    constructed_poly.basicRectangles.size() );
+            auto alloc_data =
+                allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                        compute_sizeof_inline_unbounded_polygon(
+                            rect_size ),
+                        NodeHandleType( BIG_POLYGON ) );
+            new (&(*alloc_data.first)) InlineUnboundedIsotheticPolygon( allocator, rect_size );
+            alloc_data.first->push_polygon_to_disk( constructed_poly );
+            b.boundingPoly = alloc_data.second;
+        }
+        branch_node->addBranchToNode(b);
+        //branch_node->bounding_box_validate();
+    }
+}
 
 std::vector<tree_node_handle> str_packing_branch(
     nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>
@@ -12,11 +177,13 @@ std::vector<tree_node_handle> str_packing_branch(
 ) {
     tree_node_allocator *allocator = tree.node_allocator_.get();
 
-    std::cout << " Computing centerpoints. " << std::endl;
     // Get bbox once for everything so I'm not materializing it
     // constantly
     std::vector<std::pair<Point,tree_node_handle>> node_point_pairs;
+    node_point_pairs.reserve( child_nodes.size() );
+    unsigned c = 0;
     for( tree_node_handle &child_handle : child_nodes ) {
+        c++;
         Rectangle bbox;
         if( child_handle.get_type() == LEAF_NODE ) {
             auto child =
@@ -36,19 +203,15 @@ std::vector<tree_node_handle> str_packing_branch(
     if( node_point_pairs.size() % branch_factor != 0  ) {
         P++;
     }
-    std::cout << "Determined that there are " << P << "pages." <<
-        std::endl;
+
     double S_dbl = std::ceil( sqrt(P) );
     unsigned S = (unsigned) S_dbl;
-    std::cout << "This gives us an S value of " << S << std::endl;
 
     // Sort by X
     std::sort( node_point_pairs.begin(), node_point_pairs.end(), [](
                 std::pair<Point, tree_node_handle> &l, std::pair<Point, tree_node_handle> &r
     ) { return l.first[0] < r.first[0]; });
-    std::cout << " Done sorting by x. " << std::endl;
 
-    std::cout << "S: " << S << std::endl;
     // There are |S| vertical stripes.
     // Each has |S|*branch_factor points
     for( unsigned i = 0; i < S; i++ ) {
@@ -68,7 +231,7 @@ std::vector<tree_node_handle> str_packing_branch(
         }
     }
 
-    std::cout << " Done sorting by Y. " << std::endl;
+
 
     std::vector<tree_node_handle> branches;
     unsigned offset = 0;
@@ -83,32 +246,14 @@ std::vector<tree_node_handle> str_packing_branch(
         auto branch_node = alloc_data.first;
         tree_node_handle branch_handle = alloc_data.second;
         
-        // Add up to branch factor items to it
-        for( unsigned i = 0; i < branch_factor; i++ ) {
-            tree_node_handle child_handle =
-                node_point_pairs[offset++].second;
-            Rectangle bbox;
-            // Adjust parent
-            if( child_handle.get_type() == LEAF_NODE ) {
-                auto node =
-                    allocator->get_tree_node<nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy>>(
-                            child_handle );
-                node->parent = branch_handle;
-                bbox = node->boundingBox();
-            } else {
-                auto node =
-                    allocator->get_tree_node<nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>>(
-                            child_handle );
-                node->parent = branch_handle;
-                bbox = node->boundingBox();
-            }
-            
-            // Add to the branch
-            branch_node->addBranchToNode( { bbox, child_handle } );
-            if( offset == node_point_pairs.size() ) {
-                break;
-            }
-        }
+        fill_branch(
+            &tree,
+            branch_node,
+            branch_handle,
+            node_point_pairs, 
+            offset,
+            branch_factor
+        );
         branches.push_back( branch_handle );
     }
     return branches;
@@ -178,16 +323,55 @@ int main( int argc, char **argv ) {
     std::cout << "Point Count: " << all_points.size() << std::endl;
     std::string backing_file = "gen_nirtree.txt";
     unlink( backing_file.c_str() );
-    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy> tree( 4096*13000, backing_file );
+    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>
+        tree( 4096*130000, backing_file );
 
     std::vector<tree_node_handle> leaves = str_packing_leaf( tree, all_points, 25 );
-    std::cout << "One round of packing done: " << leaves.size() << std::endl;
+
     std::vector<tree_node_handle> branches = str_packing_branch( tree, leaves, 25 );
-    std::cout << "Two rounds of packing done: " << branches.size() << std::endl;
-    branches = str_packing_branch( tree, branches, 25 );
-    std::cout << "Three rounds of packing done: " << branches.size() << std::endl;
-    branches = str_packing_branch( tree, branches, 25 );
-    std::cout << "Four rounds of packing done: " << branches.size() << std::endl;
+    while( branches.size() > 1 ) {
+        std::cout << "Branches: " << branches.size() << std::endl;
+        branches = str_packing_branch( tree, branches, 25 );
+    }
+
+    tree.root = branches.at(0); 
+    //std::cout << "Tree created. Validating." << std::endl;
+    //tree.validate();
+    //std::string fname( "repacked_nir.txt" );
+    //repack_tree( &tree, fname,
+    //        nirtreedisk::repack_subtree<15,25,nirtreedisk::ExperimentalStrategy> );
+    //std::cout << "Done." << std::endl;
+
+
+    std::mt19937 g;
+    g.seed(0);
+
+    std::shuffle( all_points.begin(), all_points.end(), g );
+
+    unsigned totalSearches  = 0;
+	double totalTimeSearches = 0.0;
+    for( Point p : all_points ) {
+        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+        std::vector<Point> out = point_search( tree.root, p, &tree );
+        if( out.size() != 1 ) {
+            std::cout << "Could not find " << p << std::endl;
+            abort();
+        }
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+        totalTimeSearches += delta.count();
+        totalSearches += 1;
+        std::cout << "Search OK." << std::endl;
+        if( totalSearches >= 300 ) {
+            break;
+        }
+    }
+
+    tree.stat();
+
+	std::cout << "Total time to search: " << totalTimeSearches << "s" << std::endl;
+	std::cout << "Avg time to search: " << totalTimeSearches / totalSearches << "s" << std::endl;
+
 
     return 0;
 }

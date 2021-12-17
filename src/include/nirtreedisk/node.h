@@ -191,6 +191,8 @@ namespace nirtreedisk
                     std::cout << "Compressed = " << compressed_size <<
                         std::endl;
                     std::cout << "Decided to use compressed version because it saves: " << rect_count * sizeof(Rectangle) - compressed_size << " bytes." << std::endl;
+                    std::cout << "Rect Count: " << rect_count <<
+                        std::endl;
                     return compression_result;
                 }
                 std::cout << "Uncompressed = " << rect_count *
@@ -282,6 +284,7 @@ namespace nirtreedisk
                 memcpy( buffer+offset, cpd.first, cpd.second );
                 offset += cpd.second;
                 std::cout << "After packing in compressed poly, true usage is: " << offset << std::endl;
+                free( cpd.first );
                 return offset;
             }
 
