@@ -162,6 +162,8 @@ namespace nirtreedisk
         std::optional<std::pair<char *, int>> compute_compression_data(
             tree_node_allocator *existing_allocator
         ) {
+            return std::nullopt;
+#if 0
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
                 tree_node_handle poly_handle = std::get<tree_node_handle>( boundingPoly );
                 auto poly_pin =
@@ -172,24 +174,12 @@ namespace nirtreedisk
                 std::pair<char *, int> compression_result =
                     compress_polygon( poly_pin->begin(),
                             poly_pin->end(), rect_count );
+
                 unsigned compressed_size = compression_result.second;
                 if( compressed_size + 10 < rect_count * sizeof(Rectangle) ) {
-                    std::cout << "Uncompressed = " << rect_count *
-                        sizeof(Rectangle) << std::endl;
-                    std::cout << "Compressed = " << compressed_size <<
-                        std::endl;
-                    std::cout << "Decided to use compressed version because it saves: " << rect_count * sizeof(Rectangle) - compressed_size << " bytes." << std::endl;
                     return compression_result;
                 }
-                std::cout << "Uncompressed = " << rect_count *
-                    sizeof(Rectangle) << std::endl;
-                std::cout << "Compressed = " << compressed_size <<
-                        std::endl;
-                std::cout << "Decided not to used compressed version." << std::endl;
-                std::cout << "Compression Result: " << (void *)
-                    compression_result.first << std::endl;
                 free( compression_result.first );
-                std::cout << "Done the free?" << std::endl;
                 return std::nullopt;
             }
             InlineBoundedIsotheticPolygon &poly =
@@ -197,62 +187,15 @@ namespace nirtreedisk
             unsigned rect_count = poly.get_rectangle_count();
             std::pair<char *, int> compression_result =
                 compress_polygon( poly.begin(), poly.end(), rect_count );
+
             unsigned compressed_size = compression_result.second;
             if( compressed_size + 10 < rect_count * sizeof(Rectangle) ) {
-                std::cout << "Uncompressed = " << rect_count *
-                    sizeof(Rectangle) << std::endl;
-                std::cout << "Compressed = " << compressed_size <<
-                    std::endl;
-                std::cout << "Decided to use compressed version because it saves: " << rect_count * sizeof(Rectangle) - compressed_size << " bytes." << std::endl;
                 return compression_result;
 
             }
-            std::cout << "Uncompressed = " << rect_count *
-                sizeof(Rectangle) << std::endl;
-            std::cout << "Compressed = " << compressed_size <<
-                    std::endl;
-
-            std::cout << "Decided not to used compressed version." << std::endl;
             free( compression_result.first );
             return std::nullopt;
-        }
-
-        void generate_compressed_polygons(
-                tree_node_allocator *existing_allocator
-        ) {
-            if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
-                auto poly_pin =
-                    existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
-                            std::get<tree_node_handle>( boundingPoly ) );
-                unsigned total_rects =
-                    poly_pin->get_total_rectangle_count();
-
-                std::pair<char *, int> compressed_poly_data =
-                    compress_polygon( poly_pin->begin(),
-                            poly_pin->end(), total_rects );
-
-                int true_size = (int)
-                    compute_sizeof_inline_unbounded_polygon( total_rects );
-                std::cout << "Compressed size would save #bytes: " << true_size
-                    - compressed_poly_data.second  << std::endl;
-
-                free( compressed_poly_data.first );
-                return;
-            }
-
-            InlineBoundedIsotheticPolygon &poly =
-                std::get<InlineBoundedIsotheticPolygon>( boundingPoly );
-
-            unsigned rect_count = poly.get_rectangle_count();
-            std::pair<char *, int> compressed_poly_data =
-                compress_polygon( poly.begin(),
-                        poly.end(), rect_count );
-
-            int true_size = sizeof(Rectangle) * rect_count;
-            std::cout << "Compressed size would save #bytes: " << true_size
-                - compressed_poly_data.second  << std::endl;
-
-            free( compressed_poly_data.first );
+#endif
         }
 
         uint16_t repack_into(
@@ -263,13 +206,14 @@ namespace nirtreedisk
             std::optional<std::pair<char*,int>> compressed_poly_data
         ) {
 
+            std::cout << "Repacking branch with: " <<  cut_off_inline_rect_count << std::endl;
+
             if( compressed_poly_data.has_value() ) {
                 child.set_associated_poly_is_compressed();
                 uint16_t offset = write_data_to_buffer( buffer, &child );
                 auto &cpd = compressed_poly_data.value();
                 memcpy( buffer+offset, cpd.first, cpd.second );
                 offset += cpd.second;
-                std::cout << "After packing in compressed poly, true usage is: " << offset << std::endl;
                 return offset;
             }
 
@@ -299,12 +243,14 @@ namespace nirtreedisk
                 */
 
                 // Free the old polygon
+                /*
                 poly_pin->free_subpages( existing_allocator );
                 existing_allocator->free(
                         std::get<tree_node_handle>( boundingPoly ),
                     compute_sizeof_inline_unbounded_polygon(
                         poly_pin->get_max_rectangle_count_on_first_page()
                         ) );
+                */
                 return offset;
             }
 
@@ -327,8 +273,6 @@ namespace nirtreedisk
                 offset += write_data_to_buffer( buffer + offset,
                         &(*iter) );
             }
-            std::cout << "Poly Done." << std::endl;
-            std::cout << "After packing in uncompressed poly, true usage is: " << offset << std::endl;
 
             return offset;
         }

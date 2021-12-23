@@ -1452,7 +1452,7 @@ TEST_CASE("R*TreeDisk: reInsertAccountsForNewTreeDepth")
 
 TEST_CASE("R*TreeDisk: pack simple leaf node") {
     unlink( "rstardiskbacked.txt" );
-    TreeType tree( 4096*5, "nirdiskbacked.txt" );
+    TreeType tree( 4096*5, "rstardiskbacked.txt" );
     for( unsigned i = 0; i < 5; i++ ) {
         tree.insert( Point(i,i) );
     }

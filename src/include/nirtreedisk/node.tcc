@@ -36,12 +36,7 @@ Rectangle LEAF_NODE_CLASS_TYPES::boundingBox()
     return bb;
 }
 
-// If Branch:
-// Removes a child logical pointer from a this->parent node, freeing that
-// child's memory and the memory of the associated polygon (if external
-// to the node).
-// If Point: removes the point from the node
-
+// Point: removes the point from the node
 NODE_TEMPLATE_PARAMS
 void LEAF_NODE_CLASS_TYPES::removePoint(
     const Point &point
@@ -1046,9 +1041,6 @@ unsigned LEAF_NODE_CLASS_TYPES::height()
 NODE_TEMPLATE_PARAMS
 uint16_t LEAF_NODE_CLASS_TYPES::compute_packed_size() {
     uint16_t sz = 0;
-    sz += sizeof( treeRef );
-    sz += sizeof( self_handle_ );
-    sz += sizeof( parent );
     sz += sizeof( cur_offset_ );
     sz += cur_offset_ * sizeof(Point);
     return sz;
@@ -1062,17 +1054,10 @@ std::pair<uint16_t, std::vector<std::optional<std::pair<char*,int>>>> BRANCH_NOD
 ) {
     do {
         uint16_t sz = 0;
-        sz += sizeof( treeRef );
-        sz += sizeof( self_handle_ );
-        sz += sizeof( parent );
         sz += sizeof( cur_offset_ );
 
-        std::vector<std::optional<std::pair<char *, int>>>
-            branch_compression_data;
+        std::vector<std::optional<std::pair<char *, int>>> branch_compression_data;
 
-        // At the top layers of the tree, we are going to write out
-        // everything.
-        // On the last layer before leaves, just use rectangles.
         for( unsigned i = 0; i < cur_offset_; i++ ) {
             uint16_t unpacked_size = 0;
             unpacked_size = entries.at(i).compute_packed_size( existing_allocator,
@@ -1089,27 +1074,25 @@ std::pair<uint16_t, std::vector<std::optional<std::pair<char*,int>>>> BRANCH_NOD
             branch_compression_data.push_back( compression_result );
         }
         if( sz <= PAGE_DATA_SIZE ) {
+            std::cout << "Breaking out. Chose rect size: " <<
+                maximum_repacked_rect_size << std::endl;
             return std::make_pair( sz, branch_compression_data );
         }
         assert( maximum_repacked_rect_size >= 1 );
         maximum_repacked_rect_size /= 2;
+        std::cout << "Looping with rect size: " <<
+            maximum_repacked_rect_size << std::endl;
     } while( true );
 }
 
 NODE_TEMPLATE_PARAMS
 tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator ) {
-    std::cout << "Repacking: " << self_handle_ << std::endl;
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
     uint16_t alloc_size = compute_packed_size();
     auto alloc_data = allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
-    std::cout << "New allocator handed us handle: " << alloc_data.second
-        << std::endl;
 
     char *buffer = alloc_data.first->buffer_;
-    buffer += write_data_to_buffer( buffer, &treeRef );
-    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
-    buffer += write_data_to_buffer( buffer, &parent );
     buffer += write_data_to_buffer( buffer, &cur_offset_ );
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         buffer += write_data_to_buffer( buffer, &(entries.at(i)) );
@@ -1119,14 +1102,12 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
     }
 
     assert( buffer - alloc_data.first->buffer_ == alloc_size );
-    std::cout << "Done. New handle is now: " << alloc_data.second << std::endl;
     return alloc_data.second;
 }
 
 NODE_TEMPLATE_PARAMS
 tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
         *existing_allocator, tree_node_allocator *new_allocator ) {
-    std::cout << "Repacking: " << self_handle_ << std::endl;
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
 
     unsigned maximum_unpacked_rect_size = 25;
@@ -1138,17 +1119,15 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
             alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
 
     char *buffer = alloc_data.first->buffer_;
-    buffer += write_data_to_buffer( buffer, &treeRef );
-    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
-    buffer += write_data_to_buffer( buffer, &parent );
-    buffer += write_data_to_buffer( buffer, &cur_offset_ );
+    uint16_t offset = 0;
+    offset += write_data_to_buffer( buffer + offset, &cur_offset_ );
     for( unsigned i = 0; i < cur_offset_; i++ ) {
         Branch &b = entries.at(i);
-        buffer += b.repack_into( buffer, existing_allocator,
+        offset += b.repack_into( buffer + offset, existing_allocator,
                 new_allocator, maximum_unpacked_rect_size, 
                 packing_computation_result.second.at(i) );
     }
-    unsigned true_size = (buffer - alloc_data.first->buffer_);
+    unsigned true_size = offset;
     if( alloc_size != true_size ) {
         std::cout << "Memory corruption -- disaster." << std::endl;
         std::cout << "Alloc Size: " << alloc_size << ", " << true_size
@@ -1278,7 +1257,7 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
 
 // Sets unsigned offset pointing to start of leaf entries and unsigned count
 #define decode_entry_count_and_offset_packed_node( data ) \
-    unsigned offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    unsigned offset = 0; \
     unsigned count = * (unsigned *) (data+offset); \
     offset += sizeof( unsigned );
 
@@ -1490,6 +1469,7 @@ tree_node_handle repack_subtree(
     tree_node_allocator *new_allocator
 ) {
     std::vector<tree_node_handle> repacked_handles;
+    std::cout << "Repacking: " << handle << std::endl;
     switch( handle.get_type() ) {
         case LEAF_NODE: {
             auto leaf_node =
@@ -1516,6 +1496,7 @@ tree_node_handle repack_subtree(
             // we don't know that until we repack the branch node above.
             // So, we re-walk the new children here and set up all their
             // parents.
+            /*
             for( unsigned i = 0; i < branch_node->cur_offset_; i++ ) {
                 auto new_child =
                     new_allocator->get_tree_node<packed_node>(
@@ -1523,6 +1504,7 @@ tree_node_handle repack_subtree(
                 * (tree_node_handle *) (new_child->buffer_ + sizeof(void*) +
                     sizeof(tree_node_handle)) = new_handle;
             }
+            */
 
             existing_allocator->free( handle, sizeof(
                     BRANCH_NODE_CLASS_TYPES ) );
@@ -1532,6 +1514,7 @@ tree_node_handle repack_subtree(
             assert( false );
             return tree_node_handle( nullptr );
     }
+    std::cout << "Repacking: " << handle << " done." << std::endl;
 }
 
 NODE_TEMPLATE_PARAMS
@@ -2729,6 +2712,7 @@ void stat_node(
                     memoryFootprint += sizeof(tree_node_handle) + sizeof(unsigned);
                     context.push( *child );
                     if( rect_count == std::numeric_limits<unsigned>::max() ) {
+                        std::cout << "Out of line poly" << std::endl;
                         auto handle = * (tree_node_handle *) (buffer +
                                 offset);
                         offset += sizeof( tree_node_handle );
@@ -2743,11 +2727,16 @@ void stat_node(
                             (compute_sizeof_inline_unbounded_polygon (
                                     poly_pin->get_total_rectangle_count() )
                              - sizeof(Rectangle));
+                        histogramPolygon.at(
+                                poly_pin->get_total_rectangle_count() )++;
                     } else {
                         offset += rect_count * sizeof( Rectangle );
                         memoryFootprint += rect_count * sizeof(Rectangle);
                         memoryPolygons += (rect_count * sizeof(Rectangle) -
                                 sizeof(Rectangle));
+                        histogramPolygon.at( rect_count )++;
+
+
                     }
                 } else {
                     int new_offset;

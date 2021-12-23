@@ -909,7 +909,6 @@ TEST_CASE("NIRTreeDisk: pack simple leaf node") {
     REQUIRE( root_leaf_node->compute_packed_size() <
             sizeof(DefaultLeafNodeType) );
     REQUIRE( root_leaf_node->compute_packed_size() ==
-            sizeof(void *) + sizeof(tree_node_handle)*2 +
             sizeof(unsigned) + sizeof(Point) * 5 );
 
     tree_node_handle repacked_handle = root_leaf_node->repack(
@@ -919,21 +918,11 @@ TEST_CASE("NIRTreeDisk: pack simple leaf node") {
     auto packed_leaf =
         tree.node_allocator_->get_tree_node<packed_node>(
                 repacked_handle );
-    REQUIRE( read_pointer_from_buffer<DefaulTreeType>( packed_leaf->buffer_ ) == &tree );
-    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
-                    *) ) ==
-        repacked_handle );
 
-    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
-                    *) + sizeof(tree_node_handle) ) ==
-        root_leaf_node->parent );
-
-    REQUIRE( * (unsigned *) (packed_leaf->buffer_ + sizeof(void
-                    *) + sizeof(tree_node_handle)*2 ) ==
+    REQUIRE( * (unsigned *) (packed_leaf->buffer_) ==
         root_leaf_node->cur_offset_ );
 
-    Point *p = (Point *) (packed_leaf->buffer_ + sizeof(void *) +
-            sizeof(tree_node_handle)*2 + sizeof(unsigned));
+    Point *p = (Point *) (packed_leaf->buffer_ + sizeof(unsigned));
     REQUIRE( *(p++) == root_leaf_node->entries.at(0) );
     REQUIRE( *(p++) == root_leaf_node->entries.at(1) );
     REQUIRE( *(p++) == root_leaf_node->entries.at(2) );
@@ -991,15 +980,7 @@ TEST_CASE("NIRTreeDisk: pack branch node all inline") {
     auto packed_branch= tree.node_allocator_->get_tree_node<packed_node>(
             packed_handle );
     
-    REQUIRE( read_pointer_from_buffer<DefaulTreeType>(
-                packed_branch->buffer_ ) == &tree );
-    size_t offset = 8;
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-            packed_handle );
-    offset += sizeof(tree_node_handle);
-    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
-            branch_node->parent );
-    offset += sizeof(tree_node_handle);
+    size_t offset = 0;
     REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
             branch_node->cur_offset_ );
     offset += sizeof(unsigned);
