@@ -943,17 +943,21 @@ tree_node_handle quad_tree_style_load(
     }
     return branch_handle;
 }
-
 template <typename T>
 void bulk_load_tree(
     T* tree,
     std::map<std::string,unsigned> &configU,
     std::vector<Point> &all_points,
     unsigned max_branch_factor
+);
+
+template <>
+void bulk_load_tree(
+    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>* tree,
+    std::map<std::string,unsigned> &configU,
+    std::vector<Point> &all_points,
+    unsigned max_branch_factor
 ) {
-
-    std::cout << "Starting to pack leaves." << std::endl;
-
     unsigned max_depth =
         std::floor(log(all_points.size())/log(max_branch_factor));
 
@@ -971,9 +975,20 @@ void bulk_load_tree(
     std::string fname = "repacked_nirtree.txt";
     repack_tree( tree_ptr, fname,
             nirtreedisk::repack_subtree<15,25,nirtreedisk::ExperimentalStrategy>  );
+}
 
 
-    /*
+
+template <>
+void bulk_load_tree(
+    rstartreedisk::RStarTreeDisk<15,25>* tree,
+    std::map<std::string,unsigned> &configU,
+    std::vector<Point> &all_points,
+    unsigned max_branch_factor
+) {
+
+    std::cout << "Starting to pack leaves." << std::endl;
+
     std::vector<tree_node_handle> leaves = str_packing_leaf(
         tree,
         all_points,
@@ -985,9 +1000,12 @@ void bulk_load_tree(
     while( branches.size() > 1 ) {
         branches = str_packing_branch( tree, branches, 25 );
     }
-
     tree->root = branches.at(0);
-    */
+    auto tree_ptr = (rstartreedisk::RStarTreeDisk<15,25> *) tree;
+
+    std::string fname = "repacked_rtree.txt";
+    repack_tree( tree_ptr, fname,
+            rstartreedisk::repack_subtree<15,25>  );
 }
 
 void generate_tree( std::map<std::string, unsigned> &configU ) {
@@ -997,20 +1015,6 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
     std::string backing_file = "bulkloaded_tree.txt";
     unlink( backing_file.c_str() );
 
-    Index *spatialIndex;
-    if( configU["tree"] == NIR_TREE ) {
-        spatialIndex = new
-            nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>(
-                    40960*13000, backing_file );
-        std::cout << "Created NIRTree." << std::endl;
-    } else if( configU["tree"] == R_STAR_TREE ) {
-        spatialIndex = new rstartreedisk::RStarTreeDisk<15,25>(
-                    4096*130000, backing_file );
-        std::cout << "Created R*Tree" << std::endl;
-    } else {
-        abort();
-    }
-
     PointGenerator<BenchTypeClasses::California> points;
     std::vector<Point> all_points;
     std::optional<Point> next;
@@ -1018,16 +1022,26 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         all_points.push_back( next.value() );
     }
 
-    std::cout << "Bulk Loading..." << std::endl;
-    /*
-    bulk_load_tree(
-            (nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>
-             *) spatialIndex, configU, all_points, 25 );
-             */
-    bulk_load_tree(
-            (rstartreedisk::RStarTreeDisk<15,25> *) spatialIndex, configU, all_points, 25 );
 
-
+    Index *spatialIndex;
+    if( configU["tree"] == NIR_TREE ) {
+        nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy> *tree =  new
+            nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>(
+                    40960*13000, backing_file );
+        std::cout << "Bulk Loading..." << std::endl;
+        bulk_load_tree( tree, configU, all_points, 25 );
+        std::cout << "Created NIRTree." << std::endl;
+        spatialIndex = tree;
+    } else if( configU["tree"] == R_STAR_TREE ) {
+        rstartreedisk::RStarTreeDisk<15,25> *tree = new rstartreedisk::RStarTreeDisk<15,25>(
+                    40960*13000, backing_file );
+        std::cout << "Bulk Loading..." << std::endl;
+        bulk_load_tree( tree, configU, all_points, 25 );
+        std::cout << "Created R*Tree" << std::endl;
+        spatialIndex = tree;
+    } else {
+        abort();
+    }
 
     std::mt19937 g;
     g.seed(0);

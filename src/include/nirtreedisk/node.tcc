@@ -2734,8 +2734,7 @@ void stat_node(
                 histogramFanout.resize(2*fanout, 0);
             }
             histogramFanout[fanout]++;
-            memoryFootprint += sizeof(void*) +
-                sizeof(tree_node_handle)*2 + sizeof(unsigned) +
+            memoryFootprint +=  sizeof(unsigned) +
                 count * sizeof(Point);
         } else if( currentContext.get_type() == REPACKED_BRANCH_NODE ) {
             auto current_node = allocator->get_tree_node<packed_node>(
@@ -2748,8 +2747,7 @@ void stat_node(
                 histogramFanout.resize(2*fanout, 0);
             }
             histogramFanout[fanout]++;
-            memoryFootprint += sizeof(void*)+ sizeof(tree_node_handle)*2
-                + sizeof(unsigned);
+            memoryFootprint += sizeof(unsigned);
             for( unsigned i = 0; i < count; i++ ) {
                 tree_node_handle *child = (tree_node_handle *) (buffer + offset);
                 offset += sizeof( tree_node_handle );
