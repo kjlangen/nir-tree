@@ -293,6 +293,17 @@ public:
         free_list_.push_back( std::make_pair( handle, alloc_size ) );
     }
 
+
+    void dump_free_list() {
+        std::cout << "Free list items: " << free_list_.size() <<
+            std::endl;
+        for( auto &item : free_list_ ) {
+            std::cout << "FL handle: " << item.first << " sz: " <<
+                item.second << std::endl;
+        }
+        std::cout << "Done." << std::endl;
+    }
+
     template <typename T>
     pinned_node_ptr<T> get_tree_node( tree_node_handle node_ptr ) {
 #ifndef NDEBUG

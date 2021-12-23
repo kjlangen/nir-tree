@@ -1129,9 +1129,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
     }
     unsigned true_size = offset;
     if( alloc_size != true_size ) {
-        std::cout << "Memory corruption -- disaster." << std::endl;
-        std::cout << "Alloc Size: " << alloc_size << ", " << true_size
-            << std::endl;
         abort();
     }
     assert( true_size == alloc_size );
@@ -1320,25 +1317,34 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     for( unsigned i = 0; i < count; i++ ) { \
         tree_node_handle *child = (tree_node_handle *) (buffer + offset); \
         offset += sizeof( tree_node_handle ); \
-        unsigned rect_count = * (unsigned *) (buffer + offset); \
-        offset += sizeof( unsigned ); \
-        if( rect_count == std::numeric_limits<unsigned>::max() ) { \
-            tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
-            offset += sizeof( tree_node_handle ); \
-            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
-            if( poly_pin->containsPoint( requestedPoint ) ) { \
-                context.push( *child ); \
-            } \
-        } else { \
-            for( unsigned r = 0; r < rect_count; r++ ) { \
-                Rectangle *rect = (Rectangle *) (buffer + offset); \
-                offset += sizeof(Rectangle); \
-                if( rect->containsPoint( requestedPoint ) ) { \
+        if( !child->get_associated_poly_is_compressed() ) { \
+            unsigned rect_count = * (unsigned *) (buffer + offset); \
+            offset += sizeof( unsigned ); \
+            if( rect_count == std::numeric_limits<unsigned>::max() ) { \
+                tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset ); \
+                offset += sizeof( tree_node_handle ); \
+                auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle ); \
+                if( poly_pin->containsPoint(requestedPoint) ) { \
                     context.push( *child ); \
-                    offset += (rect_count-r-1) * sizeof(Rectangle); \
-                    break; \
+                } \
+            } else { \
+                for( unsigned r = 0; r < rect_count; r++ ) { \
+                    Rectangle *rect = (Rectangle *) (buffer + offset); \
+                    offset += sizeof(Rectangle); \
+                    if( rect->containsPoint( requestedPoint ) ) { \
+                        context.push( *child ); \
+                        offset += (rect_count-r-1) * sizeof(Rectangle); \
+                        break; \
+                    } \
                 } \
             } \
+        } else { \
+            int new_offset; \
+            IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset, &new_offset ); \
+            if( decomp_poly.containsPoint( requestedPoint ) ) { \
+                context.push( *child ); \
+            } \
+            offset += new_offset; \
         } \
     }
 
@@ -1469,7 +1475,6 @@ tree_node_handle repack_subtree(
     tree_node_allocator *new_allocator
 ) {
     std::vector<tree_node_handle> repacked_handles;
-    std::cout << "Repacking: " << handle << std::endl;
     switch( handle.get_type() ) {
         case LEAF_NODE: {
             auto leaf_node =
@@ -1477,6 +1482,7 @@ tree_node_handle repack_subtree(
             auto new_handle = leaf_node->repack( new_allocator );
             existing_allocator->free( handle, sizeof(
                         LEAF_NODE_CLASS_TYPES ) );
+            std::cout << "Done repacking handle: " << handle << std::endl;
             return new_handle;
         }
         case BRANCH_NODE: {
@@ -1508,6 +1514,7 @@ tree_node_handle repack_subtree(
 
             existing_allocator->free( handle, sizeof(
                     BRANCH_NODE_CLASS_TYPES ) );
+            std::cout << "Done repacking handle: " << handle << std::endl;
             return new_handle;
           }
         default:
@@ -1598,9 +1605,14 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
             }
 
             tree_node_allocator *allocator = get_node_allocator( this->treeRef );
-            IsotheticPolygon node_poly = cur_node->entries.at(0).materialize_polygon(
+            inline_poly node_poly = cur_node->entries.at(0).get_inline_polygon(
                     allocator );
-            assert( node_poly.basicRectangles.size() > 0 );
+            bool node_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(node_poly);
+            if (node_poly_unbounded) {
+                assert( std::get<unbounded_poly_pin>(node_poly)->get_total_rectangle_count() > 0 );
+            } else {
+                assert( std::get<InlineBoundedIsotheticPolygon>(node_poly).get_rectangle_count() > 0 );
+            }
 
             // This is the minimum amount of additional area we need in
             // one of the branches to encode our expansion
@@ -1617,14 +1629,18 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
             std::vector<IsotheticPolygon::OptimalExpansion> expansions;
 
             if( std::holds_alternative<Branch>( nodeEntry ) ) {
-                IsotheticPolygon branch_poly =
-                    std::get<Branch>(nodeEntry).materialize_polygon(
-                            allocator );
-                auto expansion_computation_results = node_poly.computeExpansionArea(
-                        branch_poly );
-                minimal_area_expansion =
-                    expansion_computation_results.first;
-                minimal_poly_area = branch_poly.area();
+                inline_poly branch_poly =
+                    std::get<Branch>(nodeEntry).get_inline_polygon( allocator );
+                auto expansion_computation_results = computeExpansionArea( node_poly, branch_poly );
+                minimal_area_expansion = expansion_computation_results.first;
+
+                bool branch_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(branch_poly);
+                if (branch_poly_unbounded) {
+                    minimal_poly_area = std::get<unbounded_poly_pin>(branch_poly)->area();
+                } else {
+                    minimal_poly_area = std::get<InlineBoundedIsotheticPolygon>(branch_poly).area();
+                }
+
                 expansions = expansion_computation_results.second;
                 /*
                 if( minimal_area_expansion == -1.0 ) {
@@ -1632,20 +1648,34 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                 }
                 */
             } else {
-                IsotheticPolygon::OptimalExpansion exp = node_poly.computeExpansionArea(
-                        std::get<Point>( nodeEntry ) );
+                IsotheticPolygon::OptimalExpansion exp;
+                if (node_poly_unbounded) {
+                    auto unb_node_poly = std::get<unbounded_poly_pin>(node_poly);
+                    auto inline_exp = computeExpansionArea<InlineUnboundedIsotheticPolygon, InlineUnboundedIsotheticPolygon::Iterator>(
+                        *unb_node_poly , unb_node_poly->begin(), unb_node_poly->end(), std::get<Point>( nodeEntry ) );
+                    exp = inline_exp;
+                } else {
+                    auto b_node_poly = std::get<InlineBoundedIsotheticPolygon>(node_poly);
+                    exp = computeExpansionArea<InlineBoundedIsotheticPolygon, InlineBoundedIsotheticPolygon::iterator>(
+                        b_node_poly , b_node_poly.begin(), b_node_poly.end(), std::get<Point>( nodeEntry ) );
+                }
                 minimal_area_expansion = exp.area;
                 expansions.push_back( exp );
             }
 
             for( unsigned i = 1; i < cur_node->cur_offset_; i++ ) {
                 Branch &b = cur_node->entries.at(i);
-                node_poly = b.materialize_polygon( allocator );
-                assert( node_poly.basicRectangles.size() > 0 );
-             
+                node_poly = b.get_inline_polygon( allocator );
+                bool node_poly_unbounded = std::holds_alternative<unbounded_poly_pin>(node_poly);
+                if (node_poly_unbounded) {
+                    assert( std::get<unbounded_poly_pin>(node_poly)->get_total_rectangle_count() > 0 );
+                } else {
+                    assert( std::get<InlineBoundedIsotheticPolygon>(node_poly).get_rectangle_count() > 0 );
+                }
+
                 if( std::holds_alternative<Branch>( nodeEntry ) ) {
-                    IsotheticPolygon branch_poly =
-                        std::get<Branch>(nodeEntry).materialize_polygon(
+                    inline_poly branch_poly =
+                        std::get<Branch>(nodeEntry).get_inline_polygon(
                                 allocator );
                     // Walk every rectangle in the branch's polygon
                     // Find rectangle in our polygon that needs to be
@@ -1656,9 +1686,15 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                     // distinct polygons. So as a result of doing this
                     // the polygon's constituent rectangles may now
                     // overlap.
-                    auto expansion_computation_results = node_poly.computeExpansionArea(
-                            branch_poly );
-                    double poly_area = node_poly.area();
+                    auto expansion_computation_results = computeExpansionArea( node_poly, branch_poly );
+                    double poly_area;
+
+                    if (node_poly_unbounded) {
+                        poly_area = std::get<unbounded_poly_pin>(node_poly)->area();
+                    } else {
+                        poly_area = std::get<InlineBoundedIsotheticPolygon>(node_poly).area();
+                    }
+
                     if( expansion_computation_results.first <
                             minimal_area_expansion or 
                      (expansion_computation_results.first ==
@@ -1677,8 +1713,19 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                     }
                     */
                 } else {
-                    IsotheticPolygon::OptimalExpansion exp = node_poly.computeExpansionArea(
-                            std::get<Point>( nodeEntry ) );
+                    IsotheticPolygon::OptimalExpansion exp;
+                    if (node_poly_unbounded) {
+                        auto unb_node_poly = std::get<unbounded_poly_pin>(node_poly);
+                        auto inline_exp = computeExpansionArea<InlineUnboundedIsotheticPolygon, InlineUnboundedIsotheticPolygon::Iterator>(
+                            *unb_node_poly , unb_node_poly->begin(), unb_node_poly->end(), std::get<Point>( nodeEntry ) );
+                        exp = inline_exp;
+                    } else {
+                        auto b_node_poly = std::get<InlineBoundedIsotheticPolygon>(node_poly);
+                        auto inline_exp = computeExpansionArea<InlineBoundedIsotheticPolygon, InlineBoundedIsotheticPolygon::iterator>(
+                            b_node_poly , b_node_poly.begin(), b_node_poly.end(), std::get<Point>( nodeEntry ) );
+                        exp = inline_exp;
+                    }
+
                     if( exp.area < minimal_area_expansion ) {
                         minimal_area_expansion = exp.area;
                         expansions.clear();
@@ -1709,8 +1756,9 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
 
                 Branch &chosen_branch =
                     cur_node->entries.at(smallestExpansionBranchIndex);
-                node_poly = chosen_branch.materialize_polygon( allocator
-                        );
+                node_poly = chosen_branch.get_inline_polygon( allocator );
+
+                IsotheticPolygon mat_node_poly = chosen_branch.materialize_polygon( allocator );
 
 
                 if( std::holds_alternative<Branch>( nodeEntry ) ) {
@@ -1748,7 +1796,7 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         auto &expansion = expansions.at(i);
                         auto &insertion_rect= insertion_poly.basicRectangles.at(i);
                         Rectangle &existing_rect =
-                            node_poly.basicRectangles.at(expansion.index);
+                            mat_node_poly.basicRectangles.at(expansion.index);
                         // Expand the existing rectangle. This rectangle
                         // might now overlap with other rectangles in
                         // the polygon. But if we make it not overlap,
@@ -1759,15 +1807,15 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         assert( existing_rect.containsRectangle(
                                     insertion_rect ) );
                     }
-                    node_poly.recomputeBoundingBox();
+                    mat_node_poly.recomputeBoundingBox();
                 } else {
                     assert( expansions.size() == 1 );
                     Point &p = std::get<Point>( nodeEntry );
                     Rectangle &existing_rect =
-                        node_poly.basicRectangles.at(expansions.at(0).index);
+                        mat_node_poly.basicRectangles.at(expansions.at(0).index);
                     existing_rect.expand( p );
-                    node_poly.recomputeBoundingBox();
-                    assert( node_poly.containsPoint( p ) );
+                    mat_node_poly.recomputeBoundingBox();
+                    assert( mat_node_poly.containsPoint( p ) );
                 }
 
                 // Dodge all the other branches
@@ -1777,7 +1825,7 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                         continue;
                     }
                     Branch &other_branch = cur_node->entries.at(i);
-                    node_poly.increaseResolution( Point::atInfinity,
+                    mat_node_poly.increaseResolution( Point::atInfinity,
                             other_branch.materialize_polygon( allocator ) );
                 }
 
@@ -1802,10 +1850,10 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
                 }
                 */
 
-                node_poly.refine();
-                node_poly.recomputeBoundingBox();
+                mat_node_poly.refine();
+                mat_node_poly.recomputeBoundingBox();
 
-                update_branch_polygon( chosen_branch, node_poly, treeRef );
+                update_branch_polygon( chosen_branch, mat_node_poly, treeRef );
             }
 
             // Descend
@@ -2468,12 +2516,12 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::bounding_box_validate()
                 std::cout << "BB was: " << bounding_box << std::endl;
                 std::cout << "My node is: " << this->self_handle_ <<
                     std::endl;
-                assert( false );
+                abort();
             }
             if( !bounding_box.containsPoint( p ) ) {
                 std::cout << "Parent poly contains " << p <<
                     " but the box does not!" << std::endl;
-                assert( false );
+                abort();
             }
         }
     }
@@ -2735,13 +2783,13 @@ void stat_node(
                         memoryPolygons += (rect_count * sizeof(Rectangle) -
                                 sizeof(Rectangle));
                         histogramPolygon.at( rect_count )++;
-
-
                     }
                 } else {
                     int new_offset;
                     IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset,
                         &new_offset );
+                    histogramPolygon.at(
+                            decomp_poly.basicRectangles.size() )++;
                     memoryFootprint += sizeof(tree_node_handle) + new_offset;
                     std::cout << "Compressed poly consumes: " <<
                         sizeof(tree_node_handle) + new_offset <<
@@ -2844,6 +2892,325 @@ void stat_node(
     STATEXEC(std::cout << "### ### ### ###" << std::endl);
 
 }
+
+enum LookAheadMergeCmd {
+    ADD = 0,
+    STOP = 1,
+    CREATE_VERTICAL = 2
+};
+
+inline bool is_vertical_stripe(
+    std::vector<std::pair<Point, uint8_t>> &points_with_ownership,
+    unsigned i,
+    unsigned dimension
+) { 
+    static_assert( dimensions == 2 );
+
+    uint8_t existing_ownership = points_with_ownership.at(i).second;
+    double existing_value =
+        points_with_ownership.at(i).first[dimension];
+
+    for( unsigned j = i+1; j < points_with_ownership.size(); j++ ) {
+        double next_value =
+            points_with_ownership.at(j).first[dimension];
+        uint8_t next_ownership = points_with_ownership.at(j).second;
+
+        if( next_value != existing_value ) {
+            // Value changed before ownership did. It's not a vertical
+            // stripe.
+            return false;
+        }
+
+        if( next_ownership != existing_ownership ) {
+            // Ownership changed before value did. We have two owners of
+            // values in the same coord, so it needs to split on another
+            // dimension.
+            return true;
+        }
+
+        // Both ownership and value are the same. Keep going.
+    }
+    return false;
+}
+
+
+inline LookAheadMergeCmd get_merge_cmd(
+    std::vector<std::pair<Point, uint8_t>> &points_with_ownership,
+    unsigned i,
+    unsigned dimension,
+    uint8_t cur_ownership
+) {
+    // N.B.: valid ownerships are 0 or 1. A 2 implies we have no
+    // operating point, so we can take either ownership.
+
+    // Need to reconsider this with higher dimensions
+    static_assert( dimensions == 2 );
+
+    // Can just add this to whatever ongoing rectangle we have
+    // if it the last point and it is owned by us
+    if( i == points_with_ownership.size()-1 and 
+            ( points_with_ownership.at(i).second == cur_ownership or
+           cur_ownership == 2 )
+    ) {
+        return ADD;
+    }
+ 
+    if( is_vertical_stripe( points_with_ownership, i, dimension ) ) {
+        return CREATE_VERTICAL;
+    }
+
+    if( points_with_ownership.at(i).second == cur_ownership or
+        cur_ownership == 2
+    ) {
+        return ADD;
+    } else {
+        return STOP;
+    }
+}
+
+inline std::pair<std::vector<Rectangle>, std::vector<Rectangle>>
+walk_and_dice_overlapping_region(
+    std::vector<std::pair<Point,uint8_t>> &points_with_ownership,
+    unsigned dimension_to_walk,
+    Rectangle overlapping_dimensions
+) {
+    std::vector<Rectangle> ret_a_rects;
+    std::vector<Rectangle> ret_b_rects;
+
+    Point lower_point = overlapping_dimensions.lowerLeft;
+    Point upper_point = overlapping_dimensions.upperRight;
+
+    // Need the largest point below the upper right corner
+    // for the purposes of point-basd rectangle expansion
+    Point max_included_point = Point::closest_smaller_point( upper_point );
+
+    // Magic Values indicating that we are not currently operating on a
+    // point
+    Rectangle cur_rect = Rectangle::atInfinity;
+    uint8_t cur_ownership = 2;
+
+    // Containers for vertical splits
+    std::vector<std::vector<std::pair<Point,uint8_t>>> vertical_splits;
+    std::vector<Rectangle> vertical_rects;
+
+    for( unsigned i = 0; i < points_with_ownership.size(); i++ ) {
+        LookAheadMergeCmd cmd = get_merge_cmd( points_with_ownership, i,
+                dimension_to_walk,
+                cur_ownership );
+        if( cmd == ADD ) {
+            if( cur_rect == Rectangle::atInfinity ) {
+                // If we aren't yet operating on a point, then start
+                // with this point.
+                cur_ownership = points_with_ownership.at(i).second;
+                lower_point[dimension_to_walk] =
+                    points_with_ownership.at(i).first[dimension_to_walk];
+                upper_point[dimension_to_walk] = nextafter(
+                        points_with_ownership.at(i).first[dimension_to_walk],
+                        DBL_MAX );
+                cur_rect = Rectangle( lower_point, upper_point );
+            } else {
+                // If we are already operating on a point, then expand
+                // the rectangle to include the next point
+                max_included_point[dimension_to_walk] =
+                    points_with_ownership.at(i).first[dimension_to_walk];
+                cur_rect.expand( max_included_point );
+            }
+        } else if( cmd == STOP ) {
+            // STOP means push the current rectangle on and start a new
+            // one from the next point
+            assert( cur_rect != Rectangle::atInfinity );
+            // Adding existing rect
+            if( cur_ownership == 0 ) {
+                ret_a_rects.push_back( cur_rect );
+            } else {
+                ret_b_rects.push_back( cur_rect );
+            }
+            // Start new rect constrained to the starting point in this
+            // dimension
+            lower_point[dimension_to_walk] =
+                points_with_ownership.at(i).first[dimension_to_walk];
+            upper_point[dimension_to_walk] = nextafter(
+                points_with_ownership.at(i).first[dimension_to_walk],
+                DBL_MAX );
+            cur_rect = Rectangle( lower_point, upper_point );
+            cur_ownership = points_with_ownership.at(i).second;
+        } else if( cmd == CREATE_VERTICAL ) {
+            // CREATE_VERTICAL means push the current rectangle on, if
+            // we have one, and then create a vertical split record
+            //Adding new rect
+            if( cur_rect != Rectangle::atInfinity ) {
+                if( cur_ownership == 0 ) {
+                    ret_a_rects.push_back( cur_rect );
+                } else {
+                    ret_b_rects.push_back( cur_rect );
+                }
+            } else {
+                assert( cur_ownership == 2 );
+            }
+
+            // Start new rect constrained to the starting point in this
+            // dimension. This is a vertical stripe, which we will split
+            std::vector<std::pair<Point,uint8_t>> vertical_data;
+            vertical_data.push_back(points_with_ownership.at(i));
+            double existing_val =
+                points_with_ownership.at(i).first[dimension_to_walk];
+            lower_point[dimension_to_walk] =
+                points_with_ownership.at(i).first[dimension_to_walk];
+            upper_point[dimension_to_walk] = nextafter(
+                points_with_ownership.at(i).first[dimension_to_walk],
+                DBL_MAX );
+            Rectangle sub_overlap_rect( lower_point, upper_point );
+            i++;
+            while( i < points_with_ownership.size() and
+                    points_with_ownership.at(i).first[dimension_to_walk]
+                    == existing_val ) {
+                vertical_data.push_back(points_with_ownership.at(i));
+                i++;
+            }
+            vertical_splits.push_back( vertical_data );
+            vertical_rects.push_back( sub_overlap_rect );
+
+            // Unset everything. Figure out what we will do next.
+            cur_rect = Rectangle::atInfinity;
+            cur_ownership = 2;
+            i--;
+        } else {
+            assert( false );
+        }
+    }
+
+    if( cur_ownership == 0 ) {
+        ret_a_rects.push_back( cur_rect );
+    } else if( cur_ownership == 1 ) {
+        ret_b_rects.push_back( cur_rect );
+    }
+
+    // Do any subsplits if req'd
+    for( unsigned i = 0; i < vertical_splits.size(); i++ ) {
+        auto ret_data = walk_and_dice_overlapping_region(
+                vertical_splits.at(i),
+                dimension_to_walk+1,
+                vertical_rects.at(i)
+        );
+        for( auto &rect : ret_data.first ) {
+            ret_a_rects.push_back( rect );
+        }
+        for( auto &rect : ret_data.second ) {
+            ret_b_rects.push_back( rect );
+        }
+    }
+    return std::make_pair( ret_a_rects, ret_b_rects );
+}
+
+template <class NT>
+std::pair<std::vector<Rectangle>, std::vector<Rectangle>> make_rectangles_disjoint_accounting_for_region_ownership(
+    NT *treeRef,
+    Rectangle &a,
+    tree_node_handle &a_node,
+    Rectangle &b,
+    tree_node_handle &b_node
+) {
+    assert( a_node != b_node );
+    std::vector<Rectangle> ret_a_rects;
+    std::vector<Rectangle> ret_b_rects;
+    if( not a.intersectsRectangle( b ) ) {
+        ret_a_rects.push_back( a );
+        ret_b_rects.push_back( b );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+
+    Rectangle overlapping_rect = a.intersection( b );
+    assert( overlapping_rect != Rectangle::atInfinity );
+
+    std::vector<Point> a_owned_points = rectangle_search( a_node,
+            overlapping_rect, treeRef );
+    // If no owned points, then yield the region to b
+    if( a_owned_points.empty() ) {
+        ret_a_rects = a.fragmentRectangle( overlapping_rect );
+        ret_b_rects.push_back( b );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+    Rectangle a_owned_rect( a_owned_points[0],
+            Point::closest_larger_point( a_owned_points[0] ) );
+    for( unsigned i = 1; i < a_owned_points.size(); i++ ) {
+        a_owned_rect.expand( a_owned_points.at( i ) );
+    }
+
+    std::vector<Point> b_owned_points = rectangle_search( b_node,
+            overlapping_rect, treeRef );
+    // If no owned points, yield the region to a
+    if( b_owned_points.empty() ) {
+        ret_a_rects.push_back( a );
+        ret_b_rects = b.fragmentRectangle( overlapping_rect );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+
+    Rectangle b_owned_rect( b_owned_points[0],
+            Point::closest_larger_point( b_owned_points[0] ) );
+    for( unsigned i = 1; i < b_owned_points.size(); i++ ) {
+        b_owned_rect.expand( b_owned_points.at( i ) );
+    }
+
+    Rectangle ownership_overlap = a_owned_rect.intersection(
+            b_owned_rect );
+    // No overlap in one dimension. We can just add the owned rectangles
+    // to whatever we have after we fragment about the overalpping areas
+    if( ownership_overlap == Rectangle::atInfinity ) {
+        // see above and return
+        ret_a_rects = a.fragmentRectangle( overlapping_rect );
+        ret_b_rects = b.fragmentRectangle( overlapping_rect );
+        
+        ret_a_rects.push_back( a_owned_rect );
+        ret_b_rects.push_back( b_owned_rect );
+        return std::make_pair( ret_a_rects, ret_b_rects );
+    }
+
+    // Now, its time to get fancy
+    // Sort by each dimension, and create bounding boxes in that
+    // dimension aligned with the overlapping region such that the boxes
+    // start from the point of interest and stop just before the point
+    // when sorted along that dimension. If two points have the same
+    // value, note that and skip it for now, we will need to do a
+    // 'horizontal split' after that.
+
+    // Fragment out the overlapping region from each rectangle.
+    ret_a_rects = a.fragmentRectangle( overlapping_rect );
+    ret_b_rects = b.fragmentRectangle( overlapping_rect );
+
+
+    std::vector<std::pair<Point,uint8_t>> points_with_ownership;
+    for( const Point p : a_owned_points ) {
+        points_with_ownership.push_back( std::make_pair( p, 0 ) );
+    }
+    for( const Point p : b_owned_points ) {
+        points_with_ownership.push_back( std::make_pair( p, 1 ) );
+    }
+
+    // Sort on X
+    std::sort( points_with_ownership.begin(),
+            points_with_ownership.end(), []( std::pair<Point,uint8_t>
+                &p1, std::pair<Point,uint8_t> &p2 ) {
+            if( p1.first[0] != p2.first[0] ) {
+                return p1.first[0] < p2.first[0];
+            }
+                return p1.first[1] < p2.first[1];
+    } );
+
+    auto ret_data = walk_and_dice_overlapping_region(
+            points_with_ownership, 0, overlapping_rect );
+
+    auto additional_a_rects = ret_data.first;
+    for( auto &rect : additional_a_rects ) {
+        ret_a_rects.push_back( rect );
+    }
+    auto additional_b_rects = ret_data.second;
+    for( auto &rect : additional_b_rects ) {
+        ret_b_rects.push_back( rect );
+    }
+
+    return std::make_pair( ret_a_rects, ret_b_rects );
+}
+
 
 #undef NODE_TEMPLATE_PARAMS
 #undef LEAF_NODE_CLASS_TYPES

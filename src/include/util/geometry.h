@@ -34,6 +34,13 @@
 #include <cstddef>
 #include <storage/tree_node_allocator.h>
 
+// Generic hash_combine
+template <class T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
 
 class Point
 {
@@ -74,6 +81,7 @@ class Point
 
 		bool orderedCompare(const Point &rhs, unsigned startingDimension) const;
 		double distance(const Point &p) const;
+        double fast_distance(const Point &p) const;
 
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
@@ -106,6 +114,19 @@ bool operator<=(const Point &lhs, const Point &rhs);
 bool operator>=(const Point &lhs, const Point &rhs);
 bool operator==(const Point &lhs, const Point &rhs);
 bool operator!=(const Point &lhs, const Point &rhs);
+
+template<>
+struct std::hash<Point>
+{
+    std::size_t operator()(Point const& p) const noexcept
+    {
+        std::size_t val = 0;
+        for( unsigned d = 0; d < dimensions; d++ ) {
+            hash_combine( val, std::hash<double>{}(p[d]) );
+        }
+        return val;
+    }
+};
 
 class Rectangle
 {
@@ -282,6 +303,17 @@ class InlineBoundedIsotheticPolygon {
 
         const_iterator end() const {
             return basicRectangles.cbegin() + rectangle_count_;
+        }
+
+        double area() const {
+            double area = 0.0;
+
+            for (const Rectangle &basicRectangle : basicRectangles)
+            {
+                area += basicRectangle.area();
+            }
+
+            return area;
         }
 
         IsotheticPolygon materialize_polygon() {
@@ -528,6 +560,18 @@ class InlineUnboundedIsotheticPolygon {
             return iter;
         }
 
+        double area() {
+            double area = 0.0;
+
+            for (auto it = begin(); it != end(); ++it)
+            {
+                Rectangle &basicRectangle = *it;
+                area += basicRectangle.area();
+            }
+
+            return area;
+        }
+
         IsotheticPolygon materialize_polygon() {
             // Copy all the sequentially arranged polygon stuff into an
             // in-memory buffer
@@ -762,3 +806,64 @@ constexpr unsigned compute_sizeof_inline_unbounded_polygon( unsigned num_rects )
 static_assert( compute_sizeof_inline_unbounded_polygon(
             MAX_RECTANGLE_COUNT + 1 ) == 272 );
             */
+
+
+template <class InlinePolyType, class InlinePolygonIter>
+IsotheticPolygon::OptimalExpansion computeExpansionArea(InlinePolyType &poly, InlinePolygonIter begin, InlinePolygonIter end, Point &givenPoint)
+{
+	// Early exit
+	if (poly.containsPoint(givenPoint))
+	{
+		return {0, -1.0};
+	}
+
+	// Take the minimum expansion area, defaulting to the first rectangle in the worst case
+	IsotheticPolygon::OptimalExpansion expansion = {0, std::numeric_limits<double>::infinity()};
+	double evalArea;
+
+    unsigned i = 0;
+	for (auto it = begin; it != end; it++)
+	{
+		evalArea = it->computeExpansionArea(givenPoint);
+
+		if( evalArea < expansion.area and it->area() != 0.0 ) {
+			expansion.index = i;
+			expansion.area = evalArea;
+		}
+
+        i++;
+	}
+
+	return expansion;
+}
+
+template <class InlinePolygonIter>
+IsotheticPolygon::OptimalExpansion computeExpansionArea(InlinePolygonIter begin, InlinePolygonIter end, const Rectangle &givenRectangle)
+{
+	// Take the minimum expansion area
+	IsotheticPolygon::OptimalExpansion expansion = {0, begin->computeExpansionArea(givenRectangle)};
+	double evalArea;
+
+    auto it = begin;
+    ++it;
+    unsigned i = 1;
+	for (; it != end; ++it)
+	{
+		evalArea = it->computeExpansionArea(givenRectangle);
+
+		if (evalArea < expansion.area)
+		{
+			expansion.index = i;
+			expansion.area = evalArea;
+		}
+        i++;
+	}
+
+	return expansion;
+}
+
+typedef pinned_node_ptr<InlineUnboundedIsotheticPolygon> unbounded_poly_pin;
+typedef std::variant<unbounded_poly_pin, InlineBoundedIsotheticPolygon> inline_poly;
+
+std::pair<double, std::vector<IsotheticPolygon::OptimalExpansion>>
+computeExpansionArea( const inline_poly &this_poly, const inline_poly &other_poly );

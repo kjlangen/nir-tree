@@ -34,13 +34,31 @@ bin/main: $(OBJ)
 	cp src/revisedrstartree/node.o revisedrstartreenode.o
 	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
 	rm -rf test*.o
+	mv gen_tree.o gen_tree.nocompile || echo
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/main -I $(DIR)
+	mv gen_tree.nocompile gen_tree.o || echo
+
+bin/gen_tree: $(OBJ)
+	mkdir -p bin
+	cp src/nirtree/node.o nirtreenode.o
+	cp src/rtree/node.o rtreenode.o
+	cp src/rplustree/node.o rplustreenode.o
+	cp src/rstartree/node.o rstartreenode.o
+	cp src/quadtree/node.o quadtreenode.o
+	cp src/revisedrstartree/node.o revisedrstartreenode.o
+	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
+	rm -rf test*.o
+	mv main.o main.nocompile || echo
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/gen_tree -I $(DIR)
+	mv main.nocompile main.o || echo
 
 bin/tests: $(TESTOBJ) bin/main
 	find ./src/tests \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
 	mv main.o main.nocompile || echo
+	mv gen_tree.o gen_tree.nocompile || echo 
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/tests
 	mv main.nocompile main.o || echo
+	mv gen_tree.nocompile gen_tree.o || echo 
 
 .PHONY: all clean prod
 

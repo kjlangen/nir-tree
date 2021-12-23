@@ -84,6 +84,18 @@ namespace nirtreedisk
             return poly_pin->get_summary_rectangle();
         }
 
+        inline_poly get_inline_polygon( tree_node_allocator *allocator ) {
+            if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
+                        boundingPoly ) ) {
+                return std::get<InlineBoundedIsotheticPolygon>(
+                        boundingPoly );
+            }
+            tree_node_handle poly_handle = std::get<tree_node_handle>( boundingPoly );
+            auto poly_pin = allocator->get_tree_node<InlineUnboundedIsotheticPolygon>(
+                    poly_handle );
+            return poly_pin;
+        }
+
         IsotheticPolygon materialize_polygon( tree_node_allocator
                 *allocator ) {
             if( std::holds_alternative<InlineBoundedIsotheticPolygon>(
@@ -206,7 +218,6 @@ namespace nirtreedisk
             std::optional<std::pair<char*,int>> compressed_poly_data
         ) {
 
-            std::cout << "Repacking branch with: " <<  cut_off_inline_rect_count << std::endl;
 
             if( compressed_poly_data.has_value() ) {
                 child.set_associated_poly_is_compressed();
@@ -214,6 +225,7 @@ namespace nirtreedisk
                 auto &cpd = compressed_poly_data.value();
                 memcpy( buffer+offset, cpd.first, cpd.second );
                 offset += cpd.second;
+                free( cpd.first );
                 return offset;
             }
 
