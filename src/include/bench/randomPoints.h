@@ -722,7 +722,7 @@ void repack_tree( T *tree_ptr, std::string &new_file_name,
             tree_node_allocator * ) ) {
 
     auto new_file_allocator = std::make_unique<tree_node_allocator>(
-            40960 * 13000,
+            40960 * 1300/2,
             new_file_name );
 
     new_file_allocator->initialize();
@@ -736,8 +736,6 @@ void repack_tree( T *tree_ptr, std::string &new_file_name,
 
     std::cout << "Repacking done in: " << delta.count() << "s" <<
         std::endl;
-
-    new_file_allocator->dump_free_list();
 
     // This evicts all the old pages, which is painful.
     tree_ptr->node_allocator_ = std::move( new_file_allocator );

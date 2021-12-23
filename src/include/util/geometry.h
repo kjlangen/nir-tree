@@ -34,6 +34,13 @@
 #include <cstddef>
 #include <storage/tree_node_allocator.h>
 
+// Generic hash_combine
+template <class T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
 
 class Point
 {
@@ -74,6 +81,7 @@ class Point
 
 		bool orderedCompare(const Point &rhs, unsigned startingDimension) const;
 		double distance(const Point &p) const;
+        double fast_distance(const Point &p) const;
 
 		Point &operator-=(const Point &rhs);
 		Point &operator+=(const Point &rhs);
@@ -106,6 +114,19 @@ bool operator<=(const Point &lhs, const Point &rhs);
 bool operator>=(const Point &lhs, const Point &rhs);
 bool operator==(const Point &lhs, const Point &rhs);
 bool operator!=(const Point &lhs, const Point &rhs);
+
+template<>
+struct std::hash<Point>
+{
+    std::size_t operator()(Point const& p) const noexcept
+    {
+        std::size_t val = 0;
+        for( unsigned d = 0; d < dimensions; d++ ) {
+            hash_combine( val, std::hash<double>{}(p[d]) );
+        }
+        return val;
+    }
+};
 
 class Rectangle
 {

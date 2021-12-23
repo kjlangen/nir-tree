@@ -70,6 +70,15 @@ double Point::distance(const Point &p) const
 	return sqrt(dist);
 }
 
+double Point::fast_distance(const Point &p) const
+{
+	double dist = 0.0;
+	for( unsigned d = 0; d < dimensions; d++ ) {
+		dist += (((*this)[d] - p[d]) * ((*this)[d] - p[d]));
+	}
+	return dist;
+}
+
 Point &Point::operator-=(const Point &rhs)
 {
 	for (unsigned d = 0; d < dimensions; ++d)
