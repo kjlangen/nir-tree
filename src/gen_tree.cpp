@@ -94,18 +94,18 @@ void fill_branch(
 
 template <>
 void fill_branch(
-    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy> *treeRef,
-    pinned_node_ptr<nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>> branch_node,
+    nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *treeRef,
+    pinned_node_ptr<nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>> branch_node,
     tree_node_handle node_handle,
     std::vector<std::pair<Point,tree_node_handle>> &node_point_pairs,
     unsigned &offset,
     unsigned branch_factor,
-    nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy> *leaf_type
+    nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy> *leaf_type
 ) {
     using LN =
-        nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy>;
+        nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>;
     using BN =
-        nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>;
+        nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>;
 
     std::vector<std::pair<IsotheticPolygon, tree_node_handle>>
         fixed_bb_and_handles;
@@ -188,16 +188,16 @@ void fill_branch(
 
 template <>
 void fill_branch(
-    rstartreedisk::RStarTreeDisk<15,25> *treeRef,
-    pinned_node_ptr<rstartreedisk::BranchNode<15,25>> branch_node,
+    rstartreedisk::RStarTreeDisk<5,9> *treeRef,
+    pinned_node_ptr<rstartreedisk::BranchNode<5,9>> branch_node,
     tree_node_handle node_handle,
     std::vector<std::pair<Point,tree_node_handle>> &node_point_pairs,
     unsigned &offset,
     unsigned branch_factor,
-    rstartreedisk::LeafNode<15,25> *leaf_type
+    rstartreedisk::LeafNode<5,9> *leaf_type
 ) {
-    using LN = rstartreedisk::LeafNode<15,25>;
-    using BN = rstartreedisk::BranchNode<15,25>;
+    using LN = rstartreedisk::LeafNode<5,9>;
+    using BN = rstartreedisk::BranchNode<5,9>;
 
     std::vector<std::pair<Rectangle, tree_node_handle>> bb_and_handles;
     tree_node_allocator *allocator = treeRef->node_allocator_.get();
@@ -555,13 +555,13 @@ std::vector<tree_node_handle> str_packing_branch_euclidean(
 
 template <>
 std::vector<tree_node_handle> str_packing_branch(
-    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy> *tree,
+    nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree,
     std::vector<tree_node_handle> &child_nodes,
     unsigned branch_factor
 ) {
-    nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy> *targ
+    nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy> *targ
         = nullptr;
-    nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>
+    nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>
         *targ2
         = nullptr;
 
@@ -571,12 +571,12 @@ std::vector<tree_node_handle> str_packing_branch(
 
 template <>
 std::vector<tree_node_handle> str_packing_branch(
-    rstartreedisk::RStarTreeDisk<15,25> *tree,
+    rstartreedisk::RStarTreeDisk<5,9> *tree,
     std::vector<tree_node_handle> &child_nodes,
     unsigned branch_factor
 ) {
-    rstartreedisk::LeafNode<15,25> *targ = nullptr;
-    rstartreedisk::BranchNode<15,25> *targ2 = nullptr;
+    rstartreedisk::LeafNode<5,9> *targ = nullptr;
+    rstartreedisk::BranchNode<5,9> *targ2 = nullptr;
 
     return str_packing_branch( tree, child_nodes, branch_factor, targ,
             targ2 );
@@ -764,13 +764,13 @@ std::vector<tree_node_handle> str_packing_leaf(
 
 template <>
 std::vector<tree_node_handle> str_packing_leaf(
-    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy> *tree,
+    nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree,
     std::vector<Point> &points,
     unsigned branch_factor
 ) {
-    nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy> *targ
+    nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy> *targ
         = nullptr;
-    nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>
+    nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>
         *targ2
         = nullptr;
 
@@ -780,12 +780,12 @@ std::vector<tree_node_handle> str_packing_leaf(
 
 template <>
 std::vector<tree_node_handle> str_packing_leaf(
-    rstartreedisk::RStarTreeDisk<15,25> *tree,
+    rstartreedisk::RStarTreeDisk<5,9> *tree,
     std::vector<Point> &points,
     unsigned branch_factor
 ) {
-    rstartreedisk::LeafNode<15,25> *targ = nullptr;
-    rstartreedisk::BranchNode<15,25> *targ2 = nullptr;
+    rstartreedisk::LeafNode<5,9> *targ = nullptr;
+    rstartreedisk::BranchNode<5,9> *targ2 = nullptr;
 
     return str_packing_leaf( tree, points, branch_factor,
             targ, targ2 );
@@ -841,7 +841,7 @@ std::vector<unsigned> find_bounding_lines(
 }
 
 tree_node_handle quad_tree_style_load(
-    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy> *tree,
+    nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree,
     std::vector<Point>::iterator start,
     std::vector<Point>::iterator stop,
     unsigned branch_factor,
@@ -849,6 +849,7 @@ tree_node_handle quad_tree_style_load(
     unsigned max_depth,
     tree_node_handle parent_handle
 ) {
+    unsigned tiles = std::floor(sqrt(branch_factor));
     tree_node_allocator *allocator = tree->node_allocator_.get();
     if( cur_depth == max_depth ) {
         if( (stop-start) > branch_factor ) {
@@ -856,10 +857,10 @@ tree_node_handle quad_tree_style_load(
             abort();
         }
         auto alloc_data =
-            allocator->create_new_tree_node<nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy>>(
+            allocator->create_new_tree_node<nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>>(
                     NodeHandleType( LEAF_NODE ) );
         new (&(*(alloc_data.first)))
-                nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy>(
+                nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>(
                     tree, parent_handle, alloc_data.second, 0 );
         
         auto leaf_node = alloc_data.first;
@@ -870,24 +871,24 @@ tree_node_handle quad_tree_style_load(
 
         auto repacked_handle = leaf_node->repack( allocator );
         allocator->free( leaf_handle, sizeof(
-                    nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy>) );
+                    nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>) );
         return repacked_handle;
     }
 
     // Return a tree node handle with pointers to all of its necessary
     // children.
     auto alloc_data =
-        allocator->create_new_tree_node<nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>>(
+        allocator->create_new_tree_node<nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>>(
                 NodeHandleType( BRANCH_NODE ) );
     new (&(*(alloc_data.first)))
-            nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>(
+            nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>(
                 tree, parent_handle, alloc_data.second, (max_depth-cur_depth) );
 
     auto branch_node = alloc_data.first;
     tree_node_handle branch_handle = alloc_data.second;
 
 
-    std::vector<unsigned> x_lines = find_bounding_lines( start, stop, 0, 5 );
+    std::vector<unsigned> x_lines = find_bounding_lines( start, stop, 0, tiles );
     std::vector<Rectangle> existing_boxes;
     for( unsigned i = 0; i < x_lines.size()-1; i++ ) {
         unsigned x_start = x_lines.at(i);
@@ -899,7 +900,7 @@ tree_node_handle quad_tree_style_load(
         double x_val_hi = nextafter( (*(start + x_end-1))[0], DBL_MAX );
 
         std::vector<unsigned> y_lines = find_bounding_lines(
-                 start + x_start, start + x_end, 1, 5 );
+                 start + x_start, start + x_end, 1, tiles );
         for( unsigned j = 0; j < y_lines.size()-1; j++ ) {
             unsigned y_start = y_lines.at(j);
             unsigned y_end = y_lines.at(j+1); /* not inclusive */
@@ -956,7 +957,7 @@ tree_node_handle quad_tree_style_load(
     // Repack
     auto repacked_handle = branch_node->repack( allocator, allocator );
     allocator->free( branch_handle, sizeof(
-                nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>) );
+                nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>) );
     return repacked_handle;
 }
 template <typename T>
@@ -969,7 +970,7 @@ void bulk_load_tree(
 
 template <>
 void bulk_load_tree(
-    nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>* tree,
+    nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>* tree,
     std::map<std::string,unsigned> &configU,
     std::vector<Point> &all_points,
     unsigned max_branch_factor
@@ -980,7 +981,7 @@ void bulk_load_tree(
     std::cout << "Max depth required: " << max_depth << std::endl;
 
     auto tree_ptr =
-        (nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>
+        (nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>
          *) tree;
 
     std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
@@ -993,17 +994,14 @@ void bulk_load_tree(
 
     tree->root = root;
     std::string fname = "repacked_nirtree.txt";
-    begin = std::chrono::high_resolution_clock::now();
     repack_tree( tree_ptr, fname,
-            nirtreedisk::repack_subtree<15,25,nirtreedisk::ExperimentalStrategy>  );
-    end = std::chrono::high_resolution_clock::now();
-    delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
-    std::cout << "Repacking tree took: " << delta.count() << std::endl;
+            nirtreedisk::repack_subtree<5,9,nirtreedisk::ExperimentalStrategy>  );
+    tree->write_metadata();
 }
 
 template <>
 void bulk_load_tree(
-    rstartreedisk::RStarTreeDisk<15,25>* tree,
+    rstartreedisk::RStarTreeDisk<5,9>* tree,
     std::map<std::string,unsigned> &configU,
     std::vector<Point> &all_points,
     unsigned max_branch_factor
@@ -1013,27 +1011,22 @@ void bulk_load_tree(
     std::vector<tree_node_handle> leaves = str_packing_leaf(
         tree,
         all_points,
-        25
+        9
     );
-    std::vector<tree_node_handle> branches = str_packing_branch( tree, leaves, 25 );
+    std::vector<tree_node_handle> branches = str_packing_branch( tree, leaves, 9 );
     while( branches.size() > 1 ) {
-        branches = str_packing_branch( tree, branches, 25 );
+        branches = str_packing_branch( tree, branches, 9 );
     }
     tree->root = branches.at(0);
     std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
     std::cout << "Bulk loading tree took: " << delta.count() << std::endl;
 
-    auto tree_ptr = (rstartreedisk::RStarTreeDisk<15,25> *) tree;
-
-    std::string fname = "repacked_rtree.txt";
-    begin = std::chrono::high_resolution_clock::now();
+    auto tree_ptr = (rstartreedisk::RStarTreeDisk<5,9> *) tree;
+    std::string fname = "repacked_rstar.txt";
     repack_tree( tree_ptr, fname,
-            rstartreedisk::repack_subtree<15,25>  );
-    end = std::chrono::high_resolution_clock::now();
-    delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
-    std::cout << "Repacking tree took: " << delta.count() << std::endl;
-
+            rstartreedisk::repack_subtree<5,9>  );
+    tree->write_metadata(); 
 }
 
 void generate_tree( std::map<std::string, unsigned> &configU ) {
@@ -1063,18 +1056,18 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
 
     Index *spatialIndex;
     if( configU["tree"] == NIR_TREE ) {
-        nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy> *tree =  new
-            nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>(
+        nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
+            nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
                     40960*13000, backing_file );
         std::cout << "Bulk Loading..." << std::endl;
-        bulk_load_tree( tree, configU, all_points, 25 );
+        bulk_load_tree( tree, configU, all_points, 9 );
         std::cout << "Created NIRTree." << std::endl;
         spatialIndex = tree;
     } else if( configU["tree"] == R_STAR_TREE ) {
-        rstartreedisk::RStarTreeDisk<15,25> *tree = new rstartreedisk::RStarTreeDisk<15,25>(
+        rstartreedisk::RStarTreeDisk<5,9> *tree = new rstartreedisk::RStarTreeDisk<5,9>(
                     40960*13000, backing_file );
         std::cout << "Bulk Loading..." << std::endl;
-        bulk_load_tree( tree, configU, all_points, 25 );
+        bulk_load_tree( tree, configU, all_points, 9 );
         std::cout << "Created R*Tree" << std::endl;
         spatialIndex = tree;
     } else {
@@ -1099,7 +1092,6 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
         totalTimeSearches += delta.count();
         totalSearches += 1;
-        std::cout << "Search OK." << std::endl;
         if( totalSearches >= 300 ) {
             break;
         }

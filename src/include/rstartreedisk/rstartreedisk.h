@@ -111,7 +111,9 @@ namespace rstartreedisk
 
                 // Step 2:
                 // Write metadata file
-                std::string meta_fname = backing_file_ + ".meta";
+                std::string meta_fname =
+                    node_allocator_->get_backing_file_name() + ".meta";
+
                 int fd = open( meta_fname.c_str(), O_WRONLY |
                         O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR );
                 assert( fd >= 0 );

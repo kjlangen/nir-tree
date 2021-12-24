@@ -264,6 +264,7 @@ std::optional<Point> PointGenerator<BenchTypeClasses::Uniform>::nextPoint(BenchT
 	// We produce all of the points at once and shove them in the buffer.
 	if (pointBuffer.empty())
 	{
+        std::cout << "Produced generator using seed: " << BenchTypeClasses::Uniform::seed << std::endl;
 		std::default_random_engine generator(BenchTypeClasses::Uniform::seed);
 		std::uniform_real_distribution<double> pointDist(0.0, 1.0);
 		pointBuffer.reserve(benchmarkSize);
@@ -683,24 +684,24 @@ static bool is_already_loaded(
 ) {
     if( configU["tree"] == NIR_TREE ) {
         
-        nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits>
+        nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>
             *tree =
-            (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits> *) spatial_index;
+            (nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *) spatial_index;
 
         size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
     } else if( configU["tree"] == R_PLUS_TREE ) {
-        rplustreedisk::RPlusTreeDisk<12,25> *tree =
-            (rplustreedisk::RPlusTreeDisk<12,25> *) spatial_index;
+        rplustreedisk::RPlusTreeDisk<5,9> *tree =
+            (rplustreedisk::RPlusTreeDisk<5,9> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_.buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
         }
     } else if( configU["tree"] == R_STAR_TREE ) {
-        rstartreedisk::RStarTreeDisk<12,25> *tree =
-            (rstartreedisk::RStarTreeDisk<12,25> *) spatial_index;
+        rstartreedisk::RStarTreeDisk<5,9> *tree =
+            (rstartreedisk::RStarTreeDisk<5,9> *) spatial_index;
         size_t existing_page_count = tree->node_allocator_->buffer_pool_.get_preexisting_page_count();
         if( existing_page_count > 0 ) {
             return true;
@@ -722,8 +723,7 @@ void repack_tree( T *tree_ptr, std::string &new_file_name,
             tree_node_allocator * ) ) {
 
     auto new_file_allocator = std::make_unique<tree_node_allocator>(
-            40960 * 1300*2,
-//            40960 * 13000,
+            40960 * 1800,
             new_file_name );
 
     new_file_allocator->initialize();
@@ -771,25 +771,25 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	else if (configU["tree"] == R_PLUS_TREE)
 	{
         spatialIndex = new
-            rplustreedisk::RPlusTreeDisk<12,25>(4096*13000,
+            rplustreedisk::RPlusTreeDisk<5,9>(4096*13000,
                 "rplustreediskbacked_california.txt" );
 		//spatialIndex = new rplustree::RPlusTree(configU["minfanout"], configU["maxfanout"]);
 	}
 	else if (configU["tree"] == R_STAR_TREE)
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
-		spatialIndex = new rstartreedisk::RStarTreeDisk<12,25>( 4096 *
-                13000, "rstardiskbacked_california.txt" );
+		spatialIndex = new rstartreedisk::RStarTreeDisk<5,9>( 4096 *
+                18000, "repacked_rstar.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
 		//spatialIndex = new nirtree::NIRTree(configU["minfanout"], configU["maxfanout"]);
-		//spatialIndex = new nirtree::NIRTree(12,25);
+		//spatialIndex = new nirtree::NIRTree(5,9);
 		spatialIndex = new
-            nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits>(
-                40960*13000, 
+            nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
+                4096*18000, 
                 /*"repacked_nirtree.txt"*/
-                "nirdiskbacked_california.txt");
+                "repacked_nirtree.txt");
 	}
 	else if (configU["tree"] == QUAD_TREE)
 	{
@@ -895,19 +895,21 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
         if( configU["tree"] == NIR_TREE ) {
             std::cout << "Repacking..." << std::endl;
             auto tree_ptr =
-                (nirtreedisk::NIRTreeDisk<12,25,nirtreedisk::LineMinimizeDownsplits> *) spatialIndex;
+                (nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *) spatialIndex;
             std::string fname = "repacked_nirtree.txt";
             repack_tree( tree_ptr, fname,
-                    nirtreedisk::repack_subtree<12,25,nirtreedisk::LineMinimizeDownsplits>  );
+                    nirtreedisk::repack_subtree<5,9,nirtreedisk::ExperimentalStrategy>  );
         } else if( configU["tree"] == R_STAR_TREE ) {
             std::cout << "Repacking..." << std::endl;
-            auto tree_ptr = (rstartreedisk::RStarTreeDisk<12,25> *) spatialIndex;
+            auto tree_ptr = (rstartreedisk::RStarTreeDisk<5,9> *) spatialIndex;
             std::string fname = "repacked_rstar.txt";
-            repack_tree( tree_ptr, fname, rstartreedisk::repack_subtree<12,25> );
+            repack_tree( tree_ptr, fname, rstartreedisk::repack_subtree<5,9> );
         }*/
 
         spatialIndex->write_metadata();
 
+    } else {
+        std::cout << "Already loaded!" << std::endl;
     }
 
 	// Validate tree
@@ -970,7 +972,9 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	{
 		// Search
 		std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+        std::cout << "Searching for: " << searchRectangles.at(i) << std::endl;
 		std::vector<Point> v = spatialIndex->search(searchRectangles[i]);
+        std::cout << "Points: " << v.size() << std::endl;
 		std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
 		totalTimeRangeSearches += delta.count();

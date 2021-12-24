@@ -40,7 +40,7 @@ buffer_pool::~buffer_pool() {
 
 void buffer_pool::initialize() {
     
-    backing_file_fd_ = open( backing_file_name_.c_str(), O_CREAT | O_RDWR,
+    backing_file_fd_ = open( backing_file_name_.c_str(), O_CREAT | O_RDWR | O_DIRECT,
             S_IRUSR | S_IWUSR );
 
     assert( backing_file_fd_ != -1 );
@@ -141,9 +141,16 @@ page *buffer_pool::get_page( size_t page_id ) {
     off_t seek_ret = lseek( backing_file_fd_, PAGE_ID_TO_OFFSET(
                 page_id ), SEEK_SET );
     assert( seek_ret == (off_t) PAGE_ID_TO_OFFSET( page_id ) );
-    int read_ret = read( backing_file_fd_, (char *) page_ptr,
-            PAGE_SIZE );
-    assert( read_ret == PAGE_SIZE );
+    int rd_thus_far = 0;
+    while( rd_thus_far < PAGE_SIZE ) {
+        int read_ret = read( backing_file_fd_, (char *) page_ptr + rd_thus_far,
+                PAGE_SIZE - rd_thus_far );
+        if( read_ret == -1 ) {
+            std::cout << "Error on read: " << errno << std::endl;
+            abort();
+        }
+        rd_thus_far += read_ret;
+    }
     assert( page_ptr->header_.page_id_ == page_id );
 
     // Step 4: Put the page into the page_index (obtain_clean_page puts it into
@@ -192,9 +199,16 @@ void buffer_pool::writeback_page( page *page_ptr ) {
     size_t file_offset = PAGE_ID_TO_OFFSET( page_ptr->header_.page_id_ );
     off_t seek_ret = lseek( backing_file_fd_, file_offset, SEEK_SET );
     assert( seek_ret == (off_t) file_offset );
-    int write_ret = write( backing_file_fd_, (char *) page_ptr,
-            PAGE_SIZE );
-    assert( write_ret == PAGE_SIZE );
+    int wr_thus_far = 0;
+    while( wr_thus_far < PAGE_SIZE ) {
+        int write_ret = write( backing_file_fd_, (char *) page_ptr + wr_thus_far,
+                PAGE_SIZE - wr_thus_far );
+        if( write_ret == -1 ) {
+            std::cout << "Error on write: " << errno << std::endl;
+            abort();
+        }
+        wr_thus_far += write_ret;
+    }
 }
 
 page *buffer_pool::obtain_clean_page() {
