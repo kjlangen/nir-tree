@@ -436,6 +436,7 @@ namespace nirtreedisk
 
             uint16_t compute_packed_size();
             tree_node_handle repack( tree_node_allocator *allocator );
+            tree_node_handle repack_inplace( tree_node_allocator *allocator );
 	};
 
     template <int min_branch_factor, int max_branch_factor,
@@ -1029,6 +1030,9 @@ namespace nirtreedisk
                     *new_allocator, unsigned
                     &maximum_repacked_rect_size );
             tree_node_handle repack( tree_node_allocator
+                    *existing_allocator, tree_node_allocator
+                    *new_allocator );
+            tree_node_handle repack_inplace( tree_node_allocator
                     *existing_allocator, tree_node_allocator
                     *new_allocator );
 	};

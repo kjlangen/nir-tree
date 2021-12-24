@@ -2726,3 +2726,184 @@ TEST_CASE("NIRTreeDisk: unpack in a small out of band polygon") {
 
     unlink("nirdiskbacked.txt");
 }
+
+
+TEST_CASE( "NIRTreeDisk: Repack subtree and then insert" ) {
+
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node1 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node2 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node3 = alloc_leaf_data.first;
+
+    leaf_node1->addPoint( Point(1,1) );
+    leaf_node1->addPoint( Point(2,2) );
+    leaf_node1->addPoint( Point(3,3) );
+    leaf_node1->addPoint( Point(4,4) );
+    leaf_node1->addPoint( Point(5,5) );
+
+    Rectangle rect1(1,1,nextafter(1,DBL_MAX),nextafter(5, DBL_MAX));
+    Rectangle rect2(7,1,nextafter(20, DBL_MAX),nextafter(1,DBL_MAX));
+    Rectangle rect3(-100,-100, -20, -20);
+    Rectangle rect4(1,1,nextafter(5,DBL_MAX),nextafter(5,DBL_MAX));
+    IsotheticPolygon polygon( rect1 );
+    polygon.basicRectangles.push_back( rect2 );
+    polygon.basicRectangles.push_back( rect3 );
+    polygon.basicRectangles.push_back( rect4 );
+    polygon.recomputeBoundingBox();
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node1->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( polygon );
+    branch_node->addBranchToNode( b );
+
+    leaf_node2->addPoint( Point(6,6) );
+    leaf_node2->addPoint( Point(7,7) );
+    leaf_node2->addPoint( Point(8,8) );
+    leaf_node2->addPoint( Point(9,9) );
+    leaf_node2->addPoint( Point(10,10) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node2->boundingBox()),
+            leaf_node2->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    leaf_node3->addPoint( Point(11,11) );
+    leaf_node3->addPoint( Point(12,12) );
+    leaf_node3->addPoint( Point(13,13) );
+    leaf_node3->addPoint( Point(14,14) );
+    leaf_node3->addPoint( Point(15,15) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node3->boundingBox()),
+            leaf_node3->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    std::cout << "hullo..." << std::endl;
+    branch_node->print();
+
+    auto packed_branch_handle =
+        nirtreedisk::repack_subtree<3,7,nirtreedisk::LineMinimizeDownsplits>( branch_handle,
+            tree.node_allocator_.get(), tree.node_allocator_.get() );
+
+
+
+
+
+    for( unsigned i = 1; i < 20; i++ ) {
+        Point p(i,i);
+        if( i < 16 ) {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 1 );
+        } else {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 0 );
+        }
+    }
+
+    // Note: Branch handle is the root
+    std::cerr << "Pre insert: " << std::endl;
+    tree.get_branch_node(packed_branch_handle)->print();
+    Point p(42, 42);
+    auto in = std::variant<nirtreedisk::Branch, Point>(p);
+
+    std::vector<bool> hasReinsertedOnLevel = {false, false};
+
+    tree.get_branch_node(packed_branch_handle)->insert(in, hasReinsertedOnLevel);
+    std::cerr << "Post insert: " << std::endl;
+    tree.get_branch_node(packed_branch_handle)->print();
+    REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 1 );
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE("NIRTreeDisk: insert after pack simple leaf node") {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto root_leaf_node = tree.get_leaf_node( tree.root );
+    REQUIRE( root_leaf_node->cur_offset_ == 5 );
+
+    REQUIRE( root_leaf_node->compute_packed_size() <
+            sizeof(DefaultLeafNodeType) );
+    REQUIRE( root_leaf_node->compute_packed_size() ==
+            sizeof(void *) + sizeof(tree_node_handle)*2 +
+            sizeof(unsigned) + sizeof(Point) * 5 );
+
+    tree_node_handle repacked_handle = root_leaf_node->repack(
+            tree.node_allocator_.get() );
+
+    REQUIRE( repacked_handle != nullptr );
+    auto packed_leaf =
+        tree.node_allocator_->get_tree_node<packed_node>(
+                repacked_handle );
+    REQUIRE( read_pointer_from_buffer<DefaulTreeType>( packed_leaf->buffer_ ) == &tree );
+    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
+                    *) ) ==
+        repacked_handle );
+
+    REQUIRE( * (tree_node_handle *) (packed_leaf->buffer_ + sizeof(void
+                    *) + sizeof(tree_node_handle) ) ==
+        root_leaf_node->parent );
+
+    REQUIRE( * (unsigned *) (packed_leaf->buffer_ + sizeof(void
+                    *) + sizeof(tree_node_handle)*2 ) ==
+        root_leaf_node->cur_offset_ );
+
+    Point *p = (Point *) (packed_leaf->buffer_ + sizeof(void *) +
+            sizeof(tree_node_handle)*2 + sizeof(unsigned));
+    REQUIRE( *(p++) == root_leaf_node->entries.at(0) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(1) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(2) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(3) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(4) );
+
+
+    Point p1(42, 42);
+    auto in = std::variant<nirtreedisk::Branch, Point>(p1);
+
+    std::vector<bool> hasReinsertedOnLevel = {false};
+
+    repacked_handle = tree.get_leaf_node(repacked_handle, true)->insert(p1, hasReinsertedOnLevel);
+    std::cerr << "Post insert: " << std::endl;
+    tree.get_leaf_node(repacked_handle, false)->print();
+    REQUIRE( point_search( repacked_handle, p1, &tree ).size() == 1 );
+    unlink( "nirdiskbacked.txt" );
+    unlink( "nirdiskbacked.txt" );
+}
+
+
+
+/*
+Take a tree, repack the tree, the insert aftwards
+confirm expected structure, (+ validate() )
+
+note not only if insert worked but also if only the nodes on path to
+chosen leaf are unpacked (permanently).
+
+*/

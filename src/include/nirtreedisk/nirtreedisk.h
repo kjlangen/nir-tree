@@ -35,6 +35,12 @@
 namespace nirtreedisk
 {
 
+    // Sets unsigned offset pointing to start of leaf entries and unsigned count
+    #define decode_entry_count_and_offset_packed_node( data ) \
+        unsigned offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+        unsigned count = * (unsigned *) (data+offset); \
+        offset += sizeof( unsigned );
+
     template <int min_branch_factor, int max_branch_factor,
              class strategy = LineMinimizeDownsplits>
 	class NIRTreeDisk: public Index
@@ -98,9 +104,87 @@ namespace nirtreedisk
 			void print();
 			void visualize();
 
+            void update_repacked_parent(tree_node_handle parent, tree_node_handle old_child, tree_node_handle new_child ) {
+                using TreeType = NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>;
+
+                auto packed_parent = node_allocator_->get_tree_node<packed_node>( parent );
+                unsigned meta_data_offset = 0;
+
+                TreeType *treeRef = read_pointer_from_buffer<TreeType>(packed_parent->buffer_ + meta_data_offset);
+                meta_data_offset += sizeof(void *);
+                meta_data_offset += sizeof(tree_node_handle); // ignore the self handle
+
+                char *buffer = packed_parent->buffer_;
+                decode_entry_count_and_offset_packed_node( buffer );
+                for ( unsigned i = 0; i < count; i++ ) {
+                    tree_node_handle *child = (tree_node_handle *) (buffer + offset);
+                    if (*child == old_child) {
+                        *child = new_child;
+                        return;
+                    }
+                    offset += sizeof( tree_node_handle );
+
+                    bool is_compressed = child->get_associated_poly_is_compressed();
+                    if ( is_compressed ) {
+
+                        int new_offset;
+                        IsotheticPolygon decoded_poly = decompress_polygon( (buffer + offset), &new_offset );
+                        offset += new_offset;
+                        continue;
+                    }
+
+                    unsigned rect_count = * (unsigned *) (buffer + offset);
+                    offset += sizeof( unsigned );
+
+                    if( rect_count == std::numeric_limits<unsigned>::max() ) {
+                        offset += sizeof( tree_node_handle );
+                    } else {
+                        for( unsigned r = 0; r < rect_count; r++ ) {
+                            offset += sizeof(Rectangle);
+                        }
+
+                    }
+                }
+            }
+
+            void update_repacked_child(tree_node_handle child, tree_node_handle new_parent ) {
+                using TreeType = NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>;
+
+                auto packed_branch = node_allocator_->get_tree_node<packed_node>( child );
+                unsigned meta_data_offset = 0;
+
+                TreeType *treeRef = read_pointer_from_buffer<TreeType>(packed_branch->buffer_ + meta_data_offset);
+                meta_data_offset += sizeof(void *);
+                meta_data_offset += sizeof(tree_node_handle); // ignore the self handle
+                tree_node_handle *parent_handle = (tree_node_handle *)(packed_branch->buffer_ + meta_data_offset);
+                *parent_handle = new_parent;
+
+            }
+
             inline pinned_node_ptr<LeafNode<min_branch_factor,max_branch_factor,strategy>>
-                get_leaf_node( tree_node_handle node_handle ) {
-                    assert( node_handle.get_type() == LEAF_NODE );
+            get_leaf_node( tree_node_handle node_handle, bool unpack_perm = true  /* If true, the tree will be modified */ ) {
+
+                assert( node_handle.get_type() == LEAF_NODE || node_handle.get_type() == REPACKED_LEAF_NODE );
+
+                if ( node_handle.get_type() == REPACKED_LEAF_NODE ) {
+                    tree_node_handle unpacked_node_handle = unpack<min_branch_factor,max_branch_factor,strategy>(node_handle, node_allocator_.get());
+                    auto node = get_leaf_node( unpacked_node_handle );
+
+                    // Update the parent!
+                    if ( unpack_perm && node->parent ) {
+                        if (node->parent.get_type() == REPACKED_BRANCH_NODE) {
+                            update_repacked_parent( node->parent, node_handle, unpacked_node_handle );
+                        } else {
+                            auto parent = get_branch_node( node->parent );
+                            Branch &b = parent->locateBranch( node_handle );
+                            b.child = unpacked_node_handle;
+                        }
+                    }
+
+                    node_handle = unpacked_node_handle;
+                }
+
+                assert( node_handle.get_type() == LEAF_NODE );
                 auto ptr =
                     node_allocator_->get_tree_node<LeafNode<min_branch_factor,max_branch_factor,strategy>>( node_handle );
                 ptr->treeRef = this;
@@ -108,8 +192,55 @@ namespace nirtreedisk
             }
 
             inline pinned_node_ptr<BranchNode<min_branch_factor,max_branch_factor,strategy>>
-                get_branch_node( tree_node_handle node_handle ) {
-                    assert( node_handle.get_type() == BRANCH_NODE );
+            get_branch_node( tree_node_handle node_handle, bool unpack_perm = true  /* If true, the tree will be modified */) {
+
+                assert( node_handle.get_type() == BRANCH_NODE || node_handle.get_type() == REPACKED_BRANCH_NODE );
+
+                if ( node_handle.get_type() == REPACKED_BRANCH_NODE ) {
+                    tree_node_handle unpacked_node_handle = unpack<min_branch_factor,max_branch_factor,strategy>(node_handle, node_allocator_.get());
+                    auto node = get_branch_node( unpacked_node_handle );
+
+                     // Update the parent!
+                    if ( unpack_perm && node->parent ) {
+                        if (node->parent.get_type() == REPACKED_BRANCH_NODE) {
+                            update_repacked_parent( node->parent, node_handle, unpacked_node_handle );
+                        } else {
+                            auto parent = get_branch_node( node->parent );
+                            Branch &b = parent->locateBranch( node_handle );
+                            b.child = unpacked_node_handle;
+                        }
+                    }
+
+                    // Update the children!
+                    if ( unpack_perm ) {
+                        for ( int i = 0; i < node->cur_offset_; i++ ) {
+                            Branch &b = node->entries.at(i);
+
+                            if (b.child.get_type() == REPACKED_LEAF_NODE || b.child.get_type() == REPACKED_BRANCH_NODE) {
+                                update_repacked_child( b.child, unpacked_node_handle );
+                                continue;
+                            }
+
+                            // Branch or leaf?
+                            if ( b.child.get_type() == LEAF_NODE) {
+                                auto child = get_leaf_node( b.child );
+                                child->parent = unpacked_node_handle;
+
+                            } else {
+                                // Branch
+                                if ( b.child.get_type() != BRANCH_NODE ) {
+                                    std::cerr << " LOOK " << (int)b.child.get_type() << std::endl;
+                                }
+                                auto child = get_branch_node( b.child );
+                                child->parent = unpacked_node_handle;
+                            }
+                        }
+                    }
+
+                    node_handle = unpacked_node_handle;
+                }
+
+                assert( node_handle.get_type() == BRANCH_NODE );
                 auto ptr =
                     node_allocator_->get_tree_node<BranchNode<min_branch_factor,max_branch_factor,strategy>>( node_handle );
                 ptr->treeRef = this;

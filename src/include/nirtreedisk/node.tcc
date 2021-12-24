@@ -361,7 +361,7 @@ void LEAF_NODE_CLASS_TYPES::reInsert(
     tree_node_handle root_handle = treeRef->root;
 
     for( const Point &entry : entriesToReinsert ) {
-        if( root_handle.get_type() == LEAF_NODE ) {
+        if( root_handle.get_type() == LEAF_NODE || root_handle.get_type() == REPACKED_LEAF_NODE ) {
 
             auto root_node = treeRef->get_leaf_node( root_handle );
             root_handle = root_node->insert( entry, hasReinsertedOnLevel );
@@ -381,7 +381,7 @@ IsotheticPolygon get_polygon_path_constraints(
 
     tree_node_allocator *allocator = get_node_allocator( treeRef );
     tree_node_handle parent_handle;
-    if( start_handle.get_type() == LEAF_NODE ) {
+    if( start_handle.get_type() == LEAF_NODE || start_handle.get_type() == REPACKED_LEAF_NODE ) {
         auto leaf_node = treeRef->get_leaf_node( start_handle );
         parent_handle = leaf_node->parent;
     } else {
@@ -654,7 +654,7 @@ SplitResult LEAF_NODE_CLASS_TYPES::adjustTree(
 
         std::pair<SplitResult, tree_node_handle>
             split_res_and_new_handle;
-        if( current_handle.get_type() == LEAF_NODE ) {
+        if( current_handle.get_type() == LEAF_NODE || current_handle.get_type() == REPACKED_LEAF_NODE ) {
             auto current_leaf_node = tree_ref_backup->get_leaf_node(
                     current_handle );
             split_res_and_new_handle = adjust_tree_bottom_half(
@@ -685,7 +685,7 @@ void fix_up_path_polys(
 
         tree_node_handle parent_handle;
         IsotheticPolygon our_poly;
-        if( current_handle.get_type() == LEAF_NODE ) {
+        if( current_handle.get_type() == LEAF_NODE || current_handle.get_type() == REPACKED_LEAF_NODE ) {
             auto leaf_node = treeRef->get_leaf_node( current_handle );
             our_poly = IsotheticPolygon( leaf_node->boundingBox() );
             parent_handle = leaf_node->parent;
@@ -731,7 +731,7 @@ void cut_out_branch_region_in_path(
 
         tree_node_handle parent_handle;
         IsotheticPolygon our_poly;
-        if( current_handle.get_type() == LEAF_NODE ) {
+        if( current_handle.get_type() == LEAF_NODE || current_handle.get_type() == REPACKED_LEAF_NODE ) {
             auto leaf_node = treeRef->get_leaf_node( current_handle );
             our_poly = IsotheticPolygon( leaf_node->boundingBox() );
             parent_handle = leaf_node->parent;
@@ -786,8 +786,9 @@ SplitResult adjustTreeSub(
         if( propagationSplit.leftBranch.child != nullptr and propagationSplit.rightBranch.child != nullptr ) {
             // We are at least one level up, so have to be a branch
 
+            bool current_branch_node_repacked = current_handle.get_type() == REPACKED_BRANCH_NODE;
             auto current_branch_node = treeRef->get_branch_node(
-                    current_handle );
+                    current_handle, true );
 
             {
                 if( propagationSplit.leftBranch.child.get_type() ==
@@ -825,14 +826,18 @@ SplitResult adjustTreeSub(
 
                 }
             }
+
+            if ( current_branch_node_repacked ) {
+                //current_handle = current_branch_node->repack_inplace( treeRef->node_allocator_.get(), treeRef->node_allocator_.get() );
+            }
         }
 
 
         std::pair<SplitResult, tree_node_handle>
             split_res_and_new_handle;
-        if( current_handle.get_type() == LEAF_NODE ) {
+        if( current_handle.get_type() == LEAF_NODE || current_handle.get_type() == REPACKED_LEAF_NODE ) {
             auto current_leaf_node = treeRef->get_leaf_node(
-                    current_handle );
+                    current_handle, true );
             split_res_and_new_handle = adjust_tree_bottom_half(
                     current_leaf_node, treeRef,
                     max_branch_factor, hasReinsertedOnLevel );
@@ -912,7 +917,7 @@ void LEAF_NODE_CLASS_TYPES::condenseTree()
     auto previous_node_handle = tree_node_handle( nullptr );
 
     while( current_node_handle != nullptr ) {
-        if( current_node_handle.get_type() == LEAF_NODE ) {
+        if( current_node_handle.get_type() == LEAF_NODE || current_node_handle.get_type() == REPACKED_LEAF_NODE ) {
             auto current_node = treeRef->get_leaf_node( current_node_handle );
             current_node_handle = current_node->parent;
         } else {
@@ -922,7 +927,7 @@ void LEAF_NODE_CLASS_TYPES::condenseTree()
         if( previous_node_handle != nullptr ) {
             auto current_parent_node = this->treeRef->get_branch_node( current_node_handle );
             unsigned loc_cur_offset = 0;
-            if( previous_node_handle.get_type() == LEAF_NODE ) {
+            if( previous_node_handle.get_type() == LEAF_NODE || previous_node_handle.get_type() == REPACKED_LEAF_NODE ) {
                 auto previous_node = treeRef->get_leaf_node(
                         previous_node_handle );
                 loc_cur_offset = previous_node->cur_offset_;
@@ -1124,6 +1129,40 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator )
 }
 
 NODE_TEMPLATE_PARAMS
+tree_node_handle LEAF_NODE_CLASS_TYPES::repack_inplace( tree_node_allocator *allocator ) {
+    std::cout << "Repacking inplace: " << self_handle_ << std::endl;
+    static_assert( sizeof( void * ) == sizeof(uint64_t) );
+    uint16_t alloc_size = compute_packed_size();
+    auto alloc_data = allocator->create_new_tree_node<packed_node>(
+            alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
+    std::cout << "New allocator handed us handle: " << alloc_data.second
+        << std::endl;
+
+    char *buffer = alloc_data.first->buffer_;
+    buffer += write_data_to_buffer( buffer, &treeRef );
+    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
+    buffer += write_data_to_buffer( buffer, &parent );
+    buffer += write_data_to_buffer( buffer, &cur_offset_ );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        buffer += write_data_to_buffer( buffer, &(entries.at(i)) );
+    }
+    if( buffer - alloc_data.first->buffer_ != alloc_size ) {
+        abort();
+    }
+
+    assert( buffer - alloc_data.first->buffer_ == alloc_size );
+    std::cout << "Done. New handle is now: " << alloc_data.second << std::endl;
+
+    if ( parent ) {
+        auto parent_node = treeRef->get_branch_node( parent );
+        Branch &b = parent_node->locateBranch( self_handle_ );
+        b.child = alloc_data.second;
+    }
+
+    return alloc_data.second;
+}
+
+NODE_TEMPLATE_PARAMS
 tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
         *existing_allocator, tree_node_allocator *new_allocator ) {
     std::cout << "Repacking: " << self_handle_ << std::endl;
@@ -1160,12 +1199,76 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
 }
 
 NODE_TEMPLATE_PARAMS
+tree_node_handle BRANCH_NODE_CLASS_TYPES::repack_inplace( tree_node_allocator
+        *existing_allocator, tree_node_allocator *new_allocator ) {
+    std::cout << "Repacking inplace: " << self_handle_ << std::endl;
+    static_assert( sizeof( void * ) == sizeof(uint64_t) );
+
+    unsigned maximum_unpacked_rect_size = 25;
+    auto packing_computation_result = compute_packed_size(
+            existing_allocator, new_allocator,
+            maximum_unpacked_rect_size);
+    uint16_t alloc_size = packing_computation_result.first;
+    auto alloc_data = new_allocator->create_new_tree_node<packed_node>(
+            alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
+
+    char *buffer = alloc_data.first->buffer_;
+    buffer += write_data_to_buffer( buffer, &treeRef );
+    buffer += write_data_to_buffer( buffer, &(alloc_data.second) );
+    buffer += write_data_to_buffer( buffer, &parent );
+    buffer += write_data_to_buffer( buffer, &cur_offset_ );
+    for( unsigned i = 0; i < cur_offset_; i++ ) {
+        Branch &b = entries.at(i);
+        buffer += b.repack_into( buffer, existing_allocator,
+                new_allocator, maximum_unpacked_rect_size, 
+                packing_computation_result.second.at(i) );
+    }
+    unsigned true_size = (buffer - alloc_data.first->buffer_);
+    if( alloc_size != true_size ) {
+        std::cout << "Memory corruption -- disaster." << std::endl;
+        std::cout << "Alloc Size: " << alloc_size << ", " << true_size
+            << std::endl;
+        abort();
+    }
+    assert( true_size == alloc_size );
+
+    // Update children and parent
+    if ( parent ) {
+        auto parent_node = treeRef->get_branch_node( parent );
+        Branch &b = parent_node->locateBranch( self_handle_ );
+        b.child = alloc_data.second;
+    }
+
+    for (int i = 0; i < cur_offset_; i++) {
+        Branch &b = entries.at(i);
+        // Branch or leaf?
+        if (b.child.get_type() == REPACKED_LEAF_NODE || b.child.get_type() == LEAF_NODE) {
+            auto child = treeRef->get_leaf_node( b.child );
+            child->parent = alloc_data.second;
+
+        } else {
+            // Branch
+            auto child = treeRef->get_branch_node( b.child );
+            child->parent = alloc_data.second;
+        }
+    }
+
+    return alloc_data.second;
+}
+
+NODE_TEMPLATE_PARAMS
 void BRANCH_NODE_CLASS_TYPES::deleteSubtrees()
 {
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         Branch &b = entries.at(i);
         tree_node_handle child_handle = b.child;
+
+        if ( child_handle.get_type() == REPACKED_LEAF_NODE ) {
+            child_handle = treeRef->get_leaf_node( child_handle, true );
+        } else if ( child_handle.get_type() == REPACKED_BRANCH_NODE ) {
+            child_handle = treeRef->get_branch_node( child_handle, true );
+        }
 
         if( child_handle.get_type() == LEAF_NODE ) {
             allocator->free(
@@ -1246,7 +1349,7 @@ void BRANCH_NODE_CLASS_TYPES::removeBranch(
 
     if( b.child.get_type() == LEAF_NODE ) {
         allocator->free( b.child, sizeof( LEAF_NODE_CLASS_TYPES ) );
-    } else {
+    } else if ( b.child.get_type() == BRANCH_NODE ) {
         allocator->free( b.child, sizeof( BRANCH_NODE_CLASS_TYPES ) );
     }
     b.child = tree_node_handle( nullptr );
@@ -1261,7 +1364,7 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(Point &requestedPoint, std::vecto
     // Follow all branches, this is exhaustive
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         Branch &b = entries.at(i);
-        if( b.child.get_type() == LEAF_NODE ) {
+        if( b.child.get_type() == LEAF_NODE || b.child.get_type() == REPACKED_LEAF_NODE ) {
             auto child = this->treeRef->get_leaf_node( b.child );
             child->exhaustiveSearch( requestedPoint, accumulator );
         } else {
@@ -1601,6 +1704,12 @@ BRANCH_NODE_CLASS_TYPES::chooseNode(
 
     for( ;; ) {
         assert( cur_node_handle != nullptr );
+        if( cur_node_handle.get_type() == REPACKED_LEAF_NODE ) {
+            cur_node_handle = treeRef->get_leaf_node( cur_node_handle, true )->self_handle_;
+        } else if ( cur_node_handle.get_type() == REPACKED_BRANCH_NODE ) {
+            cur_node_handle = treeRef->get_branch_node( cur_node_handle, true )->self_handle_;
+        }
+
         if( cur_node_handle.get_type() == LEAF_NODE ) {
             assert( std::holds_alternative<Point>( nodeEntry ) );
             return cur_node_handle;
@@ -1889,6 +1998,12 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::findLeaf(Point givenPoint)
         current_node_handle = context.top();
         context.pop();
 
+        if( current_node_handle.get_type() == REPACKED_LEAF_NODE ) {
+            current_node_handle = treeRef->get_leaf_node( current_node_handle, true )->self_handle_;
+        } else if ( current_node_handle.get_type() == REPACKED_BRANCH_NODE ) {
+            current_node_handle = treeRef->get_branch_node( current_node_handle, true )->self_handle_;
+        }
+
         if( current_node_handle.get_type() == LEAF_NODE ) {
             auto current_node = treeRef->get_leaf_node(
                     current_node_handle );
@@ -2062,6 +2177,13 @@ SplitResult BRANCH_NODE_CLASS_TYPES::splitNode(
 
         IsotheticPolygon child_poly = branch.materialize_polygon(
                 allocator );
+
+        if (branch.child.get_type() == REPACKED_LEAF_NODE) {
+            branch.child = treeRef->get_leaf_node( branch.child, true )->self_handle_;
+        } else if (branch.child.get_type() == REPACKED_BRANCH_NODE) {
+            branch.child = treeRef->get_branch_node( branch.child, true )->self_handle_;
+        }
+
         // Entirely contained in the left polygon
         if( is_contained_left and not is_contained_right) {
             if( branch.child.get_type() == LEAF_NODE ) {
@@ -2327,7 +2449,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
     if( not givenIsPoint ) {
         Branch &b = std::get<Branch>( nodeEntry );
         auto child_handle = b.child;
-        if( child_handle.get_type() == LEAF_NODE ) {
+        if( child_handle.get_type() == LEAF_NODE || child_handle.get_type() == REPACKED_LEAF_NODE ) {
             stopping_level = 1;
         } else {
             auto child_node = treeRef->get_branch_node( child_handle );
@@ -2340,10 +2462,18 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
     // Find the appropriate position for the entry
     // Should stop at appropriate depth level
     tree_node_handle current_handle = chooseNode( nodeEntry, stopping_level );
+    std::cerr << current_handle << " eyooo" << std::endl;
 
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
     SplitResult finalSplit;
     auto tree_ref_backup = treeRef;
+
+    if( current_handle.get_type() == REPACKED_LEAF_NODE ) {
+        current_handle = treeRef->get_leaf_node( current_handle, true )->self_handle_;
+    } else if ( current_handle.get_type() == REPACKED_BRANCH_NODE ) {
+        current_handle = treeRef->get_branch_node( current_handle, true )->self_handle_;
+    }
+
     if( std::holds_alternative<Point>( nodeEntry ) ) {
         assert( current_handle.get_type() == LEAF_NODE );
         auto current_node = treeRef->get_leaf_node( current_handle );
@@ -2372,12 +2502,12 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
         }
 
         current_node->addBranchToNode( sub_branch );
-        if( sub_branch.child.get_type() == LEAF_NODE ) {
-            auto child_node = treeRef->get_leaf_node( sub_branch.child );
+        if( sub_branch.child.get_type() == LEAF_NODE || sub_branch.child.get_type() == REPACKED_LEAF_NODE) {
+            auto child_node = treeRef->get_leaf_node( sub_branch.child, true );
             assert( child_node->level_ == current_node->level_-1 );
             child_node->parent = current_handle;
         } else {
-            auto child_node = treeRef->get_branch_node( sub_branch.child );
+            auto child_node = treeRef->get_branch_node( sub_branch.child, true );
             assert( child_node->level_ == current_node->level_-1 );
             child_node->parent = current_handle;
         }
@@ -2397,20 +2527,20 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
         auto new_root_handle = alloc_data.second;
         auto new_root_node = alloc_data.first;
 
-        if( finalSplit.leftBranch.child.get_type() == LEAF_NODE ) {
-            auto left_node = tree_ref_backup->get_leaf_node( finalSplit.leftBranch.child );
+        if( finalSplit.leftBranch.child.get_type() == LEAF_NODE || finalSplit.leftBranch.child.get_type() == REPACKED_LEAF_NODE ) {
+            auto left_node = tree_ref_backup->get_leaf_node( finalSplit.leftBranch.child, true );
             left_node->parent = new_root_handle;
         } else {
-            auto left_node = tree_ref_backup->get_branch_node( finalSplit.leftBranch.child );
+            auto left_node = tree_ref_backup->get_branch_node( finalSplit.leftBranch.child, true );
             left_node->parent = new_root_handle;
         }
         new_root_node->addBranchToNode( finalSplit.leftBranch );
 
-        if( finalSplit.rightBranch.child.get_type() == LEAF_NODE ) {
-            auto right_node = tree_ref_backup->get_leaf_node( finalSplit.rightBranch.child );
+        if( finalSplit.rightBranch.child.get_type() == LEAF_NODE || finalSplit.rightBranch.child.get_type() == REPACKED_LEAF_NODE ) {
+            auto right_node = tree_ref_backup->get_leaf_node( finalSplit.rightBranch.child, true );
             right_node->parent = new_root_handle;
         } else {
-            auto right_node = tree_ref_backup->get_branch_node( finalSplit.rightBranch.child );
+            auto right_node = tree_ref_backup->get_branch_node( finalSplit.rightBranch.child, true );
             right_node->parent = new_root_handle;
         }
         new_root_node->addBranchToNode( finalSplit.rightBranch );
@@ -2454,11 +2584,11 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::remove( Point givenPoint ) {
         tree_node_handle new_root_handle = entries.at(0).child;
         tree_node_allocator *allocator = get_node_allocator( this->treeRef );
         allocator->free( this->self_handle_, sizeof( BRANCH_NODE_CLASS_TYPES ) );
-        if( new_root_handle.get_type() == LEAF_NODE ) {
-            auto new_root = treeRef->get_leaf_node( new_root_handle );
+        if( new_root_handle.get_type() == LEAF_NODE || new_root_handle.get_type() == REPACKED_LEAF_NODE ) {
+            auto new_root = treeRef->get_leaf_node( new_root_handle, true );
             new_root->parent = tree_node_handle( nullptr );
         } else {
-            auto new_root = this->treeRef->get_branch_node( new_root_handle );
+            auto new_root = this->treeRef->get_branch_node( new_root_handle, true );
             new_root->parent = tree_node_handle( nullptr );
         }
 
@@ -2475,7 +2605,7 @@ unsigned BRANCH_NODE_CLASS_TYPES::checksum() {
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         // Recurse
         Branch &branch = entries.at(i);
-        if( branch.child.get_type() == LEAF_NODE ) {
+        if( branch.child.get_type() == LEAF_NODE || branch.child.get_type() == REPACKED_LEAF_NODE ) {
             auto child = this->treeRef->get_leaf_node( branch.child );
             sum += child->checksum();
         } else {
@@ -2494,7 +2624,7 @@ std::vector<Point> BRANCH_NODE_CLASS_TYPES::bounding_box_validate()
     std::vector<Point> all_child_points;
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         Branch &b_i = entries.at(i);
-        if( b_i.child.get_type() == LEAF_NODE ) {
+        if( b_i.child.get_type() == LEAF_NODE || b_i.child.get_type() == REPACKED_LEAF_NODE ) {
             auto child_ptr = this->treeRef->get_leaf_node( b_i.child );
             std::vector<Point> child_points =
                 child_ptr->bounding_box_validate();
@@ -2612,7 +2742,7 @@ bool BRANCH_NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigne
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
 
         Branch &b = entries.at(i);
-        if( b.child.get_type() == LEAF_NODE ) {
+        if( b.child.get_type() == LEAF_NODE || b.child.get_type() == REPACKED_LEAF_NODE ) {
             auto child = this->treeRef->get_leaf_node( b.child );
             valid = valid and child->validate( this->self_handle_, i );
         } else {
@@ -2652,7 +2782,7 @@ void BRANCH_NODE_CLASS_TYPES::printTree(unsigned n)
     std::string indendtation(n * 4, ' ');
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         Branch &branch = entries.at(i);
-        if( branch.child.get_type() == LEAF_NODE ) {
+        if( branch.child.get_type() == LEAF_NODE || branch.child.get_type() == REPACKED_LEAF_NODE ) {
             auto child = this->treeRef->get_leaf_node( branch.child );
 
             // Recurse
@@ -2676,7 +2806,7 @@ unsigned BRANCH_NODE_CLASS_TYPES::height()
 
     for( ;; ) {
         ret++;
-        if( current_handle.get_type() == LEAF_NODE ) {
+        if( current_handle.get_type() == LEAF_NODE || current_handle.get_type() == REPACKED_LEAF_NODE ) {
             return ret;
         }
 
@@ -2719,7 +2849,7 @@ void stat_node(
 
         totalNodes++;
 
-        if( currentContext.get_type() == LEAF_NODE ) {
+        if( currentContext.get_type() == LEAF_NODE || currentContext.get_type() == REPACKED_LEAF_NODE ) {
 
             auto current_node = treeRef->get_leaf_node( currentContext );
 
