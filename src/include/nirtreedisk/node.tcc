@@ -1516,7 +1516,88 @@ tree_node_handle repack_subtree(
                     BRANCH_NODE_CLASS_TYPES ) );
             std::cout << "Done repacking handle: " << handle << std::endl;
             return new_handle;
-          }
+        }
+        // For repacked leaf nodes, just transfer the data over.
+        case REPACKED_LEAF_NODE: {
+            auto leaf_node =
+                existing_allocator->get_tree_node<packed_node>( handle
+                        );
+            char *data = leaf_node->buffer_;
+            decode_entry_count_and_offset_packed_node( data );
+            uint16_t node_size = sizeof(unsigned) + sizeof(Point) *
+                count;
+            auto alloc_data =
+                new_allocator->create_new_tree_node<packed_node>(
+                        node_size, NodeHandleType( REPACKED_LEAF_NODE ) );
+            memcpy( alloc_data.first->buffer_, data, node_size );
+            return alloc_data.second;
+        }
+        case REPACKED_BRANCH_NODE: {
+            // We need to copy over any children as well, swap their
+            // handles out to the new ones, update our handles, etc.
+            // Also, if we have any out of line polygons, we will need
+            // to copy those over and update their handles.
+ 
+            // For now, we assume that if this is repacked, then the
+            // whole sub-tree is repacked.
+            auto branch_node =
+                existing_allocator->get_tree_node<packed_node>( handle
+                        );
+            char *buffer = branch_node->buffer_;
+            decode_entry_count_and_offset_packed_node( buffer );
+
+            for( unsigned i = 0; i < count; i++ ) {
+
+                // repack this child, change handle
+                tree_node_handle *child = (tree_node_handle *) (buffer + offset);
+                auto new_child_handle =
+                    repack_subtree<min_branch_factor,max_branch_factor,strategy>(
+                            *child, existing_allocator, new_allocator );
+                *child = new_child_handle;
+
+                offset += sizeof( tree_node_handle );
+                if( !child->get_associated_poly_is_compressed() ) {
+                    unsigned rect_count = * (unsigned *) (buffer + offset);
+                    offset += sizeof( unsigned );
+                    if( rect_count == std::numeric_limits<unsigned>::max() ) {
+                        tree_node_handle *poly_handle = (tree_node_handle *) (buffer + offset );
+
+                        // Recreate this handle using new allocator
+                        auto poly_pin = existing_allocator->get_tree_node<InlineUnboundedIsotheticPolygon>( *poly_handle );
+                        auto alloc_data = new_allocator->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+                            compute_sizeof_inline_unbounded_polygon(
+                                poly_pin->get_max_rectangle_count_on_first_page()
+                                ),
+                                NodeHandleType(BIG_POLYGON) );
+                        new (&(*alloc_data.first))
+                            InlineUnboundedIsotheticPolygon(
+                                    new_allocator,
+                                    poly_pin->get_max_rectangle_count_on_first_page() );
+                        *poly_handle = alloc_data.second;
+
+                        offset += sizeof( tree_node_handle );
+
+                    } else {
+                        for( unsigned r = 0; r < rect_count; r++ ) {
+                            Rectangle *rect = (Rectangle *) (buffer + offset);
+                            offset += sizeof(Rectangle);
+                        }
+                    }
+                } else {
+                    int new_offset;
+                    IsotheticPolygon decomp_poly = decompress_polygon( buffer + offset, &new_offset );
+                    offset += new_offset;
+                }
+            }
+            
+            // memcpy the crap in
+            auto alloc_data =
+                new_allocator->create_new_tree_node<packed_node>(
+                        offset, NodeHandleType( REPACKED_BRANCH_NODE ) );
+
+            memcpy( alloc_data.first->buffer_, branch_node->buffer_, offset );
+            return alloc_data.second;
+        }
         default:
             assert( false );
             return tree_node_handle( nullptr );

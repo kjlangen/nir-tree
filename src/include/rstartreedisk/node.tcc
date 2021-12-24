@@ -2,6 +2,11 @@
 #define LEAF_NODE_CLASS_TYPES LeafNode<min_branch_factor, max_branch_factor>
 #define BRANCH_NODE_CLASS_TYPES BranchNode<min_branch_factor, max_branch_factor>
 
+#define decode_entry_count_and_offset_packed_node( data ) \
+    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
+    size_t count = * (unsigned *) (data+offset); \
+    offset += sizeof( unsigned );
+
 template <int min_branch_factor, int max_branch_factor, typename functor>
 void treeWalker( RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef, tree_node_handle root, functor &f ) {
     std::stack<tree_node_handle> context;
@@ -18,6 +23,19 @@ void treeWalker( RStarTreeDisk<min_branch_factor,max_branch_factor> *treeRef, tr
             auto node = treeRef->get_branch_node( currentContext );
             for( unsigned i = 0; i < node->cur_offset_; i++ ) {
                 context.push( node->entries.at(i).child );
+            }
+        } else if( currentContext.get_type() == REPACKED_BRANCH_NODE ) {
+            tree_node_allocator *allocator =
+                treeRef->node_allocator_.get();
+            auto node =
+                allocator->get_tree_node<packed_node>(
+                        currentContext );
+            char *buffer = node->buffer_;
+            decode_entry_count_and_offset_packed_node( buffer );
+            for( unsigned i = 0; i < count; i++ ) {
+                Branch *b = (Branch *) (buffer + offset);
+                offset += sizeof(Branch);
+                context.push( b->child );
             }
         }
     }
@@ -961,11 +979,6 @@ void BRANCH_NODE_CLASS_TYPES::exhaustiveSearch(
 #define point_search_leaf_handle( handle, requestedPoint, accumulator ) \
     auto current_node = treeRef->get_leaf_node( handle ); \
     point_search_leaf_node( current_node, requestedPoint, accumulator );
-
-#define decode_entry_count_and_offset_packed_node( data ) \
-    size_t offset = sizeof(void *) + 2 * sizeof(tree_node_handle); \
-    size_t count = * (unsigned *) (data+offset); \
-    offset += sizeof( unsigned );
 
 #define point_search_packed_leaf_node( packed_leaf, requestedPoint, accumulator ) \
     char *data = packed_leaf->buffer_; \
@@ -2007,7 +2020,7 @@ void BRANCH_NODE_CLASS_TYPES::stat() const
                 }
                 histogramFanout[node->cur_offset_]++;
 
-            } else {
+            } else if( node_handle.get_type() == BRANCH_NODE ) {
                 auto node = treeRef->get_branch_node( node_handle );
                 // Compute the overlap and coverage of our children
                 for( unsigned i = 0; i < node->cur_offset_; i++ ) {
@@ -2028,6 +2041,22 @@ void BRANCH_NODE_CLASS_TYPES::stat() const
                     histogramFanout.resize(2*node->cur_offset_, 0);
                 }
                 histogramFanout[node->cur_offset_]++;
+            } else if( node_handle.get_type() == REPACKED_LEAF_NODE ) {
+                tree_node_allocator *allocator = treeRef->node_allocator_.get();
+
+                auto node =
+                    allocator->get_tree_node<packed_node>(
+                            node_handle );
+                decode_entry_count_and_offset_packed_node( node->buffer_ );
+                memoryFootprint += offset + count * sizeof(Point);
+            } else if( node_handle.get_type() == REPACKED_BRANCH_NODE ) {
+                tree_node_allocator *allocator = treeRef->node_allocator_.get();
+                auto node =
+                    allocator->get_tree_node<packed_node>(
+                            node_handle );
+
+                decode_entry_count_and_offset_packed_node( node->buffer_ );
+                memoryFootprint += offset + count * sizeof(Branch);
             }
         }
     };

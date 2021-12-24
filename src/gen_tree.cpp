@@ -595,6 +595,7 @@ std::vector<tree_node_handle> str_packing_leaf(
     if( points.size() % branch_factor != 0  ) {
         P++;
     }
+
     double S_dbl = std::ceil( sqrt(P) );
     unsigned S = (unsigned) S_dbl;
 
@@ -608,9 +609,15 @@ std::vector<tree_node_handle> str_packing_leaf(
         unsigned start_offset = i * (S*branch_factor);
         unsigned stop_offset = (i+1) * (S*branch_factor);
         auto start_point = points.begin() + start_offset;
-        auto stop_point = (i==S-1)? points.end() : points.begin() + stop_offset;
+        auto stop_point = stop_offset >= points.size() ?
+            points.end() : points.begin() + stop_offset;
+
         std::sort( start_point, stop_point, []( Point &l, Point &r ) {
             return l[1] < r[1]; } );
+
+        if( stop_point == points.end() ) {
+            break;
+        }
     }
 
     
@@ -860,7 +867,11 @@ tree_node_handle quad_tree_style_load(
         for( auto iter = start; iter != stop; iter++ ) {
             leaf_node->addPoint(*iter);
         }
-        return leaf_handle;
+
+        auto repacked_handle = leaf_node->repack( allocator );
+        allocator->free( leaf_handle, sizeof(
+                    nirtreedisk::LeafNode<15,25,nirtreedisk::ExperimentalStrategy>) );
+        return repacked_handle;
     }
 
     // Return a tree node handle with pointers to all of its necessary
@@ -941,7 +952,12 @@ tree_node_handle quad_tree_style_load(
         }
 
     }
-    return branch_handle;
+
+    // Repack
+    auto repacked_handle = branch_node->repack( allocator, allocator );
+    allocator->free( branch_handle, sizeof(
+                nirtreedisk::BranchNode<15,25,nirtreedisk::ExperimentalStrategy>) );
+    return repacked_handle;
 }
 template <typename T>
 void bulk_load_tree(
@@ -958,8 +974,10 @@ void bulk_load_tree(
     std::vector<Point> &all_points,
     unsigned max_branch_factor
 ) {
+    // Keep in mind there is a 0th level, so floor is correct
     unsigned max_depth =
         std::floor(log(all_points.size())/log(max_branch_factor));
+    std::cout << "Max depth required: " << max_depth << std::endl;
 
     auto tree_ptr =
         (nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>
@@ -968,16 +986,11 @@ void bulk_load_tree(
             max_branch_factor, 0, max_depth, nullptr );
 
     tree->root = root;
-    std::cout << "Validating..." << std::endl;
-    tree->validate();
-    std::cout << "Validation OK" << std::endl;
-
     std::string fname = "repacked_nirtree.txt";
     repack_tree( tree_ptr, fname,
             nirtreedisk::repack_subtree<15,25,nirtreedisk::ExperimentalStrategy>  );
+    std::cout << "Load complete." << std::endl;
 }
-
-
 
 template <>
 void bulk_load_tree(
@@ -1010,18 +1023,28 @@ void bulk_load_tree(
 
 void generate_tree( std::map<std::string, unsigned> &configU ) {
 
-    assert( configU["distribution"] == CALIFORNIA );
 
     std::string backing_file = "bulkloaded_tree.txt";
     unlink( backing_file.c_str() );
 
-    PointGenerator<BenchTypeClasses::California> points;
     std::vector<Point> all_points;
     std::optional<Point> next;
-    while( (next = points.nextPoint() )) {
-        all_points.push_back( next.value() );
-    }
 
+    if( configU["distribution"] == CALIFORNIA ) {
+        PointGenerator<BenchTypeClasses::California> points;
+        while( (next = points.nextPoint() )) {
+            all_points.push_back( next.value() );
+        }
+    } else if( configU["distribution"] == UNIFORM ) {
+        BenchTypeClasses::Uniform::size = configU["size"];
+        BenchTypeClasses::Uniform::dimensions = dimensions;
+        BenchTypeClasses::Uniform::seed = 0;
+        PointGenerator<BenchTypeClasses::Uniform> points;
+        while( (next = points.nextPoint() )) {
+            all_points.push_back( next.value() );
+        }
+    }
+    std::cout << all_points.size() << std::endl;
 
     Index *spatialIndex;
     if( configU["tree"] == NIR_TREE ) {
@@ -1084,7 +1107,7 @@ int main( int argc, char **argv ) {
 
     int option;
 
-    while( (option = getopt(argc,argv, "t:m:")) != -1 ) {
+    while( (option = getopt(argc,argv, "t:m:n:")) != -1 ) {
         switch( option ) {
             case 't': {
                 configU["tree"] = (TreeType)atoi(optarg);
@@ -1093,12 +1116,15 @@ int main( int argc, char **argv ) {
             case 'm': {
                 configU["distribution"] = (BenchType)atoi(optarg);
                 break;
-            }    
+            }
+            case 'n': {
+                configU["size"] = atoi(optarg);
+                break;
+            }
         }
     }
 
     generate_tree( configU );
-
 
     return 0;
 }
