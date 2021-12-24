@@ -2114,8 +2114,6 @@ NODE_TEMPLATE_PARAMS
 tree_node_handle LEAF_NODE_CLASS_TYPES::repack( tree_node_allocator *allocator ) {
     static_assert( sizeof( void * ) == sizeof(uint64_t) );
     uint16_t alloc_size = compute_packed_size();
-    std::cout << "Creating packed leaf of size: " << alloc_size <<
-        std::endl;
     auto alloc_data = allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_LEAF_NODE) );
 
@@ -2135,9 +2133,6 @@ NODE_TEMPLATE_PARAMS
 tree_node_handle BRANCH_NODE_CLASS_TYPES::repack( tree_node_allocator
         *allocator ) {
     uint16_t alloc_size = compute_packed_size();
-    std::cout << "Creating packed branch of size: " << alloc_size <<
-        std::endl;
-
     auto alloc_data = allocator->create_new_tree_node<packed_node>(
             alloc_size, NodeHandleType(REPACKED_BRANCH_NODE) );
 

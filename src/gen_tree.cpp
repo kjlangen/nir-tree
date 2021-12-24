@@ -982,14 +982,23 @@ void bulk_load_tree(
     auto tree_ptr =
         (nirtreedisk::NIRTreeDisk<15,25,nirtreedisk::ExperimentalStrategy>
          *) tree;
+
+    std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
     tree_node_handle root = quad_tree_style_load( tree_ptr, all_points.begin(), all_points.end(),
             max_branch_factor, 0, max_depth, nullptr );
+    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+    std::cout << "Bulk loading NIRTree took: " << delta.count() << std::endl;
+
 
     tree->root = root;
     std::string fname = "repacked_nirtree.txt";
+    begin = std::chrono::high_resolution_clock::now();
     repack_tree( tree_ptr, fname,
             nirtreedisk::repack_subtree<15,25,nirtreedisk::ExperimentalStrategy>  );
-    std::cout << "Load complete." << std::endl;
+    end = std::chrono::high_resolution_clock::now();
+    delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+    std::cout << "Repacking tree took: " << delta.count() << std::endl;
 }
 
 template <>
@@ -1000,25 +1009,31 @@ void bulk_load_tree(
     unsigned max_branch_factor
 ) {
 
-    std::cout << "Starting to pack leaves." << std::endl;
-
+    std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
     std::vector<tree_node_handle> leaves = str_packing_leaf(
         tree,
         all_points,
         25
     );
-    std::cout << "Done packing leaves." << std::endl;
-
     std::vector<tree_node_handle> branches = str_packing_branch( tree, leaves, 25 );
     while( branches.size() > 1 ) {
         branches = str_packing_branch( tree, branches, 25 );
     }
     tree->root = branches.at(0);
+    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+    std::cout << "Bulk loading tree took: " << delta.count() << std::endl;
+
     auto tree_ptr = (rstartreedisk::RStarTreeDisk<15,25> *) tree;
 
     std::string fname = "repacked_rtree.txt";
+    begin = std::chrono::high_resolution_clock::now();
     repack_tree( tree_ptr, fname,
             rstartreedisk::repack_subtree<15,25>  );
+    end = std::chrono::high_resolution_clock::now();
+    delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+    std::cout << "Repacking tree took: " << delta.count() << std::endl;
+
 }
 
 void generate_tree( std::map<std::string, unsigned> &configU ) {

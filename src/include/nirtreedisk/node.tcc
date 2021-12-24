@@ -1074,14 +1074,10 @@ std::pair<uint16_t, std::vector<std::optional<std::pair<char*,int>>>> BRANCH_NOD
             branch_compression_data.push_back( compression_result );
         }
         if( sz <= PAGE_DATA_SIZE ) {
-            std::cout << "Breaking out. Chose rect size: " <<
-                maximum_repacked_rect_size << std::endl;
             return std::make_pair( sz, branch_compression_data );
         }
         assert( maximum_repacked_rect_size >= 1 );
         maximum_repacked_rect_size /= 2;
-        std::cout << "Looping with rect size: " <<
-            maximum_repacked_rect_size << std::endl;
     } while( true );
 }
 
@@ -1482,7 +1478,6 @@ tree_node_handle repack_subtree(
             auto new_handle = leaf_node->repack( new_allocator );
             existing_allocator->free( handle, sizeof(
                         LEAF_NODE_CLASS_TYPES ) );
-            std::cout << "Done repacking handle: " << handle << std::endl;
             return new_handle;
         }
         case BRANCH_NODE: {
@@ -1514,7 +1509,6 @@ tree_node_handle repack_subtree(
 
             existing_allocator->free( handle, sizeof(
                     BRANCH_NODE_CLASS_TYPES ) );
-            std::cout << "Done repacking handle: " << handle << std::endl;
             return new_handle;
         }
         // For repacked leaf nodes, just transfer the data over.
@@ -1602,7 +1596,6 @@ tree_node_handle repack_subtree(
             assert( false );
             return tree_node_handle( nullptr );
     }
-    std::cout << "Repacking: " << handle << " done." << std::endl;
 }
 
 NODE_TEMPLATE_PARAMS
