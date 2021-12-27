@@ -134,6 +134,7 @@ page *buffer_pool::get_page( size_t page_id ) {
 
     // No free pages available.
     if( page_ptr == nullptr ) {
+        std::cout << "No pages available." << std::endl;
         return nullptr;
     }
 

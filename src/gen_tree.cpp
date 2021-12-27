@@ -24,7 +24,7 @@ void make_all_rects_disjoint(
         Rectangle a = remaining_a_rects.top();
         remaining_a_rects.pop();
         bool did_split = false;
-        for( unsigned i = 0; i < rects_b.size(); i++ ) {
+        for( uint64_t i = 0; i < rects_b.size(); i++ ) {
             Rectangle &b = rects_b.at(i);
             // If there is no intersection with this rectangle, keep
             // going
@@ -87,7 +87,7 @@ void fill_branch(
     pinned_node_ptr<BN> branch_node,
     tree_node_handle node_handle,
     std::vector<std::pair<Point,tree_node_handle>> &node_point_pairs,
-    unsigned &offset,
+    uint64_t &offset,
     unsigned branch_factor,
     LN *leaf_type
 );
@@ -98,7 +98,7 @@ void fill_branch(
     pinned_node_ptr<nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>> branch_node,
     tree_node_handle node_handle,
     std::vector<std::pair<Point,tree_node_handle>> &node_point_pairs,
-    unsigned &offset,
+    uint64_t &offset,
     unsigned branch_factor,
     nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy> *leaf_type
 ) {
@@ -112,7 +112,7 @@ void fill_branch(
     tree_node_allocator *allocator = treeRef->node_allocator_.get();
 
     // Add up to branch factor items to it
-    for( unsigned i = 0; i < branch_factor; i++ ) {
+    for( uint64_t i = 0; i < branch_factor; i++ ) {
         tree_node_handle child_handle =
             node_point_pairs[offset++].second;
         Rectangle bbox;
@@ -139,8 +139,8 @@ void fill_branch(
         }
     }
 
-    for( unsigned i = 0; i < fixed_bb_and_handles.size(); i++ ) {
-        for( unsigned j = i+1; j < fixed_bb_and_handles.size(); j++ ) {
+    for( uint64_t i = 0; i < fixed_bb_and_handles.size(); i++ ) {
+        for( uint64_t j = i+1; j < fixed_bb_and_handles.size(); j++ ) {
 
             std::vector<Rectangle> &existing_rects_a =
                 fixed_bb_and_handles.at(i).first.basicRectangles;
@@ -158,7 +158,7 @@ void fill_branch(
 
     // Now we have made all the BoundingRegions disjoint.
     // It is time to add our children
-    for( unsigned int i = 0; i < fixed_bb_and_handles.size(); i++ ) {
+    for( uint64_t i = 0; i < fixed_bb_and_handles.size(); i++ ) {
         nirtreedisk::Branch b;
         b.child = fixed_bb_and_handles.at(i).second;
         IsotheticPolygon &constructed_poly =
@@ -192,7 +192,7 @@ void fill_branch(
     pinned_node_ptr<rstartreedisk::BranchNode<5,9>> branch_node,
     tree_node_handle node_handle,
     std::vector<std::pair<Point,tree_node_handle>> &node_point_pairs,
-    unsigned &offset,
+    uint64_t &offset,
     unsigned branch_factor,
     rstartreedisk::LeafNode<5,9> *leaf_type
 ) {
@@ -203,7 +203,7 @@ void fill_branch(
     tree_node_allocator *allocator = treeRef->node_allocator_.get();
 
     // Add up to branch factor items to it
-    for( unsigned i = 0; i < branch_factor; i++ ) {
+    for( uint64_t i = 0; i < branch_factor; i++ ) {
         tree_node_handle child_handle =
             node_point_pairs[offset++].second;
         Rectangle bbox;
@@ -259,9 +259,7 @@ std::vector<tree_node_handle> str_packing_branch(
     // constantly
     std::vector<std::pair<Point,tree_node_handle>> node_point_pairs;
     node_point_pairs.reserve( child_nodes.size() );
-    unsigned c = 0;
     for( tree_node_handle &child_handle : child_nodes ) {
-        c++;
         Rectangle bbox;
         if( child_handle.get_type() == LEAF_NODE ) {
             auto child =
@@ -275,13 +273,13 @@ std::vector<tree_node_handle> str_packing_branch(
         node_point_pairs.push_back( std::make_pair( bbox.centrePoint(), child_handle ) );
     }
 
-    unsigned P = node_point_pairs.size() / branch_factor;
+    uint64_t P = node_point_pairs.size() / branch_factor;
     if( node_point_pairs.size() % branch_factor != 0  ) {
         P++;
     }
 
     double S_dbl = std::ceil( sqrt(P) );
-    unsigned S = (unsigned) S_dbl;
+    uint64_t S = (uint64_t) S_dbl;
 
     // Sort by X
     std::sort( node_point_pairs.begin(), node_point_pairs.end(), [](
@@ -290,9 +288,9 @@ std::vector<tree_node_handle> str_packing_branch(
 
     // There are |S| vertical stripes.
     // Each has |S|*branch_factor points
-    for( unsigned i = 0; i < S; i++ ) {
-        unsigned start_offset = i * (S*branch_factor);
-        unsigned stop_offset = (i+1) * (S*branch_factor);
+    for( uint64_t i = 0; i < S; i++ ) {
+        uint64_t start_offset = i * (S*branch_factor);
+        uint64_t stop_offset = (i+1) * (S*branch_factor);
         if( stop_offset > node_point_pairs.size() ) {
             stop_offset = node_point_pairs.size();
         }
@@ -308,7 +306,7 @@ std::vector<tree_node_handle> str_packing_branch(
     }
 
     std::vector<tree_node_handle> branches;
-    unsigned offset = 0;
+    uint64_t offset = 0;
     while( offset < node_point_pairs.size() ) {
 
         // Create the branch node
@@ -333,10 +331,10 @@ std::vector<tree_node_handle> str_packing_branch(
     return branches;
 }
 
-std::pair<unsigned,double> compute_max_dist( const Point &point, std::vector<Point> &pts ) {
-    unsigned idx = 0;
+std::pair<uint64_t,double> compute_max_dist( const Point &point, std::vector<Point> &pts ) {
+    uint64_t idx = 0;
     double max_dist = std::numeric_limits<double>::min();
-    for( unsigned i = 0; i < pts.size(); i++ ) {
+    for( uint64_t i = 0; i < pts.size(); i++ ) {
         double dist = point.fast_distance( pts.at(i) );
         if( dist > max_dist ) {
             max_dist = dist;
@@ -372,9 +370,7 @@ std::vector<tree_node_handle> str_packing_branch_euclidean(
     // constantly
     std::unordered_map<Point, tree_node_handle> point_to_handle_map;
     std::vector<Point> points;
-    unsigned c = 0;
     for( tree_node_handle &child_handle : child_nodes ) {
-        c++;
         Rectangle bbox;
         if( child_handle.get_type() == LEAF_NODE ) {
             auto child =
@@ -407,7 +403,7 @@ std::vector<tree_node_handle> str_packing_branch_euclidean(
         Point cur_point = loc_points.front();
         double max_allowed_distance =
             std::numeric_limits<double>::max();
-        unsigned worst_index = 0;
+        uint64_t worst_index = 0;
         std::vector<Point> pts_to_remove;
         pts_to_remove.reserve( branch_factor );
         pts_to_remove.push_back( cur_point );
@@ -476,8 +472,8 @@ std::vector<tree_node_handle> str_packing_branch_euclidean(
         }
 
         // Make them all disjoint
-        for( unsigned i = 0; i < fixed_bb_and_handles.size(); i++ ) {
-            for( unsigned j = i+1; j < fixed_bb_and_handles.size(); j++ ) {
+        for( uint64_t i = 0; i < fixed_bb_and_handles.size(); i++ ) {
+            for( uint64_t j = i+1; j < fixed_bb_and_handles.size(); j++ ) {
 
                 std::vector<Rectangle> &existing_rects_a =
                     fixed_bb_and_handles.at(i).first.basicRectangles;
@@ -493,7 +489,7 @@ std::vector<tree_node_handle> str_packing_branch_euclidean(
             }
         }
 
-        for( unsigned int i = 0; i < fixed_bb_and_handles.size(); i++ ) {
+        for( uint64_t i = 0; i < fixed_bb_and_handles.size(); i++ ) {
             nirtreedisk::Branch b;
             b.child = fixed_bb_and_handles.at(i).second;
             IsotheticPolygon &constructed_poly =
@@ -585,37 +581,38 @@ std::vector<tree_node_handle> str_packing_branch(
 template <typename T, typename LN, typename BN>
 std::vector<tree_node_handle> str_packing_leaf(
     T *tree,
-    std::vector<Point> &points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned branch_factor,
     LN *ln_type,
     BN *bn_type
 ) {
 
-    unsigned P = points.size() / branch_factor;
-    if( points.size() % branch_factor != 0  ) {
+    uint64_t count = (end-begin);
+    uint64_t P = count / branch_factor;
+    if( count % branch_factor != 0  ) {
         P++;
     }
 
     double S_dbl = std::ceil( sqrt(P) );
-    unsigned S = (unsigned) S_dbl;
+    uint64_t S = (uint64_t) S_dbl;
 
     // Sort on lower left
-    std::sort( points.begin(), points.end(), []( Point &l, Point &r ) {
+    std::sort( begin, end, []( Point &l, Point &r ) {
             return l[0] < r[0]; } );
 
     // There are |S| vertical stripes.
     // Each has |S|*branch_factor points
-    for( unsigned i = 0; i < S; i++ ) {
-        unsigned start_offset = i * (S*branch_factor);
-        unsigned stop_offset = (i+1) * (S*branch_factor);
-        auto start_point = points.begin() + start_offset;
-        auto stop_point = stop_offset >= points.size() ?
-            points.end() : points.begin() + stop_offset;
+    for( uint64_t i = 0; i < S; i++ ) {
+        uint64_t start_offset = i * (S*branch_factor);
+        uint64_t stop_offset = (i+1) * (S*branch_factor);
+        auto start_point = begin + start_offset;
+        auto stop_point = stop_offset >= count ? end : begin + stop_offset;
 
         std::sort( start_point, stop_point, []( Point &l, Point &r ) {
             return l[1] < r[1]; } );
 
-        if( stop_point == points.end() ) {
+        if( stop_point == end ) {
             break;
         }
     }
@@ -623,8 +620,8 @@ std::vector<tree_node_handle> str_packing_leaf(
     
     tree_node_allocator *allocator = tree->node_allocator_.get();
     std::vector<tree_node_handle> leaves;
-    unsigned offset = 0;
-    while( offset < points.size() ) {
+    uint64_t offset = 0;
+    while( offset < count ) {
 
         auto alloc_data =
             allocator->create_new_tree_node<LN>( NodeHandleType(LEAF_NODE) );
@@ -635,9 +632,10 @@ std::vector<tree_node_handle> str_packing_leaf(
 
         auto leaf_node = alloc_data.first;
         tree_node_handle leaf_handle = alloc_data.second;
-        for( unsigned i = 0; i < branch_factor; i++ ) {
-            leaf_node->addPoint( points[ offset++ ] );
-            if( offset == points.size() ) {
+        for( uint64_t i = 0; i < branch_factor; i++ ) {
+            leaf_node->addPoint( *(begin + offset) );
+            offset++;
+            if( offset == count ) {
                 break;
             }
         }
@@ -649,7 +647,8 @@ std::vector<tree_node_handle> str_packing_leaf(
 template <typename T, typename LN, typename BN>
 std::vector<tree_node_handle> str_packing_leaf_euclidean(
     T *tree,
-    std::vector<Point> &points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned branch_factor,
     LN *ln_type,
     BN *bn_type
@@ -659,20 +658,21 @@ std::vector<tree_node_handle> str_packing_leaf_euclidean(
     tree_node_allocator *allocator = tree->node_allocator_.get();
 
     std::vector<tree_node_handle> leaves;
-    leaves.reserve( points.size() / branch_factor + 1 );
+    uint64_t count = (end-begin);
+    leaves.reserve( count / branch_factor + 1 );
 
     // Sort on X, break ties with Y.
-    std::sort( points.begin(), points.end(), point_comparator );
+    std::sort( begin, end, point_comparator );
     
     // Copy
-    std::list<Point> loc_points( points.begin(), points.end() );
+    std::list<Point> loc_points( begin, end );
 
     for( ;; ) {
 
         Point cur_point = loc_points.front();
         double max_allowed_distance =
             std::numeric_limits<double>::max();
-        unsigned worst_index = 0;
+        uint64_t worst_index = 0;
         std::vector<Point> pts_to_remove;
         pts_to_remove.reserve( branch_factor );
         pts_to_remove.push_back( cur_point );
@@ -680,7 +680,7 @@ std::vector<tree_node_handle> str_packing_leaf_euclidean(
         loc_points.pop_front();
 
         // Find closest points
-        unsigned i = 0;
+        uint64_t i = 0;
         for( auto list_iter = loc_points.begin(); list_iter != loc_points.end(); list_iter++ ) {
             if( pts_to_remove.size() < branch_factor ) {
                 pts_to_remove.push_back( *list_iter );
@@ -758,14 +758,16 @@ std::vector<tree_node_handle> str_packing_leaf_euclidean(
 template <typename T>
 std::vector<tree_node_handle> str_packing_leaf(
     T *tree,
-    std::vector<Point> &points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned branch_factor
 );
 
 template <>
 std::vector<tree_node_handle> str_packing_leaf(
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree,
-    std::vector<Point> &points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned branch_factor
 ) {
     nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy> *targ
@@ -774,24 +776,25 @@ std::vector<tree_node_handle> str_packing_leaf(
         *targ2
         = nullptr;
 
-    return str_packing_leaf( tree, points, branch_factor,
+    return str_packing_leaf( tree, begin, end, branch_factor,
             targ, targ2 );
 }
 
 template <>
 std::vector<tree_node_handle> str_packing_leaf(
     rstartreedisk::RStarTreeDisk<5,9> *tree,
-    std::vector<Point> &points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned branch_factor
 ) {
     rstartreedisk::LeafNode<5,9> *targ = nullptr;
     rstartreedisk::BranchNode<5,9> *targ2 = nullptr;
 
-    return str_packing_leaf( tree, points, branch_factor,
+    return str_packing_leaf( tree, begin, end, branch_factor,
             targ, targ2 );
 }
 
-std::vector<unsigned> find_bounding_lines(
+std::vector<uint64_t> find_bounding_lines(
     std::vector<Point>::iterator start,
     std::vector<Point>::iterator stop,
     unsigned d,
@@ -800,20 +803,20 @@ std::vector<unsigned> find_bounding_lines(
     std::sort( start, stop, [d]( const Point &p1, const
                 Point &p2 ) { return p1[d] < p2[d]; } );
 
-    std::vector<unsigned> lines;
+    std::vector<uint64_t> lines;
     lines.reserve( partitions+2 );
     lines.push_back( 0 );
 
-    unsigned count = stop-start;
-    unsigned rough_point_count_per_partition = count / partitions;
+    uint64_t count = stop-start;
+    uint64_t rough_point_count_per_partition = count / partitions;
 
-    unsigned partition_start_offset = 0;
+    uint64_t partition_start_offset = 0;
 
-    for( unsigned created_partitions = 0; created_partitions <
+    for( uint64_t created_partitions = 0; created_partitions <
             partitions-1; created_partitions++ ) {
 
         // This is roughly where the line should go
-        unsigned line_bound = (created_partitions+1)*rough_point_count_per_partition;
+        uint64_t line_bound = (created_partitions+1)*rough_point_count_per_partition;
         auto partition_start_iter = start + partition_start_offset;
 
         // Push forward if other stuff line on this point
@@ -847,13 +850,19 @@ tree_node_handle quad_tree_style_load(
     unsigned branch_factor,
     unsigned cur_depth,
     unsigned max_depth,
-    tree_node_handle parent_handle
+    tree_node_handle parent_handle,
+    std::vector<Point> &overflow
 ) {
-    unsigned tiles = std::floor(sqrt(branch_factor));
+    uint64_t num_els = (stop-start);
+    uint64_t tiles = std::floor(sqrt(branch_factor));
     tree_node_allocator *allocator = tree->node_allocator_.get();
     if( cur_depth == max_depth ) {
-        if( (stop-start) > branch_factor ) {
-            std::cout << "Overfull leaf node." << std::endl;
+        if( num_els > branch_factor ) {
+            std::copy( start + branch_factor, stop, std::back_inserter( overflow ) );
+            stop = start + branch_factor;
+        }
+        num_els = (stop-start);
+        if( num_els > branch_factor ) {
             abort();
         }
         auto alloc_data =
@@ -869,10 +878,12 @@ tree_node_handle quad_tree_style_load(
             leaf_node->addPoint(*iter);
         }
 
-        auto repacked_handle = leaf_node->repack( allocator );
-        allocator->free( leaf_handle, sizeof(
-                    nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>) );
-        return repacked_handle;
+        return leaf_handle;
+        // FIXME: re-enable once sergiu's code is done
+        //auto repacked_handle = leaf_node->repack( allocator );
+        //allocator->free( leaf_handle, sizeof(
+        //            nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>) );
+        //return repacked_handle;
     }
 
     // Return a tree node handle with pointers to all of its necessary
@@ -888,22 +899,22 @@ tree_node_handle quad_tree_style_load(
     tree_node_handle branch_handle = alloc_data.second;
 
 
-    std::vector<unsigned> x_lines = find_bounding_lines( start, stop, 0, tiles );
+    std::vector<uint64_t> x_lines = find_bounding_lines( start, stop, 0, tiles );
     std::vector<Rectangle> existing_boxes;
-    for( unsigned i = 0; i < x_lines.size()-1; i++ ) {
-        unsigned x_start = x_lines.at(i);
-        unsigned x_end = x_lines.at(i+1); /* not inclusive */
+    for( uint64_t i = 0; i < x_lines.size()-1; i++ ) {
+        uint64_t x_start = x_lines.at(i);
+        uint64_t x_end = x_lines.at(i+1); /* not inclusive */
 
         // Should include the x_start value, but not the x_end value.
         // So check the value before and add nextafter() to make it fit
         double x_val_lo = (*(start + x_start))[0];
         double x_val_hi = nextafter( (*(start + x_end-1))[0], DBL_MAX );
 
-        std::vector<unsigned> y_lines = find_bounding_lines(
+        std::vector<uint64_t> y_lines = find_bounding_lines(
                  start + x_start, start + x_end, 1, tiles );
-        for( unsigned j = 0; j < y_lines.size()-1; j++ ) {
-            unsigned y_start = y_lines.at(j);
-            unsigned y_end = y_lines.at(j+1); /* not inclusive */
+        for( uint64_t j = 0; j < y_lines.size()-1; j++ ) {
+            uint64_t y_start = y_lines.at(j);
+            uint64_t y_end = y_lines.at(j+1); /* not inclusive */
 
             std::vector<Point>::iterator sub_start = start + x_start +
                 y_start;
@@ -939,7 +950,8 @@ tree_node_handle quad_tree_style_load(
                 branch_factor,
                 cur_depth+1,
                 max_depth,
-                branch_handle
+                branch_handle,
+                overflow
             );
 
             nirtreedisk::Branch b;
@@ -954,17 +966,22 @@ tree_node_handle quad_tree_style_load(
 
     }
 
+    return branch_handle;
+    // FIXME: re-enable once sergiu's  code is done
+    /*
     // Repack
     auto repacked_handle = branch_node->repack( allocator, allocator );
     allocator->free( branch_handle, sizeof(
                 nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>) );
     return repacked_handle;
+    */
 }
 template <typename T>
 void bulk_load_tree(
     T* tree,
     std::map<std::string,unsigned> &configU,
-    std::vector<Point> &all_points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned max_branch_factor
 );
 
@@ -972,27 +989,42 @@ template <>
 void bulk_load_tree(
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>* tree,
     std::map<std::string,unsigned> &configU,
-    std::vector<Point> &all_points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned max_branch_factor
 ) {
     // Keep in mind there is a 0th level, so floor is correct
-    unsigned max_depth =
-        std::floor(log(all_points.size())/log(max_branch_factor));
+    uint64_t  num_els = (end - begin);
+    std::cout << "Num els: " << num_els << std::endl;
+    uint64_t max_depth =
+        std::floor(log(num_els)/log(max_branch_factor));
     std::cout << "Max depth required: " << max_depth << std::endl;
 
     auto tree_ptr =
         (nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>
          *) tree;
 
-    std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-    tree_node_handle root = quad_tree_style_load( tree_ptr, all_points.begin(), all_points.end(),
-            max_branch_factor, 0, max_depth, nullptr );
-    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+    std::chrono::high_resolution_clock::time_point begin_time = std::chrono::high_resolution_clock::now();
+    std::vector<Point> overflow;
+    tree_node_handle root = quad_tree_style_load( tree_ptr, begin, end, max_branch_factor, 0, max_depth, nullptr, overflow );
+    tree->root = root;
+    std::cout << "After bulk insert, need to insert: " << overflow.size() << " points sequentially." << std::endl;
+    std::cout << "KNOWN BUG, not inserting right not, don't keep results." << std::endl;
+    // FIXME: we aren't doing th
+/*
+    while( tree->hasReinsertedOnLevel.size() < max_depth ) {
+        tree->hasReinsertedOnLevel.push_back( false );
+    }
+    for( const auto &p : overflow ) {
+        tree->insert(p);
+        std::cout << "Insert OK." << std::endl;
+    }
+*/
+    std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - begin_time);
     std::cout << "Bulk loading NIRTree took: " << delta.count() << std::endl;
 
 
-    tree->root = root;
     std::string fname = "repacked_nirtree.txt";
     repack_tree( tree_ptr, fname,
             nirtreedisk::repack_subtree<5,9,nirtreedisk::ExperimentalStrategy>  );
@@ -1003,14 +1035,16 @@ template <>
 void bulk_load_tree(
     rstartreedisk::RStarTreeDisk<5,9>* tree,
     std::map<std::string,unsigned> &configU,
-    std::vector<Point> &all_points,
+    std::vector<Point>::iterator begin,
+    std::vector<Point>::iterator end,
     unsigned max_branch_factor
 ) {
 
-    std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point begin_time = std::chrono::high_resolution_clock::now();
     std::vector<tree_node_handle> leaves = str_packing_leaf(
         tree,
-        all_points,
+        begin,
+        end,
         9
     );
     std::vector<tree_node_handle> branches = str_packing_branch( tree, leaves, 9 );
@@ -1018,14 +1052,14 @@ void bulk_load_tree(
         branches = str_packing_branch( tree, branches, 9 );
     }
     tree->root = branches.at(0);
-    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+    std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - begin_time);
     std::cout << "Bulk loading tree took: " << delta.count() << std::endl;
 
     auto tree_ptr = (rstartreedisk::RStarTreeDisk<5,9> *) tree;
     std::string fname = "repacked_rstar.txt";
     repack_tree( tree_ptr, fname,
-            rstartreedisk::repack_subtree<5,9>  );
+            rstartreedisk::repack_subtree<5,9> );
     tree->write_metadata(); 
 }
 
@@ -1052,27 +1086,62 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
             all_points.push_back( next.value() );
         }
     }
-    std::cout << all_points.size() << std::endl;
+
+    // FIXME: need to make difference sizes and comparisons uint64_t's
+
+    double bulk_load_pct = 1.0;
+    uint64_t cut_off_bulk_load = std::floor(bulk_load_pct*all_points.size());
+    std::cout << "Bulk loading " << cut_off_bulk_load << " points." << std::endl;
+    std::cout << "Sequential Inserting " << all_points.size() - cut_off_bulk_load << " points." << std::endl;
 
     Index *spatialIndex;
     if( configU["tree"] == NIR_TREE ) {
+        // FIXME: one of the main slow downs of bulk loading in the NIR-Tree is going to be that
+        // it looks for compression opportunities duringthe bulk load. This makes no sense because
+        // we are guaranteed that each generated rectangle is disjoint.
         nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
                     40960*13000, backing_file );
         std::cout << "Bulk Loading..." << std::endl;
-        bulk_load_tree( tree, configU, all_points, 9 );
+        bulk_load_tree( tree, configU, all_points.begin(), all_points.begin() + cut_off_bulk_load, 9 );
         std::cout << "Created NIRTree." << std::endl;
         spatialIndex = tree;
     } else if( configU["tree"] == R_STAR_TREE ) {
         rstartreedisk::RStarTreeDisk<5,9> *tree = new rstartreedisk::RStarTreeDisk<5,9>(
                     40960*13000, backing_file );
         std::cout << "Bulk Loading..." << std::endl;
-        bulk_load_tree( tree, configU, all_points, 9 );
+        bulk_load_tree( tree, configU, all_points.begin(), all_points.begin() + cut_off_bulk_load, 9 );
         std::cout << "Created R*Tree" << std::endl;
         spatialIndex = tree;
     } else {
         abort();
     }
+
+	double totalTimeInserts = 0.0;
+
+#if 0
+    // FIXME: This is going to be a problem --- we can't naively sequential insert because
+    // we need to repack the data above. If we don't, then the NIR-Tree can be absolutely massive in size because
+    // of all the gaps in nodes.
+
+    // So we would need to be able to "unpack" stuff as required for insert, and then repack.
+    std::cout << "Going to insert." << std::endl;
+    for( auto iter = all_points.begin() + cut_off_bulk_load; iter != all_points.end(); iter++ ) {
+        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+        spatialIndex->insert(*iter);
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+        totalTimeInserts += delta.count();
+        std::cout << "Insert OK." << std::endl;
+    }
+
+    // FIXME: repack again here?
+
+	std::cout << "Total time to insert: " << totalTimeInserts << "s" << std::endl;
+	std::cout << "Avg time to insert: " << totalTimeInserts / (all_points.size() - cut_off_bulk_load)<< "s" << std::endl;
+#endif
+
+
 
     std::mt19937 g;
     g.seed(0);

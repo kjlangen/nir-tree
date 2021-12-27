@@ -723,7 +723,7 @@ void repack_tree( T *tree_ptr, std::string &new_file_name,
             tree_node_allocator * ) ) {
 
     auto new_file_allocator = std::make_unique<tree_node_allocator>(
-            40960 * 1800,
+            40960 * 13000,
             new_file_name );
 
     new_file_allocator->initialize();
@@ -779,7 +779,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 	{
 		//spatialIndex = new rstartree::RStarTree(configU["minfanout"], configU["maxfanout"]);
 		spatialIndex = new rstartreedisk::RStarTreeDisk<5,9>( 4096 *
-                18000, "repacked_rstar.txt" );
+                130000, "repacked_rstar.txt" );
 	}
 	else if (configU["tree"] == NIR_TREE)
 	{
@@ -787,7 +787,7 @@ static void runBench(PointGenerator<T> &pointGen, std::map<std::string, unsigned
 		//spatialIndex = new nirtree::NIRTree(5,9);
 		spatialIndex = new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
-                4096*18000, 
+                4096*130000, 
                 /*"repacked_nirtree.txt"*/
                 "repacked_nirtree.txt");
 	}

@@ -301,7 +301,7 @@ tree_node_handle LEAF_NODE_CLASS_TYPES::splitNode()
     newSibling->treeRef = treeRef; 
     newSibling->self_handle_ = sibling_handle;
 
-#if !defined( NDEDBUG )
+#if !defined( NDEBUG )
     if( parent ) {
         auto parent_ptr = treeRef->get_branch_node( parent );
         assert( level + 1 == parent_ptr->level );
@@ -1555,7 +1555,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::splitNode()
     newSibling->treeRef = treeRef; 
     newSibling->self_handle_ = sibling_handle;
 
-#if !defined( NDEDBUG )
+#if !defined( NDEBUG )
     if( parent ) {
         auto parent_ptr = treeRef->get_branch_node( parent );
         assert( level + 1 == parent_ptr->level );
