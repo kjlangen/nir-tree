@@ -181,6 +181,10 @@ namespace nirtreedisk
                         }
                     }
 
+                    if ( unpack_perm && root == node_handle) {
+                        root = unpacked_node_handle;
+                    }
+
                     node_handle = unpacked_node_handle;
                 }
 
@@ -234,6 +238,10 @@ namespace nirtreedisk
                                 auto child = get_branch_node( b.child );
                                 child->parent = unpacked_node_handle;
                             }
+                        }
+
+                        if ( node_handle == root ) {
+                            root = unpacked_node_handle;
                         }
                     }
 
