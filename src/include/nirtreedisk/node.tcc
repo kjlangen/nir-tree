@@ -2462,7 +2462,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
     // Find the appropriate position for the entry
     // Should stop at appropriate depth level
     tree_node_handle current_handle = chooseNode( nodeEntry, stopping_level );
-    std::cerr << current_handle << " eyooo" << std::endl;
 
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
     SplitResult finalSplit;

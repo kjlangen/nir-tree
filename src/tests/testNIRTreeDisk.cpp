@@ -2825,17 +2825,12 @@ TEST_CASE( "NIRTreeDisk: Repack subtree and then insert" ) {
     }
 
     // Note: Branch handle is the root
-    std::cerr << "Pre insert: " << std::endl;
+    tree.root = packed_branch_handle;
     tree.get_branch_node(packed_branch_handle)->print();
-    Point p(42, 42);
-    auto in = std::variant<nirtreedisk::Branch, Point>(p);
-
-    std::vector<bool> hasReinsertedOnLevel = {false, false};
-
-    tree.get_branch_node(packed_branch_handle)->insert(in, hasReinsertedOnLevel);
-    std::cerr << "Post insert: " << std::endl;
+    Point p(68, 68);
+    tree.insert(p);
     tree.get_branch_node(packed_branch_handle)->print();
-    REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 1 );
+    REQUIRE( point_search( tree.root, p, &tree ).size() == 1 );
     unlink( "nirdiskbacked.txt" );
 }
 
@@ -2888,22 +2883,75 @@ TEST_CASE("NIRTreeDisk: insert after pack simple leaf node") {
     auto in = std::variant<nirtreedisk::Branch, Point>(p1);
 
     std::vector<bool> hasReinsertedOnLevel = {false};
-
+    tree.root = repacked_handle;
     repacked_handle = tree.get_leaf_node(repacked_handle, true)->insert(p1, hasReinsertedOnLevel);
     std::cerr << "Post insert: " << std::endl;
-    tree.get_leaf_node(repacked_handle, false)->print();
+    tree.print();
+    REQUIRE( tree.search(p1).size() == 1 );
     REQUIRE( point_search( repacked_handle, p1, &tree ).size() == 1 );
-    unlink( "nirdiskbacked.txt" );
     unlink( "nirdiskbacked.txt" );
 }
 
 
+TEST_CASE("NIRTreeDisk: Insert after searching packed leaf from branch." ) {
 
-/*
-Take a tree, repack the tree, the insert aftwards
-confirm expected structure, (+ validate() )
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
 
-note not only if insert worked but also if only the nodes on path to
-chosen leaf are unpacked (permanently).
+    auto root_leaf_node = tree.get_leaf_node( tree.root );
+    REQUIRE( root_leaf_node->cur_offset_ == 5 );
 
-*/
+    REQUIRE( root_leaf_node->compute_packed_size() <
+            sizeof(DefaultLeafNodeType) );
+    REQUIRE( root_leaf_node->compute_packed_size() ==
+            sizeof(void *) + sizeof(tree_node_handle)*2 +
+            sizeof(unsigned) + sizeof(Point) * 5 );
+
+    tree_node_handle repacked_handle = root_leaf_node->repack(
+            tree.node_allocator_.get() );
+    repacked_handle.set_type(
+            NodeHandleType(REPACKED_LEAF_NODE) );
+
+    REQUIRE( repacked_handle != nullptr );
+    auto packed_leaf =
+        tree.node_allocator_->get_tree_node<packed_node>(
+                repacked_handle );
+
+    auto alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+                NodeHandleType(BRANCH_NODE));
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+
+    auto branch_node = alloc_branch_data.first;
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(root_leaf_node->boundingBox()),
+            tree.root );
+    branch_node->addBranchToNode( b );
+
+    for( int i = 0; i < 7; i++ ) {
+        Point p( i, i );
+        auto vec = point_search( branch_node->self_handle_, p, &tree );
+        if( i < 5 ) {
+            REQUIRE( vec.size() == 1 );
+        } else {
+            REQUIRE( vec.size() == 0 );
+        }
+    }
+
+    // So the branch is unpacked but the leaf is repacked.
+    Point p(68, 68);
+    auto in = std::variant<nirtreedisk::Branch, Point>(p);
+    std::vector<bool> hasReinsertedOnLevel = {false, false};
+
+    branch_node->insert(in, hasReinsertedOnLevel);
+    std::cerr << "Post***insert: " << std::endl;
+    branch_node->print();
+    REQUIRE( point_search( branch_node->self_handle_, p, &tree ).size() == 1 );
+    unlink( "nirdiskbacked.txt");
+}
+
