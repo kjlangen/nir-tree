@@ -101,10 +101,10 @@ void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::stat() {
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::print() {
     if( root.get_type() == LEAF_NODE || root.get_type() == REPACKED_LEAF_NODE ) {
-        auto root_node = get_leaf_node( root );
+        auto root_node = get_leaf_node( root, false );
         root_node->printTree();
     } else {
-        auto root_node = get_branch_node( root );
+        auto root_node = get_branch_node( root, false );
         root_node->printTree();
     }
 }

@@ -794,14 +794,14 @@ SplitResult adjustTreeSub(
                 if( propagationSplit.leftBranch.child.get_type() ==
                         LEAF_NODE ) {
                     auto left_node =
-                        treeRef->get_leaf_node( propagationSplit.leftBranch.child );
+                        treeRef->get_leaf_node( propagationSplit.leftBranch.child, false );
                     if( left_node->cur_offset_ > 0 ) {
                         current_branch_node->addBranchToNode(
                             propagationSplit.leftBranch );
                     }
                 } else {
                     auto left_node =
-                        treeRef->get_branch_node( propagationSplit.leftBranch.child );
+                        treeRef->get_branch_node( propagationSplit.leftBranch.child, false );
                     if( left_node->cur_offset_ > 0 ) {
                         current_branch_node->addBranchToNode(
                             propagationSplit.leftBranch );
@@ -812,23 +812,19 @@ SplitResult adjustTreeSub(
 
                 if( propagationSplit.rightBranch.child.get_type() ==
                         LEAF_NODE ) {
-                    auto right_node = treeRef->get_leaf_node( propagationSplit.rightBranch.child );
+                    auto right_node = treeRef->get_leaf_node( propagationSplit.rightBranch.child, false );
                     if( right_node->cur_offset_ > 0 ) {
 
                         current_branch_node->addBranchToNode( propagationSplit.rightBranch );
                     }
                 } else {
-                    auto right_node = treeRef->get_branch_node( propagationSplit.rightBranch.child );
+                    auto right_node = treeRef->get_branch_node( propagationSplit.rightBranch.child, false );
                     if( right_node->cur_offset_ > 0 ) {
 
                         current_branch_node->addBranchToNode( propagationSplit.rightBranch );
                     }
 
                 }
-            }
-
-            if ( current_branch_node_repacked ) {
-                //current_handle = current_branch_node->repack_inplace( treeRef->node_allocator_.get(), treeRef->node_allocator_.get() );
             }
         }
 
@@ -990,7 +986,7 @@ bool LEAF_NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigned 
     if( expectedParent != nullptr ) {
         tree_node_allocator *allocator = get_node_allocator( this->treeRef );
 
-        auto parent_node = treeRef->get_branch_node( parent );
+        auto parent_node = treeRef->get_branch_node( parent, false );
         Branch &branch = parent_node->locateBranch( this->self_handle_ );
 
         IsotheticPolygon poly;
@@ -2452,7 +2448,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
         if( child_handle.get_type() == LEAF_NODE || child_handle.get_type() == REPACKED_LEAF_NODE ) {
             stopping_level = 1;
         } else {
-            auto child_node = treeRef->get_branch_node( child_handle );
+            auto child_node = treeRef->get_branch_node( child_handle, false );
             stopping_level = child_node->level_ + 1;
         }
     }
@@ -2742,10 +2738,10 @@ bool BRANCH_NODE_CLASS_TYPES::validate( tree_node_handle expectedParent, unsigne
 
         Branch &b = entries.at(i);
         if( b.child.get_type() == LEAF_NODE || b.child.get_type() == REPACKED_LEAF_NODE ) {
-            auto child = this->treeRef->get_leaf_node( b.child );
+            auto child = this->treeRef->get_leaf_node( b.child, false );
             valid = valid and child->validate( this->self_handle_, i );
         } else {
-            auto child = this->treeRef->get_branch_node( b.child );
+            auto child = this->treeRef->get_branch_node( b.child, false );
             valid = valid and child->validate( this->self_handle_, i );
         }
     }
@@ -2782,12 +2778,12 @@ void BRANCH_NODE_CLASS_TYPES::printTree(unsigned n)
     for( unsigned i = 0; i < this->cur_offset_; i++ ) {
         Branch &branch = entries.at(i);
         if( branch.child.get_type() == LEAF_NODE || branch.child.get_type() == REPACKED_LEAF_NODE ) {
-            auto child = this->treeRef->get_leaf_node( branch.child );
+            auto child = this->treeRef->get_leaf_node( branch.child, false );
 
             // Recurse
             child->printTree(n + 1);
         } else {
-            auto child = this->treeRef->get_branch_node( branch.child );
+            auto child = this->treeRef->get_branch_node( branch.child, false );
 
             // Recurse
             child->printTree(n + 1);
@@ -2809,7 +2805,7 @@ unsigned BRANCH_NODE_CLASS_TYPES::height()
             return ret;
         }
 
-        auto node = treeRef->get_branch_node( current_handle );
+        auto node = treeRef->get_branch_node( current_handle, false );
         current_handle = node->entries.at(0).child;
     }
 }
