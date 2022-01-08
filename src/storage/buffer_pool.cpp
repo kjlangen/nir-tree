@@ -45,6 +45,8 @@ void buffer_pool::initialize() {
 
     assert( backing_file_fd_ != -1 );
 
+    std::cout << "Going to create " << max_mem_pages_ << " pages of size: " << PAGE_SIZE << std::endl;
+
     // Step 1: Read every data page we have, load 'em into memory
     size_t file_offset = 0;
     for( ;; ) {

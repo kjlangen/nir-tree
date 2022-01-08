@@ -904,12 +904,6 @@ tree_node_handle quad_tree_style_load(
     for( uint64_t i = 0; i < x_lines.size()-1; i++ ) {
         uint64_t x_start = x_lines.at(i);
         uint64_t x_end = x_lines.at(i+1); /* not inclusive */
-
-        // Should include the x_start value, but not the x_end value.
-        // So check the value before and add nextafter() to make it fit
-        double x_val_lo = (*(start + x_start))[0];
-        double x_val_hi = nextafter( (*(start + x_end-1))[0], DBL_MAX );
-
         std::vector<uint64_t> y_lines = find_bounding_lines(
                  start + x_start, start + x_end, 1, tiles );
         for( uint64_t j = 0; j < y_lines.size()-1; j++ ) {
@@ -924,11 +918,26 @@ tree_node_handle quad_tree_style_load(
                 continue;
             }
 
-            // Same deal --- go to y_end, but don't include y_end.
-            double y_val_lo = (*(sub_start))[1];
-            double y_val_hi = nextafter( (*(sub_stop-1))[1], DBL_MAX );
+            tree_node_handle child_handle =  quad_tree_style_load(
+                tree,
+                sub_start,
+                sub_stop,
+                branch_factor,
+                cur_depth+1,
+                max_depth,
+                branch_handle,
+                overflow
+            );
 
-            Rectangle bbox( x_val_lo, y_val_lo, x_val_hi, y_val_hi );
+            Rectangle bbox;
+            if( child_handle.get_type() == LEAF_NODE ) {
+                auto leaf_node = allocator->get_tree_node<nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>>( child_handle );
+                bbox = leaf_node->boundingBox();
+            } else {
+                auto branch_node = allocator->get_tree_node<nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>>( child_handle );
+                bbox = branch_node->boundingBox();
+            }
+
             for( Rectangle &existing : existing_boxes ) {
                 if( bbox.intersectsRectangle( existing ) ) { 
                     std::cout << bbox << " intersects: " << existing <<
@@ -943,16 +952,6 @@ tree_node_handle quad_tree_style_load(
             }
             existing_boxes.push_back( bbox );
 
-            tree_node_handle child_handle =  quad_tree_style_load(
-                tree,
-                sub_start,
-                sub_stop,
-                branch_factor,
-                cur_depth+1,
-                max_depth,
-                branch_handle,
-                overflow
-            );
 
             nirtreedisk::Branch b;
             b.child = child_handle;
@@ -1008,18 +1007,18 @@ void bulk_load_tree(
     std::vector<Point> overflow;
     tree_node_handle root = quad_tree_style_load( tree_ptr, begin, end, max_branch_factor, 0, max_depth, nullptr, overflow );
     tree->root = root;
+    std::cout << "Root node: " << root << std::endl;
+    std::cout << "Node Type: " << (unsigned) root.get_type() << std::endl;
+
     std::cout << "After bulk insert, need to insert: " << overflow.size() << " points sequentially." << std::endl;
     std::cout << "KNOWN BUG, not inserting right not, don't keep results." << std::endl;
-    // FIXME: we aren't doing th
-/*
-    while( tree->hasReinsertedOnLevel.size() < max_depth ) {
+    while( tree->hasReinsertedOnLevel.size() <= max_depth ) {
         tree->hasReinsertedOnLevel.push_back( false );
     }
     for( const auto &p : overflow ) {
         tree->insert(p);
         std::cout << "Insert OK." << std::endl;
     }
-*/
     std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - begin_time);
     std::cout << "Bulk loading NIRTree took: " << delta.count() << std::endl;
@@ -1087,8 +1086,6 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         }
     }
 
-    // FIXME: need to make difference sizes and comparisons uint64_t's
-
     double bulk_load_pct = 1.0;
     uint64_t cut_off_bulk_load = std::floor(bulk_load_pct*all_points.size());
     std::cout << "Bulk loading " << cut_off_bulk_load << " points." << std::endl;
@@ -1101,14 +1098,15 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         // we are guaranteed that each generated rectangle is disjoint.
         nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
-                    40960*13000, backing_file );
+                    40960UL*130000UL, backing_file );
         std::cout << "Bulk Loading..." << std::endl;
+        std::cout << "Creating tree with " << 40960UL *130000UL << "bytes" << std::endl;
         bulk_load_tree( tree, configU, all_points.begin(), all_points.begin() + cut_off_bulk_load, 9 );
         std::cout << "Created NIRTree." << std::endl;
         spatialIndex = tree;
     } else if( configU["tree"] == R_STAR_TREE ) {
         rstartreedisk::RStarTreeDisk<5,9> *tree = new rstartreedisk::RStarTreeDisk<5,9>(
-                    40960*13000, backing_file );
+                    40960UL*130000UL, backing_file );
         std::cout << "Bulk Loading..." << std::endl;
         bulk_load_tree( tree, configU, all_points.begin(), all_points.begin() + cut_off_bulk_load, 9 );
         std::cout << "Created R*Tree" << std::endl;

@@ -28,6 +28,11 @@ Rectangle LEAF_NODE_CLASS_TYPES::boundingBox()
 {
     assert( this->cur_offset_ > 0 );
 
+    if( this->cur_offset_ <= 0 ) {
+        std::cout << "Node has no entries!" << std::endl;
+        abort();
+    }
+
     Point &p = entries.at(0);
     Rectangle bb(p, Point::closest_larger_point( p ) );
     for( unsigned i = 1; i < this->cur_offset_; i++ ) {
@@ -2404,7 +2409,6 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
     // Find the appropriate position for the entry
     // Should stop at appropriate depth level
     tree_node_handle current_handle = chooseNode( nodeEntry, stopping_level );
-
     tree_node_allocator *allocator = get_node_allocator( this->treeRef );
     SplitResult finalSplit;
     auto tree_ref_backup = treeRef;
@@ -2416,6 +2420,7 @@ tree_node_handle BRANCH_NODE_CLASS_TYPES::insert(
 
         finalSplit = adjustTreeSub( hasReinsertedOnLevel,
                 current_handle, treeRef  );
+
     } else {
         assert( current_handle.get_type() == BRANCH_NODE );
         auto current_node = treeRef->get_branch_node( current_handle );
@@ -3182,6 +3187,7 @@ std::pair<std::vector<Rectangle>, std::vector<Rectangle>> make_rectangles_disjoi
     Rectangle &b,
     tree_node_handle &b_node
 ) {
+
     assert( a_node != b_node );
     std::vector<Rectangle> ret_a_rects;
     std::vector<Rectangle> ret_b_rects;

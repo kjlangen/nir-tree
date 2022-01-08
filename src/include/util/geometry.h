@@ -58,6 +58,7 @@ class Point
                 if( not (local_point[d] > existing_point[d] ) ) {
                     std::cout << "existing point: " << existing_point[d]
                         << std::endl;
+                    abort();
                 }
                 assert( local_point[d] > existing_point[d] );
             }
