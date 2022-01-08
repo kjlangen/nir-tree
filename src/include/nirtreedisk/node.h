@@ -174,8 +174,6 @@ namespace nirtreedisk
         std::optional<std::pair<char *, int>> compute_compression_data(
             tree_node_allocator *existing_allocator
         ) {
-            return std::nullopt;
-#if 0
             if( std::holds_alternative<tree_node_handle>( boundingPoly ) ) {
                 tree_node_handle poly_handle = std::get<tree_node_handle>( boundingPoly );
                 auto poly_pin =
@@ -207,7 +205,6 @@ namespace nirtreedisk
             }
             free( compression_result.first );
             return std::nullopt;
-#endif
         }
 
         uint16_t repack_into(

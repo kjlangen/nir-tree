@@ -1579,6 +1579,7 @@ tree_node_handle repack_subtree(
                     } else {
                         for( unsigned r = 0; r < rect_count; r++ ) {
                             Rectangle *rect = (Rectangle *) (buffer + offset);
+                            (void) rect;
                             offset += sizeof(Rectangle);
                         }
                     }
@@ -3188,7 +3189,6 @@ std::pair<std::vector<Rectangle>, std::vector<Rectangle>> make_rectangles_disjoi
     tree_node_handle &b_node
 ) {
 
-    assert( a_node != b_node );
     std::vector<Rectangle> ret_a_rects;
     std::vector<Rectangle> ret_b_rects;
     if( not a.intersectsRectangle( b ) ) {
