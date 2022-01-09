@@ -8,6 +8,7 @@
 #define DefaultLeafNodeType nirtreedisk::LeafNode<3,7,nirtreedisk::LineMinimizeDownsplits>
 #define DefaultBranchNodeType nirtreedisk::BranchNode<3,7,nirtreedisk::LineMinimizeDownsplits>
 #define DefaulTreeType nirtreedisk::NIRTreeDisk<3,7, nirtreedisk::LineMinimizeDownsplits>
+#define DefaultTemplateParams 3,7, nirtreedisk::LineMinimizeDownsplits
 
 #define MeanBalancedNNType nirtreedisk::Node<3,7,nirtreedisk::LineMinimizeDistanceFromMean>
 #define MeanBalancedLeafNodeType nirtreedisk::LeafNode<3,7,nirtreedisk::LineMinimizeDistanceFromMean>
@@ -2165,6 +2166,152 @@ TEST_CASE( "NIRTreeDisk: DodgeRectangle NoOwnerIntersect A Yields" ) {
     unlink( "nirdiskbacked.txt" );
 }
 
+
+TEST_CASE("NIRTreeDisk: Unpack simple leaf node") {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto root_leaf_node = tree.get_leaf_node( tree.root );
+    REQUIRE( root_leaf_node->cur_offset_ == 5 );
+
+    REQUIRE( root_leaf_node->compute_packed_size() <
+            sizeof(DefaultLeafNodeType) );
+    REQUIRE( root_leaf_node->compute_packed_size() ==
+            sizeof(unsigned) + sizeof(Point) * 5 );
+
+    tree_node_handle repacked_handle = root_leaf_node->repack(
+            tree.node_allocator_.get() );
+
+    REQUIRE( repacked_handle != nullptr );
+    auto packed_leaf =
+        tree.node_allocator_->get_tree_node<packed_node>(
+                repacked_handle );
+    REQUIRE( * (unsigned *) (packed_leaf->buffer_) ==
+        root_leaf_node->cur_offset_ );
+
+    Point *p = (Point *) (packed_leaf->buffer_ + sizeof(unsigned));
+    REQUIRE( *(p++) == root_leaf_node->entries.at(0) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(1) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(2) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(3) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(4) );
+
+    tree_node_handle parent_handle( nullptr );
+    tree_node_handle unpacked_node_handle =
+        nirtreedisk::unpack<DefaultTemplateParams>( repacked_handle,
+                tree.node_allocator_.get(), &tree, parent_handle );
+    auto unpacked_node = tree.node_allocator_.get()->get_tree_node<DefaultLeafNodeType>( unpacked_node_handle );
+    REQUIRE( root_leaf_node->treeRef == &tree );
+    REQUIRE( unpacked_node->treeRef == root_leaf_node->treeRef );
+    REQUIRE( unpacked_node->parent == root_leaf_node->parent );
+    REQUIRE( unpacked_node->cur_offset_ == root_leaf_node->cur_offset_ );
+    REQUIRE( unpacked_node->level_ == root_leaf_node->level_ );
+
+    for (unsigned i = 0; i < unpacked_node->cur_offset_; i++) {
+        REQUIRE( unpacked_node->entries[i] == root_leaf_node->entries[i] );
+    }
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE("NIRTreeDisk: unpack complex inline polygon") {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>( NodeHandleType( BRANCH_NODE ) );
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>( NodeHandleType( LEAF_NODE ) );
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            alloc_branch_data.second, alloc_leaf_data.second, 0 );
+
+    auto branch_node = alloc_branch_data.first;
+    auto leaf_node = alloc_leaf_data.first;
+    auto leaf_handle = alloc_leaf_data.second;
+
+    IsotheticPolygon polygon( Rectangle(0.0,0.0,1.0,1.0) );
+    polygon.basicRectangles.push_back( Rectangle( 1.0, 2.0, 3.0, 4.0 ) );
+    polygon.basicRectangles.push_back( Rectangle( -1.0, -2.0, -3.0, -4.0 ) );
+    polygon.basicRectangles.push_back( Rectangle( 10.0, 10.0, 30.0, 40.0 ) );
+    polygon.basicRectangles.push_back( Rectangle( 1.0, 3.0, 3.0, 7.0 ) );
+    polygon.recomputeBoundingBox();
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(), leaf_handle );
+    std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk( polygon );
+    branch_node->addBranchToNode( b );
+
+    tree_node_handle packed_handle = branch_node->repack(
+            tree.node_allocator_.get(), tree.node_allocator_.get() ); 
+
+    auto packed_branch= tree.node_allocator_->get_tree_node<packed_node>(
+            packed_handle );
+    
+    size_t offset = 0;
+    REQUIRE( * (unsigned*) (packed_branch->buffer_ + offset) ==
+            branch_node->cur_offset_ );
+    offset += sizeof(unsigned);
+
+    //Entry 1
+    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
+            leaf_handle );
+    offset += sizeof(tree_node_handle);
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+            5U );
+    offset += sizeof(unsigned);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(0.0,0.0,1.0,1.0) );
+    offset += sizeof(Rectangle);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(1.0,2.0,3.0,4.0) );
+    offset += sizeof(Rectangle);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(-1.0,-2.0,-3.0,-4.0) );
+    offset += sizeof(Rectangle);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(10.0,10.0,30.0,40.0) );
+    offset += sizeof(Rectangle);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(1.0,3.0,3.0,7.0) );
+    offset += sizeof(Rectangle);
+
+    tree_node_handle parent_handle( nullptr );
+    tree_node_handle unpacked_node_handle =
+        nirtreedisk::unpack<DefaultTemplateParams>( packed_handle,
+                tree.node_allocator_.get(), &tree, parent_handle );
+    auto unpacked_node = tree.node_allocator_.get()->get_tree_node<DefaultBranchNodeType>( unpacked_node_handle );
+    REQUIRE( unpacked_node->treeRef == branch_node->treeRef );
+    REQUIRE( unpacked_node->parent == branch_node->parent );
+    REQUIRE( unpacked_node->cur_offset_ == branch_node->cur_offset_ );
+    REQUIRE( unpacked_node->level_ == branch_node->level_ );
+
+    for (unsigned i = 0; i < unpacked_node->cur_offset_; i++) {
+        nirtreedisk::Branch &b1 = unpacked_node->entries[i];
+        nirtreedisk::Branch &b2 = branch_node->entries[i];
+
+        REQUIRE( b1.child  ==  b2.child );
+        REQUIRE( std::holds_alternative<tree_node_handle>(b1.boundingPoly)
+                ==  std::holds_alternative<tree_node_handle>(b2.boundingPoly) );
+
+        if ( std::holds_alternative<tree_node_handle>(b1.boundingPoly) ) {
+            REQUIRE( std::get<tree_node_handle>(b1.boundingPoly)
+                ==  std::get<tree_node_handle>(b2.boundingPoly) );
+        } else {
+            REQUIRE( std::get<InlineBoundedIsotheticPolygon>(b1.boundingPoly)
+                ==  std::get<InlineBoundedIsotheticPolygon>(b2.boundingPoly) );
+        }
+    }
+    unlink( "nirdiskbacked.txt" );
+}
+
 TEST_CASE( "NIRTreeDisk: DodgeRectangle NoOwnerIntersect B Yields" ) {
     unlink( "nirdiskbacked.txt" );
 
@@ -2376,6 +2523,265 @@ TEST_CASE( "NIRTreeDisk: DodgeRectangle OwnershipIntersect space slice required"
 
     REQUIRE( poly.disjoint( poly2 ) );
 
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE("NIRTreeDisk: unpack out of line polygon") {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>( NodeHandleType( BRANCH_NODE ) );
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>( NodeHandleType( LEAF_NODE ) );
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            alloc_branch_data.second, alloc_leaf_data.second, 0 );
+
+    auto branch_node = alloc_branch_data.first;
+    auto leaf_node = alloc_leaf_data.first;
+    auto leaf_handle = alloc_leaf_data.second;
+
+    IsotheticPolygon polygon( Rectangle(0.0, 0.0, 1.0, 1.0) );
+    for( double i = 1.0; i < 30.0; i += 1.0 ) {
+        polygon.basicRectangles.push_back( Rectangle( i, i, i+1.0, i+1.0) );
+    }
+    polygon.recomputeBoundingBox();
+
+    auto alloc_poly_data = tree.node_allocator_->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            compute_sizeof_inline_unbounded_polygon(
+                polygon.basicRectangles.size()
+                 ), NodeHandleType(BIG_POLYGON));
+    new (&(*alloc_poly_data.first)) InlineUnboundedIsotheticPolygon(
+            tree.node_allocator_.get(), polygon.basicRectangles.size() );
+    alloc_poly_data.first->push_polygon_to_disk( polygon );
+
+    nirtreedisk::Branch b = createBranchEntry( alloc_poly_data.second, leaf_handle );
+    branch_node->addBranchToNode( b );
+
+    tree_node_handle packed_handle = branch_node->repack(
+            tree.node_allocator_.get(), tree.node_allocator_.get() ); 
+
+    auto packed_branch= tree.node_allocator_->get_tree_node<packed_node>(
+            packed_handle );
+
+    size_t offset = 0;
+    REQUIRE( * (unsigned*) (packed_branch->buffer_ + offset) ==
+            branch_node->cur_offset_ );
+    offset += sizeof(unsigned);
+
+    // Entry 1
+    tree_node_handle child_handle = * (tree_node_handle *)
+        (packed_branch->buffer_ + offset);
+    REQUIRE( child_handle == leaf_handle ); 
+    offset += sizeof( tree_node_handle );
+    bool is_compressed =
+        child_handle.get_associated_poly_is_compressed();
+    REQUIRE( is_compressed == true );
+    IsotheticPolygon decoded_poly =
+        decompress_polygon( (packed_branch->buffer_ + offset) );
+    REQUIRE( decoded_poly.basicRectangles.size() == 30 );
+    for( unsigned i = 0; i < decoded_poly.basicRectangles.size(); i++ ) {
+        REQUIRE( decoded_poly.basicRectangles.at(i) == Rectangle( i, i,
+                    i+1, i+1) );
+    }
+
+    tree_node_handle parent_handle( nullptr );
+    tree_node_handle unpacked_node_handle =
+        nirtreedisk::unpack<DefaultTemplateParams>( packed_handle,
+                tree.node_allocator_.get(), &tree, parent_handle );
+    auto unpacked_node = tree.node_allocator_.get()->get_tree_node<DefaultBranchNodeType>( unpacked_node_handle );
+    REQUIRE( unpacked_node->treeRef == branch_node->treeRef );
+    REQUIRE( unpacked_node->parent == branch_node->parent );
+    REQUIRE( unpacked_node->cur_offset_ == branch_node->cur_offset_ );
+    REQUIRE( unpacked_node->level_ == branch_node->level_ );
+
+    for (unsigned i = 0; i < unpacked_node->cur_offset_; i++) {
+        nirtreedisk::Branch &b1 = unpacked_node->entries[i];
+        nirtreedisk::Branch &b2 = branch_node->entries[i];
+
+        REQUIRE( b1.child  ==  b2.child );
+        REQUIRE( std::holds_alternative<tree_node_handle>(b1.boundingPoly)
+                ==  std::holds_alternative<tree_node_handle>(b2.boundingPoly) );
+
+        if ( std::holds_alternative<tree_node_handle>(b1.boundingPoly) ) {
+            auto poly1 = tree.node_allocator_->get_tree_node<InlineUnboundedIsotheticPolygon>( std::get<tree_node_handle>(b1.boundingPoly) );
+            auto poly2 = tree.node_allocator_->get_tree_node<InlineUnboundedIsotheticPolygon>( std::get<tree_node_handle>(b2.boundingPoly) );
+
+            auto it1 = poly1->begin();
+            auto it2 = poly2->begin();
+
+            while (it1 != poly1->end() && it2 != poly2->end()) {
+                REQUIRE( *it1 == *it2 );
+                it1++;
+                it2++;
+            }
+
+            REQUIRE( it1 == poly1->end() );
+            REQUIRE( it2 == poly2->end() );
+        } else {
+            REQUIRE( std::get<InlineBoundedIsotheticPolygon>(b1.boundingPoly)
+                ==  std::get<InlineBoundedIsotheticPolygon>(b2.boundingPoly) );
+        }
+    }
+
+    unlink("nirdiskbacked.txt");
+}
+
+TEST_CASE("NIRTreeDisk: unpack branch node all inline") {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>( NodeHandleType( BRANCH_NODE ) );
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>( NodeHandleType( LEAF_NODE ) );
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            alloc_branch_data.second, alloc_leaf_data.second, 0 );
+
+    auto branch_node = alloc_branch_data.first;
+    auto leaf_node = alloc_leaf_data.first;
+    auto leaf_handle = alloc_leaf_data.second;
+
+    // Add five different branches for the same leaf.
+    // This isn't valid in practice but for testing purposes it is fine.
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(
+                Rectangle(0.0, 0.0, 1.0, 1.0)), leaf_handle );
+    branch_node->addBranchToNode( b );
+    b = createBranchEntry( InlineBoundedIsotheticPolygon(
+                Rectangle(0.0, 0.0, 2.0, 2.0)), leaf_handle );
+    branch_node->addBranchToNode( b );
+    b = createBranchEntry( InlineBoundedIsotheticPolygon(
+                Rectangle(0.0, 0.0, 3.0, 3.0)), leaf_handle );
+    branch_node->addBranchToNode( b );
+    b = createBranchEntry( InlineBoundedIsotheticPolygon(
+                Rectangle(0.0, 0.0, 4.0, 4.0)), leaf_handle );
+    branch_node->addBranchToNode( b );
+    b = createBranchEntry( InlineBoundedIsotheticPolygon(
+                Rectangle(0.0, 0.0, 5.0, 5.0)), leaf_handle );
+    branch_node->addBranchToNode( b );
+
+    REQUIRE( branch_node->cur_offset_ == 5 );
+
+    tree_node_handle packed_handle = branch_node->repack(
+            tree.node_allocator_.get(), tree.node_allocator_.get() );
+    REQUIRE( packed_handle != nullptr );
+
+    auto packed_branch= tree.node_allocator_->get_tree_node<packed_node>(
+            packed_handle );
+    
+    size_t offset = 0;
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+            branch_node->cur_offset_ );
+    offset += sizeof(unsigned);
+
+    // There are 5 entries
+
+    //Entry 1
+    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
+            leaf_handle );
+    offset += sizeof(tree_node_handle);
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+            1U );
+    offset += sizeof(unsigned);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(0.0,0.0,1.0,1.0) );
+    offset += sizeof(Rectangle);
+
+    //Entry 2
+    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
+            leaf_handle );
+    offset += sizeof(tree_node_handle);
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+            1U );
+    offset += sizeof(unsigned);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(0.0,0.0,2.0,2.0) );
+    offset += sizeof(Rectangle);
+
+    //Entry 3
+    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
+            leaf_handle );
+    offset += sizeof(tree_node_handle);
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+            1U );
+    offset += sizeof(unsigned);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(0.0,0.0,3.0,3.0) );
+    offset += sizeof(Rectangle);
+
+    //Entry 4
+    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
+            leaf_handle );
+    offset += sizeof(tree_node_handle);
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+            1U );
+    offset += sizeof(unsigned);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(0.0,0.0,4.0,4.0) );
+    offset += sizeof(Rectangle);
+
+    //Entry 5
+    REQUIRE( * (tree_node_handle *) (packed_branch->buffer_ + offset) ==
+            leaf_handle );
+    offset += sizeof(tree_node_handle);
+    REQUIRE( * (unsigned *) (packed_branch->buffer_ + offset) ==
+            1U );
+    offset += sizeof(unsigned);
+    REQUIRE( * (Rectangle *) (packed_branch->buffer_ + offset) ==
+            Rectangle(0.0,0.0,5.0,5.0) );
+    offset += sizeof(Rectangle);
+
+    tree_node_handle parent_handle( nullptr );
+    tree_node_handle unpacked_node_handle =
+        nirtreedisk::unpack<DefaultTemplateParams>( packed_handle,
+                tree.node_allocator_.get(), &tree, parent_handle );
+    auto unpacked_node = tree.node_allocator_.get()->get_tree_node<DefaultBranchNodeType>( unpacked_node_handle );
+    REQUIRE( unpacked_node->treeRef == branch_node->treeRef );
+    REQUIRE( unpacked_node->parent == branch_node->parent );
+    REQUIRE( unpacked_node->cur_offset_ == branch_node->cur_offset_ );
+    REQUIRE( unpacked_node->level_ == branch_node->level_ );
+
+    for (unsigned i = 0; i < unpacked_node->cur_offset_; i++) {
+        nirtreedisk::Branch &b1 = unpacked_node->entries[i];
+        nirtreedisk::Branch &b2 = branch_node->entries[i];
+
+        REQUIRE( b1.child  ==  b2.child );
+        REQUIRE( std::holds_alternative<tree_node_handle>(b1.boundingPoly)
+                ==  std::holds_alternative<tree_node_handle>(b2.boundingPoly) );
+
+        if ( std::holds_alternative<tree_node_handle>(b1.boundingPoly) ) {
+            auto poly1 = tree.node_allocator_->get_tree_node<InlineUnboundedIsotheticPolygon>( std::get<tree_node_handle>(b1.boundingPoly) );
+            auto poly2 = tree.node_allocator_->get_tree_node<InlineUnboundedIsotheticPolygon>( std::get<tree_node_handle>(b2.boundingPoly) );
+
+            auto it1 = poly1->begin();
+            auto it2 = poly2->begin();
+
+            while (it1 != poly1->end() && it2 != poly2->end()) {
+                REQUIRE( *it1 == *it2 );
+                it1++;
+                it2++;
+            }
+
+            REQUIRE( it1 == poly1->end() );
+            REQUIRE( it2 == poly2->end() );
+        } else {
+            REQUIRE( std::get<InlineBoundedIsotheticPolygon>(b1.boundingPoly)
+                ==  std::get<InlineBoundedIsotheticPolygon>(b2.boundingPoly) );
+        }
+    }
 
     unlink( "nirdiskbacked.txt" );
 }
@@ -2569,11 +2975,6 @@ TEST_CASE( "NIRTreeDisk: DodgeRectangle OwnershipIntersect vertical slice last e
     auto res = nirtreedisk::make_rectangles_disjoint_accounting_for_region_ownership(
         &tree, a_rect, a_handle, b_rect, b_handle );
 
-    std::cout << "Rects." << std::endl;
-    for( Rectangle r : res.first ) {
-        std::cout << r << std::endl;
-    }
-
     REQUIRE( res.first.size() == 4 );
     Rectangle decomp_a_first( 0.0, 0.0, 1.0, nextafter(2.0,DBL_MAX) );
     Rectangle decomp_a_second( 1.0, 0.0, nextafter(2.0,DBL_MAX), 1.0 );
@@ -2701,6 +3102,501 @@ TEST_CASE( "NIRTreeDisk: DodgeRectangle Bug1" ) {
     poly2.recomputeBoundingBox();
 
     REQUIRE( poly.disjoint( poly2 ) );
+
+
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE("NIRTreeDisk: unpack in a small out of band polygon") {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>( NodeHandleType( BRANCH_NODE ) );
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>( NodeHandleType( LEAF_NODE ) );
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            alloc_branch_data.second, alloc_leaf_data.second, 0 );
+
+    auto branch_node = alloc_branch_data.first;
+    auto leaf_node = alloc_leaf_data.first;
+    auto leaf_handle = alloc_leaf_data.second;
+
+    // This is small enough to fit
+    IsotheticPolygon polygon( Rectangle(0.0, 0.0, 1.0, 1.0) );
+    for( double i = 1.0; i < 20.0; i += 1.0 ) {
+        polygon.basicRectangles.push_back( Rectangle( i, i, i+1.0,
+                    i+1.0) );
+    }
+    polygon.recomputeBoundingBox();
+
+    auto alloc_poly_data = tree.node_allocator_->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            compute_sizeof_inline_unbounded_polygon(
+                polygon.basicRectangles.size()
+                 ), NodeHandleType(BIG_POLYGON));
+    new (&(*alloc_poly_data.first)) InlineUnboundedIsotheticPolygon(
+            tree.node_allocator_.get(), polygon.basicRectangles.size() );
+    alloc_poly_data.first->push_polygon_to_disk( polygon );
+
+    nirtreedisk::Branch b = createBranchEntry( alloc_poly_data.second, leaf_handle );
+    branch_node->addBranchToNode( b );
+
+    // too big, should be out of line
+    IsotheticPolygon polygon2( Rectangle(0.0, 0.0, 1.0, 1.0) );
+    for( double i = 1.0; i < 30.0; i += 1.0 ) {
+        polygon2.basicRectangles.push_back( Rectangle( i, i, i+1.0,
+                    i+1.0) );
+    }
+    polygon2.recomputeBoundingBox();
+
+    alloc_poly_data = tree.node_allocator_->create_new_tree_node<InlineUnboundedIsotheticPolygon>(
+            compute_sizeof_inline_unbounded_polygon(
+                polygon2.basicRectangles.size()
+                 ), NodeHandleType(BIG_POLYGON));
+    new (&(*alloc_poly_data.first)) InlineUnboundedIsotheticPolygon(
+            tree.node_allocator_.get(), polygon2.basicRectangles.size() );
+    alloc_poly_data.first->push_polygon_to_disk( polygon2 );
+
+    b = createBranchEntry( alloc_poly_data.second, leaf_handle );
+    branch_node->addBranchToNode( b );
+
+    tree_node_handle packed_handle = branch_node->repack(
+            tree.node_allocator_.get(), tree.node_allocator_.get() ); 
+
+    auto packed_branch= tree.node_allocator_->get_tree_node<packed_node>(
+            packed_handle );
+
+    size_t offset = 0;
+    REQUIRE( * (unsigned*) (packed_branch->buffer_ + offset) ==
+            branch_node->cur_offset_ );
+    offset += sizeof(unsigned);
+
+    // Entry 1
+    int new_offset = 0;
+    tree_node_handle child_handle = * (tree_node_handle *)
+        (packed_branch->buffer_ + offset);
+    REQUIRE( child_handle == leaf_handle ); 
+    REQUIRE( child_handle.get_associated_poly_is_compressed() == true );
+    offset += sizeof( tree_node_handle );
+
+    IsotheticPolygon child_poly = decompress_polygon(
+            packed_branch->buffer_ + offset, &new_offset );
+    REQUIRE( child_poly.basicRectangles.size() == 20 );
+    offset += new_offset;
+
+    child_handle = * (tree_node_handle *)
+        (packed_branch->buffer_ + offset);
+    REQUIRE( child_handle == leaf_handle ); 
+    REQUIRE( child_handle.get_associated_poly_is_compressed() == true );
+    offset += sizeof( tree_node_handle );
+
+    child_poly = decompress_polygon( packed_branch->buffer_ + offset );
+    REQUIRE( child_poly.basicRectangles.size() == 30 );
+
+
+    tree_node_handle parent_handle(nullptr);
+    tree_node_handle unpacked_node_handle =
+        nirtreedisk::unpack<DefaultTemplateParams>( packed_handle,
+                tree.node_allocator_.get(), &tree, parent_handle  );
+    auto unpacked_node = tree.node_allocator_.get()->get_tree_node<DefaultBranchNodeType>( unpacked_node_handle );
+    REQUIRE( unpacked_node->treeRef == branch_node->treeRef );
+    REQUIRE( unpacked_node->parent == branch_node->parent );
+    REQUIRE( unpacked_node->cur_offset_ == branch_node->cur_offset_ );
+    REQUIRE( unpacked_node->level_ == branch_node->level_ );
+
+    for (unsigned i = 0; i < unpacked_node->cur_offset_; i++) {
+        nirtreedisk::Branch &b1 = unpacked_node->entries[i];
+        nirtreedisk::Branch &b2 = branch_node->entries[i];
+
+        REQUIRE( b1.child  ==  b2.child );
+        REQUIRE( std::holds_alternative<tree_node_handle>(b1.boundingPoly)
+                ==  std::holds_alternative<tree_node_handle>(b2.boundingPoly) );
+
+        if ( std::holds_alternative<tree_node_handle>(b1.boundingPoly) ) {
+            auto poly1 = tree.node_allocator_->get_tree_node<InlineUnboundedIsotheticPolygon>( std::get<tree_node_handle>(b1.boundingPoly) );
+            auto poly2 = tree.node_allocator_->get_tree_node<InlineUnboundedIsotheticPolygon>( std::get<tree_node_handle>(b2.boundingPoly) );
+
+            auto it1 = poly1->begin();
+            auto it2 = poly2->begin();
+
+            while (it1 != poly1->end() && it2 != poly2->end()) {
+                REQUIRE( *it1 == *it2 );
+                it1++;
+                it2++;
+            }
+
+            REQUIRE( it1 == poly1->end() );
+            REQUIRE( it2 == poly2->end() );
+        } else {
+            REQUIRE( std::get<InlineBoundedIsotheticPolygon>(b1.boundingPoly)
+                ==  std::get<InlineBoundedIsotheticPolygon>(b2.boundingPoly) );
+        }
+    }
+
+    unlink("nirdiskbacked.txt");
+}
+
+TEST_CASE( "NIRTreeDisk: Repack subtree and then insert" ) {
+
+    unlink( "nirdiskbacked.txt" );
+
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    auto alloc_branch_data = tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+            NodeHandleType(BRANCH_NODE));
+    auto branch_handle = alloc_branch_data.second;
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node = alloc_branch_data.first;
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node1 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node2 = alloc_leaf_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+            NodeHandleType(LEAF_NODE));
+    new (&(*alloc_leaf_data.first)) DefaultLeafNodeType( &tree,
+            branch_handle, alloc_leaf_data.second, 0 );
+    auto leaf_node3 = alloc_leaf_data.first;
+
+    leaf_node1->addPoint( Point(1,1) );
+    leaf_node1->addPoint( Point(2,2) );
+    leaf_node1->addPoint( Point(3,3) );
+    leaf_node1->addPoint( Point(4,4) );
+    leaf_node1->addPoint( Point(5,5) );
+
+    Rectangle rect1(1,1,nextafter(1,DBL_MAX),nextafter(5, DBL_MAX));
+    Rectangle rect2(7,1,nextafter(20, DBL_MAX),nextafter(1,DBL_MAX));
+    Rectangle rect3(-100,-100, -20, -20);
+    Rectangle rect4(1,1,nextafter(5,DBL_MAX),nextafter(5,DBL_MAX));
+    IsotheticPolygon polygon( rect1 );
+    polygon.basicRectangles.push_back( rect2 );
+    polygon.basicRectangles.push_back( rect3 );
+    polygon.basicRectangles.push_back( rect4 );
+    polygon.recomputeBoundingBox();
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(),
+            leaf_node1->self_handle_ );
+    std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+            ).push_polygon_to_disk( polygon );
+    branch_node->addBranchToNode( b );
+
+    leaf_node2->addPoint( Point(6,6) );
+    leaf_node2->addPoint( Point(7,7) );
+    leaf_node2->addPoint( Point(8,8) );
+    leaf_node2->addPoint( Point(9,9) );
+    leaf_node2->addPoint( Point(10,10) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node2->boundingBox()),
+            leaf_node2->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    leaf_node3->addPoint( Point(11,11) );
+    leaf_node3->addPoint( Point(12,12) );
+    leaf_node3->addPoint( Point(13,13) );
+    leaf_node3->addPoint( Point(14,14) );
+    leaf_node3->addPoint( Point(15,15) );
+    b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(leaf_node3->boundingBox()),
+            leaf_node3->self_handle_ );
+    branch_node->addBranchToNode( b );
+
+    auto packed_branch_handle =
+        nirtreedisk::repack_subtree<3,7,nirtreedisk::LineMinimizeDownsplits>( branch_handle,
+            tree.node_allocator_.get(), tree.node_allocator_.get() );
+
+    for( unsigned i = 1; i < 20; i++ ) {
+        Point p(i,i);
+        if( i < 16 ) {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 1 );
+        } else {
+            REQUIRE( point_search( packed_branch_handle, p, &tree ).size() == 0 );
+        }
+    }
+
+    // Note: Branch handle is the root
+    tree.root = packed_branch_handle;
+    auto b_node = tree.get_branch_node(packed_branch_handle);
+    Point p(68, 68);
+    tree.insert(p);
+
+    REQUIRE( point_search( tree.root, p, &tree ).size() == 1 );
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE("NIRTreeDisk: insert after pack simple leaf node") {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto root_leaf_node = tree.get_leaf_node( tree.root );
+    REQUIRE( root_leaf_node->cur_offset_ == 5 );
+
+    REQUIRE( root_leaf_node->compute_packed_size() <
+            sizeof(DefaultLeafNodeType) );
+    REQUIRE( root_leaf_node->compute_packed_size() ==
+            sizeof(unsigned) + sizeof(Point) * 5 );
+
+    tree_node_handle repacked_handle = root_leaf_node->repack(
+            tree.node_allocator_.get() );
+
+    REQUIRE( repacked_handle != nullptr );
+    auto packed_leaf =
+        tree.node_allocator_->get_tree_node<packed_node>(
+                repacked_handle );
+    REQUIRE( * (unsigned *) (packed_leaf->buffer_ ) ==
+        root_leaf_node->cur_offset_ );
+
+    Point *p = (Point *) (packed_leaf->buffer_ + sizeof(unsigned) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(0) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(1) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(2) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(3) );
+    REQUIRE( *(p++) == root_leaf_node->entries.at(4) );
+
+
+    Point p1(42, 42);
+    auto in = std::variant<nirtreedisk::Branch, Point>(p1);
+
+    std::vector<bool> hasReinsertedOnLevel = {false};
+    tree.root = repacked_handle;
+    repacked_handle = tree.get_leaf_node(repacked_handle, true)->insert(p1, hasReinsertedOnLevel);
+    REQUIRE( tree.search(p1).size() == 1 );
+    REQUIRE( point_search( repacked_handle, p1, &tree ).size() == 1 );
+    unlink( "nirdiskbacked.txt" );
+}
+
+TEST_CASE("NIRTreeDisk: Insert after searching packed leaf from branch." ) {
+
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+    for( unsigned i = 0; i < 5; i++ ) {
+        tree.insert( Point(i,i) );
+    }
+
+    auto root_leaf_node = tree.get_leaf_node( tree.root );
+    REQUIRE( root_leaf_node->cur_offset_ == 5 );
+
+    REQUIRE( root_leaf_node->compute_packed_size() <
+            sizeof(DefaultLeafNodeType) );
+    REQUIRE( root_leaf_node->compute_packed_size() ==
+            sizeof(unsigned) + sizeof(Point) * 5 );
+
+    tree_node_handle repacked_handle = root_leaf_node->repack(
+            tree.node_allocator_.get() );
+    repacked_handle.set_type(
+            NodeHandleType(REPACKED_LEAF_NODE) );
+
+    REQUIRE( repacked_handle != nullptr );
+    auto packed_leaf =
+        tree.node_allocator_->get_tree_node<packed_node>(
+                repacked_handle );
+
+    auto alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+                NodeHandleType(BRANCH_NODE));
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+
+    auto branch_node = alloc_branch_data.first;
+
+    nirtreedisk::Branch b = createBranchEntry(
+            InlineBoundedIsotheticPolygon(root_leaf_node->boundingBox()),
+            tree.root );
+    branch_node->addBranchToNode( b );
+
+    for( int i = 0; i < 7; i++ ) {
+        Point p( i, i );
+        auto vec = point_search( branch_node->self_handle_, p, &tree );
+        if( i < 5 ) {
+            REQUIRE( vec.size() == 1 );
+        } else {
+            REQUIRE( vec.size() == 0 );
+        }
+    }
+
+    // So the branch is unpacked but the leaf is repacked.
+    Point p(68, 68);
+    auto in = std::variant<nirtreedisk::Branch, Point>(p);
+    std::vector<bool> hasReinsertedOnLevel = {false, false};
+
+    branch_node->insert(in, hasReinsertedOnLevel);
+    REQUIRE( point_search( branch_node->self_handle_, p, &tree ).size() == 1 );
+    unlink( "nirdiskbacked.txt");
+}
+
+TEST_CASE("NIRTreeDisk: Find parent tests repack." ) {
+    unlink( "nirdiskbacked.txt" );
+    DefaulTreeType tree( 4096*5, "nirdiskbacked.txt" );
+
+    auto alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+                NodeHandleType(LEAF_NODE) );
+    new (&(*(alloc_leaf_data.first))) DefaultLeafNodeType( &tree,
+            tree_node_handle(nullptr), alloc_leaf_data.second, 0 );
+
+    auto leaf_node1 = alloc_leaf_data.first;
+    leaf_node1->addPoint( Point(0.0,0.0) );
+    leaf_node1->addPoint( Point(1.0,1.0) );
+    leaf_node1->addPoint( Point(2.0,2.0) );
+    leaf_node1->addPoint( Point(3.0,3.0) );
+    leaf_node1->addPoint( Point(4.0,4.0) );
+
+    alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+                NodeHandleType(LEAF_NODE) );
+    new (&(*(alloc_leaf_data.first))) DefaultLeafNodeType( &tree,
+            tree_node_handle(nullptr), alloc_leaf_data.second, 0 );
+
+    auto leaf_node2 = alloc_leaf_data.first;
+    leaf_node2->addPoint( Point(10.0,10.0) );
+    leaf_node2->addPoint( Point(11.0,11.0) );
+    leaf_node2->addPoint( Point(12.0,12.0) );
+    leaf_node2->addPoint( Point(13.0,13.0) );
+    leaf_node2->addPoint( Point(14.0,14.0) );
+
+
+
+    auto alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+                NodeHandleType(BRANCH_NODE));
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node1 = alloc_branch_data.first;
+
+    leaf_node1->parent = branch_node1->self_handle_;
+    leaf_node2->parent = branch_node1->self_handle_;
+
+    {
+        nirtreedisk::Branch b;
+        b.child = leaf_node1->self_handle_;
+        std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk(IsotheticPolygon(leaf_node1->boundingBox()));
+
+        branch_node1->addBranchToNode( b );
+    }
+    {
+        nirtreedisk::Branch b;
+        b.child = leaf_node2->self_handle_;
+        std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk(IsotheticPolygon(leaf_node2->boundingBox()));
+
+        branch_node1->addBranchToNode( b );
+    }
+
+    alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+                NodeHandleType(BRANCH_NODE));
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto wrong_branch = alloc_branch_data.first;
+
+    alloc_leaf_data =
+        tree.node_allocator_->create_new_tree_node<DefaultLeafNodeType>(
+                NodeHandleType(LEAF_NODE) );
+    new (&(*(alloc_leaf_data.first))) DefaultLeafNodeType( &tree,
+            tree_node_handle(nullptr), alloc_leaf_data.second, 0 );
+
+    // This will match to force multi-node search
+    // when trying to find the parent
+    auto leaf_node3 = alloc_leaf_data.first;
+    leaf_node3->addPoint( Point(-1.0,-1.0) );
+    leaf_node3->addPoint( Point(20.0,20.0) );
+
+    leaf_node3->parent = wrong_branch->self_handle_;
+    {
+        nirtreedisk::Branch b;
+        b.child = leaf_node3->self_handle_;
+        std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk(IsotheticPolygon(leaf_node3->boundingBox()));
+
+        wrong_branch->addBranchToNode( b );
+    }
+
+    alloc_branch_data =
+        tree.node_allocator_->create_new_tree_node<DefaultBranchNodeType>(
+                NodeHandleType(BRANCH_NODE));
+    new (&(*alloc_branch_data.first)) DefaultBranchNodeType( &tree,
+            tree_node_handle(nullptr), alloc_branch_data.second, 1 );
+    auto branch_node2 = alloc_branch_data.first;
+
+    branch_node1->parent = branch_node2->self_handle_;
+
+    {
+        nirtreedisk::Branch b;
+        b.child = wrong_branch->self_handle_;
+        std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk(IsotheticPolygon(wrong_branch->boundingBox()));
+
+        branch_node2->addBranchToNode( b );
+    }
+    {
+        nirtreedisk::Branch b;
+        b.child = branch_node1->self_handle_;
+        std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk(IsotheticPolygon(branch_node1->boundingBox()));
+        branch_node2->addBranchToNode( b );
+    }
+
+    auto packed_branch_handle =
+        nirtreedisk::repack_subtree<3,7,nirtreedisk::LineMinimizeDownsplits>(
+                branch_node2->self_handle_,
+            tree.node_allocator_.get(), tree.node_allocator_.get() );
+
+    tree.root = packed_branch_handle; 
+
+    // Get child handles
+    auto packed_branch =
+        tree.node_allocator_->get_tree_node<packed_node>(
+                packed_branch_handle );
+    char *buffer = packed_branch->buffer_;
+    decode_entry_count_and_offset_packed_node( buffer );
+    auto packed_wrong_branch_handle = * (tree_node_handle *) (buffer + offset);
+    offset += sizeof( tree_node_handle );
+    REQUIRE( packed_wrong_branch_handle.get_associated_poly_is_compressed() == false );
+    REQUIRE( * (unsigned *) (buffer+offset) == 1U ); // 1 rect
+    offset += sizeof( unsigned );
+    offset += sizeof( Rectangle ); // skip rectangle
+    auto packed_correct_branch_handle = * (tree_node_handle *) (buffer + offset);
+
+    packed_branch =
+        tree.node_allocator_->get_tree_node<packed_node>(
+                packed_correct_branch_handle );
+    buffer = packed_branch->buffer_;
+    count = 2;
+    offset = sizeof(unsigned);
+    auto packed_leaf_handle1 = * (tree_node_handle *) (buffer + offset);
+    offset += sizeof( tree_node_handle );
+    REQUIRE( packed_leaf_handle1.get_associated_poly_is_compressed() == false );
+    REQUIRE( * (unsigned *) (buffer+offset) == 1U ); // 1 rect
+    offset += sizeof( unsigned );
+    offset += sizeof( Rectangle ); // skip rectangle
+    auto packed_leaf_handle2= * (tree_node_handle *) (buffer + offset);
+
+    REQUIRE( tree.get_parent_handle_for_repacked_node( packed_leaf_handle1 )
+            == packed_correct_branch_handle );
+    REQUIRE( tree.get_parent_handle_for_repacked_node(
+                packed_leaf_handle2 ) == packed_correct_branch_handle );
+    REQUIRE( tree.get_parent_handle_for_repacked_node(
+                packed_correct_branch_handle ) == packed_branch_handle );
+    REQUIRE( tree.get_parent_handle_for_repacked_node(
+                packed_wrong_branch_handle ) == packed_branch_handle );
+    REQUIRE( tree.get_parent_handle_for_repacked_node(
+                packed_branch_handle ) == tree_node_handle(nullptr) );
 
 
     unlink( "nirdiskbacked.txt" );

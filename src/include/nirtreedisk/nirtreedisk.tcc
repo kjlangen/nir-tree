@@ -15,15 +15,7 @@
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 std::vector<Point> NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::exhaustiveSearch( Point requestedPoint ) {
-    std::vector<Point> v;
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_node = get_leaf_node( root );
-        root_node->exhaustiveSearch( requestedPoint, v );
-    } else {
-        auto root_node = get_branch_node( root );
-        root_node->exhaustiveSearch( requestedPoint, v );
-    }
-    return v;
+    return point_search( root, requestedPoint, this );
 }
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
@@ -41,11 +33,11 @@ NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::search( Rectangle req
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::insert( Point givenPoint ) {
     std::fill( hasReinsertedOnLevel.begin(), hasReinsertedOnLevel.end(), false );
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_node = get_leaf_node( root );
+    if( root.get_type() == LEAF_NODE || root.get_type() == REPACKED_LEAF_NODE ) {
+        auto root_node = get_leaf_node( root, true );
         root = root_node->insert(givenPoint, hasReinsertedOnLevel);
     } else {
-        auto root_node = get_branch_node( root );
+        auto root_node = get_branch_node( root, true );
         std::variant<Branch,Point> entry = givenPoint;
         root = root_node->insert(entry, hasReinsertedOnLevel);
     }
@@ -53,7 +45,7 @@ void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::insert( Point gi
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::remove( Point givenPoint ) {
-    if( root.get_type() == LEAF_NODE ) {
+    if( root.get_type() == LEAF_NODE || root.get_type() == REPACKED_LEAF_NODE ) {
         auto root_node = get_leaf_node( root );
         root = root_node->remove( givenPoint );
     } else {
@@ -64,7 +56,7 @@ void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::remove( Point gi
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 unsigned NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::checksum() {
-    if( root.get_type() == LEAF_NODE ) {
+    if( root.get_type() == LEAF_NODE || root.get_type() == REPACKED_LEAF_NODE ) {
         auto root_node = get_leaf_node( root );
         return root_node->checksum();
     } else {
@@ -75,7 +67,7 @@ unsigned NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::checksum() {
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 bool NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::validate() {
-    if( root.get_type() == LEAF_NODE ) {
+    if( root.get_type() == LEAF_NODE || root.get_type() == REPACKED_LEAF_NODE ) {
         auto root_node = get_leaf_node( root );
         root_node->bounding_box_validate();
         return root_node->validate( tree_node_handle(nullptr), 0 );
@@ -93,11 +85,11 @@ void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::stat() {
 
 template <int min_branch_factor, int max_branch_factor, class strategy>
 void NIRTreeDisk<min_branch_factor,max_branch_factor,strategy>::print() {
-    if( root.get_type() == LEAF_NODE ) {
-        auto root_node = get_leaf_node( root );
+    if( root.get_type() == LEAF_NODE || root.get_type() == REPACKED_LEAF_NODE ) {
+        auto root_node = get_leaf_node( root, false );
         root_node->printTree();
     } else {
-        auto root_node = get_branch_node( root );
+        auto root_node = get_branch_node( root, false );
         root_node->printTree();
     }
 }

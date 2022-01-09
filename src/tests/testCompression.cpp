@@ -435,11 +435,6 @@ TEST_CASE( "Compression: real compression/decompress workflow" ) {
                 rectangles.at(i) );
     }
 
-    std::cout << "SIZE: " << sizeof(Rectangle)*rectangles.size() <<
-        std::endl;
-    std::cout << "Compressed size: " << compress_result.second <<
-        std::endl;
-
 }
 
 
@@ -502,20 +497,3 @@ TEST_CASE( "Compression: Interpret Tag Bits" ) {
     REQUIRE( tag == SHORT );
     REQUIRE( offset_mask == 5 );
 }
-
-/*
-TEST_CASE( "Compression: endian test" ) {
-    double d1 = -122.06309149999998453;
-    double d2 = -122.04237399999999525;
-    uint64_t *i1 = (uint64_t *) &d1;
-    uint64_t *i2 = (uint64_t *) &d2;
-    uint64_t bytes = htonl(*i1 ^ *i2);
-    std::cout << bytes << std::endl;
-    std::cout << log2( bytes ) << std::endl;
-    std::cout << log2( *i1 ^ *i2 ) << std::endl;
-    std::cout << std::bitset<64>(*i1) << std::endl;
-    std::cout << std::bitset<64>(*i2) << std::endl;
-    std::cout << std::bitset<64>(bytes) << std::endl;
-    std::cout << std::bitset<64>(*i1 ^ *i2) << std::endl;
-}
-*/

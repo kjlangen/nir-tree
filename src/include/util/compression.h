@@ -156,7 +156,6 @@ std::pair<char *, int> compress_polygon( iter begin, iter end, unsigned rectangl
             sizeof(double)*dimensions + sizeof(uint16_t) +
             rectangle_count*2*dimensions*1 ;
     char *buffer = (char *) malloc( sz );
-    std::cout << "Created buffer of size: " << sz << std::endl;
     assert( rectangle_count <= std::numeric_limits<uint16_t>::max() );
     uint16_t shrunk_count = (uint16_t) rectangle_count;
     int offset = 0;
@@ -170,7 +169,6 @@ std::pair<char *, int> compress_polygon( iter begin, iter end, unsigned rectangl
     if( bit_mask_offset != 0 ) {
         offset++;
     }
-    std::cout << "Stopped at: " << offset << std::endl;
     return std::make_pair( buffer, offset );
 }
 

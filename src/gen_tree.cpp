@@ -810,14 +810,11 @@ std::vector<uint64_t> find_bounding_lines(
     uint64_t count = stop-start;
     uint64_t rough_point_count_per_partition = count / partitions;
 
-    uint64_t partition_start_offset = 0;
-
     for( uint64_t created_partitions = 0; created_partitions <
             partitions-1; created_partitions++ ) {
 
         // This is roughly where the line should go
         uint64_t line_bound = (created_partitions+1)*rough_point_count_per_partition;
-        auto partition_start_iter = start + partition_start_offset;
 
         // Push forward if other stuff line on this point
         double val = (*(start + line_bound))[d];
@@ -834,9 +831,8 @@ std::vector<uint64_t> find_bounding_lines(
             line_bound++;
         }
         lines.push_back( line_bound ); // Not inclusive
-
-        partition_start_offset = line_bound;
     }
+
     lines.push_back( count ); // Not inclusive
 
 
@@ -1115,12 +1111,12 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         abort();
     }
 
-	double totalTimeInserts = 0.0;
-
 #if 0
     // FIXME: This is going to be a problem --- we can't naively sequential insert because
     // we need to repack the data above. If we don't, then the NIR-Tree can be absolutely massive in size because
     // of all the gaps in nodes.
+
+	double totalTimeInserts = 0.0;
 
     // So we would need to be able to "unpack" stuff as required for insert, and then repack.
     std::cout << "Going to insert." << std::endl;

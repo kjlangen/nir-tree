@@ -2115,8 +2115,6 @@ TEST_CASE( "Test simplify real poly" ) {
             polygon2.basicRectangles.size() );
     REQUIRE( polygon.boundingBox == polygon2.boundingBox );
 
-    std::cout << compute_sizeof_inline_unbounded_polygon(
-            MAX_RECTANGLE_COUNT + 1 ) << std::endl;
 }
 
 TEST_CASE("Test computeExpansionArea given Point: Bounded") {
@@ -2376,8 +2374,6 @@ tree_node_allocator allocator( 10 * PAGE_SIZE, "file_backing.db" );
     local_poly_bounded.recomputeBoundingBox();
     inline_poly_bounded.push_polygon_to_disk( local_poly_bounded );
     REQUIRE( inline_poly_bounded.get_rectangle_count() == 2 );
-    auto begin = inline_poly_bounded.begin();
-	auto end = inline_poly_bounded.end();
 
 	// TESTING THE QUICK EXIT
 
