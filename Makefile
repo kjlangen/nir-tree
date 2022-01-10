@@ -1,8 +1,8 @@
-C++ = g++
-DIR = src/include # Include directory
-SXX = -std=c++20 # Standard
-CXXFLAGS = -Wall -fno-strict-aliasing
-CPPFLAGS = -DDIM=2 -I $(DIR)
+C++ := g++
+DIR := src/include # Include directory
+SXX := -std=c++20 # Standard
+CXXFLAGS := -Wall -fno-strict-aliasing
+CPPFLAGS := -DDIM=2 -I $(DIR)
 
 ifdef PROD
 CPPFLAGS := -DNDEBUG $(CPPFLAGS)
@@ -14,51 +14,45 @@ else
 CXXFLAGS := -ggdb $(CXXFLAGS)
 endif
 
-SRC = $(shell find . -path ./src/tests -prune -false -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) )
-OBJ = $(SRC:.cpp=.o)
-TESTSRC = $(shell find ./src/tests -name '*.cpp')
-TESTOBJ = $(TESTSRC:.cpp=.o)
+SRC := $(shell find . -path ./src/tests -prune -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) -print)
+MAINS := ./src/main.cpp ./src/gen_tree.cpp
+TREE_NODES := ./src/nirtree/node.o ./src/rtree/node.o ./src/rplustree/node.o ./src/rstartree/node.o ./src/quadtree/node.o ./src/revisedrstartree/node.o
+SRC := $(filter-out $(MAINS),$(SRC))
+OBJ := $(SRC:.cpp=.o)
+OBJ_TO_COPY := $(filter-out $(TREE_NODES),$(OBJ))
+
+TESTSRC := $(shell find ./src/tests -name '*.cpp')
+TESTOBJ := $(TESTSRC:.cpp=.o)
 
 %.o: %.cpp
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-all: bin/main bin/tests
+all: bin/main bin/gen_tree bin/tests
 
-bin/main: $(OBJ)
-	mkdir -p bin
-	cp src/nirtree/node.o nirtreenode.o
-	cp src/rtree/node.o rtreenode.o
-	cp src/rplustree/node.o rplustreenode.o
-	cp src/rstartree/node.o rstartreenode.o
-	cp src/quadtree/node.o quadtreenode.o
-	cp src/revisedrstartree/node.o revisedrstartreenode.o
-	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
-	rm -rf test*.o
-	mv gen_tree.o gen_tree.nocompile || echo
-	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/main -I $(DIR)
-	mv gen_tree.nocompile gen_tree.o || echo
+src/main.o : src/main.cpp
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-bin/gen_tree: $(OBJ)
+src/gen_tree.o : src/gen_tree.cpp
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+
+
+bin/main: $(OBJ) src/main.o
 	mkdir -p bin
-	cp src/nirtree/node.o nirtreenode.o
-	cp src/rtree/node.o rtreenode.o
-	cp src/rplustree/node.o rplustreenode.o
-	cp src/rstartree/node.o rstartreenode.o
-	cp src/quadtree/node.o quadtreenode.o
-	cp src/revisedrstartree/node.o revisedrstartreenode.o
-	find ./src \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
+	cp src/nirtree/node.o bin/nirtreenode.o
+	cp src/rtree/node.o bin/rtreenode.o
+	cp src/rplustree/node.o bin/rplustreenode.o
+	cp src/rstartree/node.o bin/rstartreenode.o
+	cp src/quadtree/node.o bin/quadtreenode.o
+	cp src/revisedrstartree/node.o bin/revisedrstartreenode.o
 	rm -rf test*.o
-	mv main.o main.nocompile || echo
-	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/gen_tree -I $(DIR)
-	mv main.nocompile main.o || echo
+	cp $(OBJ_TO_COPY) bin/
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) bin/*.o src/main.o -o bin/main -I $(DIR)
+
+bin/gen_tree: $(OBJ) bin/main src/gen_tree.o
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) bin/*.o src/gen_tree.o -o bin/gen_tree -I $(DIR)
 
 bin/tests: $(TESTOBJ) bin/main
-	find ./src/tests \( -name "*.o" -a ! -name 'node.o' \) -exec cp {} ./ \;
-	mv main.o main.nocompile || echo
-	mv gen_tree.o gen_tree.nocompile || echo 
-	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) *.o -o bin/tests
-	mv main.nocompile main.o || echo
-	mv gen_tree.nocompile gen_tree.o || echo 
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) bin/*.o src/tests/*.o -o bin/tests
 
 .PHONY: all clean prod
 
