@@ -112,5 +112,31 @@ in the `Branch` instead of a `InlineBoundedIsotheticPolygon`, and storing the `I
 follow-up pages is filled entirely with polygons, but the first page may contain less than that --- the allocation size of the original `tree_node_handle`
 determines how many rectangles can be stored. See `node.tcc` in `src/include/nirtreedisk/node.tcc` for examples of how to create and store these objects.
 
+#### Bulk Loading
+  
+Bulk loading support is defined in `src/gen_tree.cpp`. Note that for now, the templates hard code the tree `min_branch_factor` and `max_branch_factor`
+(<5,9>) respectively.
+  
+There are two types of bulk loading. The first is an R-Tree-style load, which uses Sort-Tile Recursive, and is bottom-up. The second is a quad-tree-style
+load, which is top-down. In the past, the NIR-Tree used an R-Tree-style load and then uses make_rectangles_disjoint to avoid intersections as we went up
+the tree. This took forever and made hugely complex polygons. So, the NIRTree load is now configured to use a quad-tree style load, which for the most
+part results in single-rectangle polygons.
+  
+The entry point for NIR-Tree bulk loading is here: https://github.com/bglasber/nir-tree/blob/master/src/gen_tree.cpp#L992
 
+The core functionality underlying this load is `find_bounding_lines`, which determines a position along a given axis to place lines in the points array such
+that the points are roughly evenly partitioned into `max_branch_factor` groups. I say roughly because the lines may need to be moved a little bit from their
+ideal position so that the point immediately before the line does not share the same axis-value as the point that comes after (e.g., if we partition on x, then
+point before does not have the same x-value as the point after). The reason for this is that otherwise the rectangles generated from the split would overlap,
+which defeeats the non-intersection property of the NIRTree. The process of finding split lines is repeated along each access to get `max_branch_factor` total
+tiles. This split process is then recursively repeated until we hit the leaf layer.
+  
+The end-effect of this line-movement is that some nodes at the leaf-layer may contain more than the maximum number of points than they can contain. For now,
+  we take these extra overflow points, and sequential insert them afterward. This is prohibitively slow, and the key thing we wish to address.
+  
+The first task is to devise an algorithm that enables an even split of points at each layer by using polygons rather than simple line placements to construct
+tiles. It is guaranteed that each point is unique, which means that there is necessarily a combination of rectangles that captures all the points in each node
+and do not interesect with the polygons describing the regions of the other nodes.
+  
+  
 
