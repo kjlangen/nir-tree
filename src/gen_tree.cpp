@@ -809,30 +809,20 @@ std::vector<uint64_t> find_bounding_lines(
 
     uint64_t count = stop-start;
     uint64_t rough_point_count_per_partition = count / partitions;
-
+    uint64_t remainder = count % partitions;
+    
+    uint64_t line_bound = 0;
     for( uint64_t created_partitions = 0; created_partitions <
             partitions-1; created_partitions++ ) {
 
         // This is roughly where the line should go
-        uint64_t line_bound = (created_partitions+1)*rough_point_count_per_partition;
-
-        // Push forward if other stuff line on this point
-        double val = (*(start + line_bound))[d];
-        auto iter = start+line_bound;
-
-        // If this is the last partition, we can't move it. It's a
-        // guaranteed cut-off.
-        // Otherwise, we need to find a point where the value changes
-        // along dimension x as a partition line
-        for( ; iter != stop; iter++ ) {
-            if( (*iter)[d] != val ) {
-                break;
-            }
-            line_bound++;
+        line_bound += rough_point_count_per_partition;
+        if (remainder != 0) {
+            remainder -= 1;
+            line_bound += 1;
         }
         lines.push_back( line_bound ); // Not inclusive
     }
-
     lines.push_back( count ); // Not inclusive
 
 
@@ -897,6 +887,9 @@ tree_node_handle quad_tree_style_load(
 
     std::vector<uint64_t> x_lines = find_bounding_lines( start, stop, 0, tiles );
     std::vector<Rectangle> existing_boxes;
+
+    std::vector<std::pair<IsotheticPolygon, tree_node_handle>> branch_handles;
+    branch_handles.reserve( 9 );
     for( uint64_t i = 0; i < x_lines.size()-1; i++ ) {
         uint64_t x_start = x_lines.at(i);
         uint64_t x_end = x_lines.at(i+1); /* not inclusive */
@@ -933,32 +926,62 @@ tree_node_handle quad_tree_style_load(
                 auto branch_node = allocator->get_tree_node<nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>>( child_handle );
                 bbox = branch_node->boundingBox();
             }
+            
+            IsotheticPolygon ip = IsotheticPolygon(bbox);
+            std::vector<Rectangle> handle_bounding = std::vector<Rectangle>{bbox};
 
-            for( Rectangle &existing : existing_boxes ) {
-                if( bbox.intersectsRectangle( existing ) ) { 
-                    std::cout << bbox << " intersects: " << existing <<
-                        std::endl;
-                    std::cout << "Cur y_lo: " <<
-                        (*(start+x_start+y_start))[1] << std::endl;
-                    std::cout << "Prev y: " <<
-                        (*(start+x_start+y_start-1))[1] << std::endl;
-
-                    abort();
+            for(uint64_t i = 0; i < branch_handles.size(); i++) {
+                std::vector<Rectangle> &existing_rects =
+                    branch_handles.at(i).first.basicRectangles;
+                for( Rectangle &existing : existing_rects ) {
+                    if( bbox.intersectsRectangle( existing ) ) {
+                        make_all_rects_disjoint(
+                            tree,
+                            existing_rects,
+                            branch_handles.at(i).second,
+                            handle_bounding,
+                            child_handle
+                        );
+                    }
                 }
             }
-            existing_boxes.push_back( bbox );
+            
+            branch_handles.push_back(std::make_pair(ip, child_handle));
 
-
-            nirtreedisk::Branch b;
-            b.child = child_handle;
-            b.boundingPoly = InlineBoundedIsotheticPolygon();
-            std::get<InlineBoundedIsotheticPolygon>(b.boundingPoly).push_polygon_to_disk(
-                    IsotheticPolygon( bbox ) );
-
-            branch_node->addBranchToNode( b );
-
+            // Double check non-intersection - Really inefficient, but I don't see a better way 
+            // of doing this.
+            for( uint64_t i = 0; i < branch_handles.size(); i++ ) {
+                for( uint64_t j = i+1; j < branch_handles.size(); j++ ) {
+                    std::vector<Rectangle> &existing_rects_a =
+                        branch_handles.at(i).first.basicRectangles;
+                    std::vector<Rectangle> &existing_rects_b =
+                        branch_handles.at(j).first.basicRectangles;
+                    for( Rectangle &rect_a : existing_rects_a ) {
+                        for( Rectangle &rect_b : existing_rects_b ) {
+                            if( rect_b.intersectsRectangle( rect_a ) ) { 
+                                std::cout << rect_b << " intersects: " << rect_a <<
+                                    std::endl;
+                                std::cout << "Cur y_lo: " <<
+                                    (*(start+x_start+y_start))[1] << std::endl;
+                                std::cout << "Prev y: " <<
+                                    (*(start+x_start+y_start-1))[1] << std::endl;
+                                abort();
+                            }
+                        }
+                    }
+                }
+            }
         }
-
+    }
+    for( uint64_t i = 0; i < branch_handles.size(); i++ ) {
+        nirtreedisk::Branch b;
+        b.child = branch_handles.at(i).second;
+        IsotheticPolygon &constructed_poly =
+                branch_handles.at(i).first;
+        b.boundingPoly = InlineBoundedIsotheticPolygon();
+        std::get<InlineBoundedIsotheticPolygon>( b.boundingPoly
+                        ).push_polygon_to_disk( constructed_poly );
+        branch_node->addBranchToNode( b );
     }
 
     return branch_handle;
@@ -1013,7 +1036,6 @@ void bulk_load_tree(
     }
     for( const auto &p : overflow ) {
         tree->insert(p);
-        std::cout << "Insert OK." << std::endl;
     }
     std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - begin_time);
@@ -1058,8 +1080,16 @@ void bulk_load_tree(
     tree->write_metadata(); 
 }
 
-void generate_tree( std::map<std::string, unsigned> &configU ) {
+void validate_tree_helper(nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>* tree) {
 
+}
+
+void validate_tree(nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>* tree) {
+    validate_tree_helper(tree);
+    std::cout << "NIRTree Bounding Boxes Validated" << std::endl;
+}
+
+void generate_tree( std::map<std::string, unsigned> &configU ) {
 
     std::string backing_file = "bulkloaded_tree.txt";
     unlink( backing_file.c_str() );
@@ -1099,6 +1129,7 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         std::cout << "Creating tree with " << 40960UL *130000UL << "bytes" << std::endl;
         bulk_load_tree( tree, configU, all_points.begin(), all_points.begin() + cut_off_bulk_load, 9 );
         std::cout << "Created NIRTree." << std::endl;
+        validate_tree(tree);
         spatialIndex = tree;
     } else if( configU["tree"] == R_STAR_TREE ) {
         rstartreedisk::RStarTreeDisk<5,9> *tree = new rstartreedisk::RStarTreeDisk<5,9>(
