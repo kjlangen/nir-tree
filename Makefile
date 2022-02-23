@@ -16,7 +16,7 @@ endif
 
 SRC := $(shell find . -path ./src/tests -prune -o \( -name '*.cpp' -a ! -name 'pencilPrinter.cpp' \) -print)
 MAINS := ./src/main.cpp ./src/gen_tree.cpp
-TREE_NODES := ./src/nirtree/node.o ./src/rtree/node.o ./src/rplustree/node.o ./src/rstartree/node.o ./src/quadtree/node.o ./src/revisedrstartree/node.o
+TREE_NODES := ./src/nirtree/node.o ./src/rtree/node.o ./src/rplustree/node.o ./src/rstartree/node.o ./src/quadtree/node.o ./src/revisedrstartree/node.o ./src/bulk_load.o
 SRC := $(filter-out $(MAINS),$(SRC))
 OBJ := $(SRC:.cpp=.o)
 OBJ_TO_COPY := $(filter-out $(TREE_NODES),$(OBJ))
@@ -33,8 +33,8 @@ src/main.o : src/main.cpp
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 src/gen_tree.o : src/gen_tree.cpp
-	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
-
+	cp src/bulk_load.o bin/bulk_load.o
+	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@ 
 
 bin/main: $(OBJ) src/main.o
 	mkdir -p bin
