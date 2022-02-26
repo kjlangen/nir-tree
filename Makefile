@@ -1,4 +1,4 @@
-C++ := g++-11
+C++ := g++
 DIR := src/include # Include directory
 SXX := -std=c++20 # Standard
 CXXFLAGS := -Wall -fno-strict-aliasing

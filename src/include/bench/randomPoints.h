@@ -201,9 +201,6 @@ class PointGenerator
 		void reset();
 };
 
-unsigned BenchTypeClasses::Uniform::size = 10000;
-unsigned BenchTypeClasses::Uniform::dimensions = dimensions;
-unsigned BenchTypeClasses::Uniform::seed = 3141;
 
 static void fileGoodOrDie(std::fstream &file)
 {
@@ -258,7 +255,7 @@ void PointGenerator<T>::reset()
     reset(BenchDetail::getBenchTag<T>{});
 }
 
-template <>
+template <> inline
 std::optional<Point> PointGenerator<BenchTypeClasses::Uniform>::nextPoint(BenchTag::DistributionGenerated)
 {
 	// We produce all of the points at once and shove them in the buffer.

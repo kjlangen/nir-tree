@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <random>
 #include <catch2/catch.hpp>
-#include <../bulk_load.h>
+#include <bulk_load.h>
 
 
 nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> * generate_tree(unsigned size, unsigned branch_factor) {
