@@ -1,6 +1,6 @@
-C++ := g++
+C++ := g++-11
 DIR := src/include # Include directory
-SXX := -std=c++20 # Standard
+SXX := -std=c++2a # Standard
 CXXFLAGS := -Wall -fno-strict-aliasing
 CPPFLAGS := -DDIM=2 -I $(DIR)
 
