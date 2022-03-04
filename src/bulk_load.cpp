@@ -804,17 +804,13 @@ tree_node_handle quad_tree_style_load(
     unsigned branch_factor,
     unsigned cur_depth,
     unsigned max_depth,
-    tree_node_handle parent_handle,
-    std::vector<Point> &overflow
+    tree_node_handle parent_handle
 ) {
     uint64_t num_els = (stop-start);
     uint64_t tiles = std::floor(sqrt(branch_factor));
     tree_node_allocator *allocator = tree->node_allocator_.get();
     if( cur_depth == max_depth ) {
-        if( num_els > branch_factor ) {
-            std::copy( start + branch_factor, stop, std::back_inserter( overflow ) );
-            stop = start + branch_factor;
-        }
+        assert( num_els <= branch_factor );
         num_els = (stop-start);
         if( num_els > branch_factor ) {
             abort();
@@ -882,8 +878,7 @@ tree_node_handle quad_tree_style_load(
                 branch_factor,
                 cur_depth+1,
                 max_depth,
-                branch_handle,
-                overflow
+                branch_handle
             );
 
             Rectangle bbox;
@@ -985,20 +980,9 @@ void bulk_load_tree(
          *) tree;
 
     std::chrono::high_resolution_clock::time_point begin_time = std::chrono::high_resolution_clock::now();
-    std::vector<Point> overflow;
-    tree_node_handle root = quad_tree_style_load( tree_ptr, begin, end, max_branch_factor, 0, max_depth, nullptr, overflow );
+    tree_node_handle root = quad_tree_style_load( tree_ptr, begin, end,
+            max_branch_factor, 0, max_depth, nullptr );
     tree->root = root;
-    std::cout << "Root node: " << root << std::endl;
-    std::cout << "Node Type: " << (unsigned) root.get_type() << std::endl;
-
-    std::cout << "After bulk insert, need to insert: " << overflow.size() << " points sequentially." << std::endl;
-    std::cout << "KNOWN BUG, not inserting right not, don't keep results." << std::endl;
-    while( tree->hasReinsertedOnLevel.size() <= max_depth ) {
-        tree->hasReinsertedOnLevel.push_back( false );
-    }
-    for( const auto &p : overflow ) {
-        tree->insert(p);
-    }
     std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - begin_time);
     std::cout << "Bulk loading NIRTree took: " << delta.count() << std::endl;

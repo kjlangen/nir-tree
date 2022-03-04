@@ -153,8 +153,7 @@ tree_node_handle quad_tree_style_load(
     unsigned branch_factor,
     unsigned cur_depth,
     unsigned max_depth,
-    tree_node_handle parent_handle,
-    std::vector<Point> &overflow
+    tree_node_handle parent_handle
 ); 
 
 template <typename T>

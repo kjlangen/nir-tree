@@ -33,13 +33,14 @@ void generate_tree(nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrateg
     auto tree_ptr =
         (nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>
          *) tree;
-    std::vector<Point> overflow;
     uint64_t max_depth =
         std::floor(log(size)/log(branch_factor));
-    tree_node_handle root = quad_tree_style_load( tree, all_points.begin(), all_points.begin() + cut_off_bulk_load, (unsigned) branch_factor, (unsigned) 0, (unsigned) max_depth, nullptr, overflow );
+    tree_node_handle root = quad_tree_style_load( tree,
+            all_points.begin(), all_points.begin() + cut_off_bulk_load,
+            (unsigned) branch_factor, (unsigned) 0, (unsigned)
+            max_depth, nullptr );
     tree->root = root;
 
-    REQUIRE(overflow.size() == 0);
     REQUIRE(tree->validate());
 }
 
