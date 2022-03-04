@@ -785,14 +785,13 @@ std::vector<uint64_t> find_bounding_lines(
         // This is roughly where the line should go
         line_bound += rough_point_count_per_partition;
         // Adjusting for remainder
-        if (remainder != 0) {
-            remainder -= 1;
-            line_bound += 1;
+        if( remainder != 0 ) {
+            remainder--;
+            line_bound++;
         }
         lines.push_back( line_bound ); 
     }
     lines.push_back( count ); 
-
 
     return lines;
 }
@@ -807,14 +806,10 @@ tree_node_handle quad_tree_style_load(
     tree_node_handle parent_handle
 ) {
     uint64_t num_els = (stop-start);
-    uint64_t tiles = std::floor(sqrt(branch_factor));
     tree_node_allocator *allocator = tree->node_allocator_.get();
     if( cur_depth == max_depth ) {
         assert( num_els <= branch_factor );
         num_els = (stop-start);
-        if( num_els > branch_factor ) {
-            abort();
-        }
         auto alloc_data =
             allocator->create_new_tree_node<nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>>(
                     NodeHandleType( LEAF_NODE ) );
@@ -848,7 +843,7 @@ tree_node_handle quad_tree_style_load(
     auto branch_node = alloc_data.first;
     tree_node_handle branch_handle = alloc_data.second;
 
-
+    uint64_t tiles = std::floor(sqrt(branch_factor));
     std::vector<uint64_t> x_lines = find_bounding_lines( start, stop, 0, tiles );
     std::vector<Rectangle> existing_boxes;
 
@@ -868,6 +863,8 @@ tree_node_handle quad_tree_style_load(
             std::vector<Point>::iterator sub_stop = start + x_start +
                 y_end;
             if( sub_start == sub_stop ) {
+                // I think this can happen when we run out of points in
+                // the lowest layer to split among children.
                 continue;
             }
 
@@ -896,22 +893,22 @@ tree_node_handle quad_tree_style_load(
             for(uint64_t i = 0; i < branch_handles.size(); i++) {
                 std::vector<Rectangle> &existing_rects =
                     branch_handles.at(i).first.basicRectangles;
-                for( Rectangle &existing : existing_rects ) {
-                    if( bbox.intersectsRectangle( existing ) ) {
-                        make_all_rects_disjoint(
-                            tree,
-                            existing_rects,
-                            branch_handles.at(i).second,
-                            handle_bounding,
-                            child_handle
-                        );
-                    }
+                if( branch_handles.at(i).first.intersectsPolygon( ip ) ) {
+                    make_all_rects_disjoint(
+                        tree,
+                        existing_rects,
+                        branch_handles.at(i).second,
+                        handle_bounding,
+                        child_handle
+                    );
+                    ip.recomputeBoundingBox();
+                    branch_handles.at(i).first.recomputeBoundingBox();
                 }
             }
             
             branch_handles.push_back(std::make_pair(ip, child_handle));
 
-#ifndef DNDEBUG
+#ifndef NDEBUG
             // Double check non-intersection - Really inefficient, but I don't see a better way 
             // of doing this.
             for( uint64_t i = 0; i < branch_handles.size(); i++ ) {
