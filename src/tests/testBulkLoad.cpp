@@ -70,7 +70,7 @@ TEST_CASE("gen_tree: test_non_perfect_depth") {
     std::string file_name = "test_non_perfect_depth.txt";
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
-                    40960UL*20000UL, file_name );
+                    4096UL*20, file_name );
     unsigned size = 1203;
     std::vector<Point> points;
     generate_points(points, size);
@@ -88,7 +88,7 @@ TEST_CASE("gen_tree: test_same_y") {
     std::string file_name = "test_same_y.txt";
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
-                    40960UL*20000UL, file_name);
+                    4096UL*200, file_name);
     unsigned size = 9;
     std::vector<Point> points;
     for(unsigned i = 0; i < size; i++) {
@@ -111,7 +111,7 @@ TEST_CASE("gen_tree: test_same_x") {
     std::string file_name = "test_same_x.txt";
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
-                    40960UL*20000UL, file_name);
+                    4096UL*200, file_name);
     unsigned size = 9;
     std::vector<Point> points;
     for(unsigned i = 0; i < size; i++) {
@@ -134,7 +134,7 @@ TEST_CASE("gen_tree: underfill_tree") {
     std::string file_name = "underfill_tree.txt";
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
-                    40960UL*20000UL, file_name);
+                    4096UL*200UL, file_name);
     unsigned size = 8;
     std::vector<Point> points;
     generate_points(points, size);

@@ -1,6 +1,16 @@
+
+# Arch Linux does not tag GCC versions.
+# Builds on Brad's Laptop
+ifeq (, $(shell which g++-11 &>/dev/null))
+C++ := g++
+SXX := -std=c++20
+else
+# Build on Kevin's computer
 C++ := g++-11
+SXX := -std=c++2a
+endif
+
 DIR := src/include # Include directory
-SXX := -std=c++2a # Standard
 CXXFLAGS := -Wall -fno-strict-aliasing
 CPPFLAGS := -DDIM=2 -I $(DIR)
 
