@@ -31,6 +31,7 @@ SRC := $(filter-out $(MAINS),$(SRC))
 OBJ := $(SRC:.cpp=.o)
 OBJ_TO_COPY := $(filter-out $(TREE_NODES),$(OBJ))
 
+
 TESTSRC := $(shell find ./src/tests -name '*.cpp')
 TESTOBJ := $(TESTSRC:.cpp=.o)
 
@@ -42,7 +43,7 @@ all: bin/main bin/gen_tree bin/tests
 src/main.o : src/main.cpp
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-src/gen_tree.o : src/gen_tree.cpp
+src/gen_tree.o : src/gen_tree.cpp src/bulk_load.o
 	cp src/bulk_load.o bin/bulk_load.o
 	$(C++) $(SXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@ 
 

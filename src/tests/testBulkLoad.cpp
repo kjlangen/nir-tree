@@ -30,16 +30,13 @@ void generate_tree(nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrateg
     unsigned size = (unsigned) all_points.size();
     uint64_t cut_off_bulk_load = std::floor(bulk_load_pct*all_points.size());
 
-    auto tree_ptr =
-        (nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>
-         *) tree;
     uint64_t max_depth =
         std::floor(log(size)/log(branch_factor));
-    tree_node_handle root = quad_tree_style_load( tree,
+    auto ret = quad_tree_style_load( tree,
             all_points.begin(), all_points.begin() + cut_off_bulk_load,
             (unsigned) branch_factor, (unsigned) 0, (unsigned)
             max_depth, nullptr );
-    tree->root = root;
+    tree->root = ret.first;
 
     REQUIRE(tree->validate());
 }

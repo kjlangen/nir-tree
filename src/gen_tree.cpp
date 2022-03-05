@@ -56,32 +56,6 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         abort();
     }
 
-#if 0
-    // FIXME: This is going to be a problem --- we can't naively sequential insert because
-    // we need to repack the data above. If we don't, then the NIR-Tree can be absolutely massive in size because
-    // of all the gaps in nodes.
-
-	double totalTimeInserts = 0.0;
-
-    // So we would need to be able to "unpack" stuff as required for insert, and then repack.
-    std::cout << "Going to insert." << std::endl;
-    for( auto iter = all_points.begin() + cut_off_bulk_load; iter != all_points.end(); iter++ ) {
-        std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-        spatialIndex->insert(*iter);
-        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
-        totalTimeInserts += delta.count();
-        std::cout << "Insert OK." << std::endl;
-    }
-
-    // FIXME: repack again here?
-
-	std::cout << "Total time to insert: " << totalTimeInserts << "s" << std::endl;
-	std::cout << "Avg time to insert: " << totalTimeInserts / (all_points.size() - cut_off_bulk_load)<< "s" << std::endl;
-#endif
-
-
-
     std::mt19937 g;
     g.seed(0);
 

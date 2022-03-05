@@ -796,7 +796,7 @@ std::vector<uint64_t> find_bounding_lines(
     return lines;
 }
 
-tree_node_handle quad_tree_style_load(
+std::pair<tree_node_handle, Rectangle> quad_tree_style_load(
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree,
     std::vector<Point>::iterator start,
     std::vector<Point>::iterator stop,
@@ -823,12 +823,11 @@ tree_node_handle quad_tree_style_load(
             leaf_node->addPoint(*iter);
         }
 
-        return leaf_handle;
-        // FIXME: re-enable once sergiu's code is done
-        //auto repacked_handle = leaf_node->repack( allocator );
-        //allocator->free( leaf_handle, sizeof(
-        //            nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>) );
-        //return repacked_handle;
+        auto repacked_handle = leaf_node->repack( allocator );
+        Rectangle bbox = leaf_node->boundingBox();
+        allocator->free( leaf_handle, sizeof(
+                    nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>) );
+        return std::make_pair( repacked_handle, bbox );
     }
 
     // Return a tree node handle with pointers to all of its necessary
@@ -868,7 +867,8 @@ tree_node_handle quad_tree_style_load(
                 continue;
             }
 
-            tree_node_handle child_handle =  quad_tree_style_load(
+            // This needs to return the box and handle.
+            auto ret = quad_tree_style_load(
                 tree,
                 sub_start,
                 sub_stop,
@@ -877,16 +877,9 @@ tree_node_handle quad_tree_style_load(
                 max_depth,
                 branch_handle
             );
+            tree_node_handle child_handle = ret.first;
+            Rectangle bbox = ret.second;
 
-            Rectangle bbox;
-            if( child_handle.get_type() == LEAF_NODE ) {
-                auto leaf_node = allocator->get_tree_node<nirtreedisk::LeafNode<5,9,nirtreedisk::ExperimentalStrategy>>( child_handle );
-                bbox = leaf_node->boundingBox();
-            } else {
-                auto branch_node = allocator->get_tree_node<nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>>( child_handle );
-                bbox = branch_node->boundingBox();
-            }
-            
             IsotheticPolygon ip = IsotheticPolygon(bbox);
             std::vector<Rectangle> handle_bounding = std::vector<Rectangle>{bbox};
 
@@ -946,15 +939,13 @@ tree_node_handle quad_tree_style_load(
         branch_node->addBranchToNode( b );
     }
 
-    return branch_handle;
-    // FIXME: re-enable once sergiu's  code is done
-    /*
     // Repack
     auto repacked_handle = branch_node->repack( allocator, allocator );
+
+    Rectangle bbox = branch_node->boundingBox();
     allocator->free( branch_handle, sizeof(
                 nirtreedisk::BranchNode<5,9,nirtreedisk::ExperimentalStrategy>) );
-    return repacked_handle;
-    */
+    return std::make_pair( repacked_handle, bbox );
 }
 
 template <>
@@ -977,17 +968,13 @@ void bulk_load_tree(
          *) tree;
 
     std::chrono::high_resolution_clock::time_point begin_time = std::chrono::high_resolution_clock::now();
-    tree_node_handle root = quad_tree_style_load( tree_ptr, begin, end,
+    auto ret = quad_tree_style_load( tree_ptr, begin, end,
             max_branch_factor, 0, max_depth, nullptr );
-    tree->root = root;
+    tree->root = ret.first;
     std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> delta = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - begin_time);
     std::cout << "Bulk loading NIRTree took: " << delta.count() << std::endl;
 
-
-    std::string fname = "repacked_nirtree.txt";
-    repack_tree( tree_ptr, fname,
-            nirtreedisk::repack_subtree<5,9,nirtreedisk::ExperimentalStrategy>  );
     tree->write_metadata();
 }
 

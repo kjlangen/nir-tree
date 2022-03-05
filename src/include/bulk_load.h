@@ -146,7 +146,7 @@ std::vector<uint64_t> find_bounding_lines(
     unsigned partitions
 ); 
 
-tree_node_handle quad_tree_style_load(
+std::pair<tree_node_handle,Rectangle> quad_tree_style_load(
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree,
     std::vector<Point>::iterator start,
     std::vector<Point>::iterator stop,
