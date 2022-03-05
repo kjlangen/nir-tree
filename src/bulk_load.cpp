@@ -164,7 +164,6 @@ void fill_branch(
             b.boundingPoly = alloc_data.second;
         }
         branch_node->addBranchToNode(b);
-        //branch_node->bounding_box_validate();
     }
 }
 

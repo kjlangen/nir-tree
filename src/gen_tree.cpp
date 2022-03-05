@@ -41,9 +41,11 @@ void generate_tree( std::map<std::string, unsigned> &configU ) {
         std::cout << "Creating tree with " << 40960UL *130000UL << "bytes" << std::endl;
         bulk_load_tree( tree, configU, all_points.begin(), all_points.begin() + cut_off_bulk_load, 9 );
         std::cout << "Created NIRTree." << std::endl;
-        if (!tree->validate()) {
+        /*
+        if( !tree->validate() ) {
             std::cout << "Tree Validation Failed" << std::endl;
         }
+        */
         spatialIndex = tree;
     } else if( configU["tree"] == R_STAR_TREE ) {
         rstartreedisk::RStarTreeDisk<5,9> *tree = new rstartreedisk::RStarTreeDisk<5,9>(
