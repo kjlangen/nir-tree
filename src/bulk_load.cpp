@@ -764,33 +764,45 @@ std::vector<uint64_t> find_bounding_lines(
     std::vector<Point>::iterator start,
     std::vector<Point>::iterator stop,
     unsigned d,
-    unsigned partitions
+    unsigned branch_factor,
+    unsigned partitions,
+    unsigned sub_partitions,
+    unsigned depth
 ) {
     std::sort( start, stop, [d]( const Point &p1, const
-                Point &p2 ) { return p1[d] < p2[d]; } );
+                Point &p2 ) { if (d == 0 && p1[0] == p2[0]) {return p1[1] < p2[1]; } 
+                else if (d == 1 && p1[1] == p2[1]) {return p1[0] < p2[0]; }
+                return p1[d] < p2[d]; } );
 
     std::vector<uint64_t> lines;
     lines.reserve( partitions+2 );
     lines.push_back( 0 );
 
     uint64_t count = stop-start;
-    uint64_t rough_point_count_per_partition = count / partitions;
-    uint64_t remainder = count % partitions;
-    
-    uint64_t line_bound = 0;
-    for( uint64_t created_partitions = 0; created_partitions <
-            partitions-1; created_partitions++ ) {
+    unsigned min_branches = std::ceil((double) count / (double) pow(branch_factor, depth) * sub_partitions * partitions);
+    unsigned branches_per_partition = min_branches / partitions;
+    unsigned remainder = min_branches % partitions;
 
-        // This is roughly where the line should go
-        line_bound += rough_point_count_per_partition;
-        // Adjusting for remainder
-        if( remainder != 0 ) {
-            remainder--;
-            line_bound++;
+    unsigned partition_index = 0;
+    for (unsigned partition = 0; partition < partitions - 1; partition++) {
+        uint64_t partition_size = 0;
+        for (unsigned sub_partition = 0; sub_partition < sub_partitions; sub_partition++) {
+            if (sub_partition < branches_per_partition) {
+                partition_size += pow(branch_factor, depth);
+            }
+        } 
+        if (remainder != 0 && partition_size + pow(branch_factor, depth) <= pow(branch_factor, depth) * sub_partitions) {
+            partition_size += pow(branch_factor, depth);
+            remainder -= 1;
         }
-        lines.push_back( line_bound ); 
+
+        partition_index += partition_size;
+        if (partition_index > count) {
+            partition_index = count;
+        }
+        lines.push_back(partition_index);
     }
-    lines.push_back( count ); 
+    lines.push_back( count );
 
     return lines;
 }
@@ -807,6 +819,9 @@ std::pair<tree_node_handle, Rectangle> quad_tree_style_load(
     uint64_t num_els = (stop-start);
     tree_node_allocator *allocator = tree->node_allocator_.get();
     if( cur_depth == max_depth ) {
+        if ( num_els > branch_factor ) {
+            std::cout << "NUM ELS: " << num_els << std::endl;
+        }
         assert( num_els <= branch_factor );
         num_els = (stop-start);
         auto alloc_data =
@@ -842,7 +857,7 @@ std::pair<tree_node_handle, Rectangle> quad_tree_style_load(
     tree_node_handle branch_handle = alloc_data.second;
 
     uint64_t tiles = std::floor(sqrt(branch_factor));
-    std::vector<uint64_t> x_lines = find_bounding_lines( start, stop, 0, tiles );
+    std::vector<uint64_t> x_lines = find_bounding_lines( start, stop, 0, branch_factor, tiles, std::floor(branch_factor / tiles), max_depth - cur_depth);
     std::vector<Rectangle> existing_boxes;
 
     std::vector<std::pair<IsotheticPolygon, tree_node_handle>> branch_handles;
@@ -851,7 +866,7 @@ std::pair<tree_node_handle, Rectangle> quad_tree_style_load(
         uint64_t x_start = x_lines.at(i);
         uint64_t x_end = x_lines.at(i+1); /* not inclusive */
         std::vector<uint64_t> y_lines = find_bounding_lines(
-                 start + x_start, start + x_end, 1, tiles );
+                 start + x_start, start + x_end, 1, branch_factor, tiles, 1, max_depth - cur_depth);
         for( uint64_t j = 0; j < y_lines.size()-1; j++ ) {
             uint64_t y_start = y_lines.at(j);
             uint64_t y_end = y_lines.at(j+1); /* not inclusive */

@@ -84,7 +84,7 @@ TEST_CASE("gen_tree: test_same_y") {
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
                     4096UL*200, file_name);
-    unsigned size = 9;
+    unsigned size = 10;
     std::vector<Point> points;
     for(unsigned i = 0; i < size; i++) {
         Point p;
@@ -108,7 +108,7 @@ TEST_CASE("gen_tree: test_same_x") {
     nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy> *tree =  new
             nirtreedisk::NIRTreeDisk<5,9,nirtreedisk::ExperimentalStrategy>(
                     4096UL*200, file_name);
-    unsigned size = 9;
+    unsigned size = 81;
     std::vector<Point> points;
     for(unsigned i = 0; i < size; i++) {
         Point p;
